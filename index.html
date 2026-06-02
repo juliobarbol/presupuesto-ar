@@ -533,6 +533,15 @@ input[type=file]{display:none}
 
 /* HIST badge for estimative quotes */
 .hbadge-est{display:inline-block;font-size:10px;font-weight:700;padding:1px 7px;border-radius:8px;background:#d1fae5;color:#065f46;margin-left:6px;vertical-align:middle}
+/* Badge de estado comercial (color inline según el estado) */
+.hbadge-estado{display:inline-block;font-size:10px;font-weight:700;padding:1px 8px;border-radius:8px;margin-left:6px;vertical-align:middle;text-transform:uppercase;letter-spacing:.3px}
+/* Selector de estado en la tarjeta del historial */
+.hestado-sel{font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;color:var(--text);background:#fff;border:1px solid var(--border);border-radius:6px;padding:5px 8px;outline:none;-webkit-appearance:none;appearance:none;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2364748b' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;padding-right:26px}
+.hestado-sel:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(6,78,59,.1)}
+/* Toast con botón de acción (ej: "¿Marcar como enviado?") */
+.toast-action{display:flex;align-items:center;gap:12px}
+.toast-action .toast-btn{font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;color:#fff;background:var(--accent);border:none;border-radius:6px;padding:6px 12px;cursor:pointer;white-space:nowrap}
+.toast-action .toast-btn:active{opacity:.85}
 
 /* MISC */
 .divider{height:1px;background:var(--border);margin:16px 0}
@@ -561,7 +570,9 @@ input[type=file]{display:none}
   .trow{padding:13px 0}
   .tlabel{font-size:14px}
   .hitem{flex-direction:column;align-items:flex-start;gap:8px}
-  .hacts{width:100%;gap:8px}
+  .hacts{width:100%;gap:8px;flex-wrap:wrap}
+  /* El selector de estado ocupa toda la línea; los botones van debajo. */
+  .hacts .hestado-sel{flex-basis:100%;width:100%;font-size:16px;padding:9px 10px}
   /* Solo estirar botones de acción reales, NO el botón-ícono de borrar
      (que se mantiene chico en su esquina para evitar taps accidentales). */
   .hacts .btn:not(.btn-icon-del){flex:1;justify-content:center}
@@ -1869,6 +1880,16 @@ input[type=file]{display:none}
             <option value="">👤 Todos los clientes</option>
           </select>
         </div>
+        <div style="margin-bottom:4px">
+          <select class="hsearch" id="hist-estado-filter" onchange="renderHistory()" style="margin-bottom:0">
+            <option value="">🏷️ Todos los estados</option>
+            <option value="borrador">Borrador</option>
+            <option value="enviado">Enviado</option>
+            <option value="aceptado">Aceptado</option>
+            <option value="realizado">Realizado</option>
+            <option value="perdido">Perdido</option>
+          </select>
+        </div>
         <div id="history-list"></div>
       </div><!-- /panel-historial -->
 
@@ -2111,6 +2132,33 @@ const DEF = {
   docDiscountLabel:  'Bonificación por trabajos combinados',
   docDiscountNote:   'Al realizar los trabajos en la misma jornada se optimizan los tiempos de montaje y logística, beneficio que trasladamos al cliente.',
 };
+
+// ─── ESTADOS COMERCIALES DEL PRESUPUESTO ─────────────────────
+// El estado vive a nivel del entry del historial (no del snapshot),
+// porque es metadata comercial que se ve y filtra en la lista sin
+// necesidad de cargar el presupuesto. Default: 'borrador'.
+//   borrador  → recién creado, sin enviar
+//   enviado   → entregado al cliente (se ofrece marcar al generar PDF)
+//   aceptado  → el cliente lo aprobó
+//   realizado → trabajo hecho (incluye cobrado)
+//   perdido   → no prosperó
+const ESTADOS = ['borrador', 'enviado', 'aceptado', 'realizado', 'perdido'];
+const ESTADO_LABELS = {
+  borrador:  'Borrador',
+  enviado:   'Enviado',
+  aceptado:  'Aceptado',
+  realizado: 'Realizado',
+  perdido:   'Perdido',
+};
+const ESTADO_COLORS = {
+  // [texto, fondo]
+  borrador:  ['#475569', '#e2e8f0'],
+  enviado:   ['#1e40af', '#dbeafe'],
+  aceptado:  ['#92400e', '#fef3c7'],
+  realizado: ['#065f46', '#d1fae5'],
+  perdido:   ['#991b1b', '#fee2e2'],
+};
+function estadoLabel(e) { return ESTADO_LABELS[e] || ESTADO_LABELS.borrador; }
 
 let S = Object.assign({}, DEF);
 let saveTimer = null;
@@ -4467,6 +4515,17 @@ function autoSaveToHistory() {
 
   const h = getH();
   const idx = h.findIndex(e=>e.quoteNumber===S.quoteNumber);
+
+  // Preservar el estado comercial al re-guardar. Un auto-save NO debe
+  // pisar el estado que el usuario ya marcó (ej: si está "aceptado" y
+  // se reabre/edita, sigue "aceptado"). Solo los nuevos arrancan en
+  // 'borrador'.
+  if (idx >= 0) {
+    entry.estado = h[idx].estado || 'borrador';
+  } else {
+    entry.estado = 'borrador';
+  }
+
   if(idx>=0) h.splice(idx,1,entry); else h.unshift(entry);
   setH(h);
   renderHistory();
@@ -4547,6 +4606,34 @@ async function clearHistory() {
   toast('Historial eliminado', 'err');
 }
 
+// ─── ESTADO COMERCIAL ────────────────────────
+// Cambia el estado de un presupuesto del historial por su id.
+// Persiste y re-renderiza. No toca el snapshot ni el state activo.
+function setEstadoHistory(id, nuevoEstado) {
+  if (!ESTADOS.includes(nuevoEstado)) return;
+  const h = getH();
+  const e = h.find(x => x.id === id);
+  if (!e) return;
+  e.estado = nuevoEstado;
+  setH(h);
+  renderHistory();
+  toast(`Estado: ${estadoLabel(nuevoEstado)}`, 'info', 1800);
+}
+
+// Marca como "enviado" el presupuesto que corresponde al N° activo,
+// SOLO si está en borrador. Se llama desde el toast que aparece al
+// generar el PDF (opción B: el usuario decide con un toque).
+function marcarComoEnviado(quoteNumber) {
+  const h = getH();
+  const e = h.find(x => x.quoteNumber === quoteNumber);
+  if (!e) return;
+  if (e.estado && e.estado !== 'borrador') return; // ya avanzó, no retroceder
+  e.estado = 'enviado';
+  setH(h);
+  renderHistory();
+  toast('✓ Marcado como enviado', 'ok');
+}
+
 // ─── RENDER ──────────────────────────────────
 // El historial se agrupa por mes basado en la fecha de emisión del
 // presupuesto (no la de guardado). El mes más reciente arranca abierto,
@@ -4618,7 +4705,12 @@ function renderHistory() {
   }
   if (clientFilt) h = h.filter(e=>(e.clientName||'').toLowerCase()===clientFilt);
 
-  const hasFilters = !!(q || clientFilt);
+  // Filtro por estado comercial
+  const estadoEl   = document.getElementById('hist-estado-filter');
+  const estadoFilt = (estadoEl?.value || '').trim();
+  if (estadoFilt) h = h.filter(e => (e.estado || 'borrador') === estadoFilt);
+
+  const hasFilters = !!(q || clientFilt || estadoFilt);
   const groupedByClient = clientFilt && h.length > 0;
 
   if (!h.length) {
@@ -4644,18 +4736,26 @@ function renderHistory() {
   }
 
   // Helper: HTML para un entry individual del historial
-  const renderEntry = (e) => `
+  const renderEntry = (e) => {
+    const est = e.estado || 'borrador';
+    const [txtCol, bgCol] = ESTADO_COLORS[est] || ESTADO_COLORS.borrador;
+    const estadoOpts = ESTADOS.map(s =>
+      `<option value="${s}"${s===est?' selected':''}>${estadoLabel(s)}</option>`
+    ).join('');
+    return `
     <div class="hitem">
       <div class="hinfo">
-        <div class="hnum">${esc(e.quoteNumber||'—')}${e.isEstimative?'<span class="hbadge-est">Estimativo</span>':''}</div>
+        <div class="hnum">${esc(e.quoteNumber||'—')}${e.isEstimative?'<span class="hbadge-est">Estimativo</span>':''}<span class="hbadge-estado" style="color:${txtCol};background:${bgCol}">${estadoLabel(est)}</span></div>
         ${!groupedByClient?`<div class="hclient ${!e.clientName?'is-draft':''}">${esc(e.clientName||'(borrador sin nombre de cliente)')}</div>`:''}
         <div class="hmeta">${esc(e.currency||'')} ${fmtM(e.total||0,e.currency||'ARS')} · ${e.itemCount||0} ítem(s) · ${fmtD(((e.snapshot&&e.snapshot.dateIssue)||e.savedAt||'').slice(0,10))}</div>
       </div>
       <div class="hacts">
+        <select class="hestado-sel" onchange="setEstadoHistory(${e.id}, this.value)" title="Cambiar estado" aria-label="Cambiar estado">${estadoOpts}</select>
         <button class="btn btn-s btn-sm" onclick="loadFromHistory(${e.id})">Cargar</button>
         <button class="btn-icon-del" onclick="delFromHistory(${e.id})" title="Eliminar presupuesto" aria-label="Eliminar presupuesto">🗑</button>
       </div>
     </div>`;
+  };
 
   // Si hay filtros activos: mostrar plano, todo visible. La agrupación
   // por mes molestaría cuando el usuario está buscando algo específico.
@@ -5014,7 +5114,36 @@ function printDoc() {
   setTimeout(()=>{
     window.print();
     setTimeout(()=>{ document.title = 'Presupuestos — Julio Barrientos Bolbochan'; }, 1500);
+    // Opción B: ofrecer marcar como enviado tras generar el PDF, pero
+    // solo si el presupuesto sigue en borrador. Un toque y listo.
+    _ofrecerMarcarEnviado(num);
   }, 150);
+}
+
+// Muestra un toast accionable "¿Marcar como enviado?" si el presupuesto
+// está en borrador. Si ya avanzó de estado, no molesta.
+function _ofrecerMarcarEnviado(quoteNumber) {
+  if (!quoteNumber) return;
+  const h = (typeof getH === 'function') ? getH() : [];
+  const e = h.find(x => x.quoteNumber === quoteNumber);
+  if (!e) return;
+  if (e.estado && e.estado !== 'borrador') return; // ya enviado/aceptado/etc.
+
+  const c = document.getElementById('toast-container');
+  if (!c) return;
+  // Toast con botón. Se autocierra a los 8s si no se toca.
+  const el = document.createElement('div');
+  el.className = 'toast toast-info toast-action';
+  el.innerHTML = `<span>¿Marcar como enviado?</span>
+    <button type="button" class="toast-btn">Sí, enviado</button>`;
+  c.appendChild(el);
+  requestAnimationFrame(()=>{ requestAnimationFrame(()=>el.classList.add('show')); });
+  const close = () => { el.classList.remove('show'); setTimeout(()=>el.remove(), 300); };
+  el.querySelector('.toast-btn').onclick = () => {
+    if (typeof marcarComoEnviado === 'function') marcarComoEnviado(quoteNumber);
+    close();
+  };
+  setTimeout(close, 8000);
 }
 
 // Construye el HTML del <tbody> de la tabla de ítems para una lista
