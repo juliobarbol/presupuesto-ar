@@ -1,16 +1,16 @@
-// ═══════════════════════════════════════════════════════════
-//  sw.js — Service Worker · Presupuestos (Poda en Altura AR)
-// ═══════════════════════════════════════════════════════════
+// ============================================================
+//  sw.js - Service Worker - Presupuestos (Poda en Altura AR)
+// ============================================================
 //  Estrategia:
-//   - App shell (index.html, manifest, iconos) → cache-first con
+//   - App shell (index.html, manifest, iconos): cache-first con
 //     refresco en segundo plano (stale-while-revalidate).
-//   - Navegaciones → network-first con fallback al index cacheado
-//     (permite abrir la app sin conexión).
-//   - Recursos externos (fuentes de Google, CDNs) → NUNCA se cachean
-//     acá; el navegador maneja su propio cache.
+//   - Navegaciones: network-first con fallback al index cacheado
+//     (permite abrir la app sin conexion).
+//   - Recursos externos (fuentes de Google, CDNs): NUNCA se cachean
+//     aca; el navegador maneja su propio cache.
 //
-//  Para forzar actualización tras un deploy: subir el CACHE_VERSION.
-// ═══════════════════════════════════════════════════════════
+//  Para forzar actualizacion tras un deploy: subir el CACHE_VERSION.
+// ============================================================
 
 const CACHE_VERSION = 'presupuesto-v1';
 const APP_SHELL = [
@@ -24,7 +24,7 @@ const APP_SHELL = [
   './favicon.png',
 ];
 
-// ── Install: precachear el app shell ──────────────────────────
+// -- Install: precachear el app shell -------------------------
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_VERSION)
@@ -33,7 +33,7 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// ── Activate: limpiar caches viejos ───────────────────────────
+// -- Activate: limpiar caches viejos --------------------------
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys()
@@ -45,7 +45,7 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// ── Fetch ─────────────────────────────────────────────────────
+// -- Fetch ----------------------------------------------------
 self.addEventListener('fetch', (event) => {
   const req = event.request;
 
@@ -56,7 +56,7 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
 
-  // Navegaciones (abrir la app): network-first → fallback al cache.
+  // Navegaciones (abrir la app): network-first con fallback al cache.
   if (req.mode === 'navigate') {
     event.respondWith(
       fetch(req)
@@ -85,7 +85,7 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// ── Permitir actualización inmediata desde la página ──────────
+// -- Permitir actualizacion inmediata desde la pagina ---------
 self.addEventListener('message', (event) => {
   if (event.data === 'SKIP_WAITING') self.skipWaiting();
 });
