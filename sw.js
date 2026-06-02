@@ -2,17 +2,18 @@
 //  sw.js - Service Worker - Presupuestos (Poda en Altura AR)
 // ============================================================
 //  Estrategia:
-//   - App shell (index.html, manifest, iconos): cache-first con
-//     refresco en segundo plano (stale-while-revalidate).
-//   - Navegaciones: network-first con fallback al index cacheado
-//     (permite abrir la app sin conexion).
+//   - App shell (index.html, manifest, iconos): cache-first.
+//     El index cacheado se sirve al instante, sin esperar la red.
+//     Esto evita que el splash quede colgado cuando no hay senal.
+//     En segundo plano se busca una version nueva y se guarda para
+//     la proxima apertura.
 //   - Recursos externos (fuentes de Google, CDNs): NUNCA se cachean
 //     aca; el navegador maneja su propio cache.
 //
 //  Para forzar actualizacion tras un deploy: subir el CACHE_VERSION.
 // ============================================================
 
-const CACHE_VERSION = 'presupuesto-v1';
+const CACHE_VERSION = 'presupuesto-v2';
 const APP_SHELL = [
   './',
   './index.html',
@@ -56,16 +57,23 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
 
-  // Navegaciones (abrir la app): network-first con fallback al cache.
+  // Navegaciones (abrir la app): CACHE-FIRST.
+  // Si el index esta cacheado, lo devolvemos al instante (sin esperar
+  // la red), y refrescamos en segundo plano. Asi nunca se cuelga el
+  // splash por falta de senal. Si no hay cache todavia, vamos a la red.
   if (req.mode === 'navigate') {
     event.respondWith(
-      fetch(req)
-        .then((res) => {
-          const copy = res.clone();
-          caches.open(CACHE_VERSION).then((c) => c.put('./index.html', copy));
+      caches.match('./index.html').then((cached) => {
+        const fromNetwork = fetch(req).then((res) => {
+          if (res && res.status === 200) {
+            const copy = res.clone();
+            caches.open(CACHE_VERSION).then((c) => c.put('./index.html', copy));
+          }
           return res;
-        })
-        .catch(() => caches.match('./index.html').then((r) => r || caches.match('./')))
+        }).catch(() => cached);
+        // Cache primero; si no hay nada cacheado, esperamos la red.
+        return cached || fromNetwork;
+      })
     );
     return;
   }
