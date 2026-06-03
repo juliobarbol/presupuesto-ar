@@ -809,6 +809,51 @@ input[type=file]{display:none}
   .hmonth-total{font-size:11px}
 }
 
+/* ═══════════════════════════════════════
+   SEGUIMIENTO COMERCIAL
+═══════════════════════════════════════ */
+/* Badge 🔔 en la tarjeta del historial */
+.hbadge-followup{display:inline-block;font-size:10px;font-weight:700;padding:1px 8px;border-radius:8px;margin-left:6px;vertical-align:middle;background:#fef3c7;color:#92400e;animation:fuPulse 2s ease-in-out infinite}
+@keyframes fuPulse{0%,100%{opacity:1}50%{opacity:.6}}
+
+/* Banner de seguimientos pendientes (arriba del historial) */
+.followup-banner{background:linear-gradient(135deg,#fffbeb,#fef3c7);border:1px solid #fcd34d;border-radius:12px;padding:14px 16px;margin-bottom:14px}
+.fub-head{display:flex;align-items:center;gap:8px}
+.fub-icon{font-size:18px}
+.fub-title{font-size:15px;font-weight:700;color:#92400e}
+.fub-sub{font-size:12.5px;color:#a16207;margin:4px 0 10px;line-height:1.45}
+.fub-list{display:flex;flex-direction:column;gap:8px}
+.fub-item{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#fff;border:1px solid #fde68a;border-radius:8px;padding:9px 11px}
+.fub-item-info{display:flex;flex-direction:column;gap:1px;min-width:0;flex:1}
+.fub-item-num{font-size:13px;font-weight:700;color:var(--accent)}
+.fub-item-client{font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fub-item-days{font-size:11px;color:#a16207;font-weight:600}
+.fub-item-acts{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.fub-wa{font-size:12.5px;font-weight:700;color:#fff;background:#25d366;border:none;border-radius:7px;padding:8px 12px;text-decoration:none;white-space:nowrap}
+.fub-wa:active{background:#1da851}
+.fub-done{font-size:14px;font-weight:700;color:#16a34a;background:#dcfce7;border:1px solid #86efac;border-radius:7px;width:36px;height:36px;cursor:pointer;flex-shrink:0}
+.fub-done:active{background:#bbf7d0}
+.fub-more{font-size:12px;color:#a16207;text-align:center;padding:4px;font-style:italic}
+
+/* Panel de configuración de seguimiento (pestaña Empresa) */
+.fu-config{margin-top:18px;padding:16px;background:var(--bg);border:1px solid var(--border);border-radius:12px}
+.fu-config-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.fu-help{font-size:12.5px;color:var(--muted);line-height:1.5;margin:8px 0 14px}
+.fu-vars{display:block;font-size:11.5px;color:var(--muted);margin-top:5px}
+.fu-vars code{background:var(--accent-light);color:var(--accent);padding:1px 5px;border-radius:4px;font-size:11px;margin-right:3px}
+.fu-estados{display:flex;gap:16px;flex-wrap:wrap;margin-top:4px}
+.fu-chk{display:flex;align-items:center;gap:6px;font-size:14px;color:var(--text);cursor:pointer}
+.fu-chk input{width:18px;height:18px;accent-color:var(--accent)}
+
+/* Switch on/off */
+.fu-switch{position:relative;display:inline-block;width:48px;height:28px;flex-shrink:0}
+.fu-switch input{opacity:0;width:0;height:0}
+.fu-slider{position:absolute;inset:0;background:#cbd5e1;border-radius:28px;transition:.2s;cursor:pointer}
+.fu-slider::before{content:'';position:absolute;height:22px;width:22px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.2s}
+.fu-switch input:checked + .fu-slider{background:var(--accent)}
+.fu-switch input:checked + .fu-slider::before{transform:translateX(20px)}
+#fu-options{transition:opacity .2s}
+
 /* ===== css/print.css ===== */
 /* ===== css/print.css ===== */
 /* ═══════════════════════════════════════
@@ -2008,6 +2053,36 @@ input[type=file]{display:none}
             <div class="fg"><label>Ciudad</label><input type="text" id="co-city" placeholder="Córdoba"></div>
           </div>
           <div class="fg"><label>Email</label><input type="text" id="co-email" placeholder="hola@empresa.com"></div>
+
+          <!-- ── SEGUIMIENTO COMERCIAL ── -->
+          <div class="fu-config">
+            <div class="fu-config-head">
+              <span class="st" style="margin:0;border:none;padding:0">🔔 Seguimiento de presupuestos</span>
+              <label class="fu-switch">
+                <input type="checkbox" id="fu-enabled" onchange="saveFollowupFromUI()">
+                <span class="fu-slider"></span>
+              </label>
+            </div>
+            <p class="fu-help">Te avisa cuando un presupuesto lleva varios días enviado sin respuesta, para que hagas seguimiento al cliente.</p>
+            <div id="fu-options">
+              <div class="fg">
+                <label>Avisar después de (días)</label>
+                <input type="number" id="fu-days" min="1" max="365" value="10" onchange="saveFollowupFromUI()" oninput="saveFollowupFromUI()">
+              </div>
+              <div class="fg">
+                <label>Recordar presupuestos en estado</label>
+                <div class="fu-estados">
+                  <label class="fu-chk"><input type="checkbox" value="enviado" onchange="saveFollowupFromUI()"> Enviado</label>
+                  <label class="fu-chk"><input type="checkbox" value="aceptado" onchange="saveFollowupFromUI()"> Aceptado</label>
+                </div>
+              </div>
+              <div class="fg">
+                <label>Mensaje de WhatsApp (editable)</label>
+                <textarea id="fu-template" rows="4" onchange="saveFollowupFromUI()" oninput="saveFollowupFromUI()"></textarea>
+                <span class="fu-vars">Variables: <code>{cliente}</code> <code>{numero}</code> <code>{empresa}</code></span>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- ── SUB-TAB TEXTOS DEL PDF ── -->
@@ -2148,6 +2223,7 @@ input[type=file]{display:none}
 
       <!-- ══ TAB HISTORIAL ══ -->
       <div id="panel-historial" class="tab-panel">
+        <div id="followup-banner" class="followup-banner" style="display:none"></div>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
           <div class="st" style="margin:0;border:none;padding:0">Presupuestos guardados <span id="hist-count" class="nbadge" style="margin-left:6px">0</span></div>
           <button class="btn btn-d btn-sm" onclick="clearHistory()">🗑 Limpiar todo</button>
@@ -2783,6 +2859,109 @@ function _stickyShowVariant(which) {
     const el = document.getElementById(id);
     if (el) el.style.display = (k === which) ? 'flex' : 'none';
   });
+}
+
+
+// ═══════════════════════════════════════════════════════════
+// SEGUIMIENTO COMERCIAL (follow-up de presupuestos)
+// ═══════════════════════════════════════════════════════════
+// Config GLOBAL (no por presupuesto). Vive en su propia clave de
+// localStorage para no ensuciar cada snapshot ni los backups.
+const FOLLOWUP_DEF = {
+  enabled: true,        // sistema de seguimiento on/off
+  days: 10,             // días tras el envío para recordar (editable)
+  estados: ['enviado'], // qué estados disparan recordatorio
+  // Plantilla del mensaje de WhatsApp. Variables disponibles:
+  //   {cliente} {numero} {empresa}
+  waTemplate: 'Hola {cliente}, ¿cómo estás? Te escribo de {empresa} por el presupuesto {numero} que te envié. ¿Te quedó alguna duda o necesitás que ajustemos algo? Quedo atento.',
+};
+
+function getFollowupCfg() {
+  try {
+    const raw = localStorage.getItem('pq_followup');
+    if (raw) return Object.assign({}, FOLLOWUP_DEF, JSON.parse(raw));
+  } catch(e) {}
+  return Object.assign({}, FOLLOWUP_DEF);
+}
+
+function setFollowupCfg(cfg) {
+  const merged = Object.assign({}, FOLLOWUP_DEF, cfg);
+  safeSetLS('pq_followup', JSON.stringify(merged));
+  return merged;
+}
+
+// Días transcurridos entre una fecha ISO y hoy (redondeado hacia abajo).
+function daysSince(iso) {
+  if (!iso) return null;
+  const then = new Date(iso).getTime();
+  if (isNaN(then)) return null;
+  const ms = Date.now() - then;
+  return Math.floor(ms / 86400000);
+}
+
+// Devuelve la lista de presupuestos que necesitan seguimiento, según la
+// config. Un presupuesto entra si:
+//   - el seguimiento está habilitado
+//   - su estado está en la lista de estados que disparan
+//   - tiene fecha de envío (enviadoEn) → esto EXCLUYE los viejos
+//   - pasaron >= los días configurados desde el envío
+//   - no se hizo un seguimiento posterior al envío
+function getPendingFollowups() {
+  const cfg = getFollowupCfg();
+  if (!cfg.enabled) return [];
+  const h = (typeof getH === 'function') ? getH() : [];
+  const out = [];
+  for (const e of h) {
+    const est = e.estado || 'borrador';
+    if (!cfg.estados.includes(est)) continue;
+    if (!e.enviadoEn) continue; // viejos sin fecha de envío: nunca recuerdan
+    const d = daysSince(e.enviadoEn);
+    if (d === null || d < cfg.days) continue;
+    // Si ya se hizo seguimiento DESPUÉS del envío, no recordar de nuevo
+    if (e.seguimientoHechoEn) {
+      const seg = new Date(e.seguimientoHechoEn).getTime();
+      const env = new Date(e.enviadoEn).getTime();
+      if (seg >= env) continue;
+    }
+    out.push({ entry: e, dias: d });
+  }
+  // Más viejos primero (más urgentes)
+  out.sort((a,b) => b.dias - a.dias);
+  return out;
+}
+
+// Marca que ya se hizo el seguimiento de un presupuesto (deja de recordar).
+function marcarSeguimientoHecho(id) {
+  const h = getH();
+  const e = h.find(x => x.id === id);
+  if (!e) return;
+  e.seguimientoHechoEn = new Date().toISOString();
+  setH(h);
+  renderHistory();
+  if (typeof renderFollowupBanner === 'function') renderFollowupBanner();
+  toast('✓ Seguimiento registrado', 'ok');
+}
+
+// Construye el enlace wa.me con el mensaje predeterminado para un entry.
+// Reemplaza las variables de la plantilla con los datos del presupuesto.
+function buildWhatsappLink(entry) {
+  const cfg = getFollowupCfg();
+  const cliente = (entry.clientName || '').trim() || 'cliente';
+  const numero  = entry.quoteNumber || '';
+  const empresa = (S.coName || 'Poda en Altura AR').trim();
+  let msg = cfg.waTemplate
+    .replace(/\{cliente\}/g, cliente)
+    .replace(/\{numero\}/g, numero)
+    .replace(/\{empresa\}/g, empresa);
+  // Teléfono: limpiar todo lo que no sea dígito. El contacto del cliente
+  // vive en el snapshot (clientContact).
+  const rawPhone = (entry.snapshot && entry.snapshot.clientContact) || '';
+  const phone = (rawPhone + '').replace(/[^\d]/g, '');
+  // wa.me requiere el número con código de país sin + ni espacios.
+  // Si el usuario guardó el teléfono local, igual armamos el link; si no
+  // hay teléfono, abrimos WhatsApp con el texto para que elija contacto.
+  const base = phone ? `https://wa.me/${phone}` : 'https://wa.me/';
+  return `${base}?text=${encodeURIComponent(msg)}`;
 }
 
 // ===== js/clients.js =====
@@ -4353,6 +4532,8 @@ function switchTab(name) {
     updateCollapsibleCounts();
     // Si no hay sub-tab activa (primera vez entrando), poner "negocio"
     if (!document.querySelector('.subtab-btn.active')) switchSubtab('negocio');
+    // Cargar config de seguimiento en sus campos
+    if (typeof loadFollowupUI === 'function') loadFollowupUI();
   }
   if(name==='facturacion') factInit();
   // Sticky totals solo en el editor — no tiene sentido en otras pestañas
@@ -4908,6 +5089,15 @@ function setEstadoHistory(id, nuevoEstado) {
   const e = h.find(x => x.id === id);
   if (!e) return;
   e.estado = nuevoEstado;
+  // Al pasar a "enviado", registrar la fecha. Este dato es lo que habilita
+  // el seguimiento: solo los presupuestos enviados DESPUÉS de esta
+  // actualización lo tienen, así que los viejos nunca disparan recordatorio.
+  // También limpiamos cualquier "seguimiento hecho" previo para que el
+  // conteo de días arranque de cero en este nuevo envío.
+  if (nuevoEstado === 'enviado') {
+    e.enviadoEn = new Date().toISOString();
+    delete e.seguimientoHechoEn;
+  }
   setH(h);
   renderHistory();
   toast(`Estado: ${estadoLabel(nuevoEstado)}`, 'info', 1800);
@@ -4922,6 +5112,8 @@ function marcarComoEnviado(quoteNumber) {
   if (!e) return;
   if (e.estado && e.estado !== 'borrador') return; // ya avanzó, no retroceder
   e.estado = 'enviado';
+  e.enviadoEn = new Date().toISOString(); // habilita el seguimiento
+  delete e.seguimientoHechoEn;
   setH(h);
   renderHistory();
   toast('✓ Marcado como enviado', 'ok');
@@ -5035,6 +5227,121 @@ window.addEventListener('resize', () => {
   if (ov && ov.classList.contains('open')) _scalePreview();
 });
 
+// ─── SEGUIMIENTO: banner ─────────────────────
+// Renderiza el banner de seguimientos pendientes arriba del historial.
+// Se llama al arrancar la app y al entrar a la pestaña Historial.
+function renderFollowupBanner() {
+  const el = document.getElementById('followup-banner');
+  if (!el) return;
+  const pend = (typeof getPendingFollowups === 'function') ? getPendingFollowups() : [];
+  if (!pend.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
+
+  const n = pend.length;
+  el.style.display = 'block';
+  el.innerHTML = `
+    <div class="fub-head">
+      <span class="fub-icon">🔔</span>
+      <span class="fub-title">${n} presupuesto${n>1?'s':''} para seguimiento</span>
+    </div>
+    <div class="fub-sub">Enviado${n>1?'s':''} hace más de ${getFollowupCfg().days} días sin respuesta. Buen momento para contactar al cliente.</div>
+    <div class="fub-list">
+      ${pend.slice(0,5).map(p => {
+        const e = p.entry;
+        const wa = buildWhatsappLink(e);
+        return `<div class="fub-item">
+          <div class="fub-item-info">
+            <span class="fub-item-num">${esc(e.quoteNumber||'—')}</span>
+            <span class="fub-item-client">${esc(e.clientName||'(sin nombre)')}</span>
+            <span class="fub-item-days">hace ${p.dias} días</span>
+          </div>
+          <div class="fub-item-acts">
+            <a class="fub-wa" href="${wa}" target="_blank" rel="noopener" onclick="_afterWhatsapp(${e.id})">💬 WhatsApp</a>
+            <button class="fub-done" onclick="marcarSeguimientoHecho(${e.id})" title="Ya hice el seguimiento">✓</button>
+          </div>
+        </div>`;
+      }).join('')}
+      ${n>5 ? `<div class="fub-more">y ${n-5} más…</div>` : ''}
+    </div>`;
+}
+
+// Tras abrir WhatsApp, ofrecemos (sin forzar) marcar el seguimiento como
+// hecho. No lo marcamos automático porque el usuario podría no enviar el
+// mensaje; le damos el control con un toast accionable.
+function _afterWhatsapp(id) {
+  setTimeout(() => {
+    const c = document.getElementById('toast-container');
+    if (!c) return;
+    const el = document.createElement('div');
+    el.className = 'toast toast-info toast-action';
+    el.innerHTML = `<span>¿Marcar seguimiento como hecho?</span>
+      <button type="button" class="toast-btn">Sí</button>`;
+    c.appendChild(el);
+    requestAnimationFrame(()=>{ requestAnimationFrame(()=>el.classList.add('show')); });
+    const close = () => { el.classList.remove('show'); setTimeout(()=>el.remove(),300); };
+    el.querySelector('.toast-btn').onclick = () => { marcarSeguimientoHecho(id); close(); };
+    setTimeout(close, 10000);
+  }, 600);
+}
+
+// ─── SEGUIMIENTO: estado en cada tarjeta ─────
+// Devuelve el HTML del indicador 🔔 para una tarjeta, o '' si ese
+// presupuesto no necesita seguimiento.
+function followupBadgeFor(e) {
+  const cfg = (typeof getFollowupCfg === 'function') ? getFollowupCfg() : null;
+  if (!cfg || !cfg.enabled) return '';
+  const est = e.estado || 'borrador';
+  if (!cfg.estados.includes(est)) return '';
+  if (!e.enviadoEn) return '';
+  const d = daysSince(e.enviadoEn);
+  if (d === null || d < cfg.days) return '';
+  if (e.seguimientoHechoEn && new Date(e.seguimientoHechoEn) >= new Date(e.enviadoEn)) return '';
+  return `<span class="hbadge-followup" title="Pendiente de seguimiento">🔔 ${d}d</span>`;
+}
+
+// ─── SEGUIMIENTO: configuración (UI) ─────────
+// Carga la config guardada en los campos del panel (pestaña Empresa).
+function loadFollowupUI() {
+  const cfg = getFollowupCfg();
+  const en = document.getElementById('fu-enabled');
+  const dy = document.getElementById('fu-days');
+  const tpl= document.getElementById('fu-template');
+  const opts = document.getElementById('fu-options');
+  if (en) en.checked = !!cfg.enabled;
+  if (dy) dy.value = cfg.days;
+  if (tpl) tpl.value = cfg.waTemplate;
+  document.querySelectorAll('.fu-estados input[type=checkbox]').forEach(chk => {
+    chk.checked = cfg.estados.includes(chk.value);
+  });
+  if (opts) opts.style.opacity = cfg.enabled ? '1' : '.45';
+  if (opts) opts.style.pointerEvents = cfg.enabled ? 'auto' : 'none';
+}
+
+// Lee los campos del panel y guarda la config. Refresca banner e historial.
+function saveFollowupFromUI() {
+  const en = document.getElementById('fu-enabled');
+  const dy = document.getElementById('fu-days');
+  const tpl= document.getElementById('fu-template');
+  const estados = [];
+  document.querySelectorAll('.fu-estados input[type=checkbox]:checked').forEach(chk => estados.push(chk.value));
+  let days = parseInt(dy && dy.value) || 10;
+  if (days < 1) days = 1;
+  if (days > 365) days = 365;
+  const cfg = setFollowupCfg({
+    enabled: en ? !!en.checked : true,
+    days,
+    estados: estados.length ? estados : ['enviado'],
+    waTemplate: (tpl && tpl.value.trim()) ? tpl.value : FOLLOWUP_DEF.waTemplate,
+  });
+  // Atenuar opciones si está apagado
+  const opts = document.getElementById('fu-options');
+  if (opts) {
+    opts.style.opacity = cfg.enabled ? '1' : '.45';
+    opts.style.pointerEvents = cfg.enabled ? 'auto' : 'none';
+  }
+  renderFollowupBanner();
+  if (document.getElementById('panel-historial')?.classList.contains('active')) renderHistory();
+}
+
 // ─── RENDER ──────────────────────────────────
 // El historial se agrupa por mes basado en la fecha de emisión del
 // presupuesto (no la de guardado). El mes más reciente arranca abierto,
@@ -5075,6 +5382,9 @@ function renderHistory() {
   const filterEl = document.getElementById('hist-client-filter');
   const countEl  = document.getElementById('hist-count');
   let h = getH();
+
+  // Banner de seguimientos pendientes (arriba del listado)
+  if (typeof renderFollowupBanner === 'function') renderFollowupBanner();
 
   if (countEl) countEl.textContent = h.length;
 
@@ -5146,7 +5456,7 @@ function renderHistory() {
     return `
     <div class="hitem">
       <div class="hinfo">
-        <div class="hnum">${esc(e.quoteNumber||'—')}${e.isEstimative?'<span class="hbadge-est">Estimativo</span>':''}<span class="hbadge-estado" style="color:${txtCol};background:${bgCol}">${estadoLabel(est)}</span></div>
+        <div class="hnum">${esc(e.quoteNumber||'—')}${e.isEstimative?'<span class="hbadge-est">Estimativo</span>':''}<span class="hbadge-estado" style="color:${txtCol};background:${bgCol}">${estadoLabel(est)}</span>${followupBadgeFor(e)}</div>
         ${!groupedByClient?`<div class="hclient ${!e.clientName?'is-draft':''}">${esc(e.clientName||'(borrador sin nombre de cliente)')}</div>`:''}
         <div class="hmeta">${esc(e.currency||'')} ${fmtM(e.total||0,e.currency||'ARS')} · ${e.itemCount||0} ítem(s) · ${fmtD(((e.snapshot&&e.snapshot.dateIssue)||e.savedAt||'').slice(0,10))}</div>
       </div>
@@ -6491,6 +6801,10 @@ window.addEventListener('DOMContentLoaded', () => {
   // iOS: el botón ✕ del type="search" dispara 'search', no 'input'
   const hs = document.getElementById('hist-search');
   if (hs) hs.addEventListener('search', () => renderHistory());
+
+  // Seguimiento comercial: mostrar el banner de pendientes desde el
+  // arranque (aunque el usuario aún no entre al Historial).
+  if (typeof renderFollowupBanner === 'function') renderFollowupBanner();
 });
 
 // ═══════════════════════════════════════════════════════════
