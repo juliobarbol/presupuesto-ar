@@ -1500,6 +1500,28 @@ input[type=file]{display:none}
 .doc-preview-host .pest-greeting{padding:0 32px 16px;font-size:9.5pt;color:#374151;font-style:italic}
 .doc-preview-host .pest-greeting-name{display:block;margin-top:4px;font-weight:600;font-style:normal;color:#1a1a1a}
 
+/* ═══════════════════════════════════════
+   ÍCONOS SVG DEL DOCUMENTO (reemplazan emojis)
+   Aplican tanto en impresión como en la vista previa en pantalla.
+═══════════════════════════════════════ */
+.pdf-ic{
+  width:1em;height:1em;
+  vertical-align:-0.13em;
+  margin-right:3px;
+  display:inline-block;
+  flex-shrink:0;
+}
+/* Círculo de nivel de riesgo: un poco más grande para que se lea el color */
+.pdf-ic-dot{
+  width:1.15em;height:1.15em;
+  vertical-align:-0.2em;
+  display:inline-block;
+}
+/* En el header de contactos, el ícono toma el color tenue del texto */
+.ph-contact .pdf-ic{opacity:.85}
+/* El ícono de la cámara en el header de fotos hereda el color del título */
+.pest-header-icon .pdf-ic{width:1.1em;height:1.1em;vertical-align:-0.18em;margin-right:0}
+
 /* ===== css/risk.css ===== */
 /* ─── EDITOR: Modo riesgo ───────────────────── */
 .mode-btn { flex: 1; }
@@ -5844,6 +5866,18 @@ async function impBackup(raw) {
 // PDF.JS — Construcción del documento para impresión/PDF
 // ═══════════════════════════════════════
 
+// ─── ÍCONOS SVG DE LÍNEA (reemplazan emojis para un look formal) ───
+// Trazo fino, heredan el color del texto (currentColor). Se alinean
+// con el texto vía vertical-align. Tamaño por defecto 1em.
+const PDF_ICONS = {
+  phone: '<svg class="pdf-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>',
+  email: '<svg class="pdf-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 5L2 7"/></svg>',
+  location: '<svg class="pdf-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg>',
+  warning: '<svg class="pdf-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+  camera: '<svg class="pdf-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>',
+};
+function pdfIcon(name) { return PDF_ICONS[name] || ''; }
+
 function printDoc() {
   syncFromUI();
   autoSaveToHistory();
@@ -5980,9 +6014,9 @@ function buildDoc() {
   const cur   = S.currency;
 
   const contacts = [];
-  if(S.coWhatsapp) contacts.push(`📱 ${esc(S.coWhatsapp)}`);
-  if(S.coEmail)    contacts.push(`✉ ${esc(S.coEmail)}`);
-  if(S.coCity)     contacts.push(`📍 ${esc(S.coCity)}`);
+  if(S.coWhatsapp) contacts.push(`${pdfIcon('phone')} ${esc(S.coWhatsapp)}`);
+  if(S.coEmail)    contacts.push(`${pdfIcon('email')} ${esc(S.coEmail)}`);
+  if(S.coCity)     contacts.push(`${pdfIcon('location')} ${esc(S.coCity)}`);
   if(S.coCuit)     contacts.push(`CUIT: ${esc(S.coCuit)}`);
 
   // En modo escenarios A/B se renderizan DOS bloques (cada uno con su
@@ -6082,7 +6116,7 @@ function buildDoc() {
     </div>`:''}
 
     ${S.showExpiry !== false ? `<div class="pvalid">
-      <span>⚠ PRESUPUESTO CON ${S.validityDays} DÍAS DE VIGENCIA</span>
+      <span>${pdfIcon('warning')} PRESUPUESTO CON ${S.validityDays} DÍAS DE VIGENCIA</span>
       <span class="pvalid-date">Vence el ${fmtD(S.dateExpiry)}</span>
     </div>` : ''}
 
@@ -6116,16 +6150,19 @@ function buildRiskDoc() {
 
   // ── Encabezado de contacto ──
   const contacts = [];
-  if(S.coWhatsapp) contacts.push(`📱 ${esc(S.coWhatsapp)}`);
-  if(S.coEmail)    contacts.push(`✉ ${esc(S.coEmail)}`);
-  if(S.coCity)     contacts.push(`📍 ${esc(S.coCity)}`);
+  if(S.coWhatsapp) contacts.push(`${pdfIcon('phone')} ${esc(S.coWhatsapp)}`);
+  if(S.coEmail)    contacts.push(`${pdfIcon('email')} ${esc(S.coEmail)}`);
+  if(S.coCity)     contacts.push(`${pdfIcon('location')} ${esc(S.coCity)}`);
   if(S.coCuit)     contacts.push(`CUIT: ${esc(S.coCuit)}`);
 
   // ── Nivel de riesgo calculado ──
   const riskLevel   = calcRiskLevel(rd.failureProbability, rd.impactProbability, rd.consequences);
   const riskLabel   = riskLevel ? (RISK_LABELS.riskLevel[riskLevel] || riskLevel.toUpperCase()) : '—';
   const riskColor   = riskLevel ? (RISK_COLORS[riskLevel] || color) : '#94a3b8';
-  const riskIcon    = { bajo:'🟢', moderado:'🟡', alto:'🟠', extremo:'🔴' }[riskLevel] || '⬜';
+  // Círculo SVG relleno con el color del nivel (reemplaza el emoji 🟢🟡🟠🔴).
+  // Mantiene el código de color, que es información relevante en la
+  // evaluación, pero con un acabado formal y nítido en el PDF.
+  const riskIcon    = `<svg class="pdf-ic-dot" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="${riskColor}" stroke="rgba(0,0,0,.12)" stroke-width="1"/></svg>`;
 
   // ── Defectos ──
   const defects = rd.defects || [];
@@ -6364,7 +6401,7 @@ function buildRiskDoc() {
     </div>` : ''}
 
     ${S.showExpiry !== false ? `<div class="pvalid">
-      <span>⚠ PRESUPUESTO CON ${S.validityDays} DÍAS DE VIGENCIA</span>
+      <span>${pdfIcon('warning')} PRESUPUESTO CON ${S.validityDays} DÍAS DE VIGENCIA</span>
       <span class="pvalid-date">Vence el ${fmtD(S.dateExpiry)}</span>
     </div>` : ''}
 
@@ -6404,9 +6441,9 @@ function buildEstDoc() {
   const grandTotal = estSubtotal + svcSubtotal;
 
   const contacts = [];
-  if(S.coWhatsapp) contacts.push(`📱 ${esc(S.coWhatsapp)}`);
-  if(S.coEmail)    contacts.push(`✉ ${esc(S.coEmail)}`);
-  if(S.coCity)     contacts.push(`📍 ${esc(S.coCity)}`);
+  if(S.coWhatsapp) contacts.push(`${pdfIcon('phone')} ${esc(S.coWhatsapp)}`);
+  if(S.coEmail)    contacts.push(`${pdfIcon('email')} ${esc(S.coEmail)}`);
+  if(S.coCity)     contacts.push(`${pdfIcon('location')} ${esc(S.coCity)}`);
   if(S.coCuit)     contacts.push(`CUIT: ${esc(S.coCuit)}`);
 
   let workRows = ''; let workN = 0;
@@ -6497,7 +6534,7 @@ function buildEstDoc() {
         <tr><td>
 
     <div class="pest-header-bar" style="color:${color};border-color:${color}">
-      <span class="pest-header-icon">📷</span>
+      <span class="pest-header-icon">${pdfIcon('camera')}</span>
       <div>
         <div class="pest-header-lbl" style="color:${color}">${esc(S.docEstBanner||'Presupuesto Estimativo — Basado en fotos y/o videos')}</div>
         <div class="pest-header-sub">Para: ${esc(S.clientName||'—')}${S.workAddress?' · '+esc(S.workAddress):''}</div>
