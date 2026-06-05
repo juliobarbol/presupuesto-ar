@@ -2875,7 +2875,7 @@ const FOLLOWUP_DEF = {
   estados: ['enviado'], // qué estados disparan recordatorio
   // Plantilla del mensaje de WhatsApp. Variables disponibles:
   //   {cliente} {numero} {empresa}
-  waTemplate: 'Hola {cliente}, ¿cómo estás? Te escribo de {empresa} por el presupuesto {numero} que te envié. ¿Te quedó alguna duda o necesitás que ajustemos algo? Quedo atento.',
+  waTemplate: 'Hola {cliente}, ¿cómo andás? Te escribo por el presupuesto que te pasé. No es para apurarte, sino para saber si te quedó alguna duda o si querés que repasemos algo del trabajo.',
 };
 
 function getFollowupCfg() {
@@ -2955,15 +2955,41 @@ function buildWhatsappLink(entry) {
     .replace(/\{cliente\}/g, cliente)
     .replace(/\{numero\}/g, numero)
     .replace(/\{empresa\}/g, empresa);
-  // Teléfono: limpiar todo lo que no sea dígito. El contacto del cliente
-  // vive en el snapshot (clientContact).
+  // El contacto del cliente vive en el snapshot (clientContact).
   const rawPhone = (entry.snapshot && entry.snapshot.clientContact) || '';
-  const phone = (rawPhone + '').replace(/[^\d]/g, '');
+  const phone = normalizeArgPhone(rawPhone);
   // wa.me requiere el número con código de país sin + ni espacios.
-  // Si el usuario guardó el teléfono local, igual armamos el link; si no
-  // hay teléfono, abrimos WhatsApp con el texto para que elija contacto.
+  // Si no hay teléfono, abrimos WhatsApp con el texto para que elija contacto.
   const base = phone ? `https://wa.me/${phone}` : 'https://wa.me/';
   return `${base}?text=${encodeURIComponent(msg)}`;
+}
+
+// Normaliza un teléfono argentino al formato que espera WhatsApp:
+//   54 + 9 + código de área + número  (sin +, sin espacios, sin guiones)
+// Ejemplos que maneja:
+//   "+54 9 3543 68-0871"  → "5493543680871"
+//   "3543 68-0871"        → "5493543680871"
+//   "0351 650-7699"       → "5493516507699"
+//   "11 1234-5678"        → "5491112345678"
+// Si ya viene con código de país, lo respeta. Si no reconoce el formato,
+// devuelve los dígitos tal cual (mejor intentar que no hacer nada).
+function normalizeArgPhone(raw) {
+  let d = (raw + '').replace(/[^\d]/g, '');
+  if (!d) return '';
+  // Quitar 00 inicial (prefijo internacional alternativo)
+  if (d.startsWith('00')) d = d.slice(2);
+  // Ya tiene código de país argentino
+  if (d.startsWith('54')) {
+    let rest = d.slice(2);
+    // Asegurar el 9 de celular tras el 54
+    if (!rest.startsWith('9')) rest = '9' + rest;
+    return '54' + rest;
+  }
+  // Número local: quitar 0 inicial (larga distancia) y 15 de celular
+  if (d.startsWith('0')) d = d.slice(1);
+  // Si quedó un "15" después del área es difícil de detectar sin el área;
+  // asumimos que el usuario cargó un celular válido. Anteponer 54 9.
+  return '549' + d;
 }
 
 // ===== js/clients.js =====
