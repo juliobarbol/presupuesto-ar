@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Presupuestos">
 <meta name="theme-color" content="#064e3b">
-<title>Presupuestos — Julio Barrientos Bolbochan</title>
+<title>Presupuestos</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" href="favicon.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -2107,8 +2107,8 @@ input[type=file]{display:none}
 
           <div class="st">Datos del Titular / Empresa</div>
           <div class="r2">
-            <div class="fg"><label>Nombre / Razón social</label><input type="text" id="co-name" placeholder="Julio Barrientos Bolbochan"></div>
-            <div class="fg"><label>Titular</label><input type="text" id="co-owner" placeholder="Julio Barrientos Bolbochan"></div>
+            <div class="fg"><label>Nombre / Razón social</label><input type="text" id="co-name" placeholder="Ej: Podas del Sur"></div>
+            <div class="fg"><label>Titular</label><input type="text" id="co-owner" placeholder="Ej: Juan Pérez"></div>
           </div>
           <div class="fg"><label>Subtítulo / Especialidad</label><input type="text" id="co-subtitle" placeholder="Poda en Altura y Extracción de Árboles"></div>
           <div class="r3">
@@ -2156,7 +2156,7 @@ input[type=file]{display:none}
           <div class="trow"><span class="tlabel">Mostrar pie de página</span><label class="tgl"><input type="checkbox" id="show-footer" checked><span class="tgl-sl"></span></label></div>
 
           <div class="fg" style="margin-top:14px"><label>Notas técnicas adicionales (una por línea)</label><textarea id="co-tech-notes" rows="4" placeholder="Estas notas aparecen al pie del presupuesto si el toggle está activo..."></textarea></div>
-          <div class="fg"><label>Texto del pie de página (firma)</label><input type="text" id="co-footer" placeholder="Atte: Julio Barrientos Bolbochan"></div>
+          <div class="fg"><label>Texto del pie de página (firma)</label><input type="text" id="co-footer" placeholder="Ej: Atte: Juan Pérez"></div>
 
           <div class="st" style="margin-top:24px">Textos del documento</div>
           <p class="hint" style="margin-bottom:14px">Estos textos aparecen impresos en el PDF. Podés editarlos y quedan guardados para todos los presupuestos futuros.</p>
@@ -2515,11 +2515,11 @@ const DEF = {
   itemsB: [],
   showCriteria:true, showSigOwner:true, showSigClient:false,
   logo:'',
-  coName:'Julio Barrientos Bolbochan',
-  coOwner:'Julio Barrientos Bolbochan',
+  coName:'',
+  coOwner:'',
   coSubtitle:'Poda en Altura y Extracción de Árboles',
   coCuit:'', coWhatsapp:'', coCity:'', coEmail:'',
-  coTechNotes:'', coFooter:'Atte: Julio Barrientos Bolbochan',
+  coTechNotes:'', coFooter:'',
   showTechNotes:true, showFooter:true,
   accentColor:'#064e3b', validityDays:30, showExpiry:true,
   numPrefix:'2026-', numNext:1,
@@ -2603,13 +2603,17 @@ let noSync = false; // supprime syncFromUI durante restoreUI
 let activeScenario = 'A';
 
 // ─── HELPERS BÁSICOS ─────────────────────────
-function today() { return new Date().toISOString().slice(0,10); }
+// Devuelve una fecha como 'YYYY-MM-DD' usando los componentes LOCALES
+// (no UTC). Usar toISOString() acá causaba un desfase de ±1 día en
+// Argentina (UTC-3): después de las 21 hs la fecha saltaba al día siguiente.
+function toLocalISODate(d){ const y=d.getFullYear(); const m=String(d.getMonth()+1).padStart(2,'0'); const day=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${day}`; }
+function today() { return toLocalISODate(new Date()); }
 function sv(id,v){ const e=document.getElementById(id); if(e) e.value=v??''; }
 function sc(id,v){ const e=document.getElementById(id); if(e) e.checked=!!v; }
 function gv(id){ const e=document.getElementById(id); return e?e.value:''; }
 function gc(id){ const e=document.getElementById(id); return e?e.checked:false; }
 function esc(s){ if(s==null)return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function fmtD(iso){ if(!iso)return '—'; const[y,m,d]=iso.split('-'); return `${d}/${m}/${y}`; }
+function fmtD(iso){ if(!iso)return '—'; const p=String(iso).split('-'); if(p.length!==3||!p[0]||!p[1]||!p[2])return '—'; const[y,m,d]=p; return `${d}/${m}/${y}`; }
 function sym(c){ return {ARS:'$',USD:'U$D',EUR:'€'}[c]||c; }
 function moneyToCents(v) {
   if (v === '' || v == null) return 0;
@@ -2714,10 +2718,17 @@ function safeSetLS(key, value) {
     localStorage.setItem(key, value);
     return true;
   } catch(e) {
+    // Distinguimos "almacenamiento lleno" (QuotaExceededError) de cualquier
+    // otro fallo, para no mostrar un mensaje engañoso cuando la causa es otra.
+    const isQuota = e && (e.name === 'QuotaExceededError' ||
+                          e.name === 'NS_ERROR_DOM_QUOTA_REACHED' ||
+                          e.code === 22 || e.code === 1014);
     // Solo intentamos mostrar toast si la UI ya está montada
     try {
       if (typeof toast === 'function') {
-        toast('⚠️ No se pudo guardar: almacenamiento lleno. Exportá un backup y liberá historial.', 'err', 6000);
+        toast(isQuota
+          ? '⚠️ No se pudo guardar: almacenamiento lleno. Exportá un backup y liberá historial.'
+          : '⚠️ No se pudieron guardar los cambios. Hacé un backup por las dudas.', 'err', 6000);
       }
     } catch(_) {}
     console.error('safeSetLS falló para key=' + key, e);
@@ -3164,7 +3175,7 @@ function renderSpeciesManager() {
 
 // ─── SERVICES DB ─────────────────────────────
 // Sistema paralelo a species: lista de servicios sugeridos que aparecen
-// como autocompletado al cargar un ítem tipo "service". Julio puede
+// como autocompletado al cargar un ítem tipo "service". El usuario puede
 // agregar nuevos (se aprenden automáticamente del input) y eliminarlos
 // desde la pestaña de configuración.
 const SERVICES_KEY = 'pq_services';
@@ -3555,8 +3566,8 @@ function renderClientManager() {
 // bajo demanda: cada vez abre el selector nativo y el usuario elige UN
 // contacto. La app nunca lee la agenda completa.
 //
-// Importante para el flujo de Julio: el nombre y teléfono se cargan en
-// los campos pero quedan TOTALMENTE EDITABLES. Como suele agendar nombres
+// Importante para el flujo de trabajo: el nombre y teléfono se cargan en
+// los campos pero quedan TOTALMENTE EDITABLES. Como se suelen agendar nombres
 // largos con notas ("Martín álamo Bialet Massé"), después puede recortar
 // el nombre a lo que va en el presupuesto sin afectar su agenda.
 
@@ -3868,7 +3879,7 @@ function insertPhraseIntoTarget(text) {
 }
 
 // Guarda lo que esté ACTUALMENTE en el textarea destino como nueva frase
-// de la categoría actual. Útil cuando Julio escribe algo bueno y quiere
+// de la categoría actual. Útil cuando el usuario escribe algo bueno y quiere
 // reusarlo en el futuro.
 function savePhraseFromTarget() {
   if (!_phraseCat || !_phraseTargetId) return;
@@ -4513,6 +4524,9 @@ function compressImage(file, maxSide, quality) {
       const img = new Image();
       img.onload = () => {
         let { width, height } = img;
+        // Imagen sin dimensiones válidas (corrupta o no soportada): evitamos
+        // dividir por cero (que generaría NaN/Infinity y rompería el canvas).
+        if (!width || !height) { reject(new Error('La imagen no es válida o está dañada.')); return; }
         if (width > height && width > maxSide) {
           height = Math.round(height * maxSide / width); width = maxSide;
         } else if (height > maxSide) {
@@ -4990,7 +5004,7 @@ function calcExpiry() {
   if (!S.dateIssue) return;
   const d = new Date(S.dateIssue+'T00:00:00');
   d.setDate(d.getDate()+(S.validityDays||30));
-  S.dateExpiry = d.toISOString().slice(0,10);
+  S.dateExpiry = toLocalISODate(d);
   sv('date-expiry', S.dateExpiry);
 }
 
@@ -5141,12 +5155,81 @@ function openModal(type) {
       <input type="file" id="imp-input" accept=".json" onchange="handleImport(event)">
       <button class="btn btn-p btn-bl" onclick="document.getElementById('imp-input').click()">📂 Elegir archivo JSON</button>
     </div><div id="imp-opts"></div>`;
+  } else if(type==='welcome'){
+    ti.textContent='👋 ¡Bienvenido/a!';
+    bo.innerHTML=`<div class="msec">
+      <p style="margin:0 0 12px">Con esta app creás presupuestos de poda y los compartís por WhatsApp o PDF en minutos. Antes de empezar, cargá los datos de tu negocio para que tus presupuestos salgan con <b>tu</b> nombre, logo y contacto.</p>
+      <ol style="margin:0 0 12px;padding-left:20px;line-height:1.7">
+        <li><b>Cargá tu negocio</b> — nombre, logo, WhatsApp y datos de contacto.</li>
+        <li><b>Creá tu presupuesto</b> — sumá los trabajos y sus precios.</li>
+        <li><b>Compartilo</b> — descargá el PDF o enviálo por WhatsApp.</li>
+      </ol>
+      <p style="font-size:12px;color:var(--muted);margin:0 0 14px">💾 Tus datos se guardan <b>solo en este dispositivo</b>. Hacé un backup cada tanto desde el menú (↑ Exportar → Backup total) para no perderlos.</p>
+      <button class="btn btn-p btn-bl" onclick="startOnboarding()">🏢 Configurar mi negocio</button>
+      <button class="btn btn-s btn-bl" onclick="closeModal()">Lo hago después</button>
+    </div>`;
   }
   ov.classList.add('open');
 }
 
 function closeModal(){ const o=document.getElementById('moverlay'); if(o) o.classList.remove('open'); }
 function closeModalOutside(e){ if(e.target.id==='moverlay') closeModal(); }
+
+// ─── ONBOARDING (primer uso) ─────────────────
+// Muestra una bienvenida la primera vez que se abre la app. Marcamos el
+// flag apenas se muestra, así no reaparece en cada recarga aunque el
+// usuario la cierre sin completar nada.
+function maybeShowWelcome() {
+  let seen;
+  try { seen = localStorage.getItem('pq_onboarded'); } catch(_) { seen = '1'; }
+  if (seen) return;
+  try { localStorage.setItem('pq_onboarded', '1'); } catch(_) {}
+  openModal('welcome');
+}
+
+// Botón "Configurar mi negocio": cierra la bienvenida y lleva al usuario
+// directo a la pestaña Empresa → Mi negocio.
+function startOnboarding() {
+  closeModal();
+  switchTab('empresa');
+  if (typeof switchSubtab === 'function') switchSubtab('negocio');
+  const f = document.getElementById('co-name');
+  if (f) f.focus();
+}
+
+// ─── PROTECCIÓN DE DATOS ─────────────────────
+// Verifica que localStorage realmente funcione. En algunos navegadores
+// (modo privado estricto, almacenamiento bloqueado) escribir lanza una
+// excepción: ahí el trabajo NO se guarda y conviene avisar fuerte.
+// Devuelve true si el almacenamiento está disponible.
+function checkStorageAvailable() {
+  try {
+    const k = '__pq_test__';
+    localStorage.setItem(k, '1');
+    localStorage.removeItem(k);
+    return true;
+  } catch(e) {
+    toast('⚠️ Este navegador no está guardando datos (¿modo privado?). Tus presupuestos se perderán al cerrar. Usá una ventana normal.', 'err', 10000);
+    return false;
+  }
+}
+
+// Recuerda hacer backup si hay presupuestos guardados y pasó tiempo desde
+// el último. No bloquea: es un toast informativo de mayor duración.
+function checkBackupReminder() {
+  let hist = [];
+  try { hist = (typeof getH === 'function') ? getH() : []; } catch(_) {}
+  if (!hist.length) return; // sin presupuestos guardados, nada que perder aún
+  let last;
+  try { last = localStorage.getItem('pq_last_backup'); } catch(_) {}
+  const daysSince = last
+    ? (Date.now() - new Date(last+'T00:00:00').getTime()) / 86400000
+    : Infinity;
+  if (daysSince < 14) return;
+  setTimeout(()=>{
+    toast('💾 Hace rato que no hacés un backup. Exportalo desde ↑ Exportar → Backup total para no perder tus presupuestos.', 'info', 8000);
+  }, 2500);
+}
 
 // ===== js/history.js =====
 // ===== js/history.js =====
@@ -5879,6 +5962,9 @@ function expBackup() {
     servicesPinned: (typeof getPinnedServices === 'function') ? getPinnedServices() : [],
     phrases: phrases
   }, 'backup-presupuestopro.json');
+  // Registramos la fecha del backup para no volver a molestar con el
+  // recordatorio durante un tiempo (ver checkBackupReminder()).
+  try { localStorage.setItem('pq_last_backup', today()); } catch(_) {}
   toast('Backup completo exportado', 'ok');
 }
 
@@ -6082,7 +6168,7 @@ function printDoc() {
   document.title = num ? `${num} - ${client}` : client;
   setTimeout(()=>{
     window.print();
-    setTimeout(()=>{ document.title = 'Presupuestos — Julio Barrientos Bolbochan'; }, 1500);
+    setTimeout(()=>{ document.title = S.coName ? ('Presupuestos — ' + S.coName) : 'Presupuestos'; }, 1500);
     // Opción B: ofrecer marcar como enviado tras generar el PDF, pero
     // solo si el presupuesto sigue en borrador. Un toque y listo.
     _ofrecerMarcarEnviado(num);
@@ -6290,7 +6376,7 @@ function buildDoc() {
               ? `<img src="${S.logo}" class="ph-logo" alt="Logo">`
               : ``}
             <div class="ph-co">
-              <div class="ph-name" style="color:${color}">${esc(S.coName||'Julio Barrientos Bolbochan')}</div>
+              <div class="ph-name" style="color:${color}">${esc(S.coName)}</div>
               <div class="ph-sub">${esc(S.coSubtitle||'Poda en Altura y Extracción de Árboles')}</div>
               <div class="ph-contacts">${contacts.map(c=>`<span class="ph-contact">${c}</span>`).join('')}</div>
             </div>
@@ -6349,7 +6435,7 @@ function buildDoc() {
     ${sigH}
 
     ${S.showFooter?`<div class="pfoot">
-      <span class="pfoot-l">${esc(S.coFooter||'Atte: Julio Barrientos Bolbochan')}</span>
+      <span class="pfoot-l">${esc(S.coFooter)}</span>
     </div>`:''}
 
         </td></tr>
@@ -6476,7 +6562,7 @@ function buildRiskDoc() {
               ? `<img src="${S.logo}" class="ph-logo" alt="Logo">`
               : `<div style="width:60px;height:60px;background:#f8faf9;border:1px dashed #cbd5e1;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:8pt;color:#94a3b8">LOGO</div>`}
             <div class="ph-co">
-              <div class="ph-name" style="color:${color}">${esc(S.coName||'Julio Barrientos Bolbochan')}</div>
+              <div class="ph-name" style="color:${color}">${esc(S.coName)}</div>
               <div class="ph-sub">${esc(S.coSubtitle||'Poda en Altura y Extracción de Árboles')}</div>
               <div class="ph-contacts">${contacts.map(c=>`<span class="ph-contact">${c}</span>`).join('')}</div>
             </div>
@@ -6632,7 +6718,7 @@ function buildRiskDoc() {
     ${sigH}
 
     ${S.showFooter ? `<div class="pfoot" style="border-color:${color}30">
-      <span class="pfoot-l" style="color:${color}">${esc(S.coFooter||'Atte: Julio Barrientos Bolbochan')}</span>
+      <span class="pfoot-l" style="color:${color}">${esc(S.coFooter)}</span>
       <span class="pfoot-r">${esc(S.quoteNumber||'')} · ${fmtD(S.dateIssue)} · Informe de Riesgo</span>
     </div>` : ''}
 
@@ -6737,7 +6823,7 @@ function buildEstDoc() {
               ?`<img src="${S.logo}" class="ph-logo" alt="Logo">`
               :`<div style="width:60px;height:60px;background:#f8faf9;border:1px dashed #cbd5e1;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:8pt;color:#94a3b8">LOGO</div>`}
             <div class="ph-co">
-              <div class="ph-name" style="color:${color}">${esc(S.coName||'Julio Barrientos Bolbochan')}</div>
+              <div class="ph-name" style="color:${color}">${esc(S.coName)}</div>
               <div class="ph-sub">${esc(S.coSubtitle||'Poda en Altura y Extracción de Árboles')}</div>
               <div class="ph-contacts">${contacts.map(c=>`<span class="ph-contact">${c}</span>`).join('')}</div>
             </div>
@@ -6824,11 +6910,11 @@ function buildEstDoc() {
 
     <div class="pest-greeting">
       ${esc(S.docGreeting||'Saludos,')}
-      <span class="pest-greeting-name">${esc(S.coOwner||S.coName||'Julio Barrientos Bolbochan')}</span>
+      <span class="pest-greeting-name">${esc(S.coOwner||S.coName)}</span>
     </div>
 
     ${S.showFooter?`<div class="pfoot" style="border-color:${color}30">
-      <span class="pfoot-l" style="color:${color}">${esc(S.coFooter||'Atte: Julio Barrientos Bolbochan')}</span>
+      <span class="pfoot-l" style="color:${color}">${esc(S.coFooter)}</span>
       <span class="pfoot-r">${esc(S.quoteNumber||'')} · ${fmtD(S.dateIssue)} · Estimativo</span>
     </div>`:''}
 
@@ -7093,6 +7179,13 @@ window.addEventListener('DOMContentLoaded', () => {
   // Importar de contactos: mostrar el botón solo si el dispositivo soporta
   // la Contact Picker API (Chrome Android sobre HTTPS).
   if (typeof initContactPicker === 'function') initContactPicker();
+
+  // Protección de datos: verificar almacenamiento, mostrar bienvenida la
+  // primera vez y recordar backups si hace falta.
+  if (checkStorageAvailable()) {
+    maybeShowWelcome();
+    checkBackupReminder();
+  }
 });
 
 // ═══════════════════════════════════════════════════════════
