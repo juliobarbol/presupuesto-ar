@@ -181,7 +181,7 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;font-size:14px;background
 .ib-note{background:#fef3c7;color:#92400e}
 .ib-fixed{background:#ede9fe;color:#5b21b6}
 .iactions{display:flex;gap:4px;margin-top:7px;justify-content:flex-end}
-.iactions .btn:disabled{opacity:.35;cursor:not-allowed}
+.iactions .btn:disabled{opacity:.5;cursor:not-allowed}
 .ia-up,.ia-down{min-width:34px;padding-left:8px!important;padding-right:8px!important}
 .item-grid-2{display:grid;grid-template-columns:1fr 170px;gap:8px}
 @media(max-width:600px){.item-grid-2{grid-template-columns:1fr}.item-grid-2.mb8{margin-bottom:8px}}
@@ -320,7 +320,7 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;font-size:14px;background
 .actions-secondary{
   display:flex;gap:8px;
 }
-.actions-secondary .btn{flex:1;justify-content:center;padding:10px 12px}
+.actions-secondary .btn{flex:1;justify-content:center;padding:10px 12px;min-height:44px}
 
 /* SCENARIOS PANEL (A/B): compacto. Una sola línea cuando está apagado.
    Cuando se activa, expande con los selectores A/B y las etiquetas. */
@@ -555,8 +555,10 @@ input[type=file]{display:none}
   .icard{padding:10px 10px 8px 12px}
   .drag-h{display:none}
   .iactions{gap:6px}
-  .iactions .btn{flex:1;justify-content:center}
-  .ia-up,.ia-down{flex:.45!important;min-width:38px}
+  /* Objetivo táctil cómodo en celular: alto mínimo de ~44px para no
+     tocar el botón equivocado (subir/bajar/duplicar/eliminar). */
+  .iactions .btn{flex:1;justify-content:center;min-height:44px;padding-top:10px;padding-bottom:10px}
+  .ia-up,.ia-down{flex:.45!important;min-width:44px}
   .arow{flex-direction:column}
   .arow .btn{width:100%;justify-content:center;padding:11px 14px;font-size:14px}
   .fg input,.fg textarea,.fg select{font-size:16px;padding:10px 12px}
@@ -1745,15 +1747,15 @@ input[type=file]{display:none}
       <div id="panel-editor" class="tab-panel active">
 
         <div class="mode-switch" id="mode-switch">
-          <button class="mode-btn active" id="mode-btn-normal" onclick="setMode('normal')">
+          <button class="mode-btn active" id="mode-btn-normal" onclick="setMode('normal')" title="Lo más común: ya viste el árbol y pones un precio cerrado por cada trabajo.">
             <span class="mode-btn-title">📋 Presupuesto Normal</span>
             <span class="mode-btn-sub">Precios cerrados por trabajo</span>
           </button>
-          <button class="mode-btn est" id="mode-btn-est" onclick="setMode('estimativo')">
+          <button class="mode-btn est" id="mode-btn-est" onclick="setMode('estimativo')" title="Cuando el cliente te manda fotos o videos y todavía no fuiste al lugar. El PDF aclara que es un valor referencial, sujeto a inspección presencial.">
             <span class="mode-btn-title">📷 Presupuesto Estimativo</span>
             <span class="mode-btn-sub">Basado en fotos · valor referencial</span>
           </button>
-          <button class="mode-btn" id="mode-btn-riesgo" onclick="setMode('riesgo')">
+          <button class="mode-btn" id="mode-btn-riesgo" onclick="setMode('riesgo')" title="Para árboles peligrosos: suma un informe técnico de riesgo (método ISA) que justifica la extracción o intervención ante el cliente.">
             <span class="mode-btn-title">🌳 Con Informe de Riesgo</span>
             <span class="mode-btn-sub">Incluye evaluación técnica ISA</span>
           </button>
@@ -1796,7 +1798,7 @@ input[type=file]{display:none}
         <div class="r3">
           <div class="fg"><label>Nombre / Cliente</label><input type="text" id="client-name" placeholder="Nombre del cliente"></div>
           <div class="fg"><label>Contacto / Teléfono</label><input type="text" id="client-contact" placeholder="Teléfono o email"></div>
-          <div class="fg" id="discount-row"><label>Descuento (%)</label><input type="number" id="discount" min="0" max="100" value="0"></div>
+          <div class="fg" id="discount-row"><label>Descuento (%)</label><input type="number" id="discount" min="0" max="100" value="0" inputmode="decimal"></div>
         </div>
         <div class="fg"><label>Dirección / Lugar del trabajo</label><input type="text" id="work-address" placeholder="Calle, número, barrio, localidad..."></div>
 
@@ -1809,15 +1811,15 @@ input[type=file]{display:none}
             <button class="surcharge-header" type="button" onclick="toggleSurchargePanel()" aria-expanded="false">
               <span class="sp-icon">⛽</span>
               <span class="sp-summary">
-                <span class="sp-label">Ajuste por viáticos / combustible</span>
+                <span class="sp-label">Recargo interno (viáticos / combustible)</span>
                 <span class="sp-status" id="sp-status">0%</span>
               </span>
               <span class="sp-chevron" aria-hidden="true">▾</span>
             </button>
             <div class="surcharge-body" id="surcharge-body" style="display:none">
-              <div class="sp-desc" id="sp-desc-text">Aplicá un % extra sobre los trabajos de árbol. El cliente ve solo el precio final ajustado.</div>
+              <div class="sp-desc" id="sp-desc-text">Suma un % extra a los trabajos de árbol para cubrir viáticos/combustible. Es un cálculo tuyo: el cliente solo ve el precio final, no este recargo.</div>
               <div class="sp-controls">
-                <input type="number" class="surcharge-input" id="surcharge-pct" min="0" max="200" step="1" value="0" placeholder="0">
+                <input type="number" class="surcharge-input" id="surcharge-pct" min="0" max="200" step="1" value="0" placeholder="0" inputmode="numeric">
                 <span class="surcharge-pct">%</span>
                 <button class="sp-apply-btn" onclick="applySurcharge()">Aplicar</button>
                 <button class="sp-clear-btn" id="sp-clear-btn" onclick="clearSurcharge()" style="display:none">✕ Quitar</button>
@@ -1837,8 +1839,8 @@ input[type=file]{display:none}
                 <input type="checkbox" id="scenarios-toggle" onchange="toggleScenarios()">
                 <span class="tgl-sl"></span>
               </label>
-              <span class="scenarios-title">📋 Modo escenarios A/B</span>
-              <span class="scenarios-hint">Cotizar dos alternativas</span>
+              <span class="scenarios-title" title="Ejemplo: Opción A = extraer el árbol, Opción B = podarlo. Las dos salen en el mismo PDF con su precio, para que el cliente elija.">📋 Dos opciones en un PDF</span>
+              <span class="scenarios-hint">Ej: extracción vs. poda</span>
             </div>
             <div id="scenarios-controls" class="scenarios-controls" style="display:none">
               <div class="scenarios-tabs">
@@ -1881,8 +1883,8 @@ input[type=file]{display:none}
             <div class="section-title">🌳 Árbol Evaluado</div>
             <div class="fg-grid">
               <div class="fg"><label>Especie</label><input id="risk-species" type="text" placeholder="Ej: Eucalyptus camaldulensis"></div>
-              <div class="fg"><label>Altura estimada (m)</label><input id="risk-height" type="number" step="0.5" min="0" placeholder="Ej: 18"></div>
-              <div class="fg"><label>DAP — Diám. a 1,30 m (cm)</label><input id="risk-dap" type="number" step="1" min="0" placeholder="Ej: 45"></div>
+              <div class="fg"><label>Altura estimada (m)</label><input id="risk-height" type="number" step="0.5" min="0" placeholder="Ej: 18" inputmode="decimal"></div>
+              <div class="fg"><label>DAP — Diám. a 1,30 m (cm)</label><input id="risk-dap" type="number" step="1" min="0" placeholder="Ej: 45" inputmode="numeric"></div>
               <div class="fg"><label>Ubicación en el predio</label><input id="risk-location" type="text" placeholder="Ej: Jardín trasero, próximo a medianera"></div>
             </div>
           </div>
@@ -2073,6 +2075,13 @@ input[type=file]{display:none}
              Acción única destacada — no compite con otras. -->
         <button class="btn btn-p btn-cta" onclick="printDoc()">🖨 Imprimir / PDF</button>
 
+        <!-- Antes de imprimir: ver cómo queda y/o avisar al cliente por
+             WhatsApp (el PDF se adjunta a mano, ver el aviso al tocar). -->
+        <div class="actions-secondary">
+          <button class="btn btn-g btn-sm" onclick="previewCurrent()">👁 Vista previa</button>
+          <button class="btn btn-g btn-sm" onclick="sendCurrentWhatsapp()">💬 Enviar por WhatsApp</button>
+        </div>
+
         <!-- ACCIONES SECUNDARIAS: más chicas, ancho compartido. Guardar
              se usa cuando NO querés imprimir todavía; Nuevo se usa
              después de imprimir para empezar otro. -->
@@ -2131,7 +2140,7 @@ input[type=file]{display:none}
             <div id="fu-options">
               <div class="fg">
                 <label>Avisar después de (días)</label>
-                <input type="number" id="fu-days" min="1" max="365" value="10" onchange="saveFollowupFromUI()" oninput="saveFollowupFromUI()">
+                <input type="number" id="fu-days" min="1" max="365" value="10" inputmode="numeric" onchange="saveFollowupFromUI()" oninput="saveFollowupFromUI()">
               </div>
               <div class="fg">
                 <label>Recordar presupuestos en estado</label>
@@ -2272,7 +2281,7 @@ input[type=file]{display:none}
         <div class="st">Numeración</div>
         <div class="r2">
           <div class="fg"><label>Prefijo</label><input type="text" id="num-prefix" value="2026-" oninput="updateNumPreview()"></div>
-          <div class="fg"><label>Próximo número</label><input type="number" id="num-next" value="1" min="1" oninput="updateNumPreview()"></div>
+          <div class="fg"><label>Próximo número</label><input type="number" id="num-next" value="1" min="1" inputmode="numeric" oninput="updateNumPreview()"></div>
         </div>
         <div class="fg"><label>Vista previa</label><input type="text" id="num-preview" readonly style="color:var(--accent);font-weight:700"></div>
         <button class="btn btn-p btn-sm" onclick="applyNumConfig()">Aplicar configuración de numeración</button>
@@ -2280,7 +2289,7 @@ input[type=file]{display:none}
         <div class="st">Validez</div>
         <div class="fg" style="max-width:220px">
           <label>Días de validez</label>
-          <input type="number" id="validity-days" value="30" min="1" oninput="onValidityChange()">
+          <input type="number" id="validity-days" value="30" min="1" inputmode="numeric" oninput="onValidityChange()">
           <div class="hint">El vencimiento se recalcula desde la fecha de emisión.</div>
         </div>
       </div><!-- /panel-estilo -->
@@ -2354,7 +2363,7 @@ input[type=file]{display:none}
         <div class="st">Tope anual Monotributo Categoría B</div>
         <div class="fact-tope-row">
           <label>Tope anual ($)</label>
-          <input type="number" id="fact-tope-input" placeholder="15058447.71" oninput="factTopeChanged()">
+          <input type="number" id="fact-tope-input" placeholder="15058447.71" inputmode="decimal" oninput="factTopeChanged()">
           <button class="btn btn-p btn-sm" onclick="factSaveTope()">Guardar</button>
         </div>
         <p class="hint" style="margin-bottom:16px">Actualizá este valor en febrero y agosto de cada año cuando ARCA publique los nuevos topes.</p>
@@ -2377,7 +2386,7 @@ input[type=file]{display:none}
           <div class="st">Registrar factura emitida</div>
           <div class="r2">
             <div class="fg"><label>Fecha</label><input type="date" id="fact-fecha"></div>
-            <div class="fg"><label>Monto ($)</label><input type="number" id="fact-monto" placeholder="0" min="0"></div>
+            <div class="fg"><label>Monto ($)</label><input type="number" id="fact-monto" placeholder="0" min="0" inputmode="decimal"></div>
           </div>
           <div class="fg"><label>Cliente</label><input type="text" id="fact-cliente" placeholder="Nombre del cliente"></div>
           <div class="fg"><label>Descripción (opcional)</label><input type="text" id="fact-desc" placeholder="Poda en altura, extracción..."></div>
@@ -4064,7 +4073,7 @@ function renderItems() {
           <div><div class="isub">Especie/s</div>
           <input class="ii sp-f" type="text" placeholder="Ej: Eucaliptus, Ciprés..." value="${esc(item.species||'')}"></div>
           <div><div class="isub">Precio${hasSurcharge?' (ajustado)':''}</div>
-          <input class="ii pr-f" type="number" placeholder="0.00" value="${esc(String(item.price||''))}"></div>
+          <input class="ii pr-f" type="number" placeholder="0.00" inputmode="decimal" value="${esc(String(item.price||''))}"></div>
         </div>
         ${adjBadge}
         <div class="isub mb-row" style="margin-top:${hasSurcharge?'8px':'0'}">
@@ -4083,7 +4092,7 @@ function renderItems() {
         <div style="display:flex;align-items:center;gap:10px;margin-top:8px;padding:7px 10px;background:#f1f5f4;border-radius:6px;flex-wrap:wrap">
           <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:140px">
             <div class="isub" style="margin:0;white-space:nowrap">Cantidad</div>
-            <input class="ii qty-f" type="number" min="1" step="1" value="${qty}"
+            <input class="ii qty-f" type="number" min="1" step="1" inputmode="numeric" value="${qty}"
               style="width:64px;text-align:center;font-weight:700;font-size:14px">
             ${qty > 1 && hasPrice
               ? `<span class="qty-preview" style="font-size:11px;color:var(--accent);font-weight:600">${qty} × ${fmtM(item.price, S.currency||'ARS')} = ${fmtM(total, S.currency||'ARS')}</span>`
@@ -4103,7 +4112,7 @@ function renderItems() {
           <div><div class="isub">Descripción</div>
           <input class="ii ds-f" type="text" placeholder="Servicio (ej: Camión - Viaje)..." value="${esc(item.desc||'')}"></div>
           <div><div class="isub">Precio unitario</div>
-          <input class="ii pr-f" type="number" placeholder="0.00" value="${esc(String(item.price||''))}"></div>
+          <input class="ii pr-f" type="number" placeholder="0.00" inputmode="decimal" value="${esc(String(item.price||''))}"></div>
         </div>
         ${qtyRow}`;
 
@@ -4351,7 +4360,7 @@ function renderEstItems() {
           </div>
           <div>
             <div class="isub">Costo estimado</div>
-            <input class="ii est-pr-f" type="number" placeholder="0.00" value="${esc(String(item.price||''))}">
+            <input class="ii est-pr-f" type="number" placeholder="0.00" inputmode="decimal" value="${esc(String(item.price||''))}">
           </div>
         </div>
         <div class="iactions">
@@ -4371,7 +4380,7 @@ function renderEstItems() {
         <div style="display:flex;align-items:center;gap:10px;margin-top:8px;padding:7px 10px;background:#f1f5f4;border-radius:6px;flex-wrap:wrap">
           <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:140px">
             <div class="isub" style="margin:0;white-space:nowrap">Cantidad</div>
-            <input class="ii est-qty-f" type="number" min="1" step="1" value="${qty}"
+            <input class="ii est-qty-f" type="number" min="1" step="1" inputmode="numeric" value="${qty}"
               style="width:64px;text-align:center;font-weight:700;font-size:14px">
             ${qty > 1 && hasPrice
               ? `<span class="qty-preview" style="font-size:11px;color:var(--accent);font-weight:600">${qty} × ${fmtM(item.price, S.currency||'ARS')} = ${fmtM(total, S.currency||'ARS')}</span>`
@@ -4396,7 +4405,7 @@ function renderEstItems() {
           </div>
           <div>
             <div class="isub">Precio unitario</div>
-            <input class="ii est-pr-f" type="number" placeholder="0.00" value="${esc(String(item.price||''))}">
+            <input class="ii est-pr-f" type="number" placeholder="0.00" inputmode="decimal" value="${esc(String(item.price||''))}">
           </div>
         </div>
         ${qtyRow}
@@ -5532,6 +5541,53 @@ function closePreview() {
   if (content) { content.innerHTML = ''; content.style.transform = ''; }
 }
 
+// Vista previa del presupuesto que se está editando AHORA (sin pasar por el
+// historial). Construye el documento desde el estado actual y lo muestra en
+// el mismo overlay que usa previewFromHistory.
+function previewCurrent() {
+  syncFromUI();
+  const docEl     = document.getElementById('doc-a4');
+  const contentEl = document.getElementById('doc-preview-content');
+  const overlay   = document.getElementById('doc-preview-overlay');
+  const titleEl   = document.getElementById('doc-preview-title');
+  if (!docEl || !contentEl || !overlay) return;
+  try {
+    buildDoc();
+  } catch (err) {
+    console.error('Error al construir la vista previa', err);
+    toast('Error al generar la vista previa', 'err');
+    return;
+  }
+  contentEl.innerHTML = docEl.innerHTML;
+  if (titleEl) {
+    titleEl.textContent = (S.quoteNumber || 'Vista previa')
+      + (S.clientName ? ' · ' + S.clientName : '');
+  }
+  overlay.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  requestAnimationFrame(_scalePreview);
+}
+
+// Abre WhatsApp con un mensaje de ENVÍO (no de seguimiento) dirigido al
+// cliente del presupuesto actual. wa.me solo permite texto: el PDF se
+// adjunta a mano, por eso el recordatorio en el toast.
+function sendCurrentWhatsapp() {
+  syncFromUI();
+  const phone   = normalizeArgPhone(S.clientContact || '');
+  const cliente = (S.clientName || '').trim();
+  const empresa = (S.coName || '').trim();
+  const num     = S.quoteNumber || '';
+  let msg = `Hola${cliente ? ' ' + cliente : ''}, ¿cómo estás? Te paso el presupuesto`;
+  msg += num ? ` N° ${num}` : '';
+  msg += `. Cualquier duda quedo a disposición.`;
+  if (empresa) msg += `\n\nSaludos,\n${empresa}`;
+  // Dejamos registro en el historial (igual que al imprimir).
+  if (typeof autoSaveToHistory === 'function') autoSaveToHistory();
+  const base = phone ? `https://wa.me/${phone}` : 'https://wa.me/';
+  window.open(`${base}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
+  toast('📎 Se abrió WhatsApp. Acordate de adjuntar el PDF que descargaste.', 'info', 6000);
+}
+
 // Reescalar si rota el celular o cambia el tamaño
 window.addEventListener('resize', () => {
   const ov = document.getElementById('doc-preview-overlay');
@@ -6160,6 +6216,7 @@ const PDF_ICONS = {
 function pdfIcon(name) { return PDF_ICONS[name] || ''; }
 
 function printDoc() {
+  toast('⏳ Generando presupuesto…', 'info', 1500);
   syncFromUI();
   autoSaveToHistory();
   buildDoc();
