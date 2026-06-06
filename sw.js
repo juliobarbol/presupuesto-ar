@@ -13,7 +13,7 @@
 //  Para forzar actualizacion tras un deploy: subir el CACHE_VERSION.
 // ============================================================
 
-const CACHE_VERSION = 'presupuesto-v13';
+const CACHE_VERSION = 'presupuesto-v14';
 const APP_SHELL = [
   './',
   './index.html',
@@ -23,6 +23,9 @@ const APP_SHELL = [
   './icon-maskable-512.png',
   './apple-touch-icon.png',
   './favicon.png',
+  // Librería para generar PDF en el navegador (jsPDF + html2canvas).
+  // Se precachea para que "Enviar PDF" funcione sin conexión.
+  './html2pdf.bundle.min.js',
 ];
 
 // -- Install: precachear el app shell -------------------------

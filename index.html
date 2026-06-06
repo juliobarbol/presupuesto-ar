@@ -2079,7 +2079,7 @@ input[type=file]{display:none}
              WhatsApp (el PDF se adjunta a mano, ver el aviso al tocar). -->
         <div class="actions-secondary">
           <button class="btn btn-g btn-sm" onclick="previewCurrent()">👁 Vista previa</button>
-          <button class="btn btn-g btn-sm" onclick="sendCurrentWhatsapp()">💬 Enviar por WhatsApp</button>
+          <button class="btn btn-g btn-sm" onclick="sharePdf()">📤 Enviar PDF</button>
         </div>
 
         <!-- ACCIONES SECUNDARIAS: más chicas, ancho compartido. Guardar
@@ -5586,6 +5586,132 @@ function sendCurrentWhatsapp() {
   const base = phone ? `https://wa.me/${phone}` : 'https://wa.me/';
   window.open(`${base}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
   toast('📎 Se abrió WhatsApp. Acordate de adjuntar el PDF que descargaste.', 'info', 6000);
+}
+
+// ─── PDF COMO ARCHIVO + COMPARTIR ────────────
+// Genera el presupuesto como archivo PDF real (Blob) usando html2pdf
+// (jsPDF + html2canvas), que se carga bajo demanda desde el propio
+// servidor (precacheado por el Service Worker → anda offline).
+
+let _html2pdfPromise = null;
+function loadHtml2Pdf() {
+  if (window.html2pdf) return Promise.resolve(window.html2pdf);
+  if (_html2pdfPromise) return _html2pdfPromise;
+  _html2pdfPromise = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = './html2pdf.bundle.min.js';
+    s.onload = () => window.html2pdf
+      ? resolve(window.html2pdf)
+      : reject(new Error('html2pdf no quedó disponible'));
+    s.onerror = () => { _html2pdfPromise = null; reject(new Error('No se pudo cargar la librería de PDF')); };
+    document.head.appendChild(s);
+  });
+  return _html2pdfPromise;
+}
+
+// Nombre de archivo: N° presupuesto + cliente, saneado.
+function pdfFileName() {
+  const num = (S.quoteNumber || '').replace(/[^\w-]/g, '');
+  const cli = (S.clientName || '').trim()
+    .replace(/[^\w\sáéíóúñüÁÉÍÓÚÑÜ-]/g, '').trim().replace(/\s+/g, '-');
+  const base = [num, cli].filter(Boolean).join('_') || 'presupuesto';
+  return base + '.pdf';
+}
+
+// Espera a que las imágenes (logo, fotos de ítems) terminen de cargar
+// antes de rasterizar, si no salen en blanco en el PDF.
+function _waitForImages(root) {
+  const imgs = Array.from(root.querySelectorAll('img'));
+  return Promise.all(imgs.map(img =>
+    (img.complete && img.naturalWidth) ? Promise.resolve()
+      : new Promise(res => { img.onload = img.onerror = () => res(); })
+  ));
+}
+
+// Descarga un Blob como archivo (fallback cuando no hay Web Share de archivos).
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+
+// Construye el documento actual y devuelve un Blob PDF.
+async function generatePdfBlob() {
+  syncFromUI();
+  autoSaveToHistory();
+  buildDoc();
+  const html2pdf = await loadHtml2Pdf();
+  const src = document.getElementById('doc-a4');
+  if (!src) throw new Error('No hay documento para exportar');
+
+  // Renderizamos una copia con estilo de PANTALLA (.doc-a4-screen, 210mm),
+  // off-screen, porque #doc-a4 solo es visible al imprimir.
+  const holder = document.createElement('div');
+  holder.className = 'doc-preview-host';
+  holder.setAttribute('aria-hidden', 'true');
+  holder.style.cssText = 'position:fixed;left:-10000px;top:0;width:210mm;background:#fff;z-index:-1';
+  const page = document.createElement('div');
+  page.className = 'doc-a4-screen';
+  page.innerHTML = src.innerHTML;
+  holder.appendChild(page);
+  document.body.appendChild(holder);
+
+  try {
+    if (document.fonts && document.fonts.ready) { try { await document.fonts.ready; } catch(_){} }
+    await _waitForImages(holder);
+    const opt = {
+      margin: 0,
+      image: { type: 'jpeg', quality: 0.95 },
+      html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      pagebreak: { mode: ['css', 'legacy'] }
+    };
+    return await html2pdf().set(opt).from(page).outputPdf('blob');
+  } finally {
+    holder.remove();
+  }
+}
+
+// Acción principal del botón "Enviar PDF": genera el PDF y lo comparte como
+// ARCHIVO (Web Share API nivel 2) → el usuario elige WhatsApp/email/etc. y
+// el PDF se adjunta solo. Si el dispositivo no soporta compartir archivos
+// (típico en escritorio), cae a descargar el PDF + abrir WhatsApp con texto.
+async function sharePdf() {
+  toast('⏳ Generando el PDF…', 'info', 4000);
+  let blob, file, fname;
+  try {
+    blob  = await generatePdfBlob();
+    fname = pdfFileName();
+    file  = new File([blob], fname, { type: 'application/pdf' });
+  } catch (err) {
+    console.error('Error generando el PDF', err);
+    toast('No se pudo generar el PDF. Probá con 🖨 Imprimir / PDF.', 'err', 5000);
+    return;
+  }
+  // ¿Se puede compartir el archivo?
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    const cliente = (S.clientName || '').trim();
+    try {
+      await navigator.share({
+        files: [file],
+        title: 'Presupuesto',
+        text: `Hola${cliente ? ' ' + cliente : ''}, te paso el presupuesto.`
+      });
+    } catch (err) {
+      if (err && err.name === 'AbortError') return; // el usuario canceló
+      console.error('Error al compartir', err);
+      // Si falla el share, al menos descargamos el archivo
+      downloadBlob(blob, fname);
+      toast('📎 PDF descargado. Adjuntalo en WhatsApp.', 'info', 6000);
+    }
+    return;
+  }
+  // Fallback (escritorio / navegadores sin Web Share de archivos)
+  downloadBlob(blob, fname);
+  toast('📎 PDF descargado. Abrimos WhatsApp: adjuntá el archivo.', 'info', 6000);
+  sendCurrentWhatsapp();
 }
 
 // Reescalar si rota el celular o cambia el tamaño
