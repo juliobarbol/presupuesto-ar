@@ -860,6 +860,11 @@ input[type=file]{display:none}
 .st-with-action{display:flex;align-items:center;gap:8px}
 .st-with-action button{margin-left:auto;flex-shrink:0;text-transform:none;letter-spacing:0}
 
+/* Vista previa de foto en el ítem del editor */
+.item-photo-preview{position:relative;margin-top:8px;display:inline-block}
+.item-photo-preview img{max-width:140px;max-height:140px;border-radius:8px;border:1px solid var(--border);display:block;object-fit:cover}
+.item-photo-remove{position:absolute;top:-8px;right:-8px;width:24px;height:24px;border-radius:50%;background:var(--red);color:#fff;border:2px solid #fff;font-size:12px;font-weight:700;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,.2)}
+
 /* ===== css/print.css ===== */
 /* ===== css/print.css ===== */
 /* ═══════════════════════════════════════
@@ -1525,6 +1530,35 @@ input[type=file]{display:none}
 .ph-contact .pdf-ic{opacity:.85}
 /* El ícono de la cámara en el header de fotos hereda el color del título */
 .pest-header-icon .pdf-ic{width:1.1em;height:1.1em;vertical-align:-0.18em;margin-right:0}
+
+/* ═══════════════════════════════════════
+   REGISTRO FOTOGRÁFICO DEL DOCUMENTO
+   Aplica en impresión y en vista previa. Diseño sobrio: grilla de
+   fotos con marco fino y etiqueta, en línea con la estética del doc.
+═══════════════════════════════════════ */
+.pphotos{padding:0 18mm 12px}
+.doc-preview-host .pphotos{padding:0 18mm 12px}
+.pphotos-t{
+  font-size:9.5pt;font-weight:700;text-transform:uppercase;
+  letter-spacing:.8px;color:#64748b;margin-bottom:9px;
+}
+.pphotos-grid{
+  display:grid;grid-template-columns:repeat(2,1fr);gap:12px;
+}
+.pphoto{margin:0}
+.pphoto img{
+  width:100%;height:auto;max-height:75mm;object-fit:cover;
+  border:1px solid #e2e8f0;border-radius:8px;display:block;
+}
+.pphoto figcaption{
+  font-size:8.5pt;font-weight:600;color:#374151;
+  margin-top:5px;text-align:center;
+}
+/* Evita cortar una foto entre dos páginas al imprimir */
+@media print{
+  .pphoto{break-inside:avoid;page-break-inside:avoid}
+  .pphotos-t{break-after:avoid}
+}
 
 /* ===== css/risk.css ===== */
 /* ─── EDITOR: Modo riesgo ───────────────────── */
@@ -4071,8 +4105,10 @@ function renderItems() {
       <button class="btn btn-g btn-sm ia-up" ${idx===0?'disabled':''} title="Subir">↑</button>
       <button class="btn btn-g btn-sm ia-down" ${idx===arr.length-1?'disabled':''} title="Bajar">↓</button>
       <button class="btn btn-g btn-sm ia-dup">⧉ Duplicar</button>
+      ${item.type!=='note' ? `<button class="btn btn-g btn-sm ia-photo">${item.photo?'📷 Foto ✓':'📷 Foto'}</button>` : ''}
       <button class="btn btn-d btn-sm ia-del">✕ Eliminar</button>
-    </div>`;
+    </div>
+    ${item.photo ? `<div class="item-photo-preview"><img src="${item.photo}" alt="Foto"><button type="button" class="item-photo-remove" title="Quitar foto">✕</button></div>` : ''}`;
     card.innerHTML = inner;
 
     const df = card.querySelector('.ds-f');
@@ -4126,6 +4162,12 @@ function renderItems() {
     if(downBtn) downBtn.addEventListener('click', ()=>moveItem(idx, 1));
     if(dupBtn) dupBtn.addEventListener('click', ()=>dupItem(idx));
     if(delBtn) delBtn.addEventListener('click', ()=>removeItem(idx));
+
+    // Foto del ítem (árbol/servicio): abrir selector de imagen y comprimir.
+    const photoBtn = card.querySelector('.ia-photo');
+    if (photoBtn) photoBtn.addEventListener('click', ()=>pickItemPhoto(idx));
+    const photoRm = card.querySelector('.item-photo-remove');
+    if (photoRm) photoRm.addEventListener('click', ()=>{ setItemField(idx,'photo',null); renderItems(); });
 
     card.addEventListener('dragstart', e=>{ dragSrc=idx; card.classList.add('dragging'); e.dataTransfer.effectAllowed='move'; });
     card.addEventListener('dragend',   ()=>{ card.classList.remove('dragging'); document.querySelectorAll('.icard').forEach(c=>c.classList.remove('drag-over')); });
@@ -4432,6 +4474,67 @@ function _refreshEstQtyPreview(card, idx) {
   if(span) span.textContent = (qty > 1 && hasPrice)
     ? `${qty} × ${fmtM(item.price, S.currency||'ARS')} = ${fmtM(total, S.currency||'ARS')}`
     : '';
+}
+
+
+// ═══════════════════════════════════════════════════════════
+// FOTO POR ÍTEM (árbol/servicio) — para el registro fotográfico del PDF
+// ═══════════════════════════════════════════════════════════
+// Abre el selector de imágenes del dispositivo, comprime la foto a un
+// tamaño razonable para documento (máx 1000px lado mayor, JPEG calidad
+// 0.7) y la guarda como dataURL en item.photo. La compresión evita que
+// el almacenamiento del navegador se llene con fotos de varios MB.
+function pickItemPhoto(idx) {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.onchange = () => {
+    const file = input.files && input.files[0];
+    if (!file) return;
+    compressImage(file, 1000, 0.7).then(dataUrl => {
+      setItemField(idx, 'photo', dataUrl);
+      renderItems();
+      toast('Foto agregada al ítem', 'ok', 1800);
+    }).catch(err => {
+      console.error('Error al procesar la foto:', err);
+      toast('No se pudo procesar la foto', 'err');
+    });
+  };
+  input.click();
+}
+
+// Comprime una imagen: la redimensiona para que el lado mayor no supere
+// maxSide px y la re-codifica como JPEG con la calidad dada. Devuelve una
+// promesa con el dataURL resultante.
+function compressImage(file, maxSide, quality) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > height && width > maxSide) {
+          height = Math.round(height * maxSide / width); width = maxSide;
+        } else if (height > maxSide) {
+          width = Math.round(width * maxSide / height); height = maxSide;
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width; canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        // Fondo blanco por si la imagen tiene transparencia (PNG)
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(0, 0, width, height);
+        ctx.drawImage(img, 0, 0, width, height);
+        try {
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        } catch (e) { reject(e); }
+      };
+      img.onerror = reject;
+      img.src = reader.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 }
 
 // ===== js/ui.js =====
@@ -5467,6 +5570,21 @@ function saveFollowupFromUI() {
   if (document.getElementById('panel-historial')?.classList.contains('active')) renderHistory();
 }
 
+// ─── CÓMO LLEGAR (navegación GPS) ────────────
+// Abre Google Maps con la dirección del trabajo del presupuesto.
+// La dirección vive en el snapshot (workAddress).
+function comoLlegar(id) {
+  const e = getH().find(x => x.id === id);
+  const addr = ((e && e.snapshot && e.snapshot.workAddress) || '').trim();
+  if (!addr) {
+    toast('Este presupuesto no tiene dirección cargada', 'info', 3000);
+    return;
+  }
+  // Google Maps abre la búsqueda/ruta con la dirección codificada.
+  const url = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(addr);
+  window.open(url, '_blank', 'noopener');
+}
+
 // ─── RENDER ──────────────────────────────────
 // El historial se agrupa por mes basado en la fecha de emisión del
 // presupuesto (no la de guardado). El mes más reciente arranca abierto,
@@ -5578,6 +5696,7 @@ function renderHistory() {
     const estadoOpts = ESTADOS.map(s =>
       `<option value="${s}"${s===est?' selected':''}>${estadoLabel(s)}</option>`
     ).join('');
+    const tieneDir = !!((e.snapshot && e.snapshot.workAddress || '').trim());
     return `
     <div class="hitem">
       <div class="hinfo">
@@ -5588,6 +5707,7 @@ function renderHistory() {
       <div class="hacts">
         <select class="hestado-sel" onchange="setEstadoHistory(${e.id}, this.value)" title="Cambiar estado" aria-label="Cambiar estado">${estadoOpts}</select>
         <button class="btn btn-g btn-sm" onclick="previewFromHistory(${e.id})">👁 Ver</button>
+        ${tieneDir ? `<button class="btn btn-g btn-sm" onclick="comoLlegar(${e.id})">📍 Cómo llegar</button>` : ''}
         <button class="btn btn-s btn-sm" onclick="loadFromHistory(${e.id})">Cargar</button>
         <button class="btn-icon-del" onclick="delFromHistory(${e.id})" title="Eliminar presupuesto" aria-label="Eliminar presupuesto">🗑</button>
       </div>
@@ -6109,6 +6229,28 @@ function buildDoc() {
   const tl = (S.coTechNotes||'').split('\n').filter(l=>l.trim());
   const techH = tl.map(l=>`<li>${esc(l.replace(/^[•\-–]\s*/,''))}</li>`).join('');
 
+  // ── Registro fotográfico ──────────────────────────────────────────
+  // Recorre los ítems que tengan foto y arma una grilla al final del
+  // documento. Cada foto se etiqueta con la especie (árbol) o la
+  // descripción (servicio) del ítem al que pertenece. Si ningún ítem
+  // tiene foto, no se renderiza nada (el documento queda igual que hoy).
+  const itemsConFoto = (S.items || []).filter(it => it && it.photo);
+  const fotosH = itemsConFoto.length ? `
+    <div class="pphotos">
+      <div class="pphotos-t">Registro Fotográfico</div>
+      <div class="pphotos-grid">
+        ${itemsConFoto.map(it => {
+          const etiqueta = (it.type === 'tree')
+            ? (it.species || 'Árbol')
+            : (it.desc || 'Servicio');
+          return `<figure class="pphoto">
+            <img src="${it.photo}" alt="${esc(etiqueta)}">
+            <figcaption>${esc(etiqueta)}</figcaption>
+          </figure>`;
+        }).join('')}
+      </div>
+    </div>` : '';
+
   const critH = S.showCriteria ? `
     <div class="pcrit">
       <div class="pcrit-t">${esc(S.docCriteriaTitle||'Cómo Trabajamos')}</div>
@@ -6201,6 +6343,8 @@ function buildDoc() {
       <div class="pnotes-t">Notas Adicionales</div>
       <ul>${techH}</ul>
     </div>`:''}
+
+    ${fotosH}
 
     ${sigH}
 
