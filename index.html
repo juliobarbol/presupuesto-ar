@@ -856,6 +856,10 @@ input[type=file]{display:none}
 .fu-switch input:checked + .fu-slider::before{transform:translateX(20px)}
 #fu-options{transition:opacity .2s}
 
+/* Subtítulo de sección con botón de acción a la derecha */
+.st-with-action{display:flex;align-items:center;gap:8px}
+.st-with-action button{margin-left:auto;flex-shrink:0;text-transform:none;letter-spacing:0}
+
 /* ===== css/print.css ===== */
 /* ===== css/print.css ===== */
 /* ═══════════════════════════════════════
@@ -1752,7 +1756,9 @@ input[type=file]{display:none}
           </div>
         </div>
 
-        <div class="st">Cliente y Lugar</div>
+        <div class="st st-with-action">Cliente y Lugar
+          <button type="button" id="btn-import-contact" class="btn btn-g btn-sm" onclick="importFromContacts()" style="display:none">📇 Importar</button>
+        </div>
         <div class="r3">
           <div class="fg"><label>Nombre / Cliente</label><input type="text" id="client-name" placeholder="Nombre del cliente"></div>
           <div class="fg"><label>Contacto / Teléfono</label><input type="text" id="client-contact" placeholder="Teléfono o email"></div>
@@ -3505,6 +3511,75 @@ function renderClientManager() {
       if (name) confirmDeleteClient(name);
     });
     el._clientListener = true;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// IMPORTAR CLIENTE DESDE LOS CONTACTOS DEL TELÉFONO
+// ═══════════════════════════════════════════════════════════
+// Usa la Contact Picker API (Chrome Android sobre HTTPS). El acceso es
+// bajo demanda: cada vez abre el selector nativo y el usuario elige UN
+// contacto. La app nunca lee la agenda completa.
+//
+// Importante para el flujo de Julio: el nombre y teléfono se cargan en
+// los campos pero quedan TOTALMENTE EDITABLES. Como suele agendar nombres
+// largos con notas ("Martín álamo Bialet Massé"), después puede recortar
+// el nombre a lo que va en el presupuesto sin afectar su agenda.
+
+// Detección de soporte. Muestra el botón solo si el dispositivo puede.
+function initContactPicker() {
+  const btn = document.getElementById('btn-import-contact');
+  if (!btn) return;
+  const supported = ('contacts' in navigator) && ('ContactsManager' in window);
+  btn.style.display = supported ? 'inline-flex' : 'none';
+}
+
+async function importFromContacts() {
+  if (!(('contacts' in navigator) && ('ContactsManager' in window))) {
+    toast('Tu dispositivo no permite importar contactos. Cargá los datos a mano.', 'info', 3500);
+    return;
+  }
+  try {
+    // Pedimos nombre y teléfono (los que existan en el dispositivo).
+    let props = ['name', 'tel'];
+    if (typeof navigator.contacts.getProperties === 'function') {
+      try {
+        const avail = await navigator.contacts.getProperties();
+        props = ['name', 'tel'].filter(p => avail.includes(p));
+        if (!props.length) props = ['name'];
+      } catch (e) { /* usar props por defecto */ }
+    }
+    const contacts = await navigator.contacts.select(props, { multiple: false });
+    if (!contacts || !contacts.length) return; // el usuario canceló
+
+    const c = contacts[0];
+    const nombre = (c.name && c.name.length) ? c.name[0] : '';
+    const tel    = (c.tel && c.tel.length)   ? c.tel[0]  : '';
+
+    const nameInput    = document.getElementById('client-name');
+    const contactInput = document.getElementById('client-contact');
+
+    if (nombre && nameInput) {
+      nameInput.value = nombre;
+      nameInput.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    if (tel && contactInput) {
+      contactInput.value = tel;
+      contactInput.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    // Sincronizar al estado y guardar
+    if (typeof syncFromUI === 'function') syncFromUI();
+    if (typeof sched === 'function') sched();
+
+    // Recordatorio amable de que puede editar el nombre
+    toast('Cliente importado. Podés editar el nombre antes de enviar.', 'ok', 3500);
+    // Llevar el foco al nombre para que lo recorte si hace falta
+    if (nameInput) { nameInput.focus(); }
+  } catch (err) {
+    // AbortError = el usuario cerró el selector; no es un error real
+    if (err && err.name === 'AbortError') return;
+    console.error('Contact Picker error:', err);
+    toast('No se pudo importar el contacto. Probá de nuevo o cargalo a mano.', 'err', 3500);
   }
 }
 
@@ -6870,6 +6945,10 @@ window.addEventListener('DOMContentLoaded', () => {
   // Seguimiento comercial: mostrar el banner de pendientes desde el
   // arranque (aunque el usuario aún no entre al Historial).
   if (typeof renderFollowupBanner === 'function') renderFollowupBanner();
+
+  // Importar de contactos: mostrar el botón solo si el dispositivo soporta
+  // la Contact Picker API (Chrome Android sobre HTTPS).
+  if (typeof initContactPicker === 'function') initContactPicker();
 });
 
 // ═══════════════════════════════════════════════════════════
