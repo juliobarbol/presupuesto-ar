@@ -7257,8 +7257,22 @@ window.addEventListener('DOMContentLoaded', () => {
   if ('serviceWorker' in navigator &&
       (location.protocol === 'https:' || location.hostname === 'localhost')) {
     window.addEventListener('load', () => {
+      // ¿La página ya estaba controlada por un SW al cargar? Si NO, esta es
+      // la primera instalación y no debemos recargar al tomar control.
+      const hadController = !!navigator.serviceWorker.controller;
+      let refreshing = false;
+
+      // Cuando un SW NUEVO toma control (tras un deploy), recargamos UNA vez
+      // para cargar la versión nueva de forma limpia. Esto evita el estado
+      // mezclado que antes obligaba a desinstalar/reinstalar la app.
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (refreshing || !hadController) return;
+        refreshing = true;
+        window.location.reload();
+      });
+
       navigator.serviceWorker.register('./sw.js').then((reg) => {
-        // Si hay una versión nueva esperando, la activamos al toque.
+        // Si aparece un SW nuevo, lo activamos enseguida (skip waiting).
         reg.addEventListener('updatefound', () => {
           const nw = reg.installing;
           if (!nw) return;
