@@ -2150,10 +2150,22 @@ input[type=file]{display:none}
                 </div>
               </div>
               <div class="fg">
-                <label>Mensaje de WhatsApp (editable)</label>
+                <label>Mensaje de seguimiento (editable)</label>
                 <textarea id="fu-template" rows="4" onchange="saveFollowupFromUI()" oninput="saveFollowupFromUI()"></textarea>
                 <span class="fu-vars">Variables: <code>{cliente}</code> <code>{numero}</code> <code>{empresa}</code></span>
               </div>
+            </div>
+          </div>
+
+          <!-- ── MENSAJE DE ENVÍO POR WHATSAPP ── -->
+          <div class="fu-config">
+            <div class="fu-config-head">
+              <span class="st" style="margin:0;border:none;padding:0">💬 Mensaje al enviar por WhatsApp</span>
+            </div>
+            <p class="fu-help">Es el texto que se arma al tocar “Enviar por WhatsApp” en el editor. Editalo a tu gusto.</p>
+            <div class="fg">
+              <textarea id="wa-send-template" rows="4" onchange="saveSendTemplate()" oninput="saveSendTemplate()"></textarea>
+              <span class="fu-vars">Variables: <code>{cliente}</code> <code>{numero}</code> <code>{empresa}</code></span>
             </div>
           </div>
         </div>
@@ -2968,9 +2980,10 @@ const FOLLOWUP_DEF = {
   enabled: true,        // sistema de seguimiento on/off
   days: 10,             // días tras el envío para recordar (editable)
   estados: ['enviado'], // qué estados disparan recordatorio
-  // Plantilla del mensaje de WhatsApp. Variables disponibles:
-  //   {cliente} {numero} {empresa}
+  // Plantilla del mensaje de SEGUIMIENTO. Variables: {cliente} {numero} {empresa}
   waTemplate: 'Hola {cliente}, ¿cómo andás? Te escribo por el presupuesto que te pasé. No es para apurarte, sino para saber si te quedó alguna duda o si querés que repasemos algo del trabajo.',
+  // Plantilla del mensaje de ENVÍO (botón "Enviar por WhatsApp"). Mismas variables.
+  waSendTemplate: 'Hola {cliente}, ¿cómo estás? Te paso el presupuesto N° {numero}. Cualquier duda quedo a disposición.\n\nSaludos,\n{empresa}',
 };
 
 function getFollowupCfg() {
@@ -5586,14 +5599,15 @@ function previewCurrent() {
 // adjunta a mano, por eso el recordatorio en el toast.
 function sendCurrentWhatsapp() {
   syncFromUI();
-  const phone   = normalizeArgPhone(S.clientContact || '');
-  const cliente = (S.clientName || '').trim();
-  const empresa = (S.coName || '').trim();
-  const num     = S.quoteNumber || '';
-  let msg = `Hola${cliente ? ' ' + cliente : ''}, ¿cómo estás? Te paso el presupuesto`;
-  msg += num ? ` N° ${num}` : '';
-  msg += `. Cualquier duda quedo a disposición.`;
-  if (empresa) msg += `\n\nSaludos,\n${empresa}`;
+  const phone = normalizeArgPhone(S.clientContact || '');
+  // El texto sale de la plantilla editable (Empresa → Mi negocio), con las
+  // variables reemplazadas por los datos del presupuesto actual.
+  const cfg = (typeof getFollowupCfg === 'function') ? getFollowupCfg() : FOLLOWUP_DEF;
+  const tpl = (cfg.waSendTemplate && cfg.waSendTemplate.trim()) ? cfg.waSendTemplate : FOLLOWUP_DEF.waSendTemplate;
+  const msg = tpl
+    .replace(/\{cliente\}/g, (S.clientName || '').trim())
+    .replace(/\{numero\}/g,  S.quoteNumber || '')
+    .replace(/\{empresa\}/g, (S.coName || '').trim());
   // Dejamos registro en el historial (igual que al imprimir).
   if (typeof autoSaveToHistory === 'function') autoSaveToHistory();
   const base = phone ? `https://wa.me/${phone}` : 'https://wa.me/';
@@ -5689,6 +5703,8 @@ function loadFollowupUI() {
   if (en) en.checked = !!cfg.enabled;
   if (dy) dy.value = cfg.days;
   if (tpl) tpl.value = cfg.waTemplate;
+  const sendTpl = document.getElementById('wa-send-template');
+  if (sendTpl) sendTpl.value = cfg.waSendTemplate || FOLLOWUP_DEF.waSendTemplate;
   document.querySelectorAll('.fu-estados input[type=checkbox]').forEach(chk => {
     chk.checked = cfg.estados.includes(chk.value);
   });
@@ -5711,6 +5727,8 @@ function saveFollowupFromUI() {
     days,
     estados: estados.length ? estados : ['enviado'],
     waTemplate: (tpl && tpl.value.trim()) ? tpl.value : FOLLOWUP_DEF.waTemplate,
+    // Preservar la plantilla de envío (se edita en su propio campo).
+    waSendTemplate: getFollowupCfg().waSendTemplate,
   });
   // Atenuar opciones si está apagado
   const opts = document.getElementById('fu-options');
@@ -5720,6 +5738,15 @@ function saveFollowupFromUI() {
   }
   renderFollowupBanner();
   if (document.getElementById('panel-historial')?.classList.contains('active')) renderHistory();
+}
+
+// Guarda la plantilla del mensaje de ENVÍO por WhatsApp (campo propio).
+// Preserva el resto de la config de WhatsApp/seguimiento.
+function saveSendTemplate() {
+  const t = document.getElementById('wa-send-template');
+  const cfg = getFollowupCfg();
+  cfg.waSendTemplate = (t && t.value.trim()) ? t.value : FOLLOWUP_DEF.waSendTemplate;
+  setFollowupCfg(cfg);
 }
 
 // ─── CÓMO LLEGAR (navegación GPS) ────────────
