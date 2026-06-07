@@ -1,0 +1,72 @@
+# Presupuestos AR — Guía del proyecto (para Claude Code)
+
+> App PWA para generar **presupuestos de poda y extracción de árboles** (Argentina).
+> Esta guía es el mapa del proyecto: leela primero para no escanear las ~7.600 líneas del `index.html`.
+
+## Qué es
+- PWA instalable, **offline-first**, sin login, pensada para que cualquier colega podador la use desde el celular.
+- Los datos viven en **`localStorage`** del dispositivo (no hay backend). Backup opcional a **Google Drive**.
+- Se publica en **Cloudflare** → `https://presupuesto-ar.juliobarribolbo.workers.dev`.
+
+## Arquitectura (importante)
+- **Sin build, sin frameworks: JavaScript vanilla.** Todo el HTML + CSS + JS está en **un único `index.html`**.
+- Es una decisión deliberada (simplicidad, deploy de un archivo, offline trivial). No usar bundlers ni frameworks.
+- El JS está todo en **un solo `<script>` con ámbito global**: las funciones se llaman entre sí y se usan en `onclick="..."`. **No convertir a módulos ES** sin refactorizar los handlers.
+
+## Estructura de archivos
+- `index.html` — **toda la app** (markup + `<style>` + `<script>`).
+- `sw.js` — Service Worker (offline + actualizaciones).
+- `manifest.webmanifest`, `*.png` — PWA (instalación, iconos).
+
+## Mapa del código dentro de `index.html`
+El JS está organizado por secciones marcadas con comentarios `// ===== js/<nombre>.js =====`.
+**Buscá esos marcadores** (son anclas estables) en vez de fiarte de números de línea:
+
+| Sección | De qué se ocupa |
+|---|---|
+| `js/state.js` | Estado global `S`, defaults `DEF`, claves `LS`, helpers (fechas, dinero, `esc`), `saveLS`/`loadLS`, `safeSetLS`, toasts, totales |
+| `js/clients.js` | DBs de clientes, especies y servicios (autocompletar) |
+| `js/phrases.js` | Biblioteca de frases reusables |
+| `js/items.js` | Ítems del presupuesto (árbol/servicio/nota), recargo, escenarios A/B |
+| `js/ui.js` | restoreUI/syncFromUI, pestañas, modos, fechas, numeración, vista previa |
+| `js/history.js` | Historial de presupuestos, seguimiento, WhatsApp |
+| `js/exportimport.js` | Export/import JSON, `buildBackupObject`/`applyBackupObject`, **módulo GDRIVE (Google Drive)** |
+| `js/pdf.js` | `buildDoc`/`buildEstDoc`/`buildRiskDoc` (documento para imprimir/PDF), `printDoc` |
+| `js/facturacion.js` | Registro de facturas + tope anual |
+| `js/core.js` | Inicialización (`DOMContentLoaded`) + setup de la PWA |
+
+El CSS vive en el `<style>` (líneas ~16–1711). Hay dos bloques de estilos del documento: uno `@media print` (`#doc-a4`) y otro de pantalla para la vista previa (`.doc-preview-host .doc-a4-screen`).
+
+## Convenciones importantes
+- **Estado:** objeto global `S` (presupuesto actual + config). `DEF` son los valores por defecto.
+- **localStorage:** claves centralizadas en el objeto `LS`. Las DBs tienen sus propias constantes (`SPECIES_KEY`, `SERVICES_KEY`, `CLIENT_KEY`, `PHRASE_KEYS`…). Escribir SIEMPRE vía `safeSetLS()` (maneja cuota llena y dispara el backup a Drive).
+- **Dinero en centavos:** usar `moneyToCents` / `centsToMoney` / `fmtM` (evita errores de punto flotante). No operar con floats de pesos directo.
+- **Fechas en LOCAL, no UTC:** usar `today()` / `toLocalISODate()` / `calcExpiry()`. Nunca `toISOString().slice(0,10)` para fechas de calendario (corre el día en Argentina).
+- **XSS:** escapar SIEMPRE los datos del usuario con `esc()` antes de meterlos en `innerHTML`.
+- **3 modos de presupuesto:** Normal, Estimativo (fotos) y Riesgo (informe ISA). `buildDoc()` deriva a `buildEstDoc()`/`buildRiskDoc()` según `S.isEstimative`/`S.isRisk`.
+
+## Flujo de despliegue (SEGUIR SIEMPRE)
+1. Desarrollar en la rama de trabajo (`claude/...`), no en `main`.
+2. **Subir `CACHE_VERSION` en `sw.js`** en cada cambio que se despliegue (si no, los dispositivos siguen con la versión vieja en caché). Formato: `presupuesto-vNN`.
+3. Si agregás un archivo nuevo (ej. otro `.js` o `.css`), **agregarlo a `APP_SHELL` en `sw.js`** o se rompe el offline.
+4. Mergear a `main` → Cloudflare despliega solo.
+
+## Cómo verificar cambios (sin romper)
+- **Sintaxis JS:** extraer el `<script>` de `index.html` y correr `node --check`. (En este repo se hizo con un pequeño script de Python que aísla los `<script>` sin `src`.)
+- **Comportamiento:** se puede manejar la app con un navegador headless (puppeteer/chrome-headless-shell) cargando `file://.../index.html`, seteando `S`, y llamando funciones. Útil para validar PDF, persistencia, etc.
+- Siempre que se toque persistencia/datos: confirmar que las **claves de `localStorage` no cambian** (riesgo de pérdida de datos).
+
+## Funcionalidades clave (para ubicarse)
+- Editor con 3 modos · escenarios A/B · recargo interno · descuento.
+- Historial con estados comerciales, seguimiento y links de WhatsApp (mensajes **editables** con variables `{cliente} {numero} {empresa}`).
+- Imprimir/PDF nativo (`window.print()` sobre `#doc-a4`).
+- Onboarding de primer uso, recordatorio de backup, verificación de almacenamiento.
+- **Backup en Google Drive** (módulo `GDRIVE`, scope `drive.appdata`): requiere `GDRIVE.CLIENT_ID`; sube automáticamente con retardo (hook en `safeSetLS`).
+- Service Worker **network-first** en navegación + recarga limpia al actualizar (arreglo de la PWA que antes se rompía al actualizar).
+
+## Cosas que NO romper
+- No pasar el JS a módulos ES (rompería los `onclick` globales).
+- No olvidar subir `CACHE_VERSION` al desplegar.
+- No cambiar los valores de las claves de `localStorage`.
+- No volver a usar `toISOString()` para fechas de calendario.
+- No incluir el `client_secret` de Google en el repo (solo se usa el `CLIENT_ID`, que es público).
