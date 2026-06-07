@@ -1237,7 +1237,7 @@ input[type=file]{display:none}
 /* ═══════════════════════════════════════
    VISTA PREVIA DE PRESUPUESTOS (modal)
    Reutiliza los estilos del documento de impresión, pero en pantalla.
-   El doc se renderiza dentro de .doc-preview-host a tamaño A4 (210mm)
+   El doc se renderiza dentro de a tamaño A4 (210mm)
    y se escala con transform para que entre en pantallas chicas.
 ═══════════════════════════════════════ */
 .doc-preview-overlay{
@@ -1322,7 +1322,7 @@ input[type=file]{display:none}
 .doc-preview-host /* WRAPPER TABLE: el documento entero está envuelto en .pdoc.
      - <thead> contiene el header del documento (logo + emisor + badge)
        y se repite en cada página de manera nativa.
-     - <tbody> contiene el resto del presupuesto (título, .doc-preview-host datos cliente, .doc-preview-host tabla de ítems, .doc-preview-host totales, .doc-preview-host observaciones, .doc-preview-host etc.).
+     - <tbody> contiene el resto del presupuesto (título, datos cliente, tabla de ítems, totales, observaciones, etc.).
      - border-collapse + padding:0 en td evita espaciado extra. */
   .pdoc{
     width:100%;
@@ -1344,23 +1344,23 @@ input[type=file]{display:none}
     page-break-inside:auto;
   }
 .doc-preview-host /* HEADER (.ph): ahora vive dentro de <thead><tr><td>. Ya no es fixed.
-     Es bloque normal, .doc-preview-host pero como está en el <thead> de la tabla wrapper, .doc-preview-host se repite en cada página. Padding lateral unificado con el resto
+     Es bloque normal, pero como está en el <thead> de la tabla wrapper, se repite en cada página. Padding lateral unificado con el resto
      del documento via --page-x. */
   .ph{padding:16px var(--page-x) 12px;display:flex;align-items:flex-start;gap:18px;position:relative;background:#fff}
 .doc-preview-host .ph-logo{max-height:54px;max-width:115px;object-fit:contain}
-.doc-preview-host /* Si no hay logo, .doc-preview-host ph-co ocupa todo el espacio (sin placeholder feo) */
+.doc-preview-host /* Si no hay logo, ph-co ocupa todo el espacio (sin placeholder feo) */
   .ph-co{flex:1;min-width:0}
 .doc-preview-host .ph-name{font-family:'DM Serif Display',serif;font-size:17pt;line-height:1.1;margin-bottom:2px}
 .doc-preview-host .ph-sub{font-size:var(--fs-small);color:var(--c-muted);margin-bottom:5px}
 .doc-preview-host .ph-contacts{display:flex;flex-wrap:wrap;gap:2px 14px}
 .doc-preview-host .ph-contact{font-size:8.5pt;color:var(--c-muted)}
 .doc-preview-host /* Badge del N° presupuesto: ahora SIN fecha duplicada (la fecha vive
-     en el bloque cliente abajo). Más limpio, .doc-preview-host más jerarquía al número. */
+     en el bloque cliente abajo). Más limpio, más jerarquía al número. */
   .ph-badge{position:absolute;top:16px;right:var(--page-x);text-align:right}
 .doc-preview-host .ph-badge-lbl{font-size:var(--fs-micro);font-weight:700;text-transform:uppercase;letter-spacing:var(--ls-label);color:var(--c-muted-2);margin-bottom:2px}
 .doc-preview-host .ph-badge-num{font-family:'DM Serif Display',serif;font-size:var(--fs-h2);line-height:1}
 .doc-preview-host /* EVITAR CORTES DE BLOQUES
-     Cada sección compacta queda entera; si no entra en la página, .doc-preview-host salta
+     Cada sección compacta queda entera; si no entra en la página, salta
      a la siguiente completa. La tabla principal (.psec) SÍ puede partirse
      a lo largo de varias páginas — pero cada fila individual y el thead
      quedan intactos (ver reglas debajo). */
@@ -1376,7 +1376,7 @@ input[type=file]{display:none}
      TÍTULO DEL DOCUMENTO + DATOS DEL CLIENTE
      ────────────────────────────────────────────────────────────── */
   .ptitle-bar{padding:0 var(--page-x);margin-bottom:14px}
-.doc-preview-host /* Título del documento: H2 sobrio, .doc-preview-host sin uppercase, .doc-preview-host sin border grueso.
+.doc-preview-host /* Título del documento: H2 sobrio, sin uppercase, sin border grueso.
      Usa el color de marca via style inline desde JS (uno de los 3
      lugares permitidos para el accent). */
   .ptitle{font-family:'DM Serif Display',serif;font-size:14pt;line-height:1.25;padding-bottom:6px;margin-bottom:12px;border-bottom:1pt solid var(--c-divider-soft);word-break:break-word;hyphens:auto;max-width:75%}
@@ -1388,14 +1388,14 @@ input[type=file]{display:none}
 .doc-preview-host .pgrid-r{border-left:1pt solid var(--c-divider-soft);padding-left:14px}
 .doc-preview-host /* ──────────────────────────────────────────────────────────────
      SECCIÓN DE ÍTEMS (psec) — H2 primario
-     Antes el título era 7.5pt uppercase con border verde grueso, .doc-preview-host igual
+     Antes el título era 7.5pt uppercase con border verde grueso, igual
      que todos los demás títulos. Ahora es H2 (12pt regular case) con
      más jerarquía y borde sutil neutro. El color de marca se aplica
      inline desde JS solo en el título principal del documento.
      ────────────────────────────────────────────────────────────── */
   .psec{padding:14px var(--page-x) 0}
 .doc-preview-host .psec-t{font-family:'DM Sans',sans-serif;font-size:var(--fs-h2);font-weight:700;letter-spacing:0;color:var(--c-text);margin-bottom:10px;padding-bottom:5px;border-bottom:1pt solid var(--c-divider)}
-.doc-preview-host /* TABLA: zebra-stripes sutiles, .doc-preview-host encabezados más legibles */
+.doc-preview-host /* TABLA: zebra-stripes sutiles, encabezados más legibles */
   .ptable{width:100%;border-collapse:collapse}
 .doc-preview-host .ptable thead th{font-size:var(--fs-micro);font-weight:700;text-transform:uppercase;letter-spacing:var(--ls-label);color:var(--c-muted);padding:6px 5px;text-align:left;border-bottom:1.5pt solid var(--c-divider);background:var(--c-bg-soft)}
 .doc-preview-host .ptable thead th.thr{text-align:right}
@@ -1406,7 +1406,7 @@ input[type=file]{display:none}
   .td-sp{font-weight:700;font-size:var(--fs-small);min-width:80pt;max-width:130pt;word-break:break-word}
 .doc-preview-host .td-wk{color:var(--c-text-2);line-height:1.5}
 .doc-preview-host .td-pr{text-align:right;white-space:nowrap;font-weight:600}
-.doc-preview-host /* Desglose de cantidad (5 × $150.000): gris claro chiquito, .doc-preview-host MUCHO
+.doc-preview-host /* Desglose de cantidad (5 × $150.000): gris claro chiquito, MUCHO
      más débil que el subtotal — antes la diferencia era sutil y el
      lector podía confundirse. */
   .td-pr .qty-breakdown{display:block;font-size:7.5pt;color:var(--c-muted-2);font-weight:400;margin-bottom:2px}
@@ -1425,9 +1425,9 @@ input[type=file]{display:none}
 .doc-preview-host .ptotal-amt{font-family:'DM Serif Display',serif;font-size:26pt;line-height:1}
 .doc-preview-host /* ──────────────────────────────────────────────────────────────
      ZONA ADMINISTRATIVA — H3 secundario
-     Observaciones, .doc-preview-host Condiciones, .doc-preview-host Notas. Antes competían visualmente
+     Observaciones, Condiciones, Notas. Antes competían visualmente
      con el H2 de Detalles del Trabajo. Ahora son títulos chiquitos
-     en gris, .doc-preview-host claramente subordinados. La separación con la zona
+     en gris, claramente subordinados. La separación con la zona
      principal se logra con un divisor sutil arriba.
      ────────────────────────────────────────────────────────────── */
   .pobs, .doc-preview-host .pcond, .doc-preview-host .pnotes{padding:0 var(--page-x) 12px}
@@ -1441,14 +1441,14 @@ input[type=file]{display:none}
   .pobs, .doc-preview-host .pcond, .doc-preview-host .pvalid, .doc-preview-host .pcrit, .doc-preview-host .pnotes{margin-top:0}
 .doc-preview-host .ptotals + .pobs, .doc-preview-host .ptotals + .pcond, .doc-preview-host .ptotals + .pvalid, .doc-preview-host .ptotals + .pcrit{margin-top:8px}
 .doc-preview-host /* ──────────────────────────────────────────────────────────────
-     VIGENCIA — antes era una barra roja agresiva, .doc-preview-host ahora una caja
+     VIGENCIA — antes era una barra roja agresiva, ahora una caja
      ámbar suave (típica de "info importante pero no crítica").
      ────────────────────────────────────────────────────────────── */
   .pvalid{margin:6px var(--page-x) 14px;background:#fef3c7!important;color:#92400e!important;padding:9px 14px;border-radius:var(--r-sm);font-size:var(--fs-small);font-weight:500;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;border-left:3pt solid #d97706}
 .doc-preview-host .pvalid-date{font-weight:700;color:#78350f}
 .doc-preview-host /* ──────────────────────────────────────────────────────────────
      CÓMO TRABAJAMOS — antes 4 ítems en columna vertical ocupando
-     mucho espacio. Ahora 2x2 grid: 4 criterios en 2 columnas, .doc-preview-host ~50% menos espacio vertical.
+     mucho espacio. Ahora 2x2 grid: 4 criterios en 2 columnas, ~50% menos espacio vertical.
      ────────────────────────────────────────────────────────────── */
   .pcrit{padding:0 var(--page-x) 14px}
 .doc-preview-host .pcrit-t{font-size:var(--fs-h3);font-weight:700;text-transform:uppercase;letter-spacing:var(--ls-label);color:var(--c-muted);margin-bottom:8px;padding-bottom:0;border:none}
@@ -1459,7 +1459,7 @@ input[type=file]{display:none}
 .doc-preview-host .pcrit-s{font-size:var(--fs-small);font-weight:700;color:var(--c-text);display:block;margin-bottom:1px}
 .doc-preview-host .pcrit-p{font-size:var(--fs-micro);color:var(--c-muted);line-height:1.5;display:block}
 .doc-preview-host /* ──────────────────────────────────────────────────────────────
-     FIRMAS — más respiración, .doc-preview-host anti-corte
+     FIRMAS — más respiración, anti-corte
      ────────────────────────────────────────────────────────────── */
   .psigs{padding:16px var(--page-x) 18px;display:flex;gap:40px;margin-top:8px;min-height:80px}
 .doc-preview-host .psig-box{flex:1;border-top:1pt solid var(--c-divider);padding-top:8px}
@@ -1481,7 +1481,7 @@ input[type=file]{display:none}
     page-break-after:avoid;
   }
 .doc-preview-host /* Las firmas no deberían empezar a 5px del borde inferior — si
-     no tienen espacio, .doc-preview-host mejor saltar de página. */
+     no tienen espacio, mejor saltar de página. */
   .psigs{break-before:auto;break-inside:avoid;page-break-inside:avoid}
 .doc-preview-host /* ESTIMATIVE-SPECIFIC PRINT STYLES */
   .pest-header-bar{margin:0 32px 14px;padding:8px 14px;border-radius:5px;background:#d1fae5!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;border-left:4pt solid currentColor;display:flex;align-items:center;gap:8px}
@@ -2507,6 +2507,19 @@ input[type=file]{display:none}
 // ─── DEFAULTS ────────────────────────────────
 const APP_SCHEMA_VERSION = 2;
 
+// Claves de localStorage centralizadas (antes estaban dispersas como
+// literales). Las DBs (especies/servicios/clientes/frases/facturas) tienen
+// sus propias constantes más abajo, junto a su lógica.
+const LS = {
+  STATE:          'pq_s',
+  STATE_LEGACY:   'pq_state',
+  HISTORY:        'pq_h',
+  HISTORY_LEGACY: 'pq_history',
+  FOLLOWUP:       'pq_followup',
+  ONBOARDED:      'pq_onboarded',
+  LAST_BACKUP:    'pq_last_backup',
+};
+
 const DEF = {
   _schemaVersion: APP_SCHEMA_VERSION,
   quoteNumber:'', dateIssue:'', dateExpiry:'',
@@ -2679,7 +2692,7 @@ const RISK_COLORS = { bajo:'#16a34a', moderado:'#d97706', alto:'#dc2626', extrem
 // ─── LOCAL STORAGE ────────────────────────────
 function loadLS() {
   try {
-    let raw = localStorage.getItem('pq_s') || localStorage.getItem('pq_state');
+    let raw = localStorage.getItem(LS.STATE) || localStorage.getItem(LS.STATE_LEGACY);
     if (raw) Object.assign(S, migrateState(JSON.parse(raw)));
     if (!Array.isArray(S.itemsB)) S.itemsB = [];
     normalizeRiskData();
@@ -2715,7 +2728,7 @@ function normalizeRiskData() {
 
 function saveLS() {
   S._schemaVersion = APP_SCHEMA_VERSION;
-  safeSetLS('pq_s', JSON.stringify(S));
+  safeSetLS(LS.STATE, JSON.stringify(S));
 }
 
 // Wrapper seguro para escrituras a localStorage. Atrapa QuotaExceededError
@@ -2962,7 +2975,7 @@ const FOLLOWUP_DEF = {
 
 function getFollowupCfg() {
   try {
-    const raw = localStorage.getItem('pq_followup');
+    const raw = localStorage.getItem(LS.FOLLOWUP);
     if (raw) return Object.assign({}, FOLLOWUP_DEF, JSON.parse(raw));
   } catch(e) {}
   return Object.assign({}, FOLLOWUP_DEF);
@@ -2970,7 +2983,7 @@ function getFollowupCfg() {
 
 function setFollowupCfg(cfg) {
   const merged = Object.assign({}, FOLLOWUP_DEF, cfg);
-  safeSetLS('pq_followup', JSON.stringify(merged));
+  safeSetLS(LS.FOLLOWUP, JSON.stringify(merged));
   return merged;
 }
 
@@ -5190,9 +5203,9 @@ function closeModalOutside(e){ if(e.target.id==='moverlay') closeModal(); }
 // usuario la cierre sin completar nada.
 function maybeShowWelcome() {
   let seen;
-  try { seen = localStorage.getItem('pq_onboarded'); } catch(_) { seen = '1'; }
+  try { seen = localStorage.getItem(LS.ONBOARDED); } catch(_) { seen = '1'; }
   if (seen) return;
-  try { localStorage.setItem('pq_onboarded', '1'); } catch(_) {}
+  try { localStorage.setItem(LS.ONBOARDED, '1'); } catch(_) {}
   openModal('welcome');
 }
 
@@ -5230,7 +5243,7 @@ function checkBackupReminder() {
   try { hist = (typeof getH === 'function') ? getH() : []; } catch(_) {}
   if (!hist.length) return; // sin presupuestos guardados, nada que perder aún
   let last;
-  try { last = localStorage.getItem('pq_last_backup'); } catch(_) {}
+  try { last = localStorage.getItem(LS.LAST_BACKUP); } catch(_) {}
   const daysSince = last
     ? (Date.now() - new Date(last+'T00:00:00').getTime()) / 86400000
     : Infinity;
@@ -5249,12 +5262,12 @@ function checkBackupReminder() {
 // ─── STORAGE ─────────────────────────────────
 function getH() {
   try {
-    const raw = localStorage.getItem('pq_h') || localStorage.getItem('pq_history');
+    const raw = localStorage.getItem(LS.HISTORY) || localStorage.getItem(LS.HISTORY_LEGACY);
     return JSON.parse(raw||'[]');
   } catch(e){ return []; }
 }
 
-function setH(h) { safeSetLS('pq_h', JSON.stringify(h)); }
+function setH(h) { safeSetLS(LS.HISTORY, JSON.stringify(h)); }
 
 // ─── AUTO-SAVE (silencioso) ───────────────────
 function autoSaveToHistory() {
@@ -6020,7 +6033,7 @@ function expBackup() {
   }, 'backup-presupuestopro.json');
   // Registramos la fecha del backup para no volver a molestar con el
   // recordatorio durante un tiempo (ver checkBackupReminder()).
-  try { localStorage.setItem('pq_last_backup', today()); } catch(_) {}
+  try { localStorage.setItem(LS.LAST_BACKUP, today()); } catch(_) {}
   toast('Backup completo exportado', 'ok');
 }
 
@@ -6028,9 +6041,15 @@ function expBackup() {
 function handleImport(e) {
   const f = e.target.files[0]; if(!f) return;
   const r = new FileReader();
+  r.onerror = () => toast('No se pudo leer el archivo.', 'err', 5000);
   r.onload = ev => {
-    try { showImpOpts(JSON.parse(ev.target.result)); }
-    catch(err) { alert('Error al leer JSON: '+err.message); }
+    let data;
+    try { data = JSON.parse(ev.target.result); }
+    catch(err) { toast('❌ El archivo no es un JSON válido.', 'err', 5000); return; }
+    if (!data || typeof data !== 'object') {
+      toast('❌ El archivo no tiene un formato reconocible.', 'err', 5000); return;
+    }
+    showImpOpts(data);
   };
   r.readAsText(f);
 }
@@ -6161,7 +6180,11 @@ async function impHistReplace(raw) {
 async function impBackup(raw) {
   const ok = await confirmDlg('Restaurar backup', '¿Restaurar el backup completo? Esto reemplazará el estado actual, historial, clientes, especies, servicios y frases.', 'Restaurar', 'btn-d');
   if(!ok) return;
-  const d = JSON.parse(raw);
+  let d;
+  try { d = JSON.parse(raw); }
+  catch(e) { toast('❌ El backup está dañado o incompleto.', 'err', 5000); return; }
+  if (!d || typeof d !== 'object') { toast('❌ El backup no tiene un formato válido.', 'err', 5000); return; }
+  try {
   if(d.state)   Object.assign(S, migrateState(d.state));
   if(d.history) setH(d.history);
   if(d.clients) safeSetLS(CLIENT_KEY, JSON.stringify(d.clients));
@@ -6181,7 +6204,7 @@ async function impBackup(raw) {
     if (Array.isArray(d.phrases.desc)) safeSetLS(PHRASE_KEYS.desc, JSON.stringify(d.phrases.desc));
     if (Array.isArray(d.phrases.obs))  safeSetLS(PHRASE_KEYS.obs,  JSON.stringify(d.phrases.obs));
     if (Array.isArray(d.phrases.pay))  safeSetLS(PHRASE_KEYS.pay,  JSON.stringify(d.phrases.pay));
-    safeSetLS('pq_phrases_seeded', '1');
+    safeSetLS(PHRASE_SEEDED_KEY, '1');
   }
   if (!Array.isArray(S.itemsB)) S.itemsB = [];
   normalizeRiskData();
@@ -6195,6 +6218,10 @@ async function impBackup(raw) {
   if (typeof renderQuickServices === 'function') renderQuickServices();
   toast('Backup restaurado correctamente', 'ok');
   closeModal();
+  } catch(e) {
+    console.error('Error al restaurar backup', e);
+    toast('⚠️ Hubo un problema al restaurar el backup.', 'err', 5000);
+  }
 }
 
 // ===== js/pdf.js =====
