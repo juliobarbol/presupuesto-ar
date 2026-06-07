@@ -2168,6 +2168,20 @@ input[type=file]{display:none}
               <span class="fu-vars">Variables: <code>{cliente}</code> <code>{numero}</code> <code>{empresa}</code></span>
             </div>
           </div>
+
+          <!-- ── COPIA DE SEGURIDAD EN GOOGLE DRIVE ── -->
+          <!-- Oculta hasta que el dueño configure el Client ID (gdriveUpdateUI). -->
+          <div class="fu-config" id="gdrive-section" style="display:none">
+            <div class="fu-config-head">
+              <span class="st" style="margin:0;border:none;padding:0">☁️ Copia de seguridad en Google Drive</span>
+            </div>
+            <p class="fu-help" id="gdrive-status">Guardá una copia automática de todos tus datos en tu Google Drive, para no perderlos si cambiás o perdés el teléfono.</p>
+            <div class="arow" id="gdrive-actions">
+              <button type="button" class="btn btn-p btn-sm" id="gdrive-connect" onclick="gdriveConnect()">Conectar Google Drive</button>
+              <button type="button" class="btn btn-g btn-sm" id="gdrive-restore" onclick="gdriveRestore()" style="display:none">Restaurar desde Drive</button>
+              <button type="button" class="btn btn-g btn-sm" id="gdrive-disconnect" onclick="gdriveDisconnect()" style="display:none">Desconectar</button>
+            </div>
+          </div>
         </div>
 
         <!-- ── SUB-TAB TEXTOS DEL PDF ── -->
@@ -2530,6 +2544,8 @@ const LS = {
   FOLLOWUP:       'pq_followup',
   ONBOARDED:      'pq_onboarded',
   LAST_BACKUP:    'pq_last_backup',
+  GDRIVE_ON:      'pq_gdrive_on',
+  GDRIVE_LAST:    'pq_gdrive_last',
 };
 
 const DEF = {
@@ -2750,6 +2766,9 @@ function saveLS() {
 function safeSetLS(key, value) {
   try {
     localStorage.setItem(key, value);
+    // Cualquier escritura de datos dispara (con retardo) la copia a Drive,
+    // si está conectada. Centralizado acá para no olvidar ningún caso.
+    if (typeof scheduleGdriveBackup === 'function') scheduleGdriveBackup();
     return true;
   } catch(e) {
     // Distinguimos "almacenamiento lleno" (QuotaExceededError) de cualquier
@@ -4811,6 +4830,7 @@ function switchTab(name) {
     if (!document.querySelector('.subtab-btn.active')) switchSubtab('negocio');
     // Cargar config de seguimiento en sus campos
     if (typeof loadFollowupUI === 'function') loadFollowupUI();
+    if (typeof gdriveUpdateUI === 'function') gdriveUpdateUI();
   }
   if(name==='facturacion') factInit();
   // Sticky totals solo en el editor — no tiene sentido en otras pestañas
@@ -6030,22 +6050,15 @@ function expHistory() {
   toast('Historial exportado', 'ok');
 }
 
-function expBackup() {
-  syncFromUI();
-  // Backup completo: incluye TODAS las DBs en localStorage
-  // - state: el presupuesto actual + config
-  // - history: presupuestos guardados
-  // - clients: clientes guardados
-  // - species: especies guardadas
-  // - services: servicios guardados (todos)
-  // - servicesPinned: lista de cuáles servicios aparecen como rápidos
-  // - phrases: 3 categorías (desc, obs, pay) — frases reusables
+// Arma el objeto de backup completo (todas las DBs en localStorage).
+// Lo usan tanto la exportación a archivo como la copia a Google Drive.
+function buildBackupObject() {
   const phrases = {
     desc: (typeof getPhrasesDB === 'function') ? getPhrasesDB('desc') : [],
     obs:  (typeof getPhrasesDB === 'function') ? getPhrasesDB('obs')  : [],
     pay:  (typeof getPhrasesDB === 'function') ? getPhrasesDB('pay')  : [],
   };
-  dlJSON({
+  return {
     _type: 'backup_completo',
     _version: 2,
     _schemaVersion: APP_SCHEMA_VERSION,
@@ -6057,7 +6070,12 @@ function expBackup() {
     services: (typeof getServicesDB === 'function') ? getServicesDB() : [],
     servicesPinned: (typeof getPinnedServices === 'function') ? getPinnedServices() : [],
     phrases: phrases
-  }, 'backup-presupuestopro.json');
+  };
+}
+
+function expBackup() {
+  syncFromUI();
+  dlJSON(buildBackupObject(), 'backup-presupuestopro.json');
   // Registramos la fecha del backup para no volver a molestar con el
   // recordatorio durante un tiempo (ver checkBackupReminder()).
   try { localStorage.setItem(LS.LAST_BACKUP, today()); } catch(_) {}
@@ -6204,51 +6222,272 @@ async function impHistReplace(raw) {
   closeModal();
 }
 
+// Aplica un objeto de backup ya parseado al estado y a las DBs. Reutilizada
+// por la restauración desde archivo y desde Google Drive. Devuelve true si OK.
+function applyBackupObject(d) {
+  if (!d || typeof d !== 'object') return false;
+  try {
+    if(d.state)   Object.assign(S, migrateState(d.state));
+    if(d.history) setH(d.history);
+    if(d.clients) safeSetLS(CLIENT_KEY, JSON.stringify(d.clients));
+    if(d.species) safeSetLS(SPECIES_KEY, JSON.stringify(d.species));
+    // v2: servicios + pineados + frases (compatibilidad: si vienen ausentes
+    // mantenemos lo que haya en localStorage actualmente — no se rompe nada).
+    if(d.services && typeof SERVICES_KEY !== 'undefined') {
+      safeSetLS(SERVICES_KEY, JSON.stringify(d.services));
+    }
+    if(d.servicesPinned && typeof SERVICES_PINNED_KEY !== 'undefined') {
+      safeSetLS(SERVICES_PINNED_KEY, JSON.stringify(d.servicesPinned));
+    }
+    if(d.phrases && typeof PHRASE_KEYS !== 'undefined') {
+      // Marcar como "sembrado" para que no se vuelvan a sembrar los defaults
+      // encima de las frases del backup. Si el backup trae lista vacía,
+      // respetar igual: el usuario decidió tener 0 frases en esa categoría.
+      if (Array.isArray(d.phrases.desc)) safeSetLS(PHRASE_KEYS.desc, JSON.stringify(d.phrases.desc));
+      if (Array.isArray(d.phrases.obs))  safeSetLS(PHRASE_KEYS.obs,  JSON.stringify(d.phrases.obs));
+      if (Array.isArray(d.phrases.pay))  safeSetLS(PHRASE_KEYS.pay,  JSON.stringify(d.phrases.pay));
+      safeSetLS(PHRASE_SEEDED_KEY, '1');
+    }
+    if (!Array.isArray(S.itemsB)) S.itemsB = [];
+    normalizeRiskData();
+    activeScenario = 'A';
+    noSync=true; restoreUI(); noSync=false;
+    calcExpiry(); renderItems(); renderEstItems(); renderRiskDefects();
+    applyMode(currentMode());
+    renderHistory(); updateTotalsBar(); updateSurchargeUI();
+    if (typeof updateCollapsibleCounts === 'function') updateCollapsibleCounts();
+    if (typeof renderQuickServices === 'function') renderQuickServices();
+    return true;
+  } catch(e) {
+    console.error('Error al aplicar backup', e);
+    return false;
+  }
+}
+
 async function impBackup(raw) {
   const ok = await confirmDlg('Restaurar backup', '¿Restaurar el backup completo? Esto reemplazará el estado actual, historial, clientes, especies, servicios y frases.', 'Restaurar', 'btn-d');
   if(!ok) return;
   let d;
   try { d = JSON.parse(raw); }
   catch(e) { toast('❌ El backup está dañado o incompleto.', 'err', 5000); return; }
-  if (!d || typeof d !== 'object') { toast('❌ El backup no tiene un formato válido.', 'err', 5000); return; }
+  if (applyBackupObject(d)) { toast('Backup restaurado correctamente', 'ok'); closeModal(); }
+  else { toast('⚠️ El backup no tiene un formato válido.', 'err', 5000); }
+}
+
+// ═══════════════════════════════════════
+// GDRIVE.JS — Copia de seguridad automática en Google Drive
+// ═══════════════════════════════════════
+// Guarda un único archivo de backup en la carpeta privada de la app
+// (scope drive.appdata): el usuario solo ve sus propios datos, y nadie
+// más accede. Sube automáticamente mientras la app está abierta.
+//
+// ⚠️ Para activarlo: pegá tu OAuth Client ID de Google en CLIENT_ID.
+//    Mientras esté vacío, la función queda inactiva y no afecta nada.
+const GDRIVE = {
+  CLIENT_ID: '1019348269608-tns51f3pknm6r6ce8effhhrikcukou8k.apps.googleusercontent.com',  // OAuth Client ID de Google (público; el secret NO se usa ni se guarda)
+  SCOPE: 'https://www.googleapis.com/auth/drive.appdata',
+  FILE: 'presupuesto-backup.json',
+  _gisPromise: null, _tokenClient: null,
+  _token: null, _tokenExp: 0, _pending: null, _timer: null, _dirty: false,
+};
+
+function gdriveConfigured(){ return !!(GDRIVE.CLIENT_ID && GDRIVE.CLIENT_ID.indexOf('.apps.googleusercontent.com') > 0); }
+function gdriveConnected(){ try { return localStorage.getItem(LS.GDRIVE_ON) === '1'; } catch(_){ return false; } }
+
+// Carga la librería de Google Identity Services (una sola vez).
+function loadGIS(){
+  if (window.google && google.accounts && google.accounts.oauth2) return Promise.resolve();
+  if (GDRIVE._gisPromise) return GDRIVE._gisPromise;
+  GDRIVE._gisPromise = new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = 'https://accounts.google.com/gsi/client'; s.async = true; s.defer = true;
+    s.onload = () => res();
+    s.onerror = () => { GDRIVE._gisPromise = null; rej(new Error('No se pudo cargar Google')); };
+    document.head.appendChild(s);
+  });
+  return GDRIVE._gisPromise;
+}
+
+async function gdriveEnsureClient(){
+  await loadGIS();
+  if (!GDRIVE._tokenClient) {
+    GDRIVE._tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: GDRIVE.CLIENT_ID,
+      scope: GDRIVE.SCOPE,
+      callback: (resp) => {
+        const p = GDRIVE._pending; GDRIVE._pending = null;
+        if (resp && resp.access_token) {
+          GDRIVE._token = resp.access_token;
+          GDRIVE._tokenExp = Date.now() + ((resp.expires_in || 3500) * 1000);
+          if (p) p.resolve(resp.access_token);
+        } else if (p) { p.reject(new Error((resp && resp.error) || 'sin_token')); }
+      },
+    });
+  }
+}
+
+// Obtiene un access token (silencioso si ya hay consentimiento).
+function gdriveGetToken(){
+  return new Promise((resolve, reject) => {
+    if (GDRIVE._token && Date.now() < GDRIVE._tokenExp - 60000) { resolve(GDRIVE._token); return; }
+    gdriveEnsureClient().then(() => {
+      GDRIVE._pending = { resolve, reject };
+      GDRIVE._tokenClient.requestAccessToken({ prompt: '' });
+    }).catch(reject);
+  });
+}
+
+async function gdriveFindFile(token){
+  const q = encodeURIComponent(`name='${GDRIVE.FILE}'`);
+  const url = `https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=${q}&fields=files(id,modifiedTime)`;
+  const r = await fetch(url, { headers: { Authorization: 'Bearer ' + token } });
+  if (!r.ok) throw new Error('Drive list ' + r.status);
+  const j = await r.json();
+  return (j.files && j.files[0]) || null;
+}
+
+// Sube el backup actual (crea o actualiza el único archivo).
+async function gdriveUpload(){
+  const token = await gdriveGetToken();
+  const body = JSON.stringify(buildBackupObject());
+  const existing = await gdriveFindFile(token);
+  if (existing) {
+    const r = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${existing.id}?uploadType=media`, {
+      method: 'PATCH', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body });
+    if (!r.ok) throw new Error('Drive update ' + r.status);
+  } else {
+    const boundary = '----pq' + Date.now();
+    const meta = JSON.stringify({ name: GDRIVE.FILE, parents: ['appDataFolder'] });
+    const multipart =
+      `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${meta}\r\n` +
+      `--${boundary}\r\nContent-Type: application/json\r\n\r\n${body}\r\n--${boundary}--`;
+    const r = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+      method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': `multipart/related; boundary=${boundary}` }, body: multipart });
+    if (!r.ok) throw new Error('Drive create ' + r.status);
+  }
+  GDRIVE._dirty = false;
+  try { localStorage.setItem(LS.GDRIVE_LAST, new Date().toISOString()); localStorage.setItem(LS.LAST_BACKUP, today()); } catch(_){}
+}
+
+// Descarga el objeto de backup de Drive (o null si no hay).
+async function gdriveDownload(){
+  const token = await gdriveGetToken();
+  const f = await gdriveFindFile(token);
+  if (!f) return null;
+  const r = await fetch(`https://www.googleapis.com/drive/v3/files/${f.id}?alt=media`, { headers: { Authorization: 'Bearer ' + token } });
+  if (!r.ok) throw new Error('Drive get ' + r.status);
+  return await r.json();
+}
+
+// Botón "Conectar": inicia sesión y, si el equipo está vacío y hay copia
+// en Drive, ofrece recuperarla (en vez de pisarla con datos vacíos).
+async function gdriveConnect(){
+  if (!gdriveConfigured()) { toast('Google Drive no está configurado todavía.', 'info', 5000); return; }
   try {
-  if(d.state)   Object.assign(S, migrateState(d.state));
-  if(d.history) setH(d.history);
-  if(d.clients) safeSetLS(CLIENT_KEY, JSON.stringify(d.clients));
-  if(d.species) safeSetLS(SPECIES_KEY, JSON.stringify(d.species));
-  // v2: servicios + pineados + frases (compatibilidad: si vienen ausentes
-  // mantenemos lo que haya en localStorage actualmente — no se rompe nada).
-  if(d.services && typeof SERVICES_KEY !== 'undefined') {
-    safeSetLS(SERVICES_KEY, JSON.stringify(d.services));
+    toast('Conectando con Google Drive…', 'info', 3000);
+    await gdriveGetToken();
+    try { localStorage.setItem(LS.GDRIVE_ON, '1'); } catch(_){}
+    const localEmpty = !(((typeof getH==='function') ? getH() : []).length);
+    let remote = null;
+    try { remote = await gdriveDownload(); } catch(_){}
+    if (remote && remote.history && remote.history.length && localEmpty) {
+      const ok = await confirmDlg('Recuperar datos', 'Hay una copia en tu Google Drive. ¿Querés recuperarla en este dispositivo?', 'Recuperar', 'btn-p');
+      if (ok) { applyBackupObject(remote); toast('✅ Datos recuperados desde Drive.', 'ok', 4000); gdriveUpdateUI(); return; }
+    }
+    await gdriveUpload();
+    toast('✅ Conectado. Tus datos se copian automáticamente en tu Drive.', 'ok', 4000);
+  } catch(e){
+    console.error('gdriveConnect', e);
+    try { localStorage.removeItem(LS.GDRIVE_ON); } catch(_){}
+    toast('No se pudo conectar con Google Drive.', 'err', 5000);
   }
-  if(d.servicesPinned && typeof SERVICES_PINNED_KEY !== 'undefined') {
-    safeSetLS(SERVICES_PINNED_KEY, JSON.stringify(d.servicesPinned));
+  gdriveUpdateUI();
+}
+
+function gdriveDisconnect(){
+  try { if (GDRIVE._token && window.google && google.accounts && google.accounts.oauth2) google.accounts.oauth2.revoke(GDRIVE._token, ()=>{}); } catch(_){}
+  GDRIVE._token = null; GDRIVE._tokenExp = 0;
+  try { localStorage.removeItem(LS.GDRIVE_ON); } catch(_){}
+  gdriveUpdateUI();
+  toast('Google Drive desconectado.', 'info');
+}
+
+async function gdriveRestore(){
+  if (!gdriveConfigured()) return;
+  const ok = await confirmDlg('Restaurar desde Drive', '¿Traer la copia guardada en Google Drive? Reemplazará los datos actuales de este dispositivo.', 'Restaurar', 'btn-d');
+  if (!ok) return;
+  try {
+    toast('Descargando copia…', 'info', 3000);
+    const d = await gdriveDownload();
+    if (!d) { toast('Todavía no hay ninguna copia en tu Drive.', 'info', 5000); return; }
+    if (applyBackupObject(d)) toast('✅ Datos restaurados desde Google Drive.', 'ok', 4000);
+    else toast('La copia de Drive no tiene un formato válido.', 'err', 5000);
+  } catch(e){ console.error('gdriveRestore', e); toast('No se pudo restaurar desde Drive.', 'err', 5000); }
+  gdriveUpdateUI();
+}
+
+// Copia automática: se dispara (con retardo) tras cada cambio guardado.
+function scheduleGdriveBackup(){
+  if (!gdriveConfigured() || !gdriveConnected()) return;
+  GDRIVE._dirty = true;
+  clearTimeout(GDRIVE._timer);
+  GDRIVE._timer = setTimeout(() => {
+    gdriveUpload().then(gdriveUpdateUI).catch(e => console.warn('auto-backup Drive falló', e));
+  }, 45000);
+}
+
+// Formatea una fecha ISO como "dd/mm HH:MM".
+function _fmtBackupDate(iso){
+  try { const d = new Date(iso); const p = n => String(n).padStart(2,'0');
+    return `${p(d.getDate())}/${p(d.getMonth()+1)} ${p(d.getHours())}:${p(d.getMinutes())}`; }
+  catch(_){ return ''; }
+}
+
+// Refresca el estado visible de la sección de Drive (pestaña Empresa).
+function gdriveUpdateUI(){
+  const sec = document.getElementById('gdrive-section'); if (!sec) return;
+  const status = document.getElementById('gdrive-status');
+  const actions = document.getElementById('gdrive-actions');
+  const cBtn = document.getElementById('gdrive-connect');
+  const rBtn = document.getElementById('gdrive-restore');
+  const dBtn = document.getElementById('gdrive-disconnect');
+  // Sin configurar: ocultamos toda la sección (no confundir a los colegas).
+  if (!gdriveConfigured()) { sec.style.display = 'none'; return; }
+  sec.style.display = '';
+  const on = gdriveConnected();
+  if (cBtn) cBtn.style.display = on ? 'none' : '';
+  if (rBtn) rBtn.style.display = on ? '' : 'none';
+  if (dBtn) dBtn.style.display = on ? '' : 'none';
+  if (status) {
+    if (on) {
+      let last = ''; try { last = localStorage.getItem(LS.GDRIVE_LAST) || ''; } catch(_){}
+      status.textContent = last
+        ? ('Conectado ✓ · Última copia: ' + _fmtBackupDate(last))
+        : 'Conectado ✓ · Tus datos se copian automáticamente en tu Google Drive.';
+    } else {
+      status.textContent = 'Guardá una copia automática de todos tus datos en tu Google Drive, para no perderlos si cambiás o perdés el teléfono.';
+    }
   }
-  if(d.phrases && typeof PHRASE_KEYS !== 'undefined') {
-    // Marcar como "sembrado" para que no se vuelvan a sembrar los defaults
-    // encima de las frases del backup. Si el backup trae lista vacía,
-    // respetar igual: el usuario decidió tener 0 frases en esa categoría.
-    if (Array.isArray(d.phrases.desc)) safeSetLS(PHRASE_KEYS.desc, JSON.stringify(d.phrases.desc));
-    if (Array.isArray(d.phrases.obs))  safeSetLS(PHRASE_KEYS.obs,  JSON.stringify(d.phrases.obs));
-    if (Array.isArray(d.phrases.pay))  safeSetLS(PHRASE_KEYS.pay,  JSON.stringify(d.phrases.pay));
-    safeSetLS(PHRASE_SEEDED_KEY, '1');
-  }
-  if (!Array.isArray(S.itemsB)) S.itemsB = [];
-  normalizeRiskData();
-  activeScenario = 'A';
-  noSync=true; restoreUI(); noSync=false;
-  calcExpiry(); renderItems(); renderEstItems(); renderRiskDefects();
-  applyMode(currentMode());
-  renderHistory(); updateTotalsBar(); updateSurchargeUI();
-  // Actualizar contadores y chips si están visibles
-  if (typeof updateCollapsibleCounts === 'function') updateCollapsibleCounts();
-  if (typeof renderQuickServices === 'function') renderQuickServices();
-  toast('Backup restaurado correctamente', 'ok');
-  closeModal();
-  } catch(e) {
-    console.error('Error al restaurar backup', e);
-    toast('⚠️ Hubo un problema al restaurar el backup.', 'err', 5000);
-  }
+}
+
+// Al arrancar la app: si está conectado, intenta token silencioso y, si el
+// equipo está vacío pero hay copia en Drive, ofrece recuperarla.
+function gdriveInitOnLoad(){
+  if (!gdriveConfigured()) { gdriveUpdateUI(); return; }
+  gdriveUpdateUI();
+  if (!gdriveConnected()) return;
+  gdriveGetToken().then(async () => {
+    gdriveUpdateUI();
+    try {
+      const local = (typeof getH==='function') ? getH() : [];
+      if (local.length) return; // ya hay datos locales, no tocar
+      const d = await gdriveDownload();
+      if (d && d.history && d.history.length) {
+        const ok = await confirmDlg('Recuperar datos', 'Encontramos una copia en tu Google Drive. ¿Querés recuperar tus presupuestos en este dispositivo?', 'Recuperar', 'btn-p');
+        if (ok && applyBackupObject(d)) toast('✅ Datos recuperados desde Drive.', 'ok', 4000);
+      }
+    } catch(_){}
+  }).catch(() => { /* requiere reconectar; la UI lo refleja */ });
 }
 
 // ===== js/pdf.js =====
@@ -7297,6 +7536,17 @@ window.addEventListener('DOMContentLoaded', () => {
     maybeShowWelcome();
     checkBackupReminder();
   }
+
+  // Copia de seguridad en Google Drive (inerte si no está configurada).
+  if (typeof gdriveInitOnLoad === 'function') gdriveInitOnLoad();
+  // Al pasar la app a segundo plano, subir cambios pendientes de inmediato.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden' && typeof GDRIVE !== 'undefined' &&
+        GDRIVE._dirty && gdriveConfigured() && gdriveConnected()) {
+      clearTimeout(GDRIVE._timer);
+      gdriveUpload().catch(() => {});
+    }
+  });
 });
 
 // ═══════════════════════════════════════════════════════════
