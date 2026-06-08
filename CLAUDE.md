@@ -1,7 +1,7 @@
 # Presupuestos AR — Guía del proyecto (para Claude Code)
 
 > App PWA para generar **presupuestos de poda y extracción de árboles** (Argentina).
-> Esta guía es el mapa del proyecto: leela primero para no escanear las ~7.600 líneas del `index.html`.
+> Esta guía es el mapa del proyecto: leela primero para no escanear las ~8.000 líneas del `index.html`.
 
 ## Qué es
 - PWA instalable, **offline-first**, sin login, pensada para que cualquier colega podador la use desde el celular.
@@ -15,12 +15,17 @@
 
 ## Estructura de archivos
 - `index.html` — **toda la app** (markup + `<style>` + `<script>`).
-- `sw.js` — Service Worker (offline + actualizaciones).
+- `sw.js` — Service Worker (offline + actualizaciones). **`CACHE_VERSION` actual: `presupuesto-v21`**.
 - `manifest.webmanifest`, `*.png` — PWA (instalación, iconos).
 
 ## Mapa del código dentro de `index.html`
 El JS está organizado por secciones marcadas con comentarios `// ===== js/<nombre>.js =====`.
-**Buscá esos marcadores** (son anclas estables) en vez de fiarte de números de línea:
+**Buscá esos marcadores** (son anclas estables) en vez de fiarte de números de línea.
+
+Comando rápido para listarlos todos con número de línea:
+```bash
+grep -n "===== js/" index.html
+```
 
 | Sección | De qué se ocupa |
 |---|---|
@@ -45,24 +50,34 @@ El CSS vive en el `<style>` (líneas ~16–1711). Hay dos bloques de estilos del
 - **XSS:** escapar SIEMPRE los datos del usuario con `esc()` antes de meterlos en `innerHTML`.
 - **3 modos de presupuesto:** Normal, Estimativo (fotos) y Riesgo (informe ISA). `buildDoc()` deriva a `buildEstDoc()`/`buildRiskDoc()` según `S.isEstimative`/`S.isRisk`.
 
+## Módulo GDRIVE (detalles que no romper)
+- `gdriveGetToken({ interactive? })`: por defecto silencioso (usa `hint` con el email guardado para renovar sin selector). `{ interactive: true }` solo desde botones que el usuario toca (primera conexión / restaurar).
+- `gdriveRememberEmail(token)`: llama a `drive/v3/about` y guarda el email en `LS.GDRIVE_EMAIL` (`pq_gdrive_email`). Se llama después de `gdriveConnect` y `gdriveRestore`.
+- `scheduleGdriveBackup` y el handler de `visibilitychange` verifican `navigator.onLine` antes de intentar nada — no tocar sin señal.
+- El listener `window.addEventListener('online', …)` sube lo pendiente al volver la conexión.
+- Al desconectar (`gdriveDisconnect`) se borra también `LS.GDRIVE_EMAIL`.
+
 ## Flujo de despliegue (SEGUIR SIEMPRE)
 1. Desarrollar en la rama de trabajo (`claude/...`), no en `main`.
-2. **Subir `CACHE_VERSION` en `sw.js`** en cada cambio que se despliegue (si no, los dispositivos siguen con la versión vieja en caché). Formato: `presupuesto-vNN`.
+2. **Subir `CACHE_VERSION` en `sw.js`** en cada cambio que se despliegue (si no, los dispositivos siguen con la versión vieja en caché). Formato: `presupuesto-vNN`. **Versión actual: v21**.
 3. Si agregás un archivo nuevo (ej. otro `.js` o `.css`), **agregarlo a `APP_SHELL` en `sw.js`** o se rompe el offline.
 4. Mergear a `main` → Cloudflare despliega solo.
 
 ## Cómo verificar cambios (sin romper)
-- **Sintaxis JS:** extraer el `<script>` de `index.html` y correr `node --check`. (En este repo se hizo con un pequeño script de Python que aísla los `<script>` sin `src`.)
-- **Comportamiento:** se puede manejar la app con un navegador headless (puppeteer/chrome-headless-shell) cargando `file://.../index.html`, seteando `S`, y llamando funciones. Útil para validar PDF, persistencia, etc.
-- Siempre que se toque persistencia/datos: confirmar que las **claves de `localStorage` no cambian** (riesgo de pérdida de datos).
+**Sintaxis JS** — aislar el `<script>` inline y verificar con node:
+```bash
+python3 - <<'PY'
+import re, subprocess, sys
+html = open('index.html', encoding='utf-8').read()
+js = "\n;\n".join(re.findall(r'<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>', html, re.S))
+open('/tmp/app_check.js','w',encoding='utf-8').write(js)
+sys.exit(subprocess.run(['node','--check','/tmp/app_check.js']).returncode)
+PY
+```
 
-## Funcionalidades clave (para ubicarse)
-- Editor con 3 modos · escenarios A/B · recargo interno · descuento.
-- Historial con estados comerciales, seguimiento y links de WhatsApp (mensajes **editables** con variables `{cliente} {numero} {empresa}`).
-- Imprimir/PDF nativo (`window.print()` sobre `#doc-a4`).
-- Onboarding de primer uso, recordatorio de backup, verificación de almacenamiento.
-- **Backup en Google Drive** (módulo `GDRIVE`, scope `drive.appdata`): requiere `GDRIVE.CLIENT_ID`; sube automáticamente con retardo (hook en `safeSetLS`).
-- Service Worker **network-first** en navegación + recarga limpia al actualizar (arreglo de la PWA que antes se rompía al actualizar).
+**Persistencia:** siempre que se toque `localStorage`, confirmar que las claves del objeto `LS` no cambian (riesgo de pérdida de datos de usuario).
+
+**Comportamiento:** se puede manejar la app con un navegador headless (puppeteer/chrome-headless-shell) cargando `file://.../index.html`, seteando `S`, y llamando funciones. Útil para validar PDF, persistencia, etc.
 
 ## Cosas que NO romper
 - No pasar el JS a módulos ES (rompería los `onclick` globales).
@@ -70,3 +85,4 @@ El CSS vive en el `<style>` (líneas ~16–1711). Hay dos bloques de estilos del
 - No cambiar los valores de las claves de `localStorage`.
 - No volver a usar `toISOString()` para fechas de calendario.
 - No incluir el `client_secret` de Google en el repo (solo se usa el `CLIENT_ID`, que es público).
+- No pedir token de Google al abrir la app (ver sección GDRIVE arriba).
