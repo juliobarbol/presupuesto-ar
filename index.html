@@ -2546,6 +2546,7 @@ const LS = {
   LAST_BACKUP:    'pq_last_backup',
   GDRIVE_ON:      'pq_gdrive_on',
   GDRIVE_LAST:    'pq_gdrive_last',
+  GDRIVE_EMAIL:   'pq_gdrive_email',
 };
 
 const DEF = {
@@ -6326,15 +6327,44 @@ async function gdriveEnsureClient(){
   }
 }
 
-// Obtiene un access token (silencioso si ya hay consentimiento).
-function gdriveGetToken(){
+// Obtiene un access token.
+//  • Por defecto es SILENCIOSO: usa el email guardado como "hint" para que
+//    Google renueve el token sin mostrar el selector de cuenta. Si no se
+//    puede renovar callado, falla (rechaza) sin molestar al usuario.
+//  • Con { interactive: true } (solo desde botones que el usuario tocó)
+//    se permite mostrar el selector/consentimiento la primera vez.
+function gdriveGetToken(opts){
+  opts = opts || {};
+  const interactive = !!opts.interactive;
   return new Promise((resolve, reject) => {
     if (GDRIVE._token && Date.now() < GDRIVE._tokenExp - 60000) { resolve(GDRIVE._token); return; }
+    // Sin señal no tiene sentido intentar (y rompería el modo offline).
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) { reject(new Error('offline')); return; }
     gdriveEnsureClient().then(() => {
       GDRIVE._pending = { resolve, reject };
-      GDRIVE._tokenClient.requestAccessToken({ prompt: '' });
+      const req = { prompt: '' };
+      let hint = ''; try { hint = localStorage.getItem(LS.GDRIVE_EMAIL) || ''; } catch(_){}
+      if (hint) req.hint = hint;            // pista de cuenta → renueva en silencio
+      // Solo la primera conexión (sin email recordado y a pedido del usuario)
+      // puede pedir consentimiento/selector explícito.
+      if (interactive && !hint) req.prompt = 'consent';
+      GDRIVE._tokenClient.requestAccessToken(req);
     }).catch(reject);
   });
+}
+
+// Lee el email de la cuenta conectada y lo guarda para usarlo como "hint"
+// en las próximas renovaciones silenciosas. Funciona con el scope appdata
+// (about.get) y nunca rompe si falla.
+async function gdriveRememberEmail(token){
+  try {
+    const r = await fetch('https://www.googleapis.com/drive/v3/about?fields=user(emailAddress)', {
+      headers: { Authorization: 'Bearer ' + token } });
+    if (!r.ok) return;
+    const j = await r.json();
+    const email = j && j.user && j.user.emailAddress;
+    if (email) { try { localStorage.setItem(LS.GDRIVE_EMAIL, email); } catch(_){} }
+  } catch(_){ /* sin email: seguimos sin hint */ }
 }
 
 async function gdriveFindFile(token){
@@ -6385,8 +6415,9 @@ async function gdriveConnect(){
   if (!gdriveConfigured()) { toast('Google Drive no está configurado todavía.', 'info', 5000); return; }
   try {
     toast('Conectando con Google Drive…', 'info', 3000);
-    await gdriveGetToken();
+    const token = await gdriveGetToken({ interactive: true });
     try { localStorage.setItem(LS.GDRIVE_ON, '1'); } catch(_){}
+    await gdriveRememberEmail(token);  // recordamos la cuenta para renovar callado
     const localEmpty = !(((typeof getH==='function') ? getH() : []).length);
     let remote = null;
     try { remote = await gdriveDownload(); } catch(_){}
@@ -6408,6 +6439,7 @@ function gdriveDisconnect(){
   try { if (GDRIVE._token && window.google && google.accounts && google.accounts.oauth2) google.accounts.oauth2.revoke(GDRIVE._token, ()=>{}); } catch(_){}
   GDRIVE._token = null; GDRIVE._tokenExp = 0;
   try { localStorage.removeItem(LS.GDRIVE_ON); } catch(_){}
+  try { localStorage.removeItem(LS.GDRIVE_EMAIL); } catch(_){}
   gdriveUpdateUI();
   toast('Google Drive desconectado.', 'info');
 }
@@ -6418,6 +6450,8 @@ async function gdriveRestore(){
   if (!ok) return;
   try {
     toast('Descargando copia…', 'info', 3000);
+    const token = await gdriveGetToken({ interactive: true });
+    await gdriveRememberEmail(token);
     const d = await gdriveDownload();
     if (!d) { toast('Todavía no hay ninguna copia en tu Drive.', 'info', 5000); return; }
     if (applyBackupObject(d)) toast('✅ Datos restaurados desde Google Drive.', 'ok', 4000);
@@ -6432,6 +6466,8 @@ function scheduleGdriveBackup(){
   GDRIVE._dirty = true;
   clearTimeout(GDRIVE._timer);
   GDRIVE._timer = setTimeout(() => {
+    // Sin señal: dejamos el cambio pendiente; se sube al volver la conexión.
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
     gdriveUpload().then(gdriveUpdateUI).catch(e => console.warn('auto-backup Drive falló', e));
   }, 45000);
 }
@@ -6470,24 +6506,33 @@ function gdriveUpdateUI(){
   }
 }
 
-// Al arrancar la app: si está conectado, intenta token silencioso y, si el
-// equipo está vacío pero hay copia en Drive, ofrece recuperarla.
+// Al arrancar la app.
+// IMPORTANTE: NO pedimos token al abrir. Si el dispositivo ya tiene datos
+// (el caso normal: abrís la app para trabajar), no se intenta nada con Google
+// → cero pedidos de "iniciar sesión", y el modo offline queda intacto.
+//
+// Solo cuando el equipo está VACÍO pero figura como conectado (típico de un
+// teléfono nuevo o tras reinstalar) intentamos —en silencio y con la cuenta
+// recordada como hint— recuperar la copia de Drive. Si no se puede renovar
+// callado, no molestamos: queda el botón "Conectar" para hacerlo a mano.
 function gdriveInitOnLoad(){
   if (!gdriveConfigured()) { gdriveUpdateUI(); return; }
   gdriveUpdateUI();
   if (!gdriveConnected()) return;
-  gdriveGetToken().then(async () => {
+  const local = (typeof getH==='function') ? getH() : [];
+  if (local.length) return;                 // ya hay datos locales: no tocar nada
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+  gdriveGetToken({ interactive: false }).then(async (token) => {
     gdriveUpdateUI();
     try {
-      const local = (typeof getH==='function') ? getH() : [];
-      if (local.length) return; // ya hay datos locales, no tocar
+      await gdriveRememberEmail(token);
       const d = await gdriveDownload();
       if (d && d.history && d.history.length) {
         const ok = await confirmDlg('Recuperar datos', 'Encontramos una copia en tu Google Drive. ¿Querés recuperar tus presupuestos en este dispositivo?', 'Recuperar', 'btn-p');
         if (ok && applyBackupObject(d)) toast('✅ Datos recuperados desde Drive.', 'ok', 4000);
       }
     } catch(_){}
-  }).catch(() => { /* requiere reconectar; la UI lo refleja */ });
+  }).catch(() => { /* no se pudo renovar callado: la UI ofrece reconectar */ });
 }
 
 // ===== js/pdf.js =====
@@ -7539,12 +7584,23 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // Copia de seguridad en Google Drive (inerte si no está configurada).
   if (typeof gdriveInitOnLoad === 'function') gdriveInitOnLoad();
-  // Al pasar la app a segundo plano, subir cambios pendientes de inmediato.
+  // Al pasar la app a segundo plano, subir cambios pendientes de inmediato
+  // (solo si hay señal; sin conexión queda pendiente para el evento 'online').
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden' && typeof GDRIVE !== 'undefined' &&
-        GDRIVE._dirty && gdriveConfigured() && gdriveConnected()) {
+        GDRIVE._dirty && navigator.onLine !== false &&
+        gdriveConfigured() && gdriveConnected()) {
       clearTimeout(GDRIVE._timer);
       gdriveUpload().catch(() => {});
+    }
+  });
+  // Al volver la conexión, subir lo que haya quedado pendiente mientras
+  // trabajabas sin señal (modo offline).
+  window.addEventListener('online', () => {
+    if (typeof GDRIVE !== 'undefined' && GDRIVE._dirty &&
+        gdriveConfigured() && gdriveConnected()) {
+      clearTimeout(GDRIVE._timer);
+      gdriveUpload().then(gdriveUpdateUI).catch(() => {});
     }
   });
 });
