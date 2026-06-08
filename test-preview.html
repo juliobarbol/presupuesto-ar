@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<title>Test · Vista previa + PDF (fuente de estilos única)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<style>
+/* ════════════════════════════════════════════════════════════════════
+   PRUEBA DEL REFACTOR "A"
+   --------------------------------------------------------------------
+   Los estilos del DOCUMENTO (.pdoc y familia) se definen UNA SOLA VEZ,
+   en ámbito global. Los usa tal cual:
+     · la VISTA PREVIA en pantalla (el "papel" .doc-a4 escalado), y
+     · la IMPRESIÓN / PDF (@media print).
+   No hay copia duplicada ni el bloque ".doc-preview-host". Si en el
+   navegador la vista previa y el PDF impreso se ven igual, el enfoque
+   sirve y lo llevamos a index.html.
+   ════════════════════════════════════════════════════════════════════ */
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{color-scheme:light}
+html,body{font-family:'DM Sans',sans-serif;background:#0f172a;color:#e2e8f0}
+
+/* ── UI de prueba (no se imprime) ─────────────────────────────────── */
+.controls{
+  position:sticky;top:0;z-index:10;
+  display:flex;flex-wrap:wrap;align-items:center;gap:14px;
+  padding:12px 16px;background:#111827;border-bottom:1px solid #1f2937;
+}
+.controls .group{display:flex;align-items:center;gap:8px}
+.controls label{font-size:12px;color:#94a3b8;font-weight:600}
+.controls .seg{display:flex;gap:4px;background:#0b1220;border:1px solid #1f2937;border-radius:8px;padding:3px}
+.controls .seg button{
+  background:transparent;border:none;color:#cbd5e1;cursor:pointer;
+  font:600 12px 'DM Sans',sans-serif;padding:6px 11px;border-radius:6px;
+}
+.controls .seg button.active{background:#2563eb;color:#fff}
+.swatches{display:flex;gap:6px}
+.swatch{width:26px;height:26px;border-radius:50%;border:2px solid #334155;cursor:pointer}
+.swatch.active{border-color:#fff;box-shadow:0 0 0 2px #2563eb}
+.controls input[type=color]{width:34px;height:30px;border:1px solid #334155;border-radius:6px;background:#0b1220;cursor:pointer;padding:2px}
+.btn-print{margin-left:auto;background:#059669;color:#fff;border:none;border-radius:8px;padding:9px 16px;font:700 13px 'DM Sans',sans-serif;cursor:pointer}
+.btn-print:hover{background:#047857}
+.hint-bar{padding:8px 16px;background:#0b1220;border-bottom:1px solid #1f2937;font-size:12px;color:#94a3b8}
+
+/* ── Escenario de la vista previa (no se imprime) ─────────────────── */
+.stage{
+  padding:24px;display:flex;justify-content:center;align-items:flex-start;
+  min-height:100vh;
+}
+.paper-wrap{transform-origin:top center}
+.paper{background:#fff;box-shadow:0 12px 50px rgba(0,0,0,.5)}
+
+/* ════════════════════════════════════════════════════════════════════
+   FUENTE ÚNICA — ESTILOS DEL DOCUMENTO
+   (idénticos para pantalla e impresión)
+   ════════════════════════════════════════════════════════════════════ */
+
+/* Tokens del documento sobre la clase .doc-a4 (el "papel" A4). */
+.doc-a4{
+  width:210mm;
+  font-family:'DM Sans',sans-serif;
+  font-size:11pt;color:#1a1a1a;background:#fff;
+  /* Escala tipográfica */
+  --fs-micro:7.5pt; --fs-small:9.5pt; --fs-body:11pt;
+  --fs-h3:9pt; --fs-h2:12pt; --fs-display:22pt;
+  /* Paleta neutra (el color de marca va inline en 3 lugares) */
+  --c-text:#1a1a1a; --c-text-2:#374151; --c-muted:#64748b; --c-muted-2:#94a3b8;
+  --c-divider:#d1d5db; --c-divider-soft:#e5e7eb; --c-bg-soft:#f8faf9; --c-zebra:#fafbfc;
+  --r-sm:4pt; --r-md:8pt; --page-x:18mm; --ls-label:.8px;
+}
+
+/* Wrapper-table: el header (thead) se repite en cada página impresa. */
+.pdoc{width:100%;border-collapse:collapse;table-layout:fixed}
+.pdoc>thead{display:table-header-group}
+.pdoc>tbody{display:table-row-group}
+.pdoc>thead>tr>td,.pdoc>tbody>tr>td{padding:0;border:0;vertical-align:top}
+.pdoc>tbody>tr,.pdoc>tbody>tr>td{break-inside:auto;page-break-inside:auto}
+
+/* Header */
+.ph{padding:16px var(--page-x) 12px;display:flex;align-items:flex-start;gap:18px;position:relative;background:#fff}
+.ph-logo{max-height:54px;max-width:115px;object-fit:contain}
+.ph-co{flex:1;min-width:0}
+.ph-name{font-family:'DM Serif Display',serif;font-size:17pt;line-height:1.1;margin-bottom:2px}
+.ph-sub{font-size:var(--fs-small);color:var(--c-muted);margin-bottom:5px}
+.ph-contacts{display:flex;flex-wrap:wrap;gap:2px 14px}
+.ph-contact{font-size:8.5pt;color:var(--c-muted)}
+.ph-badge{position:absolute;top:16px;right:var(--page-x);text-align:right}
+.ph-badge-lbl{font-size:var(--fs-micro);font-weight:700;text-transform:uppercase;letter-spacing:var(--ls-label);color:var(--c-muted-2);margin-bottom:2px}
+.ph-badge-num{font-family:'DM Serif Display',serif;font-size:var(--fs-h2);line-height:1}
+.ph-badge-date{font-size:var(--fs-micro);color:var(--c-muted-2);margin-top:3px}
+
+/* No cortar bloques compactos entre páginas */
+.ptitle-bar,.ptotals,.pobs,.pcond,.pvalid,.pcrit,.pnotes,.psigs,.pfoot,
+.pest-header-bar,.pest-disclaimer,.pest-factors,.pest-greeting,.pest-item{
+  break-inside:avoid;page-break-inside:avoid;
+}
+.ptable tr{break-inside:avoid;page-break-inside:avoid}
+.ptable thead{display:table-header-group}
+
+/* Título + datos del cliente */
+.ptitle-bar{padding:0 var(--page-x);margin-bottom:14px}
+.ptitle{font-family:'DM Serif Display',serif;font-size:14pt;line-height:1.25;padding-bottom:6px;margin-bottom:12px;border-bottom:1pt solid var(--c-divider-soft);word-break:break-word;hyphens:auto;max-width:75%}
+.pgrid{display:grid;grid-template-columns:1fr 1fr;padding:12px 14px;background:var(--c-bg-soft);border-radius:var(--r-md);gap:14px;border:1px solid var(--c-divider-soft)}
+.pgrid-lbl{font-size:var(--fs-micro);font-weight:700;text-transform:uppercase;letter-spacing:var(--ls-label);color:var(--c-muted-2);margin-bottom:3px}
+.pgrid-val{font-size:var(--fs-body);font-weight:500;word-break:break-word;hyphens:auto}
+.pgrid-sub{font-size:var(--fs-small);color:var(--c-muted)}
+.pgrid-r{border-left:1pt solid var(--c-divider-soft);padding-left:14px}
+
+/* Sección de ítems */
+.psec{padding:14px var(--page-x) 0}
+.psec-t{font-family:'DM Sans',sans-serif;font-size:var(--fs-h2);font-weight:700;letter-spacing:0;color:var(--c-text);margin-bottom:10px;padding-bottom:5px;border-bottom:1pt solid var(--c-divider)}
+.ptable{width:100%;border-collapse:collapse}
+.ptable thead th{font-size:var(--fs-micro);font-weight:700;text-transform:uppercase;letter-spacing:var(--ls-label);color:var(--c-muted);padding:6px 5px;text-align:left;border-bottom:1.5pt solid var(--c-divider);background:var(--c-bg-soft)}
+.ptable thead th.thr{text-align:right}
+.ptable tbody tr:nth-child(even) td{background:var(--c-zebra)}
+.ptable tbody td{padding:9px 6px;border-bottom:.75pt solid var(--c-divider-soft);vertical-align:top;font-size:var(--fs-body)}
+.td-n{color:var(--c-muted-2);font-size:var(--fs-small);width:20pt;font-weight:600}
+.td-sp{font-weight:700;font-size:var(--fs-small);min-width:80pt;max-width:130pt;word-break:break-word}
+.td-wk{color:var(--c-text-2);line-height:1.5}
+.td-pr{text-align:right;white-space:nowrap;font-weight:600}
+.td-pr .qty-breakdown{display:block;font-size:7.5pt;color:var(--c-muted-2);font-weight:400;margin-bottom:2px}
+.ptable .nrow td{font-size:var(--fs-small);color:var(--c-muted);font-style:italic;padding:5px 6px;background:#fff!important}
+
+/* Totales */
+.ptotals{padding:12px var(--page-x);display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.pdisc-row{display:flex;gap:14px;font-size:var(--fs-small);color:var(--c-muted)}
+.pdisc-row span:first-child{font-weight:500}
+.pdisc-note{font-size:var(--fs-micro);color:var(--c-muted-2);font-style:italic;margin-top:2px;max-width:240pt;text-align:right}
+.ptotal-box{padding:11px 16px;border-radius:var(--r-md);min-width:175pt;border:2pt solid currentColor}
+.ptotal-lbl{font-size:var(--fs-micro);font-weight:700;text-transform:uppercase;letter-spacing:var(--ls-label);opacity:.7;margin-bottom:2px}
+.ptotal-amt{font-family:'DM Serif Display',serif;font-size:26pt;line-height:1}
+
+/* Zona administrativa */
+.pobs,.pcond,.pnotes{padding:0 var(--page-x) 12px}
+.pobs-t,.pcond-t,.pnotes-t{font-size:var(--fs-h3);font-weight:700;text-transform:uppercase;letter-spacing:var(--ls-label);color:var(--c-muted);margin-bottom:7px;padding-bottom:0;border:none}
+.pobs-txt{font-size:var(--fs-small);color:var(--c-text-2);line-height:1.65;padding:12px 14px;background:var(--c-bg-soft);border-radius:var(--r-sm);border-left:2.5pt solid var(--c-divider)}
+.pcond-txt{font-size:var(--fs-small);color:var(--c-text-2);line-height:1.65}
+.pnotes ul{padding-left:16px;margin:0}
+.pnotes li{font-size:var(--fs-small);color:var(--c-text-2);line-height:1.7}
+.pobs,.pcond,.pvalid,.pcrit,.pnotes{margin-top:0}
+.ptotals+.pobs,.ptotals+.pcond,.ptotals+.pvalid,.ptotals+.pcrit{margin-top:8px}
+
+/* Vigencia */
+.pvalid{margin:6px var(--page-x) 14px;background:#fef3c7!important;color:#92400e!important;padding:9px 14px;border-radius:var(--r-sm);font-size:var(--fs-small);font-weight:500;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;border-left:3pt solid #d97706}
+.pvalid-date{font-weight:700;color:#78350f}
+
+/* Cómo trabajamos */
+.pcrit{padding:0 var(--page-x) 14px}
+.pcrit-t{font-size:var(--fs-h3);font-weight:700;text-transform:uppercase;letter-spacing:var(--ls-label);color:var(--c-muted);margin-bottom:8px;padding-bottom:0;border:none}
+.pcrit-box{padding:12px 14px;background:var(--c-bg-soft);border-radius:var(--r-md);border-left:3pt solid var(--c-divider)}
+.pcrit-intro{font-size:var(--fs-small);color:var(--c-text-2);margin-bottom:9px;line-height:1.55}
+.pcrit-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 18px}
+.pcrit-item{margin-bottom:0}
+.pcrit-s{font-size:var(--fs-small);font-weight:700;color:var(--c-text);display:block;margin-bottom:1px}
+.pcrit-p{font-size:var(--fs-micro);color:var(--c-muted);line-height:1.5;display:block}
+
+/* Firmas / footer */
+.psigs{padding:16px var(--page-x) 18px;display:flex;gap:40px;margin-top:8px;min-height:80px;break-inside:avoid;page-break-inside:avoid}
+.psig-box{flex:1;border-top:1pt solid var(--c-divider);padding-top:8px}
+.psig-lbl{font-size:var(--fs-micro);font-weight:700;text-transform:uppercase;letter-spacing:var(--ls-label);color:var(--c-muted-2)}
+.psig-name{font-size:var(--fs-small);color:var(--c-text);margin-top:28px}
+.pfoot{border-top:1pt solid var(--c-divider-soft);padding:10px var(--page-x);display:flex;justify-content:space-between;align-items:center}
+.pfoot-l{font-size:var(--fs-small);font-weight:600}
+.pfoot-r{font-size:var(--fs-micro);color:var(--c-muted-2)}
+
+/* Anti-huérfanos */
+.psec-t,.pobs-t,.pcond-t,.pcrit-t,.pnotes-t,.ptitle{break-after:avoid-page;page-break-after:avoid}
+
+/* Estimativo */
+.pest-header-bar{margin:0 32px 14px;padding:8px 14px;border-radius:5px;background:#d1fae5!important;border-left:4pt solid currentColor;display:flex;align-items:center;gap:8px}
+.pest-header-icon{font-size:13pt}
+.pest-header-lbl{font-size:9.5pt;font-weight:700}
+.pest-header-sub{font-size:8pt;color:#374151;margin-top:1px}
+.pest-item{padding:10px 0;border-bottom:.5pt solid #f1f5f4}
+.pest-item:last-child{border-bottom:none}
+.pest-items-wrap{padding:0 32px}
+.pest-item-num{font-size:8.5pt;font-weight:700;color:currentColor;margin-bottom:3px}
+.pest-item-title{font-size:10.5pt;font-weight:700;color:#1a1a1a;margin-bottom:3px}
+.pest-item-desc{font-size:9.5pt;color:#374151;line-height:1.55}
+.pest-item-price{font-size:10.5pt;font-weight:700;margin-top:5px}
+.pest-item-fixed-badge{font-size:7pt;font-weight:700;text-transform:uppercase;letter-spacing:.5px;background:#ede9fe;color:#5b21b6;padding:1px 6px;border-radius:8px;display:inline-block;margin-bottom:3px}
+.pest-services-section{padding:0 32px 10px}
+.pest-services-t{font-size:7.5pt;font-weight:700;text-transform:uppercase;letter-spacing:.9px;margin-bottom:7px;padding-bottom:3px;border-bottom:2pt solid #e2e8f0;color:#64748b}
+.pest-svc-row{display:flex;justify-content:space-between;align-items:baseline;padding:5px 0;border-bottom:.5pt solid #f1f5f4;font-size:9.5pt}
+.pest-svc-row:last-child{border-bottom:none}
+.pest-svc-desc{color:#374151}
+.pest-svc-price{font-weight:700;white-space:nowrap;margin-left:12px}
+.pest-disclaimer{margin:0 32px 12px;padding:10px 14px;background:#f8faf9;border-radius:6px;border-left:3pt solid #94a3b8;font-size:8.5pt;color:#475569;line-height:1.6}
+.pest-disclaimer-title{font-size:8pt;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#64748b;margin-bottom:5px}
+.pest-factors{padding:0 32px 12px}
+.pest-factors-t{font-size:7.5pt;font-weight:700;text-transform:uppercase;letter-spacing:.9px;margin-bottom:7px;padding-bottom:3px;border-bottom:2pt solid currentColor}
+.pest-factors-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px 16px}
+.pest-factor{font-size:8.5pt;color:#374151;padding:3px 0;padding-left:10px;position:relative}
+.pest-factor::before{content:'•';position:absolute;left:0;color:currentColor;font-weight:700}
+.pest-greeting{padding:0 32px 16px;font-size:9.5pt;color:#374151;font-style:italic}
+.pest-greeting-name{display:block;margin-top:4px;font-weight:600;font-style:normal;color:#1a1a1a}
+
+/* Íconos SVG del documento */
+.pdf-ic{width:1em;height:1em;vertical-align:-0.13em;margin-right:3px;display:inline-block;flex-shrink:0}
+.ph-contact .pdf-ic{opacity:.85}
+
+/* Registro fotográfico */
+.pphotos{padding:0 18mm 12px}
+.pphotos-t{font-size:9.5pt;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#64748b;margin-bottom:9px}
+.pphotos-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.pphoto{margin:0;break-inside:avoid;page-break-inside:avoid}
+.pphoto img{width:100%;height:auto;max-height:75mm;object-fit:cover;border:1px solid #e2e8f0;border-radius:8px;display:block}
+.pphoto figcaption{font-size:8.5pt;font-weight:600;color:#374151;margin-top:5px;text-align:center}
+
+/* ── TEMAS DE DISEÑO PDF ── */
+.pdoc.pdoc-theme-profesional{--c-bg-soft:#edf2f7;--c-zebra:transparent;--c-divider-soft:#c8d4e0}
+.pdoc.pdoc-theme-profesional .ph-badge{position:static;margin-left:auto;align-self:flex-start;text-align:right;border-radius:var(--r-sm)}
+.pdoc.pdoc-theme-calido{--c-bg-soft:#fdf8ee;--c-zebra:#fef9f3;--c-divider:#c8a87a;--c-divider-soft:#e8d5b0;--c-muted:#7d6241;--c-muted-2:#a08060;font-family:Georgia,'Times New Roman',serif}
+.pdoc.pdoc-theme-calido .ph{background:#fdfaf4}
+.pdoc.pdoc-theme-calido .ph-name,.pdoc.pdoc-theme-calido .ph-badge-num{font-family:'DM Serif Display',Georgia,serif}
+.pdoc.pdoc-theme-calido .ph-sub,.pdoc.pdoc-theme-calido .ph-contact{font-family:Georgia,'Times New Roman',serif}
+.pdoc.pdoc-theme-minimalista{--c-bg-soft:transparent;--c-zebra:transparent;--r-sm:0pt;--r-md:0pt;font-family:system-ui,-apple-system,Arial,sans-serif}
+.pdoc.pdoc-theme-minimalista .ph-badge{position:static;margin-left:auto;align-self:flex-start;text-align:left}
+.pdoc.pdoc-theme-minimalista .ph-name,.pdoc.pdoc-theme-minimalista .ph-badge-num{font-family:system-ui,-apple-system,Arial,sans-serif}
+
+/* ════════════════════════════════════════════════════════════════════
+   IMPRESIÓN — sólo @page + ocultar la UI. El documento usa los MISMOS
+   estilos de arriba (no hay copia duplicada).
+   ════════════════════════════════════════════════════════════════════ */
+@media print{
+  @page{
+    size:A4 portrait;
+    margin:0 0 14mm 0;
+    @bottom-center{
+      content:"Página " counter(page) " de " counter(pages);
+      font-family:'DM Sans',sans-serif;font-size:8.5pt;color:#94a3b8;padding-top:4mm;
+    }
+  }
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  html,body{background:#fff}
+  .controls,.hint-bar{display:none!important}
+  .stage{padding:0;min-height:0;display:block}
+  .paper-wrap{transform:none!important;height:auto!important}
+  .paper{box-shadow:none}
+  .doc-a4{width:210mm}
+}
+</style>
+</head>
+<body>
+
+<div class="controls">
+  <div class="group">
+    <label>Modo</label>
+    <div class="seg" id="mode-seg">
+      <button data-mode="normal" class="active">Normal</button>
+      <button data-mode="estimativo">Estimativo</button>
+    </div>
+  </div>
+  <div class="group">
+    <label>Tema</label>
+    <div class="seg" id="theme-seg">
+      <button data-theme="clasico" class="active">Clásico</button>
+      <button data-theme="profesional">Profesional</button>
+      <button data-theme="calido">Cálido</button>
+      <button data-theme="minimalista">Minimalista</button>
+    </div>
+  </div>
+  <div class="group">
+    <label>Color</label>
+    <div class="swatches" id="swatches"></div>
+    <input type="color" id="picker" value="#064e3b">
+  </div>
+  <button class="btn-print" onclick="window.print()">🖨️ Imprimir / Guardar PDF</button>
+</div>
+<div class="hint-bar">
+  Probá: cambiá <b>tema</b> y <b>color</b>, mirá la vista previa, y tocá <b>Imprimir / Guardar PDF</b> (elegí “Guardar como PDF”).
+  La vista previa y el PDF tienen que verse iguales — eso confirma que la fuente única de estilos sirve.
+</div>
+
+<div class="stage">
+  <div class="paper-wrap" id="paper-wrap">
+    <div class="paper doc-a4" id="paper"></div>
+  </div>
+</div>
+
+<script>
+// ── Estado de muestra (datos ficticios para la prueba) ──────────────
+let MODE  = 'normal';
+let THEME = 'clasico';
+let COLOR = '#064e3b';
+
+const PRESETS = ['#064e3b','#1e3a5f','#3b0764','#7c2d12','#713f12','#164e63','#1c1917','#0369a1'];
+
+// Íconos SVG mínimos (como en la app).
+function icon(name){
+  const p={
+    phone:'<path d="M4 4h4l2 5-3 2a11 11 0 005 5l2-3 5 2v4a2 2 0 01-2 2A16 16 0 014 6a2 2 0 012-2z" fill="currentColor"/>',
+    email:'<path d="M3 5h18v14H3z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3 6l9 7 9-7" fill="none" stroke="currentColor" stroke-width="2"/>',
+    location:'<path d="M12 2a7 7 0 00-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 00-7-7zm0 9.5A2.5 2.5 0 1112 6a2.5 2.5 0 010 5.5z" fill="currentColor"/>',
+    warning:'<path d="M12 2L1 21h22L12 2zm0 6v6m0 3v.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+    camera:'<path d="M4 7h4l2-2h4l2 2h4v12H4z" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="13" r="3.2" fill="none" stroke="currentColor" stroke-width="2"/>'
+  }[name]||'';
+  return '<svg class="pdf-ic" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">'+p+'</svg>';
+}
+function money(n){return '$'+n.toLocaleString('es-AR')}
+
+// ── Header (réplica de _buildDocHeader) ─────────────────────────────
+function header(badgeLabel, badgeDate, showPlaceholder){
+  const logo = showPlaceholder
+    ? '<div style="width:60px;height:60px;background:#f8faf9;border:1px dashed #cbd5e1;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:8pt;color:#94a3b8">LOGO</div>'
+    : '';
+  const contacts =
+    '<span class="ph-contact">'+icon('phone')+' 11 5555-1234</span>'+
+    '<span class="ph-contact">'+icon('email')+' info@podasdelsur.com.ar</span>'+
+    '<span class="ph-contact">'+icon('location')+' Zona Sur, GBA</span>'+
+    '<span class="ph-contact">CUIT: 20-12345678-9</span>';
+  const name='Podas del Sur', sub='Poda en Altura y Extracción de Árboles', num='0042';
+  const dateHTML = badgeDate ? '<div class="ph-badge-date">'+badgeDate+'</div>' : '';
+
+  if(THEME==='profesional'){
+    const dh = badgeDate ? '<div class="ph-badge-date" style="color:rgba(255,255,255,.65)">'+badgeDate+'</div>' : '';
+    return '<div class="ph" style="border-bottom:1.5pt solid #d1d5db">'+logo+
+      '<div class="ph-co"><div class="ph-name" style="color:'+COLOR+'">'+name+'</div>'+
+      '<div class="ph-sub">'+sub+'</div><div class="ph-contacts">'+contacts+'</div></div>'+
+      '<div class="ph-badge" style="background:'+COLOR+';padding:8pt 10pt">'+
+      '<div class="ph-badge-lbl" style="color:rgba(255,255,255,.75)">'+badgeLabel+'</div>'+
+      '<div class="ph-badge-num" style="color:#fff">'+num+'</div>'+dh+'</div></div>';
+  }
+  if(THEME==='minimalista'){
+    return '<div class="ph" style="border-bottom:1pt solid #d1d5db">'+logo+
+      '<div class="ph-co"><div class="ph-name" style="color:'+COLOR+';font-family:system-ui,-apple-system,Arial,sans-serif">'+name+'</div>'+
+      '<div class="ph-sub">'+sub+'</div><div class="ph-contacts">'+contacts+'</div></div>'+
+      '<div class="ph-badge" style="border-left:2pt solid '+COLOR+';padding-left:10pt">'+
+      '<div class="ph-badge-lbl">'+badgeLabel+'</div>'+
+      '<div class="ph-badge-num" style="color:'+COLOR+';font-family:system-ui,-apple-system,Arial,sans-serif">'+num+'</div>'+dateHTML+'</div></div>';
+  }
+  // clásico + cálido
+  return '<div class="ph" style="border-top:5px solid '+COLOR+'">'+logo+
+    '<div class="ph-co"><div class="ph-name" style="color:'+COLOR+'">'+name+'</div>'+
+    '<div class="ph-sub">'+sub+'</div><div class="ph-contacts">'+contacts+'</div></div>'+
+    '<div class="ph-badge"><div class="ph-badge-lbl">'+badgeLabel+'</div>'+
+    '<div class="ph-badge-num" style="color:'+COLOR+'">'+num+'</div>'+dateHTML+'</div></div>';
+}
+
+const clientGrid =
+  '<div class="pgrid"><div>'+
+    '<div class="pgrid-lbl">Cliente</div>'+
+    '<div class="pgrid-val">Consorcio Edificio San Martín</div>'+
+    '<div class="pgrid-sub">Adm. González — 11 4444-9876</div></div>'+
+    '<div class="pgrid-r"><div class="pgrid-lbl">Lugar del trabajo</div>'+
+    '<div class="pgrid-val">Av. Libertador 4521, CABA</div>'+
+    '<div class="pgrid-sub">Fecha de emisión: 08/06/2026</div></div></div>';
+
+// ── Documento NORMAL ────────────────────────────────────────────────
+function buildNormal(){
+  const rows =
+    '<tr><td class="td-n">1</td><td class="td-sp">Fresno</td><td class="td-wk">Poda de despeje sobre línea eléctrica y reducción de copa.</td><td class="td-pr">'+money(180000)+'</td></tr>'+
+    '<tr><td class="td-n">2</td><td class="td-sp">Eucalipto</td><td class="td-wk">Extracción total con desmembramiento controlado por proximidad a medianera.</td><td class="td-pr"><span class="qty-breakdown">2 × '+money(150000)+'</span>'+money(300000)+'</td></tr>'+
+    '<tr><td class="td-n">3</td><td class="td-sp">—</td><td class="td-wk">Retiro y disposición final de ramas y troncos.</td><td class="td-pr">'+money(60000)+'</td></tr>'+
+    '<tr class="nrow"><td></td><td colspan="3">Los trabajos en altura se realizan con técnicas de trepa y descenso controlado.</td></tr>';
+
+  return '<table class="pdoc pdoc-theme-'+THEME+'"><thead><tr><td>'+
+    header('Presupuesto N°', null, false)+
+    '</td></tr></thead><tbody><tr><td>'+
+    '<div class="ptitle-bar"><div class="ptitle" style="color:'+COLOR+';border-color:'+COLOR+'">Presupuesto de Servicio de Poda en Altura y Extracción de Árboles</div>'+
+    clientGrid+'</div>'+
+    '<div class="psec"><div class="psec-t">Detalles del Trabajo</div>'+
+    '<table class="ptable"><thead><tr><th style="width:18pt">#</th><th style="width:100pt">Especie/s</th><th>Trabajo a realizar</th><th class="thr">Costo</th></tr></thead>'+
+    '<tbody>'+rows+'</tbody></table></div>'+
+    '<div class="ptotals">'+
+    '<div class="pdisc-row"><span>Subtotal:</span><span>'+money(540000)+'</span></div>'+
+    '<div class="pdisc-row" style="color:#dc2626"><span>Descuento (10%):</span><span>− '+money(54000)+'</span></div>'+
+    '<div class="pdisc-note">Bonificación por pago contado al finalizar el trabajo.</div>'+
+    '<div class="ptotal-box" style="color:'+COLOR+';border-color:'+COLOR+';background:'+COLOR+'12">'+
+    '<div class="ptotal-lbl" style="color:'+COLOR+'">Costo Total del Trabajo</div>'+
+    '<div class="ptotal-amt" style="color:'+COLOR+'">'+money(486000)+'</div></div></div>'+
+    '<div class="pobs"><div class="pobs-t">Observaciones</div>'+
+    '<div class="pobs-txt">El trabajo se coordina con 48 hs de anticipación. Incluye corte de calzada si fuese necesario.</div></div>'+
+    '<div class="pcond"><div class="pcond-t">Condiciones de Pago</div>'+
+    '<div class="pcond-txt">50% al inicio, 50% al finalizar. Transferencia o efectivo.</div></div>'+
+    '<div class="pvalid"><span>'+icon('warning')+' PRESUPUESTO CON 30 DÍAS DE VIGENCIA</span>'+
+    '<span class="pvalid-date">Vence el 08/07/2026</span></div>'+
+    '<div class="pcrit"><div class="pcrit-t">Cómo Trabajamos</div><div class="pcrit-box">'+
+    '<div class="pcrit-intro">Cada trabajo es evaluado en función de sus condiciones reales. El costo refleja la complejidad técnica de cada situación:</div>'+
+    '<div class="pcrit-grid">'+
+    '<div class="pcrit-item"><span class="pcrit-s">Altura y Acceso</span><span class="pcrit-p">Evaluamos las condiciones de ingreso al árbol y la zona de trabajo antes de operar.</span></div>'+
+    '<div class="pcrit-item"><span class="pcrit-s">Volumen de Material</span><span class="pcrit-p">Planificamos el retiro ordenado para no comprometer el espacio ni la propiedad.</span></div>'+
+    '<div class="pcrit-item"><span class="pcrit-s">Riesgos Presentes</span><span class="pcrit-p">Identificamos proximidad a edificaciones, cercos o instalaciones.</span></div>'+
+    '<div class="pcrit-item"><span class="pcrit-s">Estado y Especie</span><span class="pcrit-p">La especie y condición sanitaria determinan la técnica y el tiempo.</span></div>'+
+    '</div></div></div>'+
+    '<div class="psigs"><div class="psig-box"><div class="psig-lbl">Firma del Titular</div><div class="psig-name">Podas del Sur</div></div>'+
+    '<div class="psig-box"><div class="psig-lbl">Conformidad del Cliente</div><div class="psig-name">Consorcio Edificio San Martín</div></div></div>'+
+    '<div class="pfoot"><span class="pfoot-l">Gracias por su confianza · Podas del Sur</span></div>'+
+    '</td></tr></tbody></table>';
+}
+
+// ── Documento ESTIMATIVO ────────────────────────────────────────────
+function buildEstimativo(){
+  return '<table class="pdoc pdoc-theme-'+THEME+'"><thead><tr><td>'+
+    header('Presupuesto Estimativo N°', 'Fecha: 08/06/2026', true)+
+    '</td></tr></thead><tbody><tr><td>'+
+    '<div class="ptitle-bar"><div class="ptitle" style="color:'+COLOR+';border-color:'+COLOR+'">Presupuesto Estimativo por Fotografías</div>'+
+    clientGrid+'</div>'+
+    '<div class="pest-header-bar" style="color:'+COLOR+'">'+
+    '<span class="pest-header-icon">'+icon('camera')+'</span>'+
+    '<div><div class="pest-header-lbl">Estimación a partir de fotografías</div>'+
+    '<div class="pest-header-sub">Valores orientativos sujetos a confirmación en visita técnica.</div></div></div>'+
+    '<div class="pest-items-wrap">'+
+    '<div class="pest-item"><div class="pest-item-num" style="color:'+COLOR+'">ÍTEM 1</div>'+
+    '<div class="pest-item-title">Fresno sobre vereda</div>'+
+    '<div class="pest-item-desc">Poda de despeje y reducción de copa. Altura estimada 9 m.</div>'+
+    '<div class="pest-item-price" style="color:'+COLOR+'">'+money(170000)+' aprox.</div></div>'+
+    '<div class="pest-item"><span class="pest-item-fixed-badge">Precio fijo</span>'+
+    '<div class="pest-item-num" style="color:'+COLOR+'">ÍTEM 2</div>'+
+    '<div class="pest-item-title">Retiro de material</div>'+
+    '<div class="pest-item-desc">Carga y disposición final.</div>'+
+    '<div class="pest-item-price" style="color:'+COLOR+'">'+money(60000)+'</div></div></div>'+
+    '<div class="pest-factors"><div class="pest-factors-t" style="color:'+COLOR+'">Factores que pueden ajustar el valor</div>'+
+    '<div class="pest-factors-grid">'+
+    '<div class="pest-factor">Acceso de la grúa / camión</div>'+
+    '<div class="pest-factor">Estado sanitario real del árbol</div>'+
+    '<div class="pest-factor">Proximidad a cables o medianeras</div>'+
+    '<div class="pest-factor">Volumen final de material</div></div></div>'+
+    '<div class="pest-disclaimer"><div class="pest-disclaimer-title">Importante</div>'+
+    'Esta estimación se basa únicamente en las fotos provistas. El valor final se confirma tras la inspección presencial.</div>'+
+    '<div class="pest-greeting">Quedamos a disposición para coordinar una visita sin cargo.'+
+    '<span class="pest-greeting-name">Podas del Sur</span></div>'+
+    '</td></tr></tbody></table>';
+}
+
+// ── Render + escalado de la vista previa ────────────────────────────
+const paper = document.getElementById('paper');
+const wrap  = document.getElementById('paper-wrap');
+
+function render(){
+  paper.className = 'paper doc-a4';
+  paper.innerHTML = (MODE==='normal' ? buildNormal() : buildEstimativo());
+  scaleToFit();
+}
+function scaleToFit(){
+  wrap.style.transform = 'scale(1)';
+  const stagePad = 48;
+  const avail = window.innerWidth - stagePad;
+  const natural = paper.offsetWidth; // 210mm en px
+  const s = Math.min(1, avail / natural);
+  wrap.style.transform = 'scale('+s+')';
+  wrap.style.height = (paper.offsetHeight * s) + 'px';
+}
+
+// Swatches de color
+const sw = document.getElementById('swatches');
+PRESETS.forEach(c=>{
+  const b=document.createElement('div');
+  b.className='swatch'+(c===COLOR?' active':''); b.style.background=c; b.dataset.color=c;
+  b.onclick=()=>{ COLOR=c; document.getElementById('picker').value=c; syncSwatches(); render(); };
+  sw.appendChild(b);
+});
+function syncSwatches(){ document.querySelectorAll('.swatch').forEach(s=>s.classList.toggle('active', s.dataset.color===COLOR)); }
+document.getElementById('picker').oninput = e=>{ COLOR=e.target.value; syncSwatches(); render(); };
+
+document.getElementById('mode-seg').onclick = e=>{
+  if(!e.target.dataset.mode) return;
+  MODE=e.target.dataset.mode;
+  document.querySelectorAll('#mode-seg button').forEach(b=>b.classList.toggle('active', b===e.target));
+  render();
+};
+document.getElementById('theme-seg').onclick = e=>{
+  if(!e.target.dataset.theme) return;
+  THEME=e.target.dataset.theme;
+  document.querySelectorAll('#theme-seg button').forEach(b=>b.classList.toggle('active', b===e.target));
+  render();
+};
+
+window.addEventListener('resize', scaleToFit);
+window.addEventListener('load', render);
+render();
+</script>
+</body>
+</html>
