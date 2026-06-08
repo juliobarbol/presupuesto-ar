@@ -1,6 +1,4 @@
-// ============================================================
 //  sw.js - Service Worker - Presupuestos (Poda en Altura AR)
-// ============================================================
 //  Estrategia (robusta ante actualizaciones):
 //   - Navegaciones (abrir la app): NETWORK-FIRST con timeout y fallback
 //     a cache. Al abrir, siempre intentamos traer la version nueva desde
@@ -14,9 +12,9 @@
 //   - Recursos externos (fuentes de Google, CDNs): pasan directo a la red.
 //
 //  Para forzar actualizacion tras un deploy: subir el CACHE_VERSION.
-// ============================================================
 
 const CACHE_VERSION = 'presupuesto-v22';
+const CACHE_VERSION = 'presupuesto-v21';
 const APP_SHELL = [
   './',
   './index.html',
