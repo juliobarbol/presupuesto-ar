@@ -27,6 +27,7 @@ a{-webkit-tap-highlight-color:transparent}
   --accent-light:#d1fae5;
   --bg:#f0f4f3;
   --panel:#ffffff;
+  --card:#ffffff;
   --border:#e2e8f0;
   --text:#1a2e25;
   --text-2:#374151;
@@ -4767,7 +4768,7 @@ function restoreUI() {
   // color
   const cp = document.getElementById('color-picker'); if(cp) cp.value = S.accentColor;
   const hx = document.getElementById('color-hex'); if(hx) hx.textContent = S.accentColor;
-  document.documentElement.style.setProperty('--accent', S.accentColor);
+  applyAccent(S.accentColor);
   document.querySelectorAll('.cpreset').forEach(el=>el.classList.toggle('active', el.dataset.color===S.accentColor));
   // pdf theme
   const _thm = S.pdfTheme || 'clasico';
@@ -5211,9 +5212,34 @@ function applyNumConfig() {
 }
 
 // ─── COLOR ───────────────────────────────────
+// Aplica el color de marca a la UI de pantalla. Además del --accent
+// derivamos un --accent-light coherente (tinte claro usado en hovers,
+// chips, badges y fondos suaves) para que al elegir un color que NO sea
+// el verde por defecto la interfaz no quede con restos verdes.
+// Para el verde por defecto se conserva el mint original del CSS.
+function applyAccent(c) {
+  document.documentElement.style.setProperty('--accent', c);
+  if (c && String(c).toLowerCase() !== '#064e3b') {
+    document.documentElement.style.setProperty('--accent-light', accentTint(c));
+  } else {
+    document.documentElement.style.removeProperty('--accent-light');
+  }
+}
+// Mezcla un color hex con blanco para obtener un tinte claro (~88% blanco).
+function accentTint(c) {
+  try {
+    let h = String(c).replace('#', '');
+    if (h.length === 3) h = h.split('').map(x => x + x).join('');
+    const n = parseInt(h, 16);
+    const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+    const mix = v => Math.round(v * 0.12 + 255 * 0.88);
+    return `rgb(${mix(r)},${mix(g)},${mix(b)})`;
+  } catch (e) { return '#d1fae5'; }
+}
+
 function applyColor(c) {
   S.accentColor = c;
-  document.documentElement.style.setProperty('--accent', c);
+  applyAccent(c);
   const hx = document.getElementById('color-hex'); if(hx) hx.textContent = c;
   const cp = document.getElementById('color-picker'); if(cp) cp.value = c;
   document.querySelectorAll('.cpreset').forEach(el=>el.classList.toggle('active', el.dataset.color===c));
