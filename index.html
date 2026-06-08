@@ -15,7 +15,6 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
 <style>
 /* ===== css/base.css ===== */
-/* ===== css/base.css ===== */
 /* ═══════════════════════════════════════
    BASE.CSS — Reset, variables, layout principal
 ═══════════════════════════════════════ */
@@ -23,8 +22,14 @@
 button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 a{-webkit-tap-highlight-color:transparent}
 :root{
+  color-scheme:light;
   --accent:#064e3b;
   --accent-light:#d1fae5;
+  /* Tonos derivados del color de marca (los reescribe applyAccent en JS
+     cuando el usuario elige un color distinto al verde por defecto). */
+  --accent-rgb:6,78,59;
+  --accent-dark:#043f2f;
+  --accent-2:#0a7a5a;
   --bg:#f0f4f3;
   --panel:#ffffff;
   --card:#ffffff;
@@ -87,7 +92,7 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;font-size:14px;background
 #toast-container{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:9000;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none}
 .toast{background:#1a2e25;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:500;box-shadow:0 4px 16px rgba(0,0,0,.2);opacity:0;transform:translateY(8px);transition:.25s;pointer-events:none;white-space:nowrap;max-width:90vw}
 .toast.show{opacity:1;transform:translateY(0)}
-.toast.toast-ok{background:#064e3b}
+.toast.toast-ok{background:var(--accent)}
 .toast.toast-err{background:#dc2626}
 .toast.toast-info{background:#1e40af}
 
@@ -122,7 +127,6 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;font-size:14px;background
 }
 
 /* ===== css/components.css ===== */
-/* ===== css/components.css ===== */
 /* ═══════════════════════════════════════
    COMPONENTS.CSS — Formularios, botones, ítems, UI del editor
 ═══════════════════════════════════════ */
@@ -131,7 +135,7 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;font-size:14px;background
 .fg{margin-bottom:14px}
 .fg label{display:block;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
 .fg input,.fg textarea,.fg select{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:#fff;outline:none;transition:.15s;-webkit-appearance:none;appearance:none}
-.fg input:focus,.fg textarea:focus,.fg select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(6,78,59,.1)}
+.fg input:focus,.fg textarea:focus,.fg select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(var(--accent-rgb),.1)}
 .fg textarea{resize:none;min-height:60px}
 .fg input[readonly]{background:#f8faf9;cursor:default}
 .r2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
@@ -161,7 +165,7 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;font-size:14px;background
 
 /* BUTTONS */
 .btn{display:inline-flex;align-items:center;gap:5px;padding:8px 14px;border-radius:7px;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;transition:.15s}
-.btn-p{background:var(--accent);color:#fff}.btn-p:hover{background:#043f2f}
+.btn-p{background:var(--accent);color:#fff}.btn-p:hover{background:var(--accent-dark)}
 .btn-s{background:#f1f5f4;color:var(--text);border:1px solid var(--border)}.btn-s:hover{background:#e5ebe9}
 .btn-d{background:var(--red-light);color:var(--red);border:1px solid #fca5a5}.btn-d:hover{background:#fecaca}
 .btn-g{background:transparent;color:var(--muted);padding:5px 9px}.btn-g:hover{background:#f1f5f4;color:var(--text)}
@@ -188,9 +192,9 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;font-size:14px;background
 @media(max-width:600px){.item-grid-2{grid-template-columns:1fr}.item-grid-2.mb8{margin-bottom:8px}}
 .isub{font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px}
 .ii{width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:5px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:#fff;outline:none;transition:.15s;-webkit-appearance:none;appearance:none}
-.ii:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(6,78,59,.08)}
+.ii:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(var(--accent-rgb),.08)}
 .ita{width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:5px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:#fff;outline:none;resize:none;min-height:52px;transition:.15s;-webkit-appearance:none;appearance:none}
-.ita:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(6,78,59,.08)}
+.ita:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(var(--accent-rgb),.08)}
 
 /* TOGGLE */
 .trow{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid #f1f5f4}
@@ -324,7 +328,7 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;font-size:14px;background
 .btn-cta{
   width:100%;padding:14px 16px;font-size:15px;font-weight:700;
   margin-bottom:10px;
-  box-shadow:0 2px 8px rgba(6,78,59,.18);
+  box-shadow:0 2px 8px rgba(var(--accent-rgb),.18);
 }
 .actions-secondary{
   display:flex;gap:8px;
@@ -521,7 +525,7 @@ input[type=file]{display:none}
 
 /* HISTORY SEARCH */
 .hsearch{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:#fff;outline:none;transition:.15s;margin-bottom:12px;-webkit-appearance:none;appearance:none}
-.hsearch:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(6,78,59,.1)}
+.hsearch:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(var(--accent-rgb),.1)}
 
 /* MODE SWITCH */
 .mode-switch{display:flex;align-items:stretch;gap:0;background:#f1f5f4;border:1px solid var(--border);border-radius:9px;padding:3px;margin-bottom:18px}
@@ -529,11 +533,11 @@ input[type=file]{display:none}
 .mode-btn-title{font-size:12px;font-weight:600;display:block}
 .mode-btn-sub{font-size:10px;font-weight:400;opacity:.75;display:block}
 .mode-btn.active{background:#fff;color:var(--accent);box-shadow:0 1px 4px rgba(0,0,0,.10)}
-.mode-btn.active.est{background:var(--accent);color:#fff;box-shadow:0 1px 6px rgba(6,78,59,.25)}
+.mode-btn.active.est{background:var(--accent);color:#fff;box-shadow:0 1px 6px rgba(var(--accent-rgb),.25)}
 .mode-btn.active .mode-btn-sub{opacity:.85}
 
 /* ESTIMATIVE BANNER */
-#est-banner{background:linear-gradient(135deg,var(--accent),#0a7a5a);border-radius:10px;padding:12px 16px;margin-bottom:16px;align-items:flex-start;gap:10px;display:none}
+#est-banner{background:linear-gradient(135deg,var(--accent),var(--accent-2));border-radius:10px;padding:12px 16px;margin-bottom:16px;align-items:flex-start;gap:10px;display:none}
 #est-banner.show{display:flex}
 .est-banner-icon{font-size:22px;flex-shrink:0;margin-top:1px}
 .est-banner-body{flex:1}
@@ -546,7 +550,7 @@ input[type=file]{display:none}
 .hbadge-estado{display:inline-block;font-size:10px;font-weight:700;padding:1px 8px;border-radius:8px;margin-left:6px;vertical-align:middle;text-transform:uppercase;letter-spacing:.3px}
 /* Selector de estado en la tarjeta del historial */
 .hestado-sel{font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;color:var(--text);background:#fff;border:1px solid var(--border);border-radius:6px;padding:5px 8px;outline:none;-webkit-appearance:none;appearance:none;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2364748b' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;padding-right:26px}
-.hestado-sel:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(6,78,59,.1)}
+.hestado-sel:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(var(--accent-rgb),.1)}
 /* Toast con botón de acción (ej: "¿Marcar como enviado?") */
 .toast-action{display:flex;align-items:center;gap:12px}
 .toast-action .toast-btn{font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;color:#fff;background:var(--accent);border:none;border-radius:6px;padding:6px 12px;cursor:pointer;white-space:nowrap}
@@ -877,7 +881,6 @@ input[type=file]{display:none}
 .item-photo-remove{position:absolute;top:-8px;right:-8px;width:24px;height:24px;border-radius:50%;background:var(--red);color:#fff;border:2px solid #fff;font-size:12px;font-weight:700;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,.2)}
 
 /* ===== css/print.css ===== */
-/* ===== css/print.css ===== */
 /* ═══════════════════════════════════════
    PRINT.CSS — Estilos de impresión / PDF y tab Facturación
 ═══════════════════════════════════════ */
@@ -1182,7 +1185,7 @@ input[type=file]{display:none}
 }
 
 /* ── FACTURACIÓN ── */
-.fact-hero{background:linear-gradient(135deg,#064e3b,#0a7a5a);border-radius:12px;padding:18px 20px;margin-bottom:18px;color:#fff}
+.fact-hero{background:linear-gradient(135deg,var(--accent),var(--accent-2));border-radius:12px;padding:18px 20px;margin-bottom:18px;color:#fff}
 .fact-hero-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .fact-hero-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;opacity:.7;margin-bottom:4px}
 .fact-hero-val{font-family:'DM Serif Display',serif;font-size:28px;line-height:1}
@@ -1210,7 +1213,7 @@ input[type=file]{display:none}
 
 .fact-tope-row{display:flex;align-items:center;gap:10px;background:#f8faf9;border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:14px}
 .fact-tope-row input{flex:1;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:#fff;outline:none;-webkit-appearance:none;appearance:none}
-.fact-tope-row input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(6,78,59,.1)}
+.fact-tope-row input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(var(--accent-rgb),.1)}
 .fact-tope-row label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;white-space:nowrap}
 
 .fact-reg-list{margin-bottom:12px}
@@ -2632,7 +2635,6 @@ input[type=file]{display:none}
 'use strict';
 
 // ===== js/state.js =====
-// ===== js/state.js =====
 // ═══════════════════════════════════════
 // STATE.JS — Estado global, localStorage, helpers básicos
 // ═══════════════════════════════════════
@@ -3229,7 +3231,6 @@ function normalizeArgPhone(raw) {
 }
 
 // ===== js/clients.js =====
-// ===== js/clients.js =====
 // ═══════════════════════════════════════
 // CLIENTS.JS — Base de clientes, especies, autocompletar
 // ═══════════════════════════════════════
@@ -3792,7 +3793,6 @@ async function importFromContacts() {
 }
 
 // ===== js/phrases.js =====
-// ===== js/phrases.js =====
 // ═══════════════════════════════════════
 // FRASES RÁPIDAS — biblioteca de frases reusables para insertar en
 // textareas de descripción, observaciones y condiciones de pago.
@@ -4082,7 +4082,6 @@ function addPhraseFromInput() {
   }
 }
 
-// ===== js/items.js =====
 // ===== js/items.js =====
 // ═══════════════════════════════════════
 // ITEMS.JS — Ítems normales, estimativos y recargo (surcharge)
@@ -4715,7 +4714,6 @@ function compressImage(file, maxSide, quality) {
 }
 
 // ===== js/ui.js =====
-// ===== js/ui.js =====
 // ═══════════════════════════════════════
 // UI.JS — Restore/sync UI, tabs, modo, color, logo, fechas, numeración
 // ═══════════════════════════════════════
@@ -5218,23 +5216,37 @@ function applyNumConfig() {
 // el verde por defecto la interfaz no quede con restos verdes.
 // Para el verde por defecto se conserva el mint original del CSS.
 function applyAccent(c) {
-  document.documentElement.style.setProperty('--accent', c);
-  if (c && String(c).toLowerCase() !== '#064e3b') {
-    document.documentElement.style.setProperty('--accent-light', accentTint(c));
+  const root = document.documentElement.style;
+  root.setProperty('--accent', c);
+  const rgb = _hexToRgb(c);
+  // Para el verde por defecto se quitan los overrides y rige el CSS de
+  // :root (look idéntico al original). Para cualquier otro color se
+  // derivan tonos coherentes para hovers, sombras, anillos y gradientes.
+  if (rgb && String(c).toLowerCase() !== '#064e3b') {
+    const [r, g, b] = rgb;
+    root.setProperty('--accent-rgb',   `${r},${g},${b}`);
+    root.setProperty('--accent-light', _mixWhite(r, g, b, 0.88));
+    root.setProperty('--accent-dark',  _mixBlack(r, g, b, 0.18));
+    root.setProperty('--accent-2',     _mixWhite(r, g, b, 0.25));
   } else {
-    document.documentElement.style.removeProperty('--accent-light');
+    ['--accent-rgb', '--accent-light', '--accent-dark', '--accent-2']
+      .forEach(v => root.removeProperty(v));
   }
 }
-// Mezcla un color hex con blanco para obtener un tinte claro (~88% blanco).
-function accentTint(c) {
-  try {
-    let h = String(c).replace('#', '');
-    if (h.length === 3) h = h.split('').map(x => x + x).join('');
-    const n = parseInt(h, 16);
-    const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
-    const mix = v => Math.round(v * 0.12 + 255 * 0.88);
-    return `rgb(${mix(r)},${mix(g)},${mix(b)})`;
-  } catch (e) { return '#d1fae5'; }
+function _hexToRgb(c) {
+  let h = String(c).replace('#', '');
+  if (h.length === 3) h = h.split('').map(x => x + x).join('');
+  if (!/^[0-9a-f]{6}$/i.test(h)) return null;
+  const n = parseInt(h, 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+function _mixWhite(r, g, b, t) {
+  const m = v => Math.round(v * (1 - t) + 255 * t);
+  return `rgb(${m(r)},${m(g)},${m(b)})`;
+}
+function _mixBlack(r, g, b, t) {
+  const m = v => Math.round(v * (1 - t));
+  return `rgb(${m(r)},${m(g)},${m(b)})`;
 }
 
 function applyColor(c) {
@@ -5450,7 +5462,6 @@ function checkBackupReminder() {
   }, 2500);
 }
 
-// ===== js/history.js =====
 // ===== js/history.js =====
 // ═══════════════════════════════════════
 // HISTORY.JS — Historial de presupuestos, nuevo presupuesto
@@ -6175,7 +6186,6 @@ async function newQuote() {
 }
 
 // ===== js/exportimport.js =====
-// ===== js/exportimport.js =====
 // ═══════════════════════════════════════
 // EXPORTIMPORT.JS — Exportar e importar JSON y backups
 // ═══════════════════════════════════════
@@ -6698,7 +6708,6 @@ function gdriveInitOnLoad(){
   }).catch(() => { /* no se pudo renovar callado: la UI ofrece reconectar */ });
 }
 
-// ===== js/pdf.js =====
 // ===== js/pdf.js =====
 // ═══════════════════════════════════════
 // PDF.JS — Construcción del documento para impresión/PDF
@@ -7513,7 +7522,6 @@ function buildEstDoc() {
 }
 
 // ===== js/facturacion.js =====
-// ===== js/facturacion.js =====
 // ═══════════════════════════════════════
 // FACTURACION.JS — Tab de facturación / control de tope Monotributo
 // ═══════════════════════════════════════
@@ -7717,7 +7725,6 @@ function factTopeChanged() {
   // live preview — no guardamos hasta que presiona Guardar
 }
 
-// ===== js/core.js =====
 // ===== js/core.js =====
 // ═══════════════════════════════════════
 // CORE.JS — Inicialización principal de la app
