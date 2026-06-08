@@ -5270,6 +5270,26 @@ function checkStorageAvailable() {
   }
 }
 
+// Pide al navegador que marque el almacenamiento de la app como persistente
+// (no lo borre automáticamente). Crítico en Brave/Safari, que de lo contrario
+// pueden limpiar localStorage entre sesiones sin avisar.
+// Se llama solo cuando ya hay datos para proteger; si el navegador rechaza
+// la persistencia, muestra un aviso para que el usuario haga backup manual.
+function requestPersistentStorage() {
+  if (!navigator.storage || !navigator.storage.persist) return;
+  navigator.storage.persisted().then(already => {
+    if (already) return; // ya es persistente, nada que hacer
+    navigator.storage.persist().then(granted => {
+      if (!granted) {
+        // El navegador no garantiza persistencia: avisamos con discreción.
+        setTimeout(() => {
+          toast('⚠️ Este navegador puede borrar los datos al cerrar. Hacé backup en Drive o exportá el archivo para no perderlos.', 'info', 9000);
+        }, 3000);
+      }
+    });
+  });
+}
+
 // Recuerda hacer backup si hay presupuestos guardados y pasó tiempo desde
 // el último. No bloquea: es un toast informativo de mayor duración.
 function checkBackupReminder() {
@@ -7580,6 +7600,10 @@ window.addEventListener('DOMContentLoaded', () => {
   if (checkStorageAvailable()) {
     maybeShowWelcome();
     checkBackupReminder();
+    // Pedir al navegador que no borre los datos automáticamente (Brave/Safari).
+    // Solo cuando hay presupuestos guardados para proteger.
+    const _h = (typeof getH === 'function') ? getH() : [];
+    if (_h.length) requestPersistentStorage();
   }
 
   // Copia de seguridad en Google Drive (inerte si no está configurada).
