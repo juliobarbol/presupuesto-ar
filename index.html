@@ -913,8 +913,16 @@ input[type=file]{display:none}
   #toast-container{display:none!important}
   #print-zone{display:block!important}
   body,html{margin:0;padding:0;background:#fff}
+}
 
-  #doc-a4{
+/* ── DOCUMENTO (.pdoc) — FUENTE ÚNICA ─────────────────────────────────
+   La misma hoja se usa en impresión y en la vista previa en pantalla.
+   Las clases .pdoc/.ph/.ptable/... sólo existen dentro de #doc-a4
+   (oculto fuera de impresión) o de .doc-a4-screen (preview), por eso
+   definirlas en ámbito global no afecta a la UI de la app. Antes esto
+   estaba duplicado: una copia en @media print y otra prefijada con
+   .doc-preview-host (que divergían con facilidad). Ahora es una sola. ── */
+  #doc-a4,.doc-a4-screen{
     width:210mm;
     font-family:'DM Sans',sans-serif;
     font-size:11pt;color:#1a1a1a;background:#fff;
@@ -1182,7 +1190,6 @@ input[type=file]{display:none}
 
   .pest-greeting{padding:0 32px 16px;font-size:9.5pt;color:#374151;font-style:italic}
   .pest-greeting-name{display:block;margin-top:4px;font-weight:600;font-style:normal;color:#1a1a1a}
-}
 
 /* ── FACTURACIÓN ── */
 .fact-hero{background:linear-gradient(135deg,var(--accent),var(--accent-2));border-radius:12px;padding:18px 20px;margin-bottom:18px;color:#fff}
@@ -1285,244 +1292,6 @@ input[type=file]{display:none}
 .doc-preview-host{display:block}
 .doc-preview-host .doc-a4-screen{box-sizing:border-box}
 
-.doc-preview-host .doc-a4-screen{
-    width:210mm;
-    font-family:'DM Sans',sans-serif;
-    font-size:11pt;color:#1a1a1a;background:#fff;
-    margin:0;padding:0;
-
-    /* ── DESIGN TOKENS ──────────────────────────────────────────────
-       Escala tipográfica armónica (5 niveles). Antes había 9 tamaños
-       distintos compitiendo entre sí; ahora hay una progresión clara
-       que el ojo lee sin esfuerzo:
-       - micro:  labels uppercase, número de página, footer secundario
-       - small:  cuerpo secundario (observaciones, condiciones, notas)
-       - body:   cuerpo principal de tabla y datos
-       - h3:     títulos de sección secundaria (gris)
-       - h2:     títulos de sección primaria (con color de marca)
-       - display: total y número de presupuesto (máxima jerarquía)         */
-    --fs-micro:   7.5pt;
-    --fs-small:   9.5pt;
-    --fs-body:    11pt;
-    --fs-h3:      9pt;
-    --fs-h2:      12pt;
-    --fs-display: 22pt;
-
-    /* Paleta neutra. El color de marca (accentColor) se usa solo
-       inline desde JS en 3 lugares: nombre del emisor, número de
-       presupuesto, y la caja del Costo Total. Los títulos de sección
-       usan grises neutros para no competir. */
-    --c-text:     #1a1a1a;
-    --c-text-2:   #374151;
-    --c-muted:    #64748b;
-    --c-muted-2:  #94a3b8;
-    --c-divider:  #d1d5db;
-    --c-divider-soft: #e5e7eb;
-    --c-bg-soft:  #f8faf9;
-    --c-zebra:    #fafbfc;
-
-    /* Sistema de radios consistente */
-    --r-sm: 4pt;
-    --r-md: 8pt;
-
-    /* Márgen lateral unificado de todo el documento */
-    --page-x: 18mm;
-
-    /* Letter-spacing único para labels uppercase */
-    --ls-label: .8px;
-  }
-.doc-preview-host /* WRAPPER TABLE: el documento entero está envuelto en .pdoc.
-     - <thead> contiene el header del documento (logo + emisor + badge)
-       y se repite en cada página de manera nativa.
-     - <tbody> contiene el resto del presupuesto (título, datos cliente, tabla de ítems, totales, observaciones, etc.).
-     - border-collapse + padding:0 en td evita espaciado extra. */
-  .pdoc{
-    width:100%;
-    border-collapse:collapse;
-    table-layout:fixed;
-  }
-.doc-preview-host .pdoc > thead{display:table-header-group}
-.doc-preview-host .pdoc > tbody{display:table-row-group}
-.doc-preview-host .pdoc > thead > tr > td, .doc-preview-host .pdoc > tbody > tr > td{
-    padding:0;
-    border:0;
-    vertical-align:top;
-  }
-.doc-preview-host /* IMPORTANTE: el <tr> y <td> del tbody DEBEN poder romperse entre
-     páginas (sino todo el contenido se forzaría a una sola página).
-     Algunos navegadores tratan los tr como "no romper" por default. */
-  .pdoc > tbody > tr, .doc-preview-host .pdoc > tbody > tr > td{
-    break-inside:auto;
-    page-break-inside:auto;
-  }
-.doc-preview-host /* HEADER (.ph): ahora vive dentro de <thead><tr><td>. Ya no es fixed.
-     Es bloque normal, pero como está en el <thead> de la tabla wrapper, se repite en cada página. Padding lateral unificado con el resto
-     del documento via --page-x. */
-  .ph{padding:16px var(--page-x) 12px;display:flex;align-items:flex-start;gap:18px;position:relative;background:#fff}
-.doc-preview-host .ph-logo{max-height:54px;max-width:115px;object-fit:contain}
-.doc-preview-host /* Si no hay logo, ph-co ocupa todo el espacio (sin placeholder feo) */
-  .ph-co{flex:1;min-width:0}
-.doc-preview-host .ph-name{font-family:'DM Serif Display',serif;font-size:17pt;line-height:1.1;margin-bottom:2px}
-.doc-preview-host .ph-sub{font-size:var(--fs-small);color:var(--c-muted);margin-bottom:5px}
-.doc-preview-host .ph-contacts{display:flex;flex-wrap:wrap;gap:2px 14px}
-.doc-preview-host .ph-contact{font-size:8.5pt;color:var(--c-muted)}
-.doc-preview-host /* Badge del N° presupuesto: ahora SIN fecha duplicada (la fecha vive
-     en el bloque cliente abajo). Más limpio, más jerarquía al número. */
-  .ph-badge{position:absolute;top:16px;right:var(--page-x);text-align:right}
-.doc-preview-host .ph-badge-lbl{font-size:var(--fs-micro);font-weight:700;text-transform:uppercase;letter-spacing:var(--ls-label);color:var(--c-muted-2);margin-bottom:2px}
-.doc-preview-host .ph-badge-num{font-family:'DM Serif Display',serif;font-size:var(--fs-h2);line-height:1}
-.doc-preview-host /* EVITAR CORTES DE BLOQUES
-     Cada sección compacta queda entera; si no entra en la página, salta
-     a la siguiente completa. La tabla principal (.psec) SÍ puede partirse
-     a lo largo de varias páginas — pero cada fila individual y el thead
-     quedan intactos (ver reglas debajo). */
-  .ptitle-bar, .doc-preview-host .ptotals, .doc-preview-host .pobs, .doc-preview-host .pcond, .doc-preview-host .pvalid, .doc-preview-host .pcrit, .doc-preview-host .pnotes, .doc-preview-host .psigs, .doc-preview-host .pfoot, .doc-preview-host .pest-header-bar, .doc-preview-host .pest-disclaimer, .doc-preview-host .pest-factors, .doc-preview-host .pest-greeting, .doc-preview-host .pest-item{
-    break-inside:avoid;
-    page-break-inside:avoid;
-  }
-.doc-preview-host /* Filas de la tabla principal: no partir una fila a la mitad */
-  .ptable tr{break-inside:avoid;page-break-inside:avoid}
-.doc-preview-host /* El thead de la tabla interna se repite naturalmente en cada página */
-  .ptable thead{display:table-header-group}
-.doc-preview-host /* ──────────────────────────────────────────────────────────────
-     TÍTULO DEL DOCUMENTO + DATOS DEL CLIENTE
-     ────────────────────────────────────────────────────────────── */
-  .ptitle-bar{padding:0 var(--page-x);margin-bottom:14px}
-.doc-preview-host /* Título del documento: H2 sobrio, sin uppercase, sin border grueso.
-     Usa el color de marca via style inline desde JS (uno de los 3
-     lugares permitidos para el accent). */
-  .ptitle{font-family:'DM Serif Display',serif;font-size:14pt;line-height:1.25;padding-bottom:6px;margin-bottom:12px;border-bottom:1pt solid var(--c-divider-soft);word-break:break-word;hyphens:auto;max-width:75%}
-.doc-preview-host .pgrid{display:grid;grid-template-columns:1fr 1fr;padding:12px 14px;background:var(--c-bg-soft);border-radius:var(--r-md);gap:14px;border:1px solid var(--c-divider-soft)}
-.doc-preview-host .pgrid-lbl{font-size:var(--fs-micro);font-weight:700;text-transform:uppercase;letter-spacing:var(--ls-label);color:var(--c-muted-2);margin-bottom:3px}
-.doc-preview-host /* word-break para clientes largos tipo "Consorcio del Edif. San Martín..." */
-  .pgrid-val{font-size:var(--fs-body);font-weight:500;word-break:break-word;hyphens:auto}
-.doc-preview-host .pgrid-sub{font-size:var(--fs-small);color:var(--c-muted)}
-.doc-preview-host .pgrid-r{border-left:1pt solid var(--c-divider-soft);padding-left:14px}
-.doc-preview-host /* ──────────────────────────────────────────────────────────────
-     SECCIÓN DE ÍTEMS (psec) — H2 primario
-     Antes el título era 7.5pt uppercase con border verde grueso, igual
-     que todos los demás títulos. Ahora es H2 (12pt regular case) con
-     más jerarquía y borde sutil neutro. El color de marca se aplica
-     inline desde JS solo en el título principal del documento.
-     ────────────────────────────────────────────────────────────── */
-  .psec{padding:14px var(--page-x) 0}
-.doc-preview-host .psec-t{font-family:'DM Sans',sans-serif;font-size:var(--fs-h2);font-weight:700;letter-spacing:0;color:var(--c-text);margin-bottom:10px;padding-bottom:5px;border-bottom:1pt solid var(--c-divider)}
-.doc-preview-host /* TABLA: zebra-stripes sutiles, encabezados más legibles */
-  .ptable{width:100%;border-collapse:collapse}
-.doc-preview-host .ptable thead th{font-size:var(--fs-micro);font-weight:700;text-transform:uppercase;letter-spacing:var(--ls-label);color:var(--c-muted);padding:6px 5px;text-align:left;border-bottom:1.5pt solid var(--c-divider);background:var(--c-bg-soft)}
-.doc-preview-host .ptable thead th.thr{text-align:right}
-.doc-preview-host .ptable tbody tr:nth-child(even) td{background:var(--c-zebra)}
-.doc-preview-host .ptable tbody td{padding:9px 6px;border-bottom:.75pt solid var(--c-divider-soft);vertical-align:top;font-size:var(--fs-body)}
-.doc-preview-host .td-n{color:var(--c-muted-2);font-size:var(--fs-small);width:20pt;font-weight:600}
-.doc-preview-host /* Especie: ancho elástico para nombres largos */
-  .td-sp{font-weight:700;font-size:var(--fs-small);min-width:80pt;max-width:130pt;word-break:break-word}
-.doc-preview-host .td-wk{color:var(--c-text-2);line-height:1.5}
-.doc-preview-host .td-pr{text-align:right;white-space:nowrap;font-weight:600}
-.doc-preview-host /* Desglose de cantidad (5 × $150.000): gris claro chiquito, MUCHO
-     más débil que el subtotal — antes la diferencia era sutil y el
-     lector podía confundirse. */
-  .td-pr .qty-breakdown{display:block;font-size:7.5pt;color:var(--c-muted-2);font-weight:400;margin-bottom:2px}
-.doc-preview-host .ptable .nrow td{font-size:var(--fs-small);color:var(--c-muted);font-style:italic;padding:5px 6px;background:#fff!important}
-.doc-preview-host /* ──────────────────────────────────────────────────────────────
-     TOTALES — el bloque MÁS importante del documento
-     Caja con color de marca (uno de los 3 usos permitidos).
-     Display size más grande que el nombre del emisor (jerarquía).
-     ────────────────────────────────────────────────────────────── */
-  .ptotals{padding:12px var(--page-x);display:flex;flex-direction:column;align-items:flex-end;gap:4px}
-.doc-preview-host .pdisc-row{display:flex;gap:14px;font-size:var(--fs-small);color:var(--c-muted)}
-.doc-preview-host .pdisc-row span:first-child{font-weight:500}
-.doc-preview-host .pdisc-note{font-size:var(--fs-micro);color:var(--c-muted-2);font-style:italic;margin-top:2px;max-width:240pt;text-align:right}
-.doc-preview-host .ptotal-box{padding:11px 16px;border-radius:var(--r-md);min-width:175pt;border:2pt solid currentColor}
-.doc-preview-host .ptotal-lbl{font-size:var(--fs-micro);font-weight:700;text-transform:uppercase;letter-spacing:var(--ls-label);opacity:.7;margin-bottom:2px}
-.doc-preview-host .ptotal-amt{font-family:'DM Serif Display',serif;font-size:26pt;line-height:1}
-.doc-preview-host /* ──────────────────────────────────────────────────────────────
-     ZONA ADMINISTRATIVA — H3 secundario
-     Observaciones, Condiciones, Notas. Antes competían visualmente
-     con el H2 de Detalles del Trabajo. Ahora son títulos chiquitos
-     en gris, claramente subordinados. La separación con la zona
-     principal se logra con un divisor sutil arriba.
-     ────────────────────────────────────────────────────────────── */
-  .pobs, .doc-preview-host .pcond, .doc-preview-host .pnotes{padding:0 var(--page-x) 12px}
-.doc-preview-host .pobs-t, .doc-preview-host .pcond-t, .doc-preview-host .pnotes-t{font-size:var(--fs-h3);font-weight:700;text-transform:uppercase;letter-spacing:var(--ls-label);color:var(--c-muted);margin-bottom:7px;padding-bottom:0;border:none}
-.doc-preview-host .pobs-txt{font-size:var(--fs-small);color:var(--c-text-2);line-height:1.65;padding:12px 14px;background:var(--c-bg-soft);border-radius:var(--r-sm);border-left:2.5pt solid var(--c-divider)}
-.doc-preview-host .pcond-txt{font-size:var(--fs-small);color:var(--c-text-2);line-height:1.65}
-.doc-preview-host .pnotes ul{padding-left:16px;margin:0}
-.doc-preview-host .pnotes li{font-size:var(--fs-small);color:var(--c-text-2);line-height:1.7}
-.doc-preview-host /* Divisor entre zona principal (ítems + total) y zona administrativa.
-     Es invisible pero crea una separación visual clara via margen. */
-  .pobs, .doc-preview-host .pcond, .doc-preview-host .pvalid, .doc-preview-host .pcrit, .doc-preview-host .pnotes{margin-top:0}
-.doc-preview-host .ptotals + .pobs, .doc-preview-host .ptotals + .pcond, .doc-preview-host .ptotals + .pvalid, .doc-preview-host .ptotals + .pcrit{margin-top:8px}
-.doc-preview-host /* ──────────────────────────────────────────────────────────────
-     VIGENCIA — antes era una barra roja agresiva, ahora una caja
-     ámbar suave (típica de "info importante pero no crítica").
-     ────────────────────────────────────────────────────────────── */
-  .pvalid{margin:6px var(--page-x) 14px;background:#fef3c7!important;color:#92400e!important;padding:9px 14px;border-radius:var(--r-sm);font-size:var(--fs-small);font-weight:500;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;border-left:3pt solid #d97706}
-.doc-preview-host .pvalid-date{font-weight:700;color:#78350f}
-.doc-preview-host /* ──────────────────────────────────────────────────────────────
-     CÓMO TRABAJAMOS — antes 4 ítems en columna vertical ocupando
-     mucho espacio. Ahora 2x2 grid: 4 criterios en 2 columnas, ~50% menos espacio vertical.
-     ────────────────────────────────────────────────────────────── */
-  .pcrit{padding:0 var(--page-x) 14px}
-.doc-preview-host .pcrit-t{font-size:var(--fs-h3);font-weight:700;text-transform:uppercase;letter-spacing:var(--ls-label);color:var(--c-muted);margin-bottom:8px;padding-bottom:0;border:none}
-.doc-preview-host .pcrit-box{padding:12px 14px;background:var(--c-bg-soft);border-radius:var(--r-md);border-left:3pt solid var(--c-divider)}
-.doc-preview-host .pcrit-intro{font-size:var(--fs-small);color:var(--c-text-2);margin-bottom:9px;line-height:1.55}
-.doc-preview-host .pcrit-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 18px}
-.doc-preview-host .pcrit-item{margin-bottom:0}
-.doc-preview-host .pcrit-s{font-size:var(--fs-small);font-weight:700;color:var(--c-text);display:block;margin-bottom:1px}
-.doc-preview-host .pcrit-p{font-size:var(--fs-micro);color:var(--c-muted);line-height:1.5;display:block}
-.doc-preview-host /* ──────────────────────────────────────────────────────────────
-     FIRMAS — más respiración, anti-corte
-     ────────────────────────────────────────────────────────────── */
-  .psigs{padding:16px var(--page-x) 18px;display:flex;gap:40px;margin-top:8px;min-height:80px}
-.doc-preview-host .psig-box{flex:1;border-top:1pt solid var(--c-divider);padding-top:8px}
-.doc-preview-host .psig-lbl{font-size:var(--fs-micro);font-weight:700;text-transform:uppercase;letter-spacing:var(--ls-label);color:var(--c-muted-2)}
-.doc-preview-host .psig-name{font-size:var(--fs-small);color:var(--c-text);margin-top:28px}
-.doc-preview-host /* ──────────────────────────────────────────────────────────────
-     FOOTER — antes repetía número y fecha (ya están en el header).
-     Ahora solo el "Atte:" + nombre. Más limpio.
-     ────────────────────────────────────────────────────────────── */
-  .pfoot{border-top:1pt solid var(--c-divider-soft);padding:10px var(--page-x);display:flex;justify-content:space-between;align-items:center}
-.doc-preview-host .pfoot-l{font-size:var(--fs-small);font-weight:600}
-.doc-preview-host .pfoot-r{font-size:var(--fs-micro);color:var(--c-muted-2)}
-.doc-preview-host /* ──────────────────────────────────────────────────────────────
-     ANTI-HUÉRFANOS: títulos de sección NO pueden quedar solos al
-     final de una página. break-after:avoid los pega al contenido.
-     ────────────────────────────────────────────────────────────── */
-  .psec-t, .doc-preview-host .pobs-t, .doc-preview-host .pcond-t, .doc-preview-host .pcrit-t, .doc-preview-host .pnotes-t, .doc-preview-host .ptitle{
-    break-after:avoid-page;
-    page-break-after:avoid;
-  }
-.doc-preview-host /* Las firmas no deberían empezar a 5px del borde inferior — si
-     no tienen espacio, mejor saltar de página. */
-  .psigs{break-before:auto;break-inside:avoid;page-break-inside:avoid}
-.doc-preview-host /* ESTIMATIVE-SPECIFIC PRINT STYLES */
-  .pest-header-bar{margin:0 32px 14px;padding:8px 14px;border-radius:5px;background:#d1fae5!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;border-left:4pt solid currentColor;display:flex;align-items:center;gap:8px}
-.doc-preview-host .pest-header-icon{font-size:13pt}
-.doc-preview-host .pest-header-lbl{font-size:9.5pt;font-weight:700}
-.doc-preview-host .pest-header-sub{font-size:8pt;color:#374151;margin-top:1px}
-.doc-preview-host .pest-item{padding:10px 0;border-bottom:.5pt solid #f1f5f4}
-.doc-preview-host .pest-item:last-child{border-bottom:none}
-.doc-preview-host .pest-item-num{font-size:8.5pt;font-weight:700;color:currentColor;margin-bottom:3px}
-.doc-preview-host .pest-item-title{font-size:10.5pt;font-weight:700;color:#1a1a1a;margin-bottom:3px}
-.doc-preview-host .pest-item-desc{font-size:9.5pt;color:#374151;line-height:1.55}
-.doc-preview-host .pest-item-price{font-size:10.5pt;font-weight:700;margin-top:5px}
-.doc-preview-host .pest-item-fixed-badge{font-size:7pt;font-weight:700;text-transform:uppercase;letter-spacing:.5px;background:#ede9fe;color:#5b21b6;padding:1px 6px;border-radius:8px;display:inline-block;margin-bottom:3px}
-.doc-preview-host .pest-services-section{padding:0 32px 10px}
-.doc-preview-host .pest-services-t{font-size:7.5pt;font-weight:700;text-transform:uppercase;letter-spacing:.9px;margin-bottom:7px;padding-bottom:3px;border-bottom:2pt solid #e2e8f0;color:#64748b}
-.doc-preview-host .pest-svc-row{display:flex;justify-content:space-between;align-items:baseline;padding:5px 0;border-bottom:.5pt solid #f1f5f4;font-size:9.5pt}
-.doc-preview-host .pest-svc-row:last-child{border-bottom:none}
-.doc-preview-host .pest-svc-desc{color:#374151}
-.doc-preview-host .pest-svc-price{font-weight:700;white-space:nowrap;margin-left:12px}
-.doc-preview-host .pest-disclaimer{margin:0 32px 12px;padding:10px 14px;background:#f8faf9;border-radius:6px;border-left:3pt solid #94a3b8;font-size:8.5pt;color:#475569;line-height:1.6}
-.doc-preview-host .pest-disclaimer-title{font-size:8pt;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#64748b;margin-bottom:5px}
-.doc-preview-host .pest-factors{padding:0 32px 12px}
-.doc-preview-host .pest-factors-t{font-size:7.5pt;font-weight:700;text-transform:uppercase;letter-spacing:.9px;margin-bottom:7px;padding-bottom:3px;border-bottom:2pt solid currentColor}
-.doc-preview-host .pest-factors-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px 16px}
-.doc-preview-host .pest-factor{font-size:8.5pt;color:#374151;padding:3px 0;padding-left:10px;position:relative}
-.doc-preview-host .pest-factor::before{content:'•';position:absolute;left:0;color:currentColor;font-weight:700}
-.doc-preview-host .pest-greeting{padding:0 32px 16px;font-size:9.5pt;color:#374151;font-style:italic}
-.doc-preview-host .pest-greeting-name{display:block;margin-top:4px;font-weight:600;font-style:normal;color:#1a1a1a}
-
 /* ═══════════════════════════════════════
    ÍCONOS SVG DEL DOCUMENTO (reemplazan emojis)
    Aplican tanto en impresión como en la vista previa en pantalla.
@@ -1551,7 +1320,6 @@ input[type=file]{display:none}
    fotos con marco fino y etiqueta, en línea con la estética del doc.
 ═══════════════════════════════════════ */
 .pphotos{padding:0 18mm 12px}
-.doc-preview-host .pphotos{padding:0 18mm 12px}
 .pphotos-t{
   font-size:9.5pt;font-weight:700;text-transform:uppercase;
   letter-spacing:.8px;color:#64748b;margin-bottom:9px;
@@ -1738,11 +1506,6 @@ input[type=file]{display:none}
   text-align: right;
   border-radius: var(--r-sm);
 }
-.doc-preview-host .pdoc.pdoc-theme-profesional .ph-badge {
-  position: static;
-  margin-left: auto;
-  align-self: flex-start;
-}
 
 /* Tema: Cálido — paleta tierra, tipografía serif, tonos cálidos            */
 .pdoc.pdoc-theme-calido {
@@ -1773,11 +1536,6 @@ input[type=file]{display:none}
   margin-left: auto;
   align-self: flex-start;
   text-align: left;
-}
-.doc-preview-host .pdoc.pdoc-theme-minimalista .ph-badge {
-  position: static;
-  margin-left: auto;
-  align-self: flex-start;
 }
 .pdoc.pdoc-theme-minimalista .ph-name,
 .pdoc.pdoc-theme-minimalista .ph-badge-num { font-family: system-ui,-apple-system,Arial,sans-serif; }
