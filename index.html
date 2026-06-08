@@ -209,6 +209,14 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;font-size:14px;background
 .cprow{display:flex;align-items:center;gap:10px;margin-bottom:16px}
 .cprow input[type=color]{width:44px;height:36px;border:1px solid var(--border);border-radius:6px;padding:2px;cursor:pointer;background:#fff}
 
+/* THEME PICKER */
+.theme-presets{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px}
+.tpreset{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:5px;background:var(--card);border:2px solid var(--border);border-radius:8px;padding:7px 9px;cursor:pointer;transition:border-color .15s}
+.tpreset.active{border-color:var(--accent)}
+.tpreset:hover:not(.active){border-color:var(--muted)}
+.tpreset-swatch{width:56px;height:36px;border-radius:3px;overflow:hidden;position:relative;background:#fff;border:1px solid var(--border)}
+.tpreset-label{font-size:11px;color:var(--text);font-weight:500;white-space:nowrap}
+
 /* HISTORY */
 .hitem{background:#f8faf9;border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;display:flex;align-items:center;gap:10px}
 .hinfo{flex:1;min-width:0}
@@ -1708,6 +1716,67 @@ input[type=file]{display:none}
   align-items: center;
   justify-content: center;
 }
+
+/* ══ TEMAS DE DISEÑO PDF ══════════════════════════════════════════════════
+   Cada tema sobreescribe tokens y reglas estructurales del documento.
+   Las clases se aplican sobre <table class="pdoc pdoc-theme-X">.         */
+
+/* Tema: Profesional — badge con fondo sólido, sin rayas, tono frío        */
+.pdoc.pdoc-theme-profesional {
+  --c-bg-soft:      #edf2f7;
+  --c-zebra:        transparent;
+  --c-divider-soft: #c8d4e0;
+}
+.pdoc.pdoc-theme-profesional .ph-badge {
+  position: static;
+  margin-left: auto;
+  align-self: flex-start;
+  text-align: right;
+  border-radius: var(--r-sm);
+}
+.doc-preview-host .pdoc.pdoc-theme-profesional .ph-badge {
+  position: static;
+  margin-left: auto;
+  align-self: flex-start;
+}
+
+/* Tema: Cálido — paleta tierra, tipografía serif, tonos cálidos            */
+.pdoc.pdoc-theme-calido {
+  --c-bg-soft:      #fdf8ee;
+  --c-zebra:        #fef9f3;
+  --c-divider:      #c8a87a;
+  --c-divider-soft: #e8d5b0;
+  --c-muted:        #7d6241;
+  --c-muted-2:      #a08060;
+  font-family: Georgia,'Times New Roman',serif;
+}
+.pdoc.pdoc-theme-calido .ph { background: #fdfaf4; }
+.pdoc.pdoc-theme-calido .ph-name,
+.pdoc.pdoc-theme-calido .ph-badge-num { font-family: 'DM Serif Display',Georgia,serif; }
+.pdoc.pdoc-theme-calido .ph-sub,
+.pdoc.pdoc-theme-calido .ph-contact { font-family: Georgia,'Times New Roman',serif; }
+
+/* Tema: Minimalista — sin fondos rellenos, solo líneas, tipografía sistema  */
+.pdoc.pdoc-theme-minimalista {
+  --c-bg-soft:      transparent;
+  --c-zebra:        transparent;
+  --r-sm:           0pt;
+  --r-md:           0pt;
+  font-family: system-ui,-apple-system,Arial,sans-serif;
+}
+.pdoc.pdoc-theme-minimalista .ph-badge {
+  position: static;
+  margin-left: auto;
+  align-self: flex-start;
+  text-align: left;
+}
+.doc-preview-host .pdoc.pdoc-theme-minimalista .ph-badge {
+  position: static;
+  margin-left: auto;
+  align-self: flex-start;
+}
+.pdoc.pdoc-theme-minimalista .ph-name,
+.pdoc.pdoc-theme-minimalista .ph-badge-num { font-family: system-ui,-apple-system,Arial,sans-serif; }
 </style>
 
 
@@ -2304,6 +2373,43 @@ input[type=file]{display:none}
           <code id="color-hex" style="font-size:12px;background:#f1f5f4;padding:3px 8px;border-radius:4px">#064e3b</code>
         </div>
 
+        <div class="st">Diseño del documento</div>
+        <div class="theme-presets" id="theme-presets">
+          <button class="tpreset active" data-theme="clasico" onclick="applyPdfTheme('clasico')">
+            <div class="tpreset-swatch" style="border-top:3px solid var(--accent)">
+              <div style="margin:4px 5px 2px;height:8px;background:var(--border);border-radius:1px"></div>
+              <div style="margin:2px 5px;height:5px;background:#e5e7eb;border-radius:1px"></div>
+              <div style="margin:2px 5px;height:5px;background:#e5e7eb;border-radius:1px;width:60%"></div>
+            </div>
+            <span class="tpreset-label">Clásico</span>
+          </button>
+          <button class="tpreset" data-theme="profesional" onclick="applyPdfTheme('profesional')">
+            <div class="tpreset-swatch">
+              <div style="height:12px;background:var(--accent);border-radius:2px 2px 0 0;margin-bottom:3px"></div>
+              <div style="margin:2px 5px;height:5px;background:#edf2f7;border-radius:1px"></div>
+              <div style="margin:2px 5px;height:5px;background:#edf2f7;border-radius:1px;width:65%"></div>
+            </div>
+            <span class="tpreset-label">Profesional</span>
+          </button>
+          <button class="tpreset" data-theme="calido" onclick="applyPdfTheme('calido')">
+            <div class="tpreset-swatch" style="background:#fdf8ee;border-top:3px solid var(--accent);border-color:#c8a87a">
+              <div style="margin:4px 5px 2px;height:8px;background:#e8d5b0;border-radius:1px"></div>
+              <div style="margin:2px 5px;height:5px;background:#f0e4cc;border-radius:1px"></div>
+              <div style="margin:2px 5px;height:5px;background:#f0e4cc;border-radius:1px;width:60%"></div>
+            </div>
+            <span class="tpreset-label">Cálido</span>
+          </button>
+          <button class="tpreset" data-theme="minimalista" onclick="applyPdfTheme('minimalista')">
+            <div class="tpreset-swatch" style="border-top:none;border-bottom:2px solid #374151">
+              <div style="margin:5px 5px 2px;height:7px;background:#d1d5db;border-radius:0"></div>
+              <div style="margin:2px 5px;height:4px;background:#e5e7eb;border-radius:0"></div>
+              <div style="margin:2px 5px;height:4px;background:#e5e7eb;border-radius:0;width:65%"></div>
+            </div>
+            <span class="tpreset-label">Minimalista</span>
+          </button>
+        </div>
+        <p class="hint" style="margin-bottom:16px">El diseño afecta la presentación del documento impreso/PDF.</p>
+
         <div class="st">Numeración</div>
         <div class="r2">
           <div class="fg"><label>Prefijo</label><input type="text" id="num-prefix" value="2026-" oninput="updateNumPreview()"></div>
@@ -2547,6 +2653,7 @@ const LS = {
   GDRIVE_ON:      'pq_gdrive_on',
   GDRIVE_LAST:    'pq_gdrive_last',
   GDRIVE_EMAIL:   'pq_gdrive_email',
+  PDF_THEME:      'pq_pdf_theme',
 };
 
 const DEF = {
@@ -2572,7 +2679,7 @@ const DEF = {
   coCuit:'', coWhatsapp:'', coCity:'', coEmail:'',
   coTechNotes:'', coFooter:'',
   showTechNotes:true, showFooter:true,
-  accentColor:'#064e3b', validityDays:30, showExpiry:true,
+  accentColor:'#064e3b', pdfTheme:'clasico', validityDays:30, showExpiry:true,
   numPrefix:'2026-', numNext:1,
   // Estimative mode
   isEstimative: false,
@@ -4662,6 +4769,9 @@ function restoreUI() {
   const hx = document.getElementById('color-hex'); if(hx) hx.textContent = S.accentColor;
   document.documentElement.style.setProperty('--accent', S.accentColor);
   document.querySelectorAll('.cpreset').forEach(el=>el.classList.toggle('active', el.dataset.color===S.accentColor));
+  // pdf theme
+  const _thm = S.pdfTheme || 'clasico';
+  document.querySelectorAll('.tpreset').forEach(el=>el.classList.toggle('active', el.dataset.theme===_thm));
   // logo
   if(S.logo) showLogo(S.logo);
   // expiry visibility
@@ -5111,6 +5221,13 @@ function applyColor(c) {
 }
 
 function selectColor(el) { applyColor(el.dataset.color); }
+
+// ─── TEMA PDF ────────────────────────────────
+function applyPdfTheme(theme) {
+  S.pdfTheme = theme;
+  document.querySelectorAll('.tpreset').forEach(el => el.classList.toggle('active', el.dataset.theme === theme));
+  sched();
+}
 
 // ─── LOGO ────────────────────────────────────
 function handleLogoUpload(e) {
@@ -6696,6 +6813,75 @@ function _buildSceneBlockHTML(arr, label, color, cur, includeDisc) {
     </div>`;
 }
 
+// Construye el HTML del header del documento según el tema activo.
+// badgeLabel: texto de la etiqueta del número (ej. 'Presupuesto N°').
+// badgeDate: string de fecha opcional (null = no mostrar).
+// showPlaceholder: true en Risk/Est docs para mostrar recuadro LOGO si no hay logo.
+function _buildDocHeader(theme, S, color, contacts, badgeLabel, badgeDate, showPlaceholder) {
+  const logoHTML = S.logo
+    ? `<img src="${S.logo}" class="ph-logo" alt="Logo">`
+    : (showPlaceholder
+      ? `<div style="width:60px;height:60px;background:#f8faf9;border:1px dashed #cbd5e1;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:8pt;color:#94a3b8">LOGO</div>`
+      : ``);
+  const contactsHTML = contacts.map(c => `<span class="ph-contact">${c}</span>`).join('');
+  const nameStr = esc(S.coName);
+  const subStr  = esc(S.coSubtitle || 'Poda en Altura y Extracción de Árboles');
+  const numStr  = esc(S.quoteNumber || '—');
+
+  if (theme === 'profesional') {
+    const dateHTML = badgeDate ? `<div class="ph-badge-date" style="color:rgba(255,255,255,.65)">${badgeDate}</div>` : '';
+    return `
+    <div class="ph" style="border-bottom:1.5pt solid #d1d5db">
+      ${logoHTML}
+      <div class="ph-co">
+        <div class="ph-name" style="color:${color}">${nameStr}</div>
+        <div class="ph-sub">${subStr}</div>
+        <div class="ph-contacts">${contactsHTML}</div>
+      </div>
+      <div class="ph-badge" style="background:${color};padding:8pt 10pt">
+        <div class="ph-badge-lbl" style="color:rgba(255,255,255,.75)">${esc(badgeLabel)}</div>
+        <div class="ph-badge-num" style="color:#fff">${numStr}</div>
+        ${dateHTML}
+      </div>
+    </div>`;
+  }
+
+  if (theme === 'minimalista') {
+    const dateHTML = badgeDate ? `<div class="ph-badge-date">${badgeDate}</div>` : '';
+    return `
+    <div class="ph" style="border-bottom:1pt solid #d1d5db">
+      ${logoHTML}
+      <div class="ph-co">
+        <div class="ph-name" style="color:${color};font-family:system-ui,-apple-system,Arial,sans-serif">${nameStr}</div>
+        <div class="ph-sub">${subStr}</div>
+        <div class="ph-contacts">${contactsHTML}</div>
+      </div>
+      <div class="ph-badge" style="border-left:2pt solid ${color};padding-left:10pt">
+        <div class="ph-badge-lbl">${esc(badgeLabel)}</div>
+        <div class="ph-badge-num" style="color:${color};font-family:system-ui,-apple-system,Arial,sans-serif">${numStr}</div>
+        ${dateHTML}
+      </div>
+    </div>`;
+  }
+
+  // Clásico y Cálido: misma estructura, el CSS del tema Cálido se ocupa del resto
+  const dateHTML = badgeDate ? `<div class="ph-badge-date">${badgeDate}</div>` : '';
+  return `
+  <div class="ph" style="border-top:5px solid ${color}">
+    ${logoHTML}
+    <div class="ph-co">
+      <div class="ph-name" style="color:${color}">${nameStr}</div>
+      <div class="ph-sub">${subStr}</div>
+      <div class="ph-contacts">${contactsHTML}</div>
+    </div>
+    <div class="ph-badge">
+      <div class="ph-badge-lbl">${esc(badgeLabel)}</div>
+      <div class="ph-badge-num" style="color:${color}">${numStr}</div>
+      ${dateHTML}
+    </div>
+  </div>`;
+}
+
 function buildDoc() {
   if (S.isRisk)       { buildRiskDoc(); return; }
   if (S.isEstimative) { buildEstDoc(); return; }
@@ -6774,6 +6960,7 @@ function buildDoc() {
     sigH = `<div class="psigs">${sx}</div>`;
   }
 
+  const theme = S.pdfTheme || 'clasico';
   const doc = document.getElementById('doc-a4'); if(!doc) return;
   // ── Estructura wrapper-table ───────────────────────────────────────────────
   // Todo el documento va dentro de una <table class="pdoc">. El <thead>
@@ -6783,23 +6970,10 @@ function buildDoc() {
   // position:fixed, que no se renderiza correctamente en muchos navegadores
   // móviles). El <tbody> tiene el resto del contenido del presupuesto.
   doc.innerHTML = `
-    <table class="pdoc">
+    <table class="pdoc pdoc-theme-${theme}">
       <thead>
         <tr><td>
-          <div class="ph" style="border-top:5px solid ${color}">
-            ${S.logo
-              ? `<img src="${S.logo}" class="ph-logo" alt="Logo">`
-              : ``}
-            <div class="ph-co">
-              <div class="ph-name" style="color:${color}">${esc(S.coName)}</div>
-              <div class="ph-sub">${esc(S.coSubtitle||'Poda en Altura y Extracción de Árboles')}</div>
-              <div class="ph-contacts">${contacts.map(c=>`<span class="ph-contact">${c}</span>`).join('')}</div>
-            </div>
-            <div class="ph-badge">
-              <div class="ph-badge-lbl">Presupuesto N°</div>
-              <div class="ph-badge-num" style="color:${color}">${esc(S.quoteNumber||'—')}</div>
-            </div>
-          </div>
+          ${_buildDocHeader(theme, S, color, contacts, 'Presupuesto N°', null, false)}
         </td></tr>
       </thead>
       <tbody>
@@ -6964,29 +7138,16 @@ function buildRiskDoc() {
   const tl = (S.coTechNotes||'').split('\n').filter(l=>l.trim());
   const techH = tl.map(l=>`<li>${esc(l.replace(/^[•\-–]\s*/,''))}</li>`).join('');
 
+  const theme = S.pdfTheme || 'clasico';
   const doc = document.getElementById('doc-a4'); if (!doc) return;
   // Wrapper-table pattern (ver buildDoc): el <thead> con el header se repite
   // nativamente en cada página impresa. <tbody> tiene el resto del informe.
   doc.innerHTML = `
-    <table class="pdoc">
+    <table class="pdoc pdoc-theme-${theme}">
       <thead>
         <tr><td>
           <!-- ══ ENCABEZADO ══ -->
-          <div class="ph" style="border-top:5px solid ${color}">
-            ${S.logo
-              ? `<img src="${S.logo}" class="ph-logo" alt="Logo">`
-              : `<div style="width:60px;height:60px;background:#f8faf9;border:1px dashed #cbd5e1;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:8pt;color:#94a3b8">LOGO</div>`}
-            <div class="ph-co">
-              <div class="ph-name" style="color:${color}">${esc(S.coName)}</div>
-              <div class="ph-sub">${esc(S.coSubtitle||'Poda en Altura y Extracción de Árboles')}</div>
-              <div class="ph-contacts">${contacts.map(c=>`<span class="ph-contact">${c}</span>`).join('')}</div>
-            </div>
-            <div class="ph-badge">
-              <div class="ph-badge-lbl">Informe / Presupuesto N°</div>
-              <div class="ph-badge-num" style="color:${color}">${esc(S.quoteNumber||'—')}</div>
-              <div class="ph-badge-date">Fecha: ${fmtD(S.dateIssue)}</div>
-            </div>
-          </div>
+          ${_buildDocHeader(theme, S, color, contacts, 'Informe / Presupuesto N°', `Fecha: ${fmtD(S.dateIssue)}`, true)}
         </td></tr>
       </thead>
       <tbody>
@@ -7226,28 +7387,15 @@ function buildEstDoc() {
   const tl = (S.coTechNotes||'').split('\n').filter(l=>l.trim());
   const techH = tl.map(l=>`<li>${esc(l.replace(/^[•\-–]\s*/,''))}</li>`).join('');
 
+  const theme = S.pdfTheme || 'clasico';
   const doc = document.getElementById('doc-a4'); if (!doc) return;
   // Wrapper-table pattern (ver buildDoc): el <thead> con el header se repite
   // nativamente en cada página impresa. <tbody> tiene el resto del documento.
   doc.innerHTML = `
-    <table class="pdoc">
+    <table class="pdoc pdoc-theme-${theme}">
       <thead>
         <tr><td>
-          <div class="ph" style="border-top:5px solid ${color}">
-            ${S.logo
-              ?`<img src="${S.logo}" class="ph-logo" alt="Logo">`
-              :`<div style="width:60px;height:60px;background:#f8faf9;border:1px dashed #cbd5e1;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:8pt;color:#94a3b8">LOGO</div>`}
-            <div class="ph-co">
-              <div class="ph-name" style="color:${color}">${esc(S.coName)}</div>
-              <div class="ph-sub">${esc(S.coSubtitle||'Poda en Altura y Extracción de Árboles')}</div>
-              <div class="ph-contacts">${contacts.map(c=>`<span class="ph-contact">${c}</span>`).join('')}</div>
-            </div>
-            <div class="ph-badge">
-              <div class="ph-badge-lbl">Presupuesto Estimativo N°</div>
-              <div class="ph-badge-num" style="color:${color}">${esc(S.quoteNumber||'—')}</div>
-              <div class="ph-badge-date">Fecha: ${fmtD(S.dateIssue)}</div>
-            </div>
-          </div>
+          ${_buildDocHeader(theme, S, color, contacts, 'Presupuesto Estimativo N°', `Fecha: ${fmtD(S.dateIssue)}`, true)}
         </td></tr>
       </thead>
       <tbody>
