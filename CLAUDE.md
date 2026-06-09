@@ -79,7 +79,11 @@ PY
 
 **Persistencia:** siempre que se toque `localStorage`, confirmar que las claves del objeto `LS` no cambian (riesgo de pérdida de datos de usuario).
 
-**Comportamiento:** se puede manejar la app con un navegador headless (puppeteer/chrome-headless-shell) cargando `file://.../index.html`, seteando `S`, y llamando funciones. Útil para validar PDF, persistencia, etc.
+**Comportamiento (navegador headless):** en sesiones de Claude Code on the web, el SessionStart hook (`.claude/hooks/session-start.sh`) deja instalado `chrome-headless-shell` + `puppeteer-core`. Hay un test que valida SW real (`./sw.js`), que crea la cache de la versión declarada en `sw.js`, y que el app-shell carga offline:
+```bash
+node test/pwa.test.cjs
+```
+Parsea el `CACHE_VERSION` de `sw.js`, así que no hay que tocarlo al subir la versión. _(La network policy del entorno puede bloquear cdnjs/fuentes; por eso el test no depende de recursos externos.)_ Para validar PDF/persistencia con datos, se puede seguir manejando la app cargando `file://.../index.html`, seteando `S` y llamando funciones.
 
 ## Cosas que NO romper
 - No pasar el JS a módulos ES (rompería los `onclick` globales).
