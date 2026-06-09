@@ -3858,8 +3858,11 @@ function addPhraseFromInput() {
 // ─── HELPERS DE CANTIDAD ─────────────────────
 // Precio unitario x cantidad, calculado en centavos para evitar redondeos raros.
 function itemTotalCents(item) {
-  const price = moneyToCents(item.price);
-  const qty   = (item.type === 'service') ? (parseInt(item.qty) || 1) : 1;
+  // Clamp defensivo: ni precio negativo ni cantidad < 1 deben restar al total
+  // (no tienen sentido en este dominio y podrían colarse por un valor tipeado
+  // o un import manipulado). Los inputs ya llevan min="0"/min="1".
+  const price = Math.max(0, moneyToCents(item.price));
+  const qty   = (item.type === 'service') ? Math.max(1, parseInt(item.qty) || 1) : 1;
   return price * qty;
 }
 
@@ -3994,7 +3997,7 @@ function renderItems() {
           <div><div class="isub">Especie/s</div>
           <input class="ii sp-f" type="text" placeholder="Ej: Eucaliptus, Ciprés..." value="${esc(item.species||'')}"></div>
           <div><div class="isub">Precio${hasSurcharge?' (ajustado)':''}</div>
-          <input class="ii pr-f" type="number" placeholder="0.00" inputmode="decimal" value="${esc(String(item.price||''))}"></div>
+          <input class="ii pr-f" type="number" min="0" placeholder="0.00" inputmode="decimal" value="${esc(String(item.price||''))}"></div>
         </div>
         ${adjBadge}
         <div class="isub mb-row" style="margin-top:${hasSurcharge?'8px':'0'}">
@@ -4033,7 +4036,7 @@ function renderItems() {
           <div><div class="isub">Descripción</div>
           <input class="ii ds-f" type="text" placeholder="Servicio (ej: Camión - Viaje)..." value="${esc(item.desc||'')}"></div>
           <div><div class="isub">Precio unitario</div>
-          <input class="ii pr-f" type="number" placeholder="0.00" inputmode="decimal" value="${esc(String(item.price||''))}"></div>
+          <input class="ii pr-f" type="number" min="0" placeholder="0.00" inputmode="decimal" value="${esc(String(item.price||''))}"></div>
         </div>
         ${qtyRow}`;
 
@@ -4281,7 +4284,7 @@ function renderEstItems() {
           </div>
           <div>
             <div class="isub">Costo estimado</div>
-            <input class="ii est-pr-f" type="number" placeholder="0.00" inputmode="decimal" value="${esc(String(item.price||''))}">
+            <input class="ii est-pr-f" type="number" min="0" placeholder="0.00" inputmode="decimal" value="${esc(String(item.price||''))}">
           </div>
         </div>
         <div class="iactions">
@@ -4326,7 +4329,7 @@ function renderEstItems() {
           </div>
           <div>
             <div class="isub">Precio unitario</div>
-            <input class="ii est-pr-f" type="number" placeholder="0.00" inputmode="decimal" value="${esc(String(item.price||''))}">
+            <input class="ii est-pr-f" type="number" min="0" placeholder="0.00" inputmode="decimal" value="${esc(String(item.price||''))}">
           </div>
         </div>
         ${qtyRow}
