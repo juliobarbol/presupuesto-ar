@@ -2532,6 +2532,11 @@ function sc(id,v){ const e=document.getElementById(id); if(e) e.checked=!!v; }
 function gv(id){ const e=document.getElementById(id); return e?e.value:''; }
 function gc(id){ const e=document.getElementById(id); return e?e.checked:false; }
 function esc(s){ if(s==null)return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+// Devuelve el src SOLO si es un dataURL de imagen (data:image/...). Cualquier
+// otra cosa —p. ej. un valor manipulado en un backup importado de otro colega—
+// se descarta, evitando que un src="..." se rompa e inyecte HTML. Los logos y
+// fotos legítimos siempre son data:image/ (FileReader/canvas.toDataURL).
+function safeImgSrc(s){ return (typeof s === 'string' && /^data:image\//i.test(s)) ? s : ''; }
 function fmtD(iso){ if(!iso)return '—'; const p=String(iso).split('-'); if(p.length!==3||!p[0]||!p[1]||!p[2])return '—'; const[y,m,d]=p; return `${d}/${m}/${y}`; }
 function sym(c){ return {ARS:'$',USD:'U$D',EUR:'€'}[c]||c; }
 function moneyToCents(v) {
@@ -4039,7 +4044,7 @@ function renderItems() {
       ${item.type!=='note' ? `<button class="btn btn-g btn-sm ia-photo">${item.photo?'📷 Foto ✓':'📷 Foto'}</button>` : ''}
       <button class="btn btn-d btn-sm ia-del">✕ Eliminar</button>
     </div>
-    ${item.photo ? `<div class="item-photo-preview"><img src="${item.photo}" alt="Foto"><button type="button" class="item-photo-remove" title="Quitar foto">✕</button></div>` : ''}`;
+    ${item.photo ? `<div class="item-photo-preview"><img src="${safeImgSrc(item.photo)}" alt="Foto"><button type="button" class="item-photo-remove" title="Quitar foto">✕</button></div>` : ''}`;
     card.innerHTML = inner;
 
     const df = card.querySelector('.ds-f');
@@ -6645,7 +6650,7 @@ function _buildSceneBlockHTML(arr, label, color, cur, includeDisc) {
 // showPlaceholder: true en Risk/Est docs para mostrar recuadro LOGO si no hay logo.
 function _buildDocHeader(theme, S, color, contacts, badgeLabel, badgeDate, showPlaceholder) {
   const logoHTML = S.logo
-    ? `<img src="${S.logo}" class="ph-logo" alt="Logo">`
+    ? `<img src="${safeImgSrc(S.logo)}" class="ph-logo" alt="Logo">`
     : (showPlaceholder
       ? `<div style="width:60px;height:60px;background:#f8faf9;border:1px dashed #cbd5e1;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:8pt;color:#94a3b8">LOGO</div>`
       : ``);
@@ -6757,7 +6762,7 @@ function buildDoc() {
             ? (it.species || 'Árbol')
             : (it.desc || 'Servicio');
           return `<figure class="pphoto">
-            <img src="${it.photo}" alt="${esc(etiqueta)}">
+            <img src="${safeImgSrc(it.photo)}" alt="${esc(etiqueta)}">
             <figcaption>${esc(etiqueta)}</figcaption>
           </figure>`;
         }).join('')}
