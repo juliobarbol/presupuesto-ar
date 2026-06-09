@@ -6031,23 +6031,30 @@ function handleImport(e) {
   r.readAsText(f);
 }
 
+// El objeto importado (ya parseado) queda en esta variable de módulo en vez
+// de serializarse DENTRO de los atributos onclick de los botones. Inyectar el
+// JSON en onclick='...' permitía romper el atributo con una comilla simple en
+// cualquier campo del archivo → XSS al abrir un .json ajeno (y los backups se
+// intercambian entre colegas). Los handlers de import leen de acá.
+let _pendingImport = null;
+
 function showImpOpts(data) {
   const opts = document.getElementById('imp-opts'); if(!opts) return;
   const type = data._type || 'desconocido';
-  const ds   = JSON.stringify(JSON.stringify(data));
+  _pendingImport = data;
   let h = `<div class="msec"><h4>Tipo: <code>${esc(type)}</code></h4>`;
 
   if(type==='presupuesto_individual'){
     h += `<p style="font-size:12px;color:var(--muted);margin-bottom:10px">#${esc(data.quoteNumber||'?')} — ${esc(data.clientName||'?')}</p>`;
-    h += `<button class="btn btn-p btn-bl" onclick='impIndividual(${ds})'>📋 Cargar en el editor</button>`;
-    h += `<button class="btn btn-s btn-bl" onclick='impToHistory(${ds})'>📚 Agregar al historial</button>`;
+    h += `<button class="btn btn-p btn-bl" onclick="impIndividual()">📋 Cargar en el editor</button>`;
+    h += `<button class="btn btn-s btn-bl" onclick="impToHistory()">📚 Agregar al historial</button>`;
   } else if(type==='historial_presupuestos'){
     h += `<p style="font-size:12px;color:var(--muted);margin-bottom:10px">${(data.history||[]).length} presupuestos.</p>`;
-    h += `<button class="btn btn-p btn-bl" onclick='impHistCombine(${ds})'>➕ Combinar con historial actual</button>`;
-    h += `<button class="btn btn-s btn-bl" onclick='impHistReplace(${ds})'>🔄 Reemplazar historial actual</button>`;
+    h += `<button class="btn btn-p btn-bl" onclick="impHistCombine()">➕ Combinar con historial actual</button>`;
+    h += `<button class="btn btn-s btn-bl" onclick="impHistReplace()">🔄 Reemplazar historial actual</button>`;
   } else if(type==='backup_completo'){
     h += `<p style="font-size:12px;color:var(--muted);margin-bottom:10px">Backup del ${esc((data.exportedAt||'').slice(0,10))}.</p>`;
-    h += `<button class="btn btn-p btn-bl" onclick='impBackup(${ds})'>🔄 Restaurar backup completo</button>`;
+    h += `<button class="btn btn-p btn-bl" onclick="impBackup()">🔄 Restaurar backup completo</button>`;
   } else {
     h += `<p style="font-size:12px;color:var(--red)">Tipo no reconocido.</p>`;
   }
@@ -6055,8 +6062,9 @@ function showImpOpts(data) {
   opts.innerHTML = h + '</div>';
 }
 
-function impIndividual(raw) {
-  const d = JSON.parse(raw);
+function impIndividual() {
+  const d = _pendingImport;
+  if(!d) return;
   if(d.snapshot){
     // Preservar numNext del state actual (ver loadFromHistory para detalles).
     const savedNumNext = S.numNext;
@@ -6077,8 +6085,9 @@ function impIndividual(raw) {
   toast('Presupuesto cargado en el editor', 'ok');
 }
 
-function impToHistory(raw) {
-  const d = JSON.parse(raw);
+function impToHistory() {
+  const d = _pendingImport;
+  if(!d) return;
   const h = getH();
   h.unshift({
     id: Date.now(),
@@ -6097,8 +6106,9 @@ function impToHistory(raw) {
   closeModal();
 }
 
-function impHistCombine(raw) {
-  const d = JSON.parse(raw);
+function impHistCombine() {
+  const d = _pendingImport;
+  if(!d) return;
   const importedList = d.history || [];
   const localList    = getH();
 
@@ -6145,10 +6155,12 @@ function impHistCombine(raw) {
   closeModal();
 }
 
-async function impHistReplace(raw) {
+async function impHistReplace() {
+  const d = _pendingImport;
+  if(!d) return;
   const ok = await confirmDlg('Reemplazar historial', '¿Reemplazar el historial actual con el importado?', 'Reemplazar', 'btn-d');
   if(!ok) return;
-  setH(JSON.parse(raw).history||[]);
+  setH(d.history||[]);
   renderHistory();
   toast('Historial reemplazado', 'info');
   closeModal();
@@ -6196,12 +6208,11 @@ function applyBackupObject(d) {
   }
 }
 
-async function impBackup(raw) {
+async function impBackup() {
+  const d = _pendingImport;
+  if(!d) { toast('❌ El backup está dañado o incompleto.', 'err', 5000); return; }
   const ok = await confirmDlg('Restaurar backup', '¿Restaurar el backup completo? Esto reemplazará el estado actual, historial, clientes, especies, servicios y frases.', 'Restaurar', 'btn-d');
   if(!ok) return;
-  let d;
-  try { d = JSON.parse(raw); }
-  catch(e) { toast('❌ El backup está dañado o incompleto.', 'err', 5000); return; }
   if (applyBackupObject(d)) { toast('Backup restaurado correctamente', 'ok'); closeModal(); }
   else { toast('⚠️ El backup no tiene un formato válido.', 'err', 5000); }
 }
