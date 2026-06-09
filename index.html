@@ -879,6 +879,9 @@ input[type=file]{display:none}
 .item-photo-preview{position:relative;margin-top:8px;display:inline-block}
 .item-photo-preview img{max-width:140px;max-height:140px;border-radius:8px;border:1px solid var(--border);display:block;object-fit:cover}
 .item-photo-remove{position:absolute;top:-8px;right:-8px;width:24px;height:24px;border-radius:50%;background:var(--red);color:#fff;border:2px solid #fff;font-size:12px;font-weight:700;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,.2)}
+/* Placeholder cuando la foto vive en otro dispositivo (ID sin caché local) */
+.item-photo-missing{width:140px;min-height:90px;padding:12px 10px;border-radius:8px;border:1px dashed var(--border);background:var(--bg-soft,#f6f7f9);color:var(--muted);font-size:11px;text-align:center;display:flex;flex-direction:column;justify-content:center;gap:4px}
+.item-photo-missing span{font-size:10px;opacity:.8}
 
 /* ===== css/print.css ===== */
 /* ═══════════════════════════════════════
@@ -2998,6 +3001,182 @@ function normalizeArgPhone(raw) {
   return '549' + d;
 }
 
+// ===== js/photos.js =====
+// ═══════════════════════════════════════
+// PHOTOS.JS — Almacén de fotos en IndexedDB
+// ═══════════════════════════════════════
+// Las fotos del registro fotográfico ya NO viven embebidas (base64) dentro de
+// S.items[].photo en localStorage: con pocas fotos eso llenaba la cuota de
+// ~5 MB y rompía el guardado (cada entrada del historial clonaba sus fotos).
+// Ahora item.photo guarda solo un ID corto ("p_...") y el binario vive en
+// IndexedDB (cientos de MB) — que además funciona offline.
+//
+// item.photo puede ser:
+//   • un ID "p_..."           → el dataURL se busca en el caché (hidratado de IDB)
+//   • un dataURL "data:image/" → foto legada embebida, o respaldo si IDB falla
+//                                 (se usa tal cual; getPhotoData la devuelve directo)
+//
+// Diseño SINCRÓNICO de lectura: al iniciar se hidrata todo el caché de fotos
+// en memoria (son pocos MB), así renderItems()/buildDoc() siguen siendo
+// sincrónicos y no hay que reescribir el flujo de impresión/PDF.
+
+const PHOTO_DB = 'pq_photos';
+const PHOTO_STORE = 'photos';
+const photoCache = new Map();   // id -> dataURL (hidratado de IndexedDB)
+let _photoDBPromise = null;
+
+function photoIsId(ref){ return typeof ref === 'string' && ref.indexOf('p_') === 0; }
+function newPhotoId(){ return 'p_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8); }
+
+function openPhotoDB(){
+  if (_photoDBPromise) return _photoDBPromise;
+  _photoDBPromise = new Promise((resolve, reject) => {
+    let req;
+    try { req = indexedDB.open(PHOTO_DB, 1); }
+    catch(e){ reject(e); return; }
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(PHOTO_STORE)) db.createObjectStore(PHOTO_STORE);
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+  return _photoDBPromise;
+}
+
+// Carga todas las fotos de IndexedDB al caché en memoria. Se llama una vez al
+// iniciar la app, ANTES del primer render. Nunca rechaza: si IDB no está
+// disponible (modo privado, navegador viejo), deja el caché vacío y sigue.
+async function hydratePhotoCache(){
+  try {
+    const db = await openPhotoDB();
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(PHOTO_STORE, 'readonly');
+      const cur = tx.objectStore(PHOTO_STORE).openCursor();
+      cur.onsuccess = () => {
+        const c = cur.result;
+        if (c){ photoCache.set(c.key, c.value); c.continue(); }
+        else resolve();
+      };
+      cur.onerror = () => reject(cur.error);
+    });
+  } catch(e){ console.warn('No se pudo hidratar el caché de fotos (IndexedDB)', e); }
+}
+
+// Guarda un dataURL en IndexedDB + caché y devuelve su ID. Si IDB falla
+// (no disponible / cuota), cae al comportamiento viejo: devuelve el propio
+// dataURL para embeberlo en el ítem (la app sigue funcionando).
+async function savePhoto(dataUrl){
+  const id = newPhotoId();
+  try {
+    const db = await openPhotoDB();
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(PHOTO_STORE, 'readwrite');
+      tx.objectStore(PHOTO_STORE).put(dataUrl, id);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error);
+    });
+    photoCache.set(id, dataUrl);
+    return id;
+  } catch(e){
+    console.warn('IndexedDB no disponible; la foto se guarda embebida como respaldo', e);
+    return dataUrl;   // fallback: comportamiento previo (foto embebida)
+  }
+}
+
+// Devuelve el dataURL de una referencia de foto (ID o dataURL legado), o ''.
+// Validá SIEMPRE el resultado con safeImgSrc() antes de meterlo en innerHTML.
+function getPhotoData(ref){
+  if (!ref) return '';
+  if (typeof ref === 'string' && ref.indexOf('data:') === 0) return ref;  // legado/embebida
+  if (photoIsId(ref)) return photoCache.get(ref) || '';
+  return '';
+}
+
+// ¿La referencia apunta a una foto que NO tenemos localmente? (ID sin caché).
+// Pasa en un equipo nuevo que todavía no restauró el backup: mostramos un
+// placeholder "foto no disponible" en vez de una imagen rota.
+function photoMissing(ref){ return photoIsId(ref) && !photoCache.has(ref); }
+
+// Recolecta en `set` los IDs de foto referenciados por un estado/snapshot
+// (ítems normales, escenario B y estimativos). Lo usa el backup para incluir
+// solo las fotos que hagan falta.
+function collectPhotoIds(obj, set){
+  if (!obj) return;
+  [obj.items, obj.itemsB, obj.estItems].forEach(arr => {
+    if (!Array.isArray(arr)) return;
+    arr.forEach(it => { if (it && photoIsId(it.photo)) set.add(it.photo); });
+  });
+}
+
+// Construye el mapa {id: dataURL} de las fotos referenciadas por los estados
+// dados (estado actual y/o snapshots del historial). Se adjunta a cualquier
+// export (presupuesto individual, historial, backup) para que las fotos
+// viajen junto al JSON y no se pierdan al abrirlo en otro dispositivo.
+function buildPhotoMap(){
+  const ids = new Set();
+  for (const s of arguments) collectPhotoIds(s, ids);
+  const map = {};
+  ids.forEach(id => { const d = getPhotoData(id); if (d) map[id] = d; });
+  return map;
+}
+
+// Mueve a IndexedDB las fotos embebidas (base64) que tenga el estado dado,
+// reemplazándolas in-place por su ID. Alivia la cuota de localStorage cuando
+// se carga un presupuesto viejo (o el estado guardado) que aún traía fotos
+// embebidas. El caché se actualiza sincrónicamente (render inmediato) y la
+// escritura a IDB va en segundo plano. Devuelve cuántas migró.
+function migrateInlinePhotosToIDB(state){
+  if (!state) return 0;
+  const toWrite = [];
+  [state.items, state.itemsB, state.estItems].forEach(arr => {
+    if (!Array.isArray(arr)) return;
+    arr.forEach(it => {
+      if (it && typeof it.photo === 'string' && it.photo.indexOf('data:image/') === 0) {
+        const id = newPhotoId();
+        photoCache.set(id, it.photo);
+        toWrite.push([id, it.photo]);
+        it.photo = id;
+      }
+    });
+  });
+  if (toWrite.length) {
+    openPhotoDB().then(db => {
+      const tx = db.transaction(PHOTO_STORE, 'readwrite');
+      const store = tx.objectStore(PHOTO_STORE);
+      toWrite.forEach(([id, v]) => store.put(v, id));
+    }).catch(e => {
+      // Si IDB falla, revertimos a embebido para no perder la foto.
+      console.warn('No se pudieron migrar fotos a IndexedDB; quedan embebidas', e);
+      toWrite.forEach(([id, v]) => {
+        photoCache.delete(id);
+        [state.items, state.itemsB, state.estItems].forEach(arr => {
+          if (Array.isArray(arr)) arr.forEach(it => { if (it && it.photo === id) it.photo = v; });
+        });
+      });
+    });
+  }
+  return toWrite.length;
+}
+
+// Restaura las fotos que vienen dentro de un backup ({id: dataURL}). Setea el
+// caché sincrónicamente (para que el render posterior las muestre) y persiste
+// a IndexedDB en segundo plano. Valida que el valor sea un dataURL de imagen
+// (los backups se intercambian entre colegas → no confiar a ciegas).
+function restorePhotosFromBackup(map){
+  if (!map || typeof map !== 'object') return;
+  const entries = Object.entries(map).filter(([id, v]) =>
+    photoIsId(id) && typeof v === 'string' && /^data:image\//i.test(v));
+  if (!entries.length) return;
+  entries.forEach(([id, v]) => photoCache.set(id, v));
+  openPhotoDB().then(db => {
+    const tx = db.transaction(PHOTO_STORE, 'readwrite');
+    const store = tx.objectStore(PHOTO_STORE);
+    entries.forEach(([id, v]) => store.put(v, id));
+  }).catch(e => console.error('No se pudieron persistir las fotos del backup en IndexedDB', e));
+}
+
 // ===== js/clients.js =====
 // ═══════════════════════════════════════
 // CLIENTS.JS — Base de clientes, especies, autocompletar
@@ -4052,7 +4231,11 @@ function renderItems() {
       ${item.type!=='note' ? `<button class="btn btn-g btn-sm ia-photo">${item.photo?'📷 Foto ✓':'📷 Foto'}</button>` : ''}
       <button class="btn btn-d btn-sm ia-del">✕ Eliminar</button>
     </div>
-    ${item.photo ? `<div class="item-photo-preview"><img src="${safeImgSrc(item.photo)}" alt="Foto"><button type="button" class="item-photo-remove" title="Quitar foto">✕</button></div>` : ''}`;
+    ${item.photo ? (
+      safeImgSrc(getPhotoData(item.photo))
+        ? `<div class="item-photo-preview"><img src="${safeImgSrc(getPhotoData(item.photo))}" alt="Foto"><button type="button" class="item-photo-remove" title="Quitar foto">✕</button></div>`
+        : `<div class="item-photo-preview item-photo-missing">📷 Foto no disponible<br><span>Restaurá tu backup en este dispositivo</span><button type="button" class="item-photo-remove" title="Quitar foto">✕</button></div>`
+    ) : ''}`;
     card.innerHTML = inner;
 
     const df = card.querySelector('.ds-f');
@@ -4426,8 +4609,9 @@ function _refreshEstQtyPreview(card, idx) {
 // ═══════════════════════════════════════════════════════════
 // Abre el selector de imágenes del dispositivo, comprime la foto a un
 // tamaño razonable para documento (máx 1000px lado mayor, JPEG calidad
-// 0.7) y la guarda como dataURL en item.photo. La compresión evita que
-// el almacenamiento del navegador se llene con fotos de varios MB.
+// 0.7) y la guarda en IndexedDB vía savePhoto(), dejando en item.photo solo
+// el ID (o el dataURL embebido si IDB no está disponible). La compresión
+// evita que el almacenamiento del navegador se llene con fotos de varios MB.
 function pickItemPhoto(idx) {
   const input = document.createElement('input');
   input.type = 'file';
@@ -4435,11 +4619,13 @@ function pickItemPhoto(idx) {
   input.onchange = () => {
     const file = input.files && input.files[0];
     if (!file) return;
-    compressImage(file, 1000, 0.7).then(dataUrl => {
-      setItemField(idx, 'photo', dataUrl);
-      renderItems();
-      toast('Foto agregada al ítem', 'ok', 1800);
-    }).catch(err => {
+    compressImage(file, 1000, 0.7)
+      .then(dataUrl => savePhoto(dataUrl))
+      .then(ref => {
+        setItemField(idx, 'photo', ref);
+        renderItems();
+        toast('Foto agregada al ítem', 'ok', 1800);
+      }).catch(err => {
       console.error('Error al procesar la foto:', err);
       toast('No se pudo procesar la foto', 'err');
     });
@@ -5366,6 +5552,9 @@ function loadFromHistory(id) {
   if (S.surcharge === undefined) S.surcharge = 0;
   if (!Array.isArray(S.itemsB)) S.itemsB = [];
   normalizeRiskData();
+  // Migrar a IndexedDB cualquier foto embebida del snapshot viejo, para no
+  // re-inflar el estado activo (que se autoguarda en localStorage).
+  migrateInlinePhotosToIDB(S);
   // Estado runtime de escenarios: siempre arrancar en A al cargar
   activeScenario = 'A';
   noSync=true; restoreUI(); noSync=false;
@@ -5980,17 +6169,20 @@ function expCurrent() {
     clientName: S.clientName,
     currency: S.currency,
     total,
-    snapshot: JSON.parse(JSON.stringify(S))
+    snapshot: JSON.parse(JSON.stringify(S)),
+    photos: buildPhotoMap(S)
   }, `presupuesto-${S.quoteNumber}.json`);
   toast('Presupuesto exportado', 'ok');
 }
 
 function expHistory() {
+  const history = getH();
   dlJSON({
     _type: 'historial_presupuestos',
     _schemaVersion: APP_SCHEMA_VERSION,
     exportedAt: new Date().toISOString(),
-    history: getH()
+    history: history,
+    photos: buildPhotoMap.apply(null, history.map(e => e && e.snapshot))
   }, 'historial-presupuestos.json');
   toast('Historial exportado', 'ok');
 }
@@ -6011,20 +6203,29 @@ function buildBackupObject() {
   const facturas = (typeof getFacturas === 'function') ? getFacturas() : [];
   let tope = null;
   try { tope = localStorage.getItem(TOPE_KEY); } catch(_){}
+
+  // Fotos (v4): ahora viven en IndexedDB y los ítems solo guardan su ID. Para
+  // que las fotos sobrevivan a un cambio de teléfono, el backup incluye el
+  // dataURL de cada foto referenciada por el estado o el historial. Así, al
+  // restaurar en otro dispositivo, las fotos vuelven a IndexedDB.
+  const history = getH();
+  const photos = buildPhotoMap.apply(null, [S].concat(history.map(e => e && e.snapshot)));
+
   return {
     _type: 'backup_completo',
-    _version: 3,
+    _version: 4,
     _schemaVersion: APP_SCHEMA_VERSION,
     exportedAt: new Date().toISOString(),
     state: JSON.parse(JSON.stringify(S)),
-    history: getH(),
+    history: history,
     clients: getClientDB(),
     species: getSpeciesDB(),
     services: (typeof getServicesDB === 'function') ? getServicesDB() : [],
     servicesPinned: (typeof getPinnedServices === 'function') ? getPinnedServices() : [],
     phrases: phrases,
     facturas: facturas,
-    tope: tope
+    tope: tope,
+    photos: photos
   };
 }
 
@@ -6088,6 +6289,7 @@ function showImpOpts(data) {
 function impIndividual() {
   const d = _pendingImport;
   if(!d) return;
+  if (d.photos) restorePhotosFromBackup(d.photos);
   if(d.snapshot){
     // Preservar numNext del state actual (ver loadFromHistory para detalles).
     const savedNumNext = S.numNext;
@@ -6098,6 +6300,7 @@ function impIndividual() {
     if(S.surcharge===undefined) S.surcharge = 0;
     if (!Array.isArray(S.itemsB)) S.itemsB = [];
     normalizeRiskData();
+    migrateInlinePhotosToIDB(S);
     activeScenario = 'A';
     noSync=true; restoreUI(); noSync=false;
     calcExpiry(); renderItems(); renderEstItems(); renderRiskDefects();
@@ -6111,6 +6314,7 @@ function impIndividual() {
 function impToHistory() {
   const d = _pendingImport;
   if(!d) return;
+  if (d.photos) restorePhotosFromBackup(d.photos);
   const h = getH();
   h.unshift({
     id: Date.now(),
@@ -6132,6 +6336,7 @@ function impToHistory() {
 function impHistCombine() {
   const d = _pendingImport;
   if(!d) return;
+  if (d.photos) restorePhotosFromBackup(d.photos);
   const importedList = d.history || [];
   const localList    = getH();
 
@@ -6183,6 +6388,7 @@ async function impHistReplace() {
   if(!d) return;
   const ok = await confirmDlg('Reemplazar historial', '¿Reemplazar el historial actual con el importado?', 'Reemplazar', 'btn-d');
   if(!ok) return;
+  if (d.photos) restorePhotosFromBackup(d.photos);
   setH(d.history||[]);
   renderHistory();
   toast('Historial reemplazado', 'info');
@@ -6194,6 +6400,9 @@ async function impHistReplace() {
 function applyBackupObject(d) {
   if (!d || typeof d !== 'object') return false;
   try {
+    // Fotos (v4+): repoblar IndexedDB/caché ANTES de renderizar, para que el
+    // estado e historial restaurados encuentren sus fotos por ID.
+    if (d.photos && typeof restorePhotosFromBackup === 'function') restorePhotosFromBackup(d.photos);
     if(d.state)   Object.assign(S, migrateState(d.state));
     if(d.history) setH(d.history);
     if(d.clients) safeSetLS(CLIENT_KEY, JSON.stringify(d.clients));
@@ -6225,6 +6434,8 @@ function applyBackupObject(d) {
     }
     if (!Array.isArray(S.itemsB)) S.itemsB = [];
     normalizeRiskData();
+    // Backups viejos (v3-) traían las fotos embebidas en el estado: migrarlas.
+    migrateInlinePhotosToIDB(S);
     activeScenario = 'A';
     noSync=true; restoreUI(); noSync=false;
     calcExpiry(); renderItems(); renderEstItems(); renderRiskDefects();
@@ -6760,17 +6971,22 @@ function buildDoc() {
   // documento. Cada foto se etiqueta con la especie (árbol) o la
   // descripción (servicio) del ítem al que pertenece. Si ningún ítem
   // tiene foto, no se renderiza nada (el documento queda igual que hoy).
-  const itemsConFoto = (S.items || []).filter(it => it && it.photo);
+  // Resolvemos cada foto a su dataURL (vía IndexedDB/caché o embebida). Las que
+  // no estén disponibles localmente (ID de un equipo aún no restaurado) se
+  // omiten: en un PDF para el cliente un placeholder roto quedaría peor.
+  const itemsConFoto = (S.items || [])
+    .map(it => it && it.photo ? { it, src: safeImgSrc(getPhotoData(it.photo)) } : null)
+    .filter(x => x && x.src);
   const fotosH = itemsConFoto.length ? `
     <div class="pphotos">
       <div class="pphotos-t">Registro Fotográfico</div>
       <div class="pphotos-grid">
-        ${itemsConFoto.map(it => {
+        ${itemsConFoto.map(({ it, src }) => {
           const etiqueta = (it.type === 'tree')
             ? (it.species || 'Árbol')
             : (it.desc || 'Servicio');
           return `<figure class="pphoto">
-            <img src="${safeImgSrc(it.photo)}" alt="${esc(etiqueta)}">
+            <img src="${src}" alt="${esc(etiqueta)}">
             <figcaption>${esc(etiqueta)}</figcaption>
           </figure>`;
         }).join('')}
@@ -7536,8 +7752,16 @@ function factTopeChanged() {
 // CORE.JS — Inicialización principal de la app
 // ═══════════════════════════════════════
 
-window.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('DOMContentLoaded', async () => {
   loadLS();
+  // Fotos: hidratar el caché desde IndexedDB ANTES del primer render (así
+  // renderItems()/buildDoc() resuelven los IDs de foto sincrónicamente).
+  // Nunca rechaza; si IDB no está disponible, sigue con el caché vacío.
+  await hydratePhotoCache();
+  // Migrar a IndexedDB cualquier foto embebida que aún traiga el estado
+  // guardado (versiones previas): alivia la cuota de localStorage. Si migró
+  // algo, persistimos el estado ya liviano.
+  if (migrateInlinePhotosToIDB(S) > 0) saveLS();
   // Marcar estado inicial como "guardado" para que el badge muestre algo
   // útil desde el arranque (el estado en disk coincide con el cargado).
   _lastSaveAt = Date.now();

@@ -15,7 +15,7 @@
 
 ## Estructura de archivos
 - `index.html` — **toda la app** (markup + `<style>` + `<script>`).
-- `sw.js` — Service Worker (offline + actualizaciones). **`CACHE_VERSION` actual: `presupuesto-v32`**.
+- `sw.js` — Service Worker (offline + actualizaciones). **`CACHE_VERSION` actual: `presupuesto-v33`**.
 - `manifest.webmanifest`, `*.png` — PWA (instalación, iconos).
 
 ## Mapa del código dentro de `index.html`
@@ -30,6 +30,7 @@ grep -n "===== js/" index.html
 | Sección | De qué se ocupa |
 |---|---|
 | `js/state.js` | Estado global `S`, defaults `DEF`, claves `LS`, helpers (fechas, dinero, `esc`), `saveLS`/`loadLS`, `safeSetLS`, toasts, totales |
+| `js/photos.js` | Almacén de fotos en **IndexedDB** (`pq_photos`). `item.photo` guarda un ID `p_...`; el binario vive en IDB. `savePhoto`/`getPhotoData`/`hydratePhotoCache`/`migrateInlinePhotosToIDB`/`restorePhotosFromBackup` |
 | `js/clients.js` | DBs de clientes, especies y servicios (autocompletar) |
 | `js/phrases.js` | Biblioteca de frases reusables |
 | `js/items.js` | Ítems del presupuesto (árbol/servicio/nota), recargo, escenarios A/B |
@@ -47,6 +48,7 @@ El CSS vive en el `<style>` (líneas ~16–1711). Hay dos bloques de estilos del
 - **localStorage:** claves centralizadas en el objeto `LS`. Las DBs tienen sus propias constantes (`SPECIES_KEY`, `SERVICES_KEY`, `CLIENT_KEY`, `PHRASE_KEYS`…). Escribir SIEMPRE vía `safeSetLS()` (maneja cuota llena y dispara el backup a Drive).
 - **Dinero en centavos:** usar `moneyToCents` / `centsToMoney` / `fmtM` (evita errores de punto flotante). No operar con floats de pesos directo.
 - **Fechas en LOCAL, no UTC:** usar `today()` / `toLocalISODate()` / `calcExpiry()`. Nunca `toISOString().slice(0,10)` para fechas de calendario (corre el día en Argentina).
+- **Fotos en IndexedDB, no en localStorage:** `item.photo` guarda un ID `p_...`; el dataURL vive en IDB (`pq_photos`). Para mostrar una foto resolvé con `getPhotoData(item.photo)` y validá con `safeImgSrc()`. Para guardar una foto nueva usá `savePhoto(dataUrl)` (devuelve el ID, o el dataURL embebido si IDB falla). El caché en memoria se hidrata al iniciar con `hydratePhotoCache()` (antes del primer render). Las fotos viejas embebidas (`data:image/...`) siguen funcionando y se migran a IDB con `migrateInlinePhotosToIDB()` al cargar. El backup completo incluye las fotos referenciadas (`photos`) para sobrevivir un cambio de dispositivo.
 - **XSS:** escapar SIEMPRE los datos del usuario con `esc()` antes de meterlos en `innerHTML`.
 - **3 modos de presupuesto:** Normal, Estimativo (fotos) y Riesgo (informe ISA). `buildDoc()` deriva a `buildEstDoc()`/`buildRiskDoc()` según `S.isEstimative`/`S.isRisk`.
 
@@ -59,7 +61,7 @@ El CSS vive en el `<style>` (líneas ~16–1711). Hay dos bloques de estilos del
 
 ## Flujo de despliegue (SEGUIR SIEMPRE)
 1. Desarrollar en la rama de trabajo (`claude/...`), no en `main`.
-2. **Subir `CACHE_VERSION` en `sw.js`** en cada cambio que se despliegue (si no, los dispositivos siguen con la versión vieja en caché). Formato: `presupuesto-vNN`. **Versión actual: v32**.
+2. **Subir `CACHE_VERSION` en `sw.js`** en cada cambio que se despliegue (si no, los dispositivos siguen con la versión vieja en caché). Formato: `presupuesto-vNN`. **Versión actual: v33**.
 3. Si agregás un archivo nuevo (ej. otro `.js` o `.css`), **agregarlo a `APP_SHELL` en `sw.js`** o se rompe el offline.
 4. Mergear a `main` → Cloudflare despliega solo.
 
