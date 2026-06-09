@@ -7337,7 +7337,9 @@ function factInit() {
   const inp = document.getElementById('fact-tope-input');
   if(inp) inp.value = getTope();
   const fd = document.getElementById('fact-fecha');
-  if(fd && !fd.value) fd.value = new Date().toISOString().slice(0,10);
+  // Fecha LOCAL, no UTC: toISOString() corre el día en Argentina (UTC-3)
+  // después de las 21 hs y la factura quedaría fechada al día siguiente.
+  if(fd && !fd.value) fd.value = today();
   factRenderReminder();
   factRender();
 }
