@@ -2537,6 +2537,11 @@ function esc(s){ if(s==null)return ''; return String(s).replace(/&/g,'&amp;').re
 // se descarta, evitando que un src="..." se rompa e inyecte HTML. Los logos y
 // fotos legítimos siempre son data:image/ (FileReader/canvas.toDataURL).
 function safeImgSrc(s){ return (typeof s === 'string' && /^data:image\//i.test(s)) ? s : ''; }
+// Devuelve un color hex válido (#rgb o #rrggbb) o el verde de marca por
+// defecto. El color de marca se interpola en style="color:${color}" dentro
+// del HTML del documento; un accentColor manipulado en un import podría
+// romper el atributo e inyectar HTML. El color picker siempre da #rrggbb.
+function safeColor(c){ return (typeof c === 'string' && /^#[0-9a-f]{3}([0-9a-f]{3})?$/i.test(c)) ? c : '#064e3b'; }
 function fmtD(iso){ if(!iso)return '—'; const p=String(iso).split('-'); if(p.length!==3||!p[0]||!p[1]||!p[2])return '—'; const[y,m,d]=p; return `${d}/${m}/${y}`; }
 function sym(c){ return {ARS:'$',USD:'U$D',EUR:'€'}[c]||c; }
 function moneyToCents(v) {
@@ -6723,7 +6728,7 @@ function buildDoc() {
     (S.itemsB||[]).forEach(it=>{ if(it.type==='tree'&&it.species) saveSpeciesToDB(it.species); });
   }
 
-  const color = S.accentColor;
+  const color = safeColor(S.accentColor);
   const cur   = S.currency;
 
   const contacts = [];
@@ -6868,7 +6873,7 @@ function buildRiskDoc() {
   if (S.clientName) saveClientToDB(S.clientName, S.clientContact, S.workAddress);
   S.items.forEach(it=>{ if(it.type==='tree'&&it.species) saveSpeciesToDB(it.species); });
 
-  const color  = S.accentColor;
+  const color  = safeColor(S.accentColor);
   const cur    = S.currency;
   const rd     = S.riskData || {};
   const {subtotal, discAmt, total} = calcTotals();
@@ -7138,7 +7143,7 @@ function buildRiskDoc() {
 function buildEstDoc() {
   if (S.clientName) saveClientToDB(S.clientName, S.clientContact, S.workAddress);
 
-  const color = S.accentColor;
+  const color = safeColor(S.accentColor);
   const cur   = S.currency;
 
   const workItems    = (S.estItems||[]).filter(i=>i.type==='work');
