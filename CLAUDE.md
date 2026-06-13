@@ -60,10 +60,16 @@ El CSS vive en el `<style>` (líneas ~16–1711). Hay dos bloques de estilos del
 - Al desconectar (`gdriveDisconnect`) se borra también `LS.GDRIVE_EMAIL`.
 
 ## Flujo de despliegue (SEGUIR SIEMPRE)
+
+> **Para desplegar cualquier cambio a producción: mergear la rama de trabajo a
+> `main`. Cloudflare detecta el push y despliega automáticamente — no hay
+> ningún paso manual extra.** Los usuarios con la app instalada reciben la
+> versión nueva la próxima vez que abran la app con conexión.
+
 1. Desarrollar en la rama de trabajo (`claude/...`), no en `main`.
 2. **Subir `CACHE_VERSION` en `sw.js`** en cada cambio que se despliegue (si no, los dispositivos siguen con la versión vieja en caché). Formato: `presupuesto-vNN`. **Versión actual: v36**.
 3. Si agregás un archivo nuevo (ej. otro `.js` o `.css`), **agregarlo a `APP_SHELL` en `sw.js`** o se rompe el offline.
-4. Mergear a `main` → Cloudflare despliega solo.
+4. **Mergear a `main`** → Cloudflare despliega solo.
 
 ## Cómo verificar cambios (sin romper)
 **Sintaxis JS** — aislar el `<script>` inline y verificar con node:
