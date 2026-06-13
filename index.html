@@ -7838,6 +7838,18 @@ window.addEventListener('DOMContentLoaded', async () => {
       gdriveUpload().then(gdriveUpdateUI).catch(() => {});
     }
   });
+
+  // Accesos directos del manifest (long-press en el ícono): al abrir con
+  // ?go=… disparamos la acción y limpiamos la URL para que un reload no la
+  // repita. Reutiliza las mismas funciones que los botones de la UI.
+  try {
+    const go = new URLSearchParams(location.search).get('go');
+    if (go) {
+      history.replaceState(null, '', location.pathname);
+      if (go === 'nuevo' && typeof newQuote === 'function') newQuote();
+      else if (go === 'historial' && typeof switchTab === 'function') switchTab('historial');
+    }
+  } catch (e) {}
 });
 
 // ═══════════════════════════════════════════════════════════
