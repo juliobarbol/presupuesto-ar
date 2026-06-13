@@ -15,7 +15,7 @@
 
 ## Estructura de archivos
 - `index.html` — **toda la app** (markup + `<style>` + `<script>`).
-- `sw.js` — Service Worker (offline + actualizaciones). **`CACHE_VERSION` actual: `presupuesto-v38`**.
+- `sw.js` — Service Worker (offline + actualizaciones). **`CACHE_VERSION` actual: `presupuesto-v39`**.
 - `manifest.webmanifest`, `*.png` — PWA (instalación, iconos).
 
 ## Mapa del código dentro de `index.html`
@@ -53,7 +53,7 @@ El CSS vive en el `<style>` (líneas ~16–1711). Hay dos bloques de estilos del
 - **3 modos de presupuesto:** Normal, Estimativo (fotos) y Riesgo (informe ISA). `buildDoc()` deriva a `buildEstDoc()`/`buildRiskDoc()` según `S.isEstimative`/`S.isRisk`.
 
 ## Módulo GDRIVE (detalles que no romper)
-- `gdriveGetToken({ interactive? })`: por defecto silencioso (usa `hint` con el email guardado para renovar sin selector). `{ interactive: true }` solo desde botones que el usuario toca (primera conexión / restaurar).
+- `gdriveGetToken({ interactive? })`: por defecto silencioso. Usa **`login_hint`** (NO `hint`, que GIS ignora) con el email guardado para que, aun con varias cuentas abiertas en el navegador, Google renueve sin mostrar el selector. Las llamadas de fondo usan `prompt: 'none'` (nunca abren UI). `{ interactive: true }` solo desde botones que el usuario toca (primera conexión / restaurar): si todavía no hay email recordado pide consentimiento/selector (única vez).
 - `gdriveRememberEmail(token)`: llama a `drive/v3/about` y guarda el email en `LS.GDRIVE_EMAIL` (`pq_gdrive_email`). Se llama después de `gdriveConnect` y `gdriveRestore`.
 - `scheduleGdriveBackup` y el handler de `visibilitychange` verifican `navigator.onLine` antes de intentar nada — no tocar sin señal.
 - El listener `window.addEventListener('online', …)` sube lo pendiente al volver la conexión.
@@ -67,7 +67,7 @@ El CSS vive en el `<style>` (líneas ~16–1711). Hay dos bloques de estilos del
 > versión nueva la próxima vez que abran la app con conexión.
 
 1. Desarrollar en la rama de trabajo (`claude/...`), no en `main`.
-2. **Subir `CACHE_VERSION` en `sw.js`** en cada cambio que se despliegue (si no, los dispositivos siguen con la versión vieja en caché). Formato: `presupuesto-vNN`. **Versión actual: v38**.
+2. **Subir `CACHE_VERSION` en `sw.js`** en cada cambio que se despliegue (si no, los dispositivos siguen con la versión vieja en caché). Formato: `presupuesto-vNN`. **Versión actual: v39**.
 3. Si agregás un archivo nuevo (ej. otro `.js` o `.css`), **agregarlo a `APP_SHELL` en `sw.js`** o se rompe el offline.
 4. **Mergear a `main`** → Cloudflare despliega solo.
 
