@@ -6775,12 +6775,22 @@ function gdriveGetToken(opts){
     if (typeof navigator !== 'undefined' && navigator.onLine === false) { reject(new Error('offline')); return; }
     gdriveEnsureClient().then(() => {
       GDRIVE._pending = { resolve, reject };
-      const req = { prompt: '' };
       let hint = ''; try { hint = localStorage.getItem(LS.GDRIVE_EMAIL) || ''; } catch(_){}
-      if (hint) req.hint = hint;            // pista de cuenta → renueva en silencio
-      // Solo la primera conexión (sin email recordado y a pedido del usuario)
-      // puede pedir consentimiento/selector explícito.
-      if (interactive && !hint) req.prompt = 'consent';
+      const req = {};
+      // ⚠️ El campo de GIS es `login_hint`, NO `hint` (que Google ignora). Con
+      // varias cuentas abiertas en el navegador, ESTO es lo que evita el
+      // selector: le decimos a Google EXACTAMENTE qué cuenta usar.
+      if (hint) req.login_hint = hint;
+      if (interactive) {
+        // Botón tocado por el usuario: si todavía no sabemos la cuenta (primera
+        // conexión) dejamos aparecer el consentimiento/selector (única vez). Si
+        // ya la sabemos, prompt vacío = renovación silenciosa sin volver a pedir.
+        req.prompt = hint ? '' : 'consent';
+      } else {
+        // Llamadas en segundo plano (apertura, auto-backup): NUNCA mostrar UI.
+        // Si no se puede renovar callado, falla y queda el botón "Conectar".
+        req.prompt = 'none';
+      }
       GDRIVE._tokenClient.requestAccessToken(req);
     }).catch(reject);
   });
