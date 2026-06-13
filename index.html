@@ -103,6 +103,18 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;font-size:14px;background
 #confirm-box h4{font-family:'DM Serif Display',serif;font-size:17px;margin-bottom:10px;color:var(--text)}
 #confirm-box p{font-size:13px;color:var(--muted);margin-bottom:20px;line-height:1.5}
 #confirm-box .cbtns{display:flex;gap:8px;justify-content:flex-end}
+/* ── Bandeja de fotos compartidas (Web Share Target) ── */
+#share-overlay{display:none;position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(0,0,0,.45);z-index:2000;align-items:center;justify-content:center}
+#share-overlay.open{display:flex}
+#share-box{background:#fff;border-radius:12px;padding:24px;width:440px;max-width:92vw;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+#share-box h4{font-family:'DM Serif Display',serif;font-size:17px;margin-bottom:10px;color:var(--text)}
+#share-box p{font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.5}
+#share-tray-list{overflow-y:auto;display:flex;flex-direction:column;gap:10px;margin-bottom:18px;-webkit-overflow-scrolling:touch}
+.share-row{display:flex;align-items:center;gap:12px}
+.share-thumb{width:56px;height:56px;flex-shrink:0;border-radius:8px;overflow:hidden;background:#f1f5f4;display:flex;align-items:center;justify-content:center;font-size:22px}
+.share-thumb img{width:100%;height:100%;object-fit:cover}
+.share-dest{flex:1;min-width:0}
+#share-box .cbtns{display:flex;gap:8px;justify-content:flex-end}
 
 /* MODAL */
 #moverlay{display:none;position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center}
@@ -911,6 +923,7 @@ input[type=file]{display:none}
   #app,
   #moverlay,
   #confirm-overlay,
+  #share-overlay,
   #phrases-overlay,
   #sticky-totals,
   #toast-container{display:none!important}
@@ -2341,6 +2354,22 @@ input[type=file]{display:none}
   </div>
 </div>
 
+<!-- ════════════════════ BANDEJA DE FOTOS COMPARTIDAS ════════════════════
+     Web Share Target: se abre cuando el usuario comparte fotos a la app.
+     Por cada foto, elige el destino (árbol nuevo / ítem existente / descartar).
+     La lógica vive en js/items.js (processSharedPhotos/openShareTray). -->
+<div id="share-overlay" role="presentation">
+  <div id="share-box" role="dialog" aria-modal="true" aria-labelledby="share-title">
+    <h4 id="share-title">📷 Fotos compartidas</h4>
+    <p>Recibiste <strong id="share-tray-count">0</strong> foto(s). Elegí el destino de cada una:</p>
+    <div id="share-tray-list"></div>
+    <div class="cbtns">
+      <button class="btn btn-s" id="share-cancel" onclick="closeShareTray()">Cancelar</button>
+      <button class="btn btn-p" id="share-ok" onclick="confirmShareTray()">Agregar al presupuesto</button>
+    </div>
+  </div>
+</div>
+
 <!-- ════════════════════ PHRASES MODAL ════════════════════
      Biblioteca de frases reusables. Se abre desde un botón "📝 Frases"
      al lado de textareas (descripciones, observaciones, condiciones).
@@ -3175,6 +3204,49 @@ function restorePhotosFromBackup(map){
     const store = tx.objectStore(PHOTO_STORE);
     entries.forEach(([id, v]) => store.put(v, id));
   }).catch(e => console.error('No se pudieron persistir las fotos del backup en IndexedDB', e));
+}
+
+// ─── BANDEJA DE FOTOS COMPARTIDAS (Web Share Target) ──────────────
+// El Service Worker stashea aquí los blobs de las fotos que el usuario
+// compartió a la app desde la galería/cámara (el redirect del POST pierde
+// el body). La página los lee al abrir con ?share=1 y vacía la bandeja.
+// Ver sw.js (handler del POST) y core.js (detección de ?share=1).
+// IMPORTANTE: el nombre de DB/store debe coincidir con el del SW.
+const SHARE_INBOX_DB = 'pq_share_inbox';
+const SHARE_INBOX_STORE = 'inbox';
+
+function openShareInboxDB(){
+  return new Promise((resolve, reject) => {
+    let req;
+    try { req = indexedDB.open(SHARE_INBOX_DB, 1); }
+    catch(e){ reject(e); return; }
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(SHARE_INBOX_STORE)) {
+        db.createObjectStore(SHARE_INBOX_STORE, { autoIncrement: true });
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+// Lee todos los blobs de la bandeja y la vacía en la misma transacción.
+// Devuelve [] si no hay nada o si IndexedDB no está disponible (nunca rechaza).
+async function drainShareInbox(){
+  try {
+    const db = await openShareInboxDB();
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction(SHARE_INBOX_STORE, 'readwrite');
+      const store = tx.objectStore(SHARE_INBOX_STORE);
+      const getAll = store.getAll();
+      getAll.onsuccess = () => { store.clear(); resolve(getAll.result || []); };
+      getAll.onerror = () => reject(getAll.error);
+    });
+  } catch(e){
+    console.warn('No se pudo leer la bandeja de fotos compartidas', e);
+    return [];
+  }
 }
 
 // ===== js/clients.js =====
@@ -4631,6 +4703,133 @@ function pickItemPhoto(idx) {
     });
   };
   input.click();
+}
+
+// ═══════════════════════════════════════════════════════════
+// BANDEJA DE FOTOS COMPARTIDAS — Web Share Target (solo Android)
+// ═══════════════════════════════════════════════════════════
+// Flujo: el usuario comparte N fotos a la app → el SW las stashea en
+// IndexedDB y redirige a ?share=1 → core.js llama a processSharedPhotos().
+// Cada foto se comprime y se guarda (savePhoto → ref p_...). Luego se abre
+// una bandeja (modal) para que el usuario decida el destino de cada foto:
+// crear un árbol nuevo (por defecto) o asignarla a un ítem existente.
+// Las fotos viven en los ítems NORMALES (S.items); por eso forzamos modo
+// normal al aplicar (el usuario puede pasar a estimativo después a mano).
+const MAX_SHARED_PHOTOS = 12;   // tope para no reventar cuota/render
+let _shareTrayRefs = [];        // refs de fotos pendientes de asignar
+
+async function processSharedPhotos(){
+  const blobs = await drainShareInbox();
+  if (!blobs.length) return;
+  const slice = blobs.slice(0, MAX_SHARED_PHOTOS);
+  if (blobs.length > MAX_SHARED_PHOTOS) {
+    toast(`Se recibieron muchas fotos; se procesan las primeras ${MAX_SHARED_PHOTOS}`, 'info', 3500);
+  } else {
+    toast('Procesando fotos compartidas…', 'info', 1500);
+  }
+  const refs = [];
+  for (const blob of slice) {
+    try {
+      const dataUrl = await compressImage(blob, 1000, 0.7);
+      const ref = await savePhoto(dataUrl);
+      refs.push(ref);
+    } catch(e){ console.warn('No se pudo procesar una foto compartida', e); }
+  }
+  if (!refs.length) { toast('No se pudieron procesar las fotos', 'err'); return; }
+  openShareTray(refs);
+}
+
+// Muestra la bandeja con las miniaturas recibidas. Por cada foto, un <select>
+// elige el destino: árbol nuevo (default), un ítem existente, o descartar.
+function openShareTray(refs){
+  _shareTrayRefs = refs.slice();
+  const ov   = document.getElementById('share-overlay');
+  const list = document.getElementById('share-tray-list');
+  // Sin modal disponible (versión vieja en caché): fallback que auto-crea
+  // un árbol por foto, sin perder las fotos recibidas.
+  if (!ov || !list) { assignSharedToNewItems(refs); return; }
+
+  const arr = activeItemsArr();
+  const existingOpts = arr
+    .map((it, i) => ({ it, i }))
+    .filter(({ it }) => it.type === 'tree' || it.type === 'service')
+    .map(({ it, i }) => {
+      const label = it.type === 'tree'
+        ? (it.species || `Árbol ${i + 1}`)
+        : (it.desc || `Servicio ${i + 1}`);
+      return `<option value="${i}">Asignar a: ${esc(label)}</option>`;
+    }).join('');
+
+  list.innerHTML = refs.map((ref, idx) => {
+    const src = safeImgSrc(getPhotoData(ref));
+    return `
+      <div class="share-row">
+        <div class="share-thumb">${src ? `<img src="${src}" alt="Foto compartida">` : '📷'}</div>
+        <select class="ii share-dest" data-idx="${idx}">
+          <option value="new" selected>➕ Crear árbol nuevo</option>
+          ${existingOpts}
+          <option value="skip">✕ Descartar</option>
+        </select>
+      </div>`;
+  }).join('');
+
+  const cnt = document.getElementById('share-tray-count');
+  if (cnt) cnt.textContent = refs.length;
+  ov.classList.add('open');
+}
+
+// Aplica las decisiones de la bandeja: crea árboles nuevos o asigna a ítems
+// existentes según el <select> de cada foto. Fuerza modo normal para que los
+// ítems con foto queden visibles en el editor.
+function confirmShareTray(){
+  const ov = document.getElementById('share-overlay');
+  const arr = activeItemsArr();
+  let assigned = 0;
+  if (ov) {
+    ov.querySelectorAll('.share-dest').forEach(sel => {
+      const idx = parseInt(sel.dataset.idx, 10);
+      const ref = _shareTrayRefs[idx];
+      if (!ref) return;
+      const dest = sel.value;
+      if (dest === 'skip') return;
+      if (dest === 'new') {
+        arr.push({ id: Date.now() + idx, type: 'tree', species: '', desc: '', price: '', qty: 1, showQty: false, photo: ref });
+        assigned++;
+      } else {
+        const di = parseInt(dest, 10);
+        if (arr[di]) { arr[di].photo = ref; assigned++; }
+      }
+    });
+  }
+  closeShareTray();
+  if (assigned) {
+    setMode('normal');           // las fotos viven en ítems normales (S.items)
+    renderItems();
+    switchTab('editor');
+    sched();
+    toast(`${assigned} foto${assigned > 1 ? 's' : ''} agregada${assigned > 1 ? 's' : ''} al presupuesto`, 'ok');
+  } else {
+    toast('No se agregó ninguna foto', 'info');
+  }
+}
+
+// Fallback (sin modal): un árbol nuevo por cada foto recibida.
+function assignSharedToNewItems(refs){
+  const arr = activeItemsArr();
+  refs.forEach((ref, i) => {
+    arr.push({ id: Date.now() + i, type: 'tree', species: '', desc: '', price: '', qty: 1, showQty: false, photo: ref });
+  });
+  setMode('normal');
+  renderItems();
+  switchTab('editor');
+  sched();
+  toast(`${refs.length} foto${refs.length > 1 ? 's' : ''} agregada${refs.length > 1 ? 's' : ''}`, 'ok');
+}
+
+function closeShareTray(){
+  const ov = document.getElementById('share-overlay');
+  if (ov) ov.classList.remove('open');
+  _shareTrayRefs = [];
 }
 
 // Comprime una imagen: la redimensiona para que el lado mayor no supere
@@ -7843,11 +8042,19 @@ window.addEventListener('DOMContentLoaded', async () => {
   // ?go=… disparamos la acción y limpiamos la URL para que un reload no la
   // repita. Reutiliza las mismas funciones que los botones de la UI.
   try {
-    const go = new URLSearchParams(location.search).get('go');
+    const params = new URLSearchParams(location.search);
+    const go = params.get('go');
     if (go) {
       history.replaceState(null, '', location.pathname);
       if (go === 'nuevo' && typeof newQuote === 'function') newQuote();
       else if (go === 'historial' && typeof switchTab === 'function') switchTab('historial');
+    }
+    // Web Share Target: el SW redirigió aquí tras compartir fotos a la app.
+    // Limpiamos la URL (para que un reload no reabra la bandeja) y procesamos
+    // los blobs stasheados en IndexedDB (vaciando la bandeja).
+    if (params.get('share') === '1') {
+      history.replaceState(null, '', location.pathname);
+      if (typeof processSharedPhotos === 'function') processSharedPhotos();
     }
   } catch (e) {}
 });
