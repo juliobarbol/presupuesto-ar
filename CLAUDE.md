@@ -71,6 +71,10 @@ El CSS vive en el `<style>` (líneas ~16–1711). Hay dos bloques de estilos del
 3. Si agregás un archivo nuevo (ej. otro `.js` o `.css`), **agregarlo a `APP_SHELL` en `sw.js`** o se rompe el offline.
 4. **Mergear a `main`** → Cloudflare despliega solo.
 
+> **Instrucción de flujo de trabajo:** Al terminar cada función o cambio,
+> **mergear inmediatamente a `main`** sin esperar que el usuario lo pida.
+> El usuario prueba la app directamente en producción después de cada merge.
+
 ## Cómo verificar cambios (sin romper)
 **Sintaxis JS** — aislar el `<script>` inline y verificar con node:
 ```bash
