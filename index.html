@@ -889,11 +889,16 @@ input[type=file]{display:none}
 
 /* Vista previa de foto en el ítem del editor */
 .item-photo-preview{position:relative;margin-top:8px;display:inline-block}
-.item-photo-preview img{max-width:140px;max-height:140px;border-radius:8px;border:1px solid var(--border);display:block;object-fit:cover}
+.item-photo-preview img{max-width:140px;max-height:140px;border-radius:8px;border:1px solid var(--border);display:block;object-fit:cover;cursor:zoom-in}
 .item-photo-remove{position:absolute;top:-8px;right:-8px;width:24px;height:24px;border-radius:50%;background:var(--red);color:#fff;border:2px solid #fff;font-size:12px;font-weight:700;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,.2)}
 /* Placeholder cuando la foto vive en otro dispositivo (ID sin caché local) */
 .item-photo-missing{width:140px;min-height:90px;padding:12px 10px;border-radius:8px;border:1px dashed var(--border);background:var(--bg-soft,#f6f7f9);color:var(--muted);font-size:11px;text-align:center;display:flex;flex-direction:column;justify-content:center;gap:4px}
 .item-photo-missing span{font-size:10px;opacity:.8}
+/* Visor de foto a pantalla completa (tocar la miniatura de un ítem) */
+#photo-viewer-overlay{display:none;position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(0,0,0,.92);z-index:2100;align-items:center;justify-content:center;padding:16px}
+#photo-viewer-overlay.open{display:flex}
+#photo-viewer-overlay img{max-width:100%;max-height:100%;border-radius:8px;object-fit:contain;cursor:zoom-out}
+#photo-viewer-close{position:absolute;top:14px;right:16px;width:42px;height:42px;border-radius:50%;background:rgba(255,255,255,.16);color:#fff;border:none;font-size:22px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center}
 
 /* ===== css/print.css ===== */
 /* ═══════════════════════════════════════
@@ -924,6 +929,7 @@ input[type=file]{display:none}
   #moverlay,
   #confirm-overlay,
   #share-overlay,
+  #photo-viewer-overlay,
   #phrases-overlay,
   #sticky-totals,
   #toast-container{display:none!important}
@@ -2368,6 +2374,14 @@ input[type=file]{display:none}
       <button class="btn btn-p" id="share-ok" onclick="confirmShareTray()">Agregar al presupuesto</button>
     </div>
   </div>
+</div>
+
+<!-- ════════════════════ VISOR DE FOTO ════════════════════
+     Pantalla completa para revisar la foto de un ítem durante la edición.
+     Se abre al tocar la miniatura; se cierra tocando la imagen/fondo o ✕. -->
+<div id="photo-viewer-overlay" role="dialog" aria-modal="true" aria-label="Foto del ítem" onclick="closePhotoViewer()">
+  <button id="photo-viewer-close" type="button" aria-label="Cerrar" onclick="closePhotoViewer()">✕</button>
+  <img id="photo-viewer-img" src="" alt="Foto del ítem">
 </div>
 
 <!-- ════════════════════ PHRASES MODAL ════════════════════
@@ -4305,7 +4319,7 @@ function renderItems() {
     </div>
     ${item.photo ? (
       safeImgSrc(getPhotoData(item.photo))
-        ? `<div class="item-photo-preview"><img src="${safeImgSrc(getPhotoData(item.photo))}" alt="Foto"><button type="button" class="item-photo-remove" title="Quitar foto">✕</button></div>`
+        ? `<div class="item-photo-preview"><img src="${safeImgSrc(getPhotoData(item.photo))}" alt="Foto" title="Tocar para ampliar"><button type="button" class="item-photo-remove" title="Quitar foto">✕</button></div>`
         : `<div class="item-photo-preview item-photo-missing">📷 Foto no disponible<br><span>Restaurá tu backup en este dispositivo</span><button type="button" class="item-photo-remove" title="Quitar foto">✕</button></div>`
     ) : ''}`;
     card.innerHTML = inner;
@@ -4367,6 +4381,9 @@ function renderItems() {
     if (photoBtn) photoBtn.addEventListener('click', ()=>pickItemPhoto(idx));
     const photoRm = card.querySelector('.item-photo-remove');
     if (photoRm) photoRm.addEventListener('click', ()=>{ setItemField(idx,'photo',null); renderItems(); });
+    // Tocar la miniatura abre el visor a pantalla completa para revisar la foto.
+    const photoImg = card.querySelector('.item-photo-preview img');
+    if (photoImg) photoImg.addEventListener('click', ()=>openPhotoViewer(photoImg.src));
 
     card.addEventListener('dragstart', e=>{ dragSrc=idx; card.classList.add('dragging'); e.dataTransfer.effectAllowed='move'; });
     card.addEventListener('dragend',   ()=>{ card.classList.remove('dragging'); document.querySelectorAll('.icard').forEach(c=>c.classList.remove('drag-over')); });
@@ -4831,6 +4848,33 @@ function closeShareTray(){
   if (ov) ov.classList.remove('open');
   _shareTrayRefs = [];
 }
+
+// ─── VISOR DE FOTO A PANTALLA COMPLETA ────────────────────────────
+// Para revisar la foto de un ítem durante la edición (evaluar el árbol,
+// decidir el trabajo y el precio). Recibe un dataURL ya validado con
+// safeImgSrc(); si viene vacío no abre nada.
+function openPhotoViewer(src){
+  if (!src) return;
+  const ov  = document.getElementById('photo-viewer-overlay');
+  const img = document.getElementById('photo-viewer-img');
+  if (!ov || !img) return;
+  img.src = src;
+  ov.classList.add('open');
+}
+
+function closePhotoViewer(){
+  const ov  = document.getElementById('photo-viewer-overlay');
+  const img = document.getElementById('photo-viewer-img');
+  if (ov)  ov.classList.remove('open');
+  if (img) img.src = '';   // liberar el dataURL en memoria
+}
+
+// Cerrar el visor con Escape (en desktop). En el celular se cierra tocando.
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  const ov = document.getElementById('photo-viewer-overlay');
+  if (ov && ov.classList.contains('open')) closePhotoViewer();
+});
 
 // Comprime una imagen: la redimensiona para que el lado mayor no supere
 // maxSide px y la re-codifica como JPEG con la calidad dada. Devuelve una
