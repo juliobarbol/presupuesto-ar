@@ -13,7 +13,7 @@
 //
 //  Para forzar actualizacion tras un deploy: subir el CACHE_VERSION.
 
-const CACHE_VERSION = 'presupuesto-v37';
+const CACHE_VERSION = 'presupuesto-v38';
 const APP_SHELL = [
   './',
   './index.html',
@@ -23,6 +23,13 @@ const APP_SHELL = [
   './icon-maskable-512.png',
   './apple-touch-icon.png',
   './favicon.png',
+  // Fuentes auto-hospedadas: sin esto el offline-first se rompe con "datos
+  // prendidos pero sin saldo" (el navegador intenta la red y se cuelga).
+  './fonts.css',
+  './fonts/dm-sans-latin.woff2',
+  './fonts/dm-sans-italic-latin.woff2',
+  './fonts/dm-serif-display-latin.woff2',
+  './fonts/dm-serif-display-italic-latin.woff2',
 ];
 
 // -- Install: precachear el app shell (resiliente) ------------

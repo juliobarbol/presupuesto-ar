@@ -11,8 +11,10 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" href="favicon.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
+<!-- Fuentes auto-hospedadas (offline-first). Antes venían de fonts.googleapis.com
+     con un <link> que NO pasaba por el Service Worker y se colgaba con datos sin
+     saldo. Ahora viven en el mismo origen y entran en APP_SHELL (ver sw.js). -->
+<link href="fonts.css" rel="stylesheet">
 <style>
 /* ===== css/base.css ===== */
 /* ═══════════════════════════════════════
