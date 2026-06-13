@@ -61,7 +61,8 @@ abre con una barra de URL arriba (modo navegador) en vez de pantalla completa.
   `CACHE_VERSION` en `sw.js`. La TWA carga la versión nueva sola, **no hace
   falta regenerar ni reinstalar el APK**.
 - **Solo regenerás el APK** si cambiás el ícono/nombre del manifest, el
-  dominio, o el package id.
+  dominio, el package id, o los **accesos directos** (`shortcuts`) — ver la
+  sección de abajo.
 - **Offline**: la app funciona sin datos una vez abierta con conexión al
   menos una vez (para que el SW cachee el shell). Los datos viven en
   localStorage + IndexedDB del teléfono; el backup a Drive se encola y sube
@@ -69,3 +70,40 @@ abre con una barra de URL arriba (modo navegador) en vez de pantalla completa.
 - **Primer arranque sin señal**: si justo el primer arranque es sin datos,
   Android no puede verificar el dominio y abre con barra de URL, pero
   **igual funciona**; se corrige la próxima vez que abras con conexión.
+
+---
+
+## Accesos directos (shortcuts) en el APK
+
+El manifest define `shortcuts` (long-press en el ícono → "Nuevo presupuesto"
+y "Historial"). En la **PWA instalada** ("agregar a inicio") aparecen solos.
+En el **APK (TWA)** NO: la TWA **hornea los shortcuts al generar el APK** y no
+los relee del manifest en vivo. Por eso, cada vez que cambian los `shortcuts`
+hay que **regenerar el APK**.
+
+Cómo funcionan internamente: cada shortcut abre la app con un parámetro
+`?go=…` (`?go=nuevo`, `?go=historial`); el init de la app lo lee al arrancar,
+dispara la acción (`newQuote()` / `switchTab('historial')`) y limpia la URL
+con `replaceState` para que un reload no la repita.
+
+### Regenerar el APK manteniendo la actualización (no app nueva)
+
+> ⚠️ **Clave:** hay que **reusar la misma clave de firma** (`signing.keystore`
+> del paquete original). Si firmás con otra clave, Android lo trata como una
+> app distinta (no se actualiza sobre la instalada) y además cambiaría el
+> fingerprint → habría que rehacer `assetlinks.json`.
+
+1. En https://www.pwabuilder.com/, pegar la URL de producción y generar de
+   nuevo el paquete Android (TWA).
+2. En las opciones, **usar la firma existente**: subir el `signing.keystore`
+   con su contraseña y alias (están en `signing-key-info.txt` del zip
+   original). Mantener el **mismo Package ID**
+   (`dev.workers.juliobarribolbo.presupuesto_ar.twa`).
+3. **Subir el `versionCode`** (App version code) a un número mayor que el
+   instalado (ej. de 1 a 2). Android exige `versionCode` mayor para instalar
+   encima como actualización.
+4. Descargar el `.apk`/`.aab` nuevo e instalarlo encima del existente.
+
+Como el package id y la clave de firma no cambian, **el fingerprint sigue
+siendo el mismo** → `assetlinks.json` NO se toca y la verificación del dominio
+se mantiene. Los accesos directos ya quedan disponibles con long-press.
