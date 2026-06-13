@@ -1,8 +1,17 @@
-# TODO / Spec — Compartir fotos a la app (Web Share Target)
+# Spec — Compartir fotos a la app (Web Share Target)
 
-> **Estado: PENDIENTE de implementar.** Este documento es el punto de partida
-> para retomar en otra conversación. Resume el objetivo, la UX deseada, el
-> enfoque técnico y las anclas de código que ya existen para reusar.
+> **Estado: IMPLEMENTADO** (sw.js + manifest + index.html). Este documento
+> describe el objetivo, la UX y el enfoque técnico que se siguió.
+>
+> Decisiones tomadas al implementar:
+> - La bandeja es un **modal nuevo** (`#share-overlay`), no se integra al Editor.
+> - Por cada foto, un `<select>` elige destino: **crear árbol nuevo** (default),
+>   asignar a un ítem existente, o descartar. El usuario confirma con un botón.
+> - Las fotos viven en los **ítems normales** (`S.items`), que son los que
+>   llevan `item.photo` y aparecen en el "Registro Fotográfico" del PDF. Por eso
+>   al aplicar se fuerza **modo normal**; el usuario puede pasar a estimativo a
+>   mano después.
+> - Tope de `MAX_SHARED_PHOTOS = 12` fotos por compartición.
 
 ## Objetivo (user story)
 
