@@ -216,10 +216,12 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;font-size:14px;background
 .tlabel{font-size:13px;color:var(--text)}
 .tgl{position:relative;width:38px;height:21px;flex-shrink:0}
 .tgl input{opacity:0;width:0;height:0}
-.tgl-sl{position:absolute;top:0;right:0;bottom:0;left:0;background:#cbd5e1;border-radius:21px;cursor:pointer;transition:.2s}
-.tgl-sl::before{content:'';position:absolute;height:15px;width:15px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s}
+.tgl-sl{position:absolute;top:0;right:0;bottom:0;left:0;background:#cbd5e1;border-radius:21px;cursor:pointer;transition:background .25s cubic-bezier(.4,0,.2,1);box-shadow:inset 0 1px 2px rgba(0,0,0,.10)}
+.tgl-sl::before{content:'';position:absolute;height:15px;width:15px;left:3px;top:3px;background:#fff;border-radius:50%;box-shadow:0 1px 2px rgba(0,0,0,.28),0 1px 3px rgba(0,0,0,.10);transition:transform .28s cubic-bezier(.34,1.3,.64,1)}
 .tgl input:checked+.tgl-sl{background:var(--accent)}
 .tgl input:checked+.tgl-sl::before{transform:translateX(17px)}
+.tgl-sl:hover{filter:brightness(.96)}
+.tgl input:focus-visible+.tgl-sl{box-shadow:inset 0 1px 2px rgba(0,0,0,.10),0 0 0 3px rgba(var(--accent-rgb),.28)}
 
 /* COLOR */
 .cpresets{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
@@ -896,10 +898,12 @@ input[type=file]{display:none}
 /* Switch on/off */
 .fu-switch{position:relative;display:inline-block;width:48px;height:28px;flex-shrink:0}
 .fu-switch input{opacity:0;width:0;height:0}
-.fu-slider{position:absolute;inset:0;background:#cbd5e1;border-radius:28px;transition:.2s;cursor:pointer}
-.fu-slider::before{content:'';position:absolute;height:22px;width:22px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.2s}
+.fu-slider{position:absolute;inset:0;background:#cbd5e1;border-radius:28px;transition:background .25s cubic-bezier(.4,0,.2,1);cursor:pointer;box-shadow:inset 0 1px 2px rgba(0,0,0,.10)}
+.fu-slider::before{content:'';position:absolute;height:22px;width:22px;left:3px;bottom:3px;background:#fff;border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,.28),0 1px 4px rgba(0,0,0,.10);transition:transform .28s cubic-bezier(.34,1.3,.64,1)}
 .fu-switch input:checked + .fu-slider{background:var(--accent)}
 .fu-switch input:checked + .fu-slider::before{transform:translateX(20px)}
+.fu-slider:hover{filter:brightness(.96)}
+.fu-switch input:focus-visible + .fu-slider{box-shadow:inset 0 1px 2px rgba(0,0,0,.10),0 0 0 3px rgba(var(--accent-rgb),.28)}
 #fu-options{transition:opacity .2s}
 
 /* Subtítulo de sección con botón de acción a la derecha */
