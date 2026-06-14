@@ -33,6 +33,7 @@ a{-webkit-tap-highlight-color:transparent}
   --accent-dark:#043f2f;
   --accent-2:#0a7a5a;
   --bg:#f0f4f3;
+  --grid:#e2eae6; /* líneas del fondo cuadriculado (solo pantalla, nunca el PDF) */
   --panel:#ffffff;
   --card:#ffffff;
   --border:#e2e8f0;
@@ -44,6 +45,17 @@ a{-webkit-tap-highlight-color:transparent}
 }
 
 html,body{height:100%;font-family:'DM Sans',sans-serif;font-size:14px;background:var(--bg);color:var(--text)}
+/* Fondo cuadriculado tipo papel de ingeniería (adaptado de uiverse.io,
+   kennyotsu-monochromia). Patrón CSS puro (dos gradientes), sin animación ni
+   DOM extra: cero costo de batería/scroll. Solo en pantalla; el PDF (#doc-a4)
+   tiene su propio fondo blanco y nunca lo hereda. */
+body{
+  background-color:var(--bg);
+  background-image:
+    linear-gradient(0deg, transparent 24%, var(--grid) 25%, var(--grid) 26%, transparent 27%, transparent 74%, var(--grid) 75%, var(--grid) 76%, transparent 77%, transparent),
+    linear-gradient(90deg, transparent 24%, var(--grid) 25%, var(--grid) 26%, transparent 27%, transparent 74%, var(--grid) 75%, var(--grid) 76%, transparent 77%, transparent);
+  background-size:55px 55px;
+}
 #app{display:flex;flex-direction:column;height:100vh;height:-webkit-fill-available;overflow:hidden}
 
 /* TOPBAR — compacto: una sola línea con logo + menú "⋯" para acciones
