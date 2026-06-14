@@ -1563,6 +1563,110 @@ input[type=file]{display:none}
 }
 .pdoc.pdoc-theme-minimalista .ph-name,
 .pdoc.pdoc-theme-minimalista .ph-badge-num { font-family: system-ui,-apple-system,Arial,sans-serif; }
+
+/* Tema: Lateral — banda de color a la izquierda del encabezado (look de       */
+/* estudio/consultora). El header repetido por página mantiene la banda.       */
+.pdoc.pdoc-theme-lateral {
+  --c-bg-soft:      #f5f7fa;
+  --c-zebra:        #fafbfc;
+  --c-divider-soft: #dde3ea;
+}
+.pdoc.pdoc-theme-lateral .ph {
+  align-items: stretch;
+  gap: 0;
+  padding-left: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+.pdoc.pdoc-theme-lateral .ph-band {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 70px;
+  padding: 14px 12px;
+  margin-right: 16px;
+}
+.pdoc.pdoc-theme-lateral .ph-band-initial {
+  font-family: 'DM Serif Display', serif;
+  font-size: 24pt;
+  line-height: 1;
+  color: #fff;
+}
+.pdoc.pdoc-theme-lateral .ph-band-logo {
+  max-height: 46px;
+  max-width: 64px;
+  object-fit: contain;
+  background: #fff;
+  padding: 4px;
+  border-radius: 4px;
+}
+.pdoc.pdoc-theme-lateral .ph-co { padding: 16px 0; }
+
+/* Tema: Técnico — austero tipo informe de ingeniería. Sin serif, números      */
+/* tabulares, reglas marcadas, esquinas rectas, títulos en versalitas.         */
+.pdoc.pdoc-theme-tecnico {
+  --c-bg-soft:      #eef1f4;
+  --c-zebra:        #f6f8fa;
+  --c-divider:      #9aa3ad;
+  --c-divider-soft: #cdd3da;
+  --r-sm:           0pt;
+  --r-md:           0pt;
+  font-family: 'DM Sans', system-ui, Arial, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+.pdoc.pdoc-theme-tecnico .ph { border-bottom: 2pt solid var(--c-divider); }
+.pdoc.pdoc-theme-tecnico .ph-name,
+.pdoc.pdoc-theme-tecnico .ph-badge-num,
+.pdoc.pdoc-theme-tecnico .ptotal-amt {
+  font-family: 'DM Sans', system-ui, Arial, sans-serif;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.pdoc.pdoc-theme-tecnico .psec-t {
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+.pdoc.pdoc-theme-tecnico .ptitle { font-family: 'DM Sans', system-ui, Arial, sans-serif; font-weight: 700; }
+
+/* Tema: Elegante — refinado, serif, líneas finas doradas, mucho aire. Para     */
+/* clientes premium. Paleta neutra (a diferencia del Cálido, que es tierra).    */
+.pdoc.pdoc-theme-elegante {
+  --c-bg-soft:      #faf9f7;
+  --c-zebra:        #fcfbfa;
+  --c-divider:      #c9b99a;
+  --c-divider-soft: #e7e0d2;
+  --c-muted:        #6b6358;
+  --c-muted-2:      #9a9081;
+  font-family: Georgia, 'Times New Roman', serif;
+}
+.pdoc.pdoc-theme-elegante .ph { border-top-width: 1pt; border-bottom: 1pt solid var(--c-divider); }
+.pdoc.pdoc-theme-elegante .ph-name,
+.pdoc.pdoc-theme-elegante .ph-badge-num,
+.pdoc.pdoc-theme-elegante .ptotal-amt,
+.pdoc.pdoc-theme-elegante .ptitle,
+.pdoc.pdoc-theme-elegante .psec-t { font-family: 'DM Serif Display', Georgia, serif; }
+.pdoc.pdoc-theme-elegante .psec-t { font-weight: 400; letter-spacing: .01em; }
+.pdoc.pdoc-theme-elegante .ph-sub,
+.pdoc.pdoc-theme-elegante .ph-contact { font-family: Georgia, 'Times New Roman', serif; font-style: italic; }
+.pdoc.pdoc-theme-elegante .ph-badge-num { font-size: calc(var(--fs-h2) + 4pt); }
+
+/* Modificador: Compacto — ORTOGONAL al tema. Densifica fuentes y paddings para */
+/* que los presupuestos con muchos ítems entren en menos páginas. Se combina    */
+/* con cualquier diseño (clase extra pdoc-compact sobre la misma tabla).        */
+.pdoc.pdoc-compact {
+  --fs-micro:  7pt;
+  --fs-small:  9pt;
+  --fs-body:   10pt;
+  --fs-h3:     8.5pt;
+  --fs-h2:     11pt;
+  --page-x:    14mm;
+}
+.pdoc.pdoc-compact .ph { padding-top: 10px; padding-bottom: 8px; }
+.pdoc.pdoc-compact .psec { padding-top: 9px; }
+.pdoc.pdoc-compact .ptable tbody td { padding-top: 5px; padding-bottom: 5px; }
+.pdoc.pdoc-compact .ptotals { padding-top: 8px; padding-bottom: 8px; }
+.pdoc.pdoc-compact .ptotal-amt { font-size: 20pt; }
+.pdoc.pdoc-compact .ptitle { font-size: 12pt; margin-bottom: 8px; }
 </style>
 
 
@@ -2193,8 +2297,36 @@ input[type=file]{display:none}
             </div>
             <span class="tpreset-label">Minimalista</span>
           </button>
+          <button class="tpreset" data-theme="lateral" onclick="applyPdfTheme('lateral')">
+            <div class="tpreset-swatch" style="display:flex;padding:0">
+              <div style="width:32%;background:var(--accent)"></div>
+              <div style="flex:1;padding:5px 5px">
+                <div style="height:7px;background:var(--border);border-radius:1px;margin-bottom:3px"></div>
+                <div style="height:4px;background:#e5e7eb;border-radius:1px;width:70%"></div>
+              </div>
+            </div>
+            <span class="tpreset-label">Lateral</span>
+          </button>
+          <button class="tpreset" data-theme="tecnico" onclick="applyPdfTheme('tecnico')">
+            <div class="tpreset-swatch" style="border-bottom:2px solid #475569">
+              <div style="margin:5px 5px 2px;height:7px;background:#cbd5e1;border-radius:0"></div>
+              <div style="margin:2px 5px;height:4px;background:#e2e8f0;border-radius:0"></div>
+              <div style="margin:2px 5px;height:4px;background:#e2e8f0;border-radius:0;width:55%"></div>
+            </div>
+            <span class="tpreset-label">Técnico</span>
+          </button>
+          <button class="tpreset" data-theme="elegante" onclick="applyPdfTheme('elegante')">
+            <div class="tpreset-swatch" style="border-top:1px solid #c9b99a;background:#faf9f7">
+              <div style="margin:5px 6px 3px;height:8px;background:#d8cdb6;border-radius:1px;width:58%"></div>
+              <div style="margin:3px 6px;height:4px;background:#e7e0d2;border-radius:1px"></div>
+              <div style="margin:3px 6px;height:4px;background:#e7e0d2;border-radius:1px;width:65%"></div>
+            </div>
+            <span class="tpreset-label">Elegante</span>
+          </button>
         </div>
-        <p class="hint" style="margin-bottom:16px">El diseño afecta la presentación del documento impreso/PDF.</p>
+        <p class="hint" style="margin-bottom:10px">El diseño afecta la presentación del documento impreso/PDF.</p>
+        <div class="trow"><span class="tlabel">Modo compacto <span style="color:var(--muted);font-weight:400">· densifica para aprovechar el papel (muchos ítems)</span></span><label class="tgl"><input type="checkbox" id="pdf-compact" onchange="applyPdfCompact(this.checked)"><span class="tgl-sl"></span></label></div>
+        <p class="hint" style="margin-bottom:16px">Se puede combinar con cualquier diseño.</p>
 
         <div class="st">Numeración</div>
         <div class="r2">
@@ -2488,7 +2620,7 @@ const DEF = {
   coCuit:'', coWhatsapp:'', coCity:'', coEmail:'',
   coTechNotes:'', coFooter:'',
   showTechNotes:true, showFooter:true,
-  accentColor:'#064e3b', pdfTheme:'clasico', validityDays:30, showExpiry:true,
+  accentColor:'#064e3b', pdfTheme:'clasico', pdfCompact:false, validityDays:30, showExpiry:true,
   numPrefix:'2026-', numNext:1,
   // Estimative mode
   isEstimative: false,
@@ -4973,6 +5105,7 @@ function restoreUI() {
   // pdf theme
   const _thm = S.pdfTheme || 'clasico';
   document.querySelectorAll('.tpreset').forEach(el=>el.classList.toggle('active', el.dataset.theme===_thm));
+  const _cmp = document.getElementById('pdf-compact'); if(_cmp) _cmp.checked = !!S.pdfCompact;
   // logo
   if(S.logo) showLogo(S.logo);
   // expiry visibility
@@ -5466,6 +5599,15 @@ function selectColor(el) { applyColor(el.dataset.color); }
 function applyPdfTheme(theme) {
   S.pdfTheme = theme;
   document.querySelectorAll('.tpreset').forEach(el => el.classList.toggle('active', el.dataset.theme === theme));
+  sched();
+}
+
+// Modificador "Compacto": densifica el documento (fuentes y paddings más
+// chicos) para que los presupuestos con muchos ítems entren en menos páginas.
+// Es ORTOGONAL al tema: se aplica como clase extra (pdoc-compact) y se combina
+// con cualquier diseño.
+function applyPdfCompact(on) {
+  S.pdfCompact = !!on;
   sched();
 }
 
@@ -7169,7 +7311,33 @@ function _buildDocHeader(theme, S, color, contacts, badgeLabel, badgeDate, showP
     </div>`;
   }
 
-  // Clásico y Cálido: misma estructura, el CSS del tema Cálido se ocupa del resto
+  if (theme === 'lateral') {
+    // Banda de color a la izquierda (look de estudio/consultora). Dentro de la
+    // banda va el logo sobre un chip blanco (para que cualquier logo se lea
+    // bien sobre el color) o, si no hay logo, la inicial del emisor en blanco.
+    const dateHTML = badgeDate ? `<div class="ph-badge-date" style="color:rgba(255,255,255,.7)">${badgeDate}</div>` : '';
+    const initial  = esc(((S.coName || 'P').trim().charAt(0) || 'P').toUpperCase());
+    const bandInner = S.logo
+      ? `<img src="${safeImgSrc(S.logo)}" class="ph-band-logo" alt="Logo">`
+      : `<span class="ph-band-initial">${initial}</span>`;
+    return `
+    <div class="ph">
+      <div class="ph-band" style="background:${color}">${bandInner}</div>
+      <div class="ph-co">
+        <div class="ph-name" style="color:${color}">${nameStr}</div>
+        <div class="ph-sub">${subStr}</div>
+        <div class="ph-contacts">${contactsHTML}</div>
+      </div>
+      <div class="ph-badge" style="background:${color};padding:8pt 10pt">
+        <div class="ph-badge-lbl" style="color:rgba(255,255,255,.75)">${esc(badgeLabel)}</div>
+        <div class="ph-badge-num" style="color:#fff">${numStr}</div>
+        ${dateHTML}
+      </div>
+    </div>`;
+  }
+
+  // Clásico, Cálido, Técnico y Elegante: misma estructura; el CSS de cada tema
+  // (tipografía, paleta, reglas) se ocupa del resto.
   const dateHTML = badgeDate ? `<div class="ph-badge-date">${badgeDate}</div>` : '';
   return `
   <div class="ph" style="border-top:5px solid ${color}">
@@ -7280,7 +7448,7 @@ function buildDoc() {
   // position:fixed, que no se renderiza correctamente en muchos navegadores
   // móviles). El <tbody> tiene el resto del contenido del presupuesto.
   doc.innerHTML = `
-    <table class="pdoc pdoc-theme-${theme}">
+    <table class="pdoc pdoc-theme-${theme}${S.pdfCompact ? ' pdoc-compact' : ''}">
       <thead>
         <tr><td>
           ${_buildDocHeader(theme, S, color, contacts, 'Presupuesto N°', null, false)}
@@ -7453,7 +7621,7 @@ function buildRiskDoc() {
   // Wrapper-table pattern (ver buildDoc): el <thead> con el header se repite
   // nativamente en cada página impresa. <tbody> tiene el resto del informe.
   doc.innerHTML = `
-    <table class="pdoc pdoc-theme-${theme}">
+    <table class="pdoc pdoc-theme-${theme}${S.pdfCompact ? ' pdoc-compact' : ''}">
       <thead>
         <tr><td>
           <!-- ══ ENCABEZADO ══ -->
@@ -7702,7 +7870,7 @@ function buildEstDoc() {
   // Wrapper-table pattern (ver buildDoc): el <thead> con el header se repite
   // nativamente en cada página impresa. <tbody> tiene el resto del documento.
   doc.innerHTML = `
-    <table class="pdoc pdoc-theme-${theme}">
+    <table class="pdoc pdoc-theme-${theme}${S.pdfCompact ? ' pdoc-compact' : ''}">
       <thead>
         <tr><td>
           ${_buildDocHeader(theme, S, color, contacts, 'Presupuesto Estimativo N°', `Fecha: ${fmtD(S.dateIssue)}`, true)}

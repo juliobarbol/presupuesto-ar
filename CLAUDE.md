@@ -15,7 +15,7 @@
 
 ## Estructura de archivos
 - `index.html` — **toda la app** (markup + `<style>` + `<script>`).
-- `sw.js` — Service Worker (offline + actualizaciones). **`CACHE_VERSION` actual: `presupuesto-v39`**.
+- `sw.js` — Service Worker (offline + actualizaciones). **`CACHE_VERSION` actual: `presupuesto-v40`**.
 - `manifest.webmanifest`, `*.png` — PWA (instalación, iconos).
 
 ## Mapa del código dentro de `index.html`
@@ -51,6 +51,7 @@ El CSS vive en el `<style>` (líneas ~16–1711). Hay dos bloques de estilos del
 - **Fotos en IndexedDB, no en localStorage:** `item.photo` guarda un ID `p_...`; el dataURL vive en IDB (`pq_photos`). Para mostrar una foto resolvé con `getPhotoData(item.photo)` y validá con `safeImgSrc()`. Para guardar una foto nueva usá `savePhoto(dataUrl)` (devuelve el ID, o el dataURL embebido si IDB falla). El caché en memoria se hidrata al iniciar con `hydratePhotoCache()` (antes del primer render). Las fotos viejas embebidas (`data:image/...`) siguen funcionando y se migran a IDB con `migrateInlinePhotosToIDB()` al cargar. El backup completo incluye las fotos referenciadas (`photos`) para sobrevivir un cambio de dispositivo.
 - **XSS:** escapar SIEMPRE los datos del usuario con `esc()` antes de meterlos en `innerHTML`.
 - **3 modos de presupuesto:** Normal, Estimativo (fotos) y Riesgo (informe ISA). `buildDoc()` deriva a `buildEstDoc()`/`buildRiskDoc()` según `S.isEstimative`/`S.isRisk`.
+- **Temas del PDF (`S.pdfTheme`):** `clasico`, `profesional`, `calido`, `minimalista`, `lateral`, `tecnico`, `elegante` (clase `pdoc-theme-X` sobre `<table class="pdoc">`). `S.pdfCompact` es un modificador ortogonal de densidad (clase `pdoc-compact`). Para agregar uno nuevo está la skill **`nuevo-tema-pdf`** (`.claude/skills/`), que documenta la receta exacta (CSS, encabezado, UI, verificación, despliegue).
 
 ## Módulo GDRIVE (detalles que no romper)
 - `gdriveGetToken({ interactive? })`: por defecto silencioso. Usa **`login_hint`** (NO `hint`, que GIS ignora) con el email guardado para que, aun con varias cuentas abiertas en el navegador, Google renueve sin mostrar el selector. Las llamadas de fondo usan `prompt: 'none'` (nunca abren UI). `{ interactive: true }` solo desde botones que el usuario toca (primera conexión / restaurar): si todavía no hay email recordado pide consentimiento/selector (única vez).
@@ -67,7 +68,7 @@ El CSS vive en el `<style>` (líneas ~16–1711). Hay dos bloques de estilos del
 > versión nueva la próxima vez que abran la app con conexión.
 
 1. Desarrollar en la rama de trabajo (`claude/...`), no en `main`.
-2. **Subir `CACHE_VERSION` en `sw.js`** en cada cambio que se despliegue (si no, los dispositivos siguen con la versión vieja en caché). Formato: `presupuesto-vNN`. **Versión actual: v39**.
+2. **Subir `CACHE_VERSION` en `sw.js`** en cada cambio que se despliegue (si no, los dispositivos siguen con la versión vieja en caché). Formato: `presupuesto-vNN`. **Versión actual: v40**.
 3. Si agregás un archivo nuevo (ej. otro `.js` o `.css`), **agregarlo a `APP_SHELL` en `sw.js`** o se rompe el offline.
 4. **Mergear a `main`** → Cloudflare despliega solo.
 
