@@ -1,0 +1,12 @@
+name = "presupuesto-push"
+main = "index.js"
+compatibility_date = "2024-09-23"
+
+# Reemplazar con el ID real después de crear el namespace:
+# wrangler kv namespace create PUSH_KV
+[[kv_namespaces]]
+binding = "PUSH_KV"
+id = "REEMPLAZAR_CON_ID_DE_KV"
+
+[triggers]
+crons = ["0 11 * * *"]
