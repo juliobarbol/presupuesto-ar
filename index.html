@@ -228,6 +228,21 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;font-size:14px;background
 .cprow{display:flex;align-items:center;gap:10px;margin-bottom:16px}
 .cprow input[type=color]{width:44px;height:36px;border:1px solid var(--border);border-radius:6px;padding:2px;cursor:pointer;background:#fff}
 
+/* SELECTOR DE COLOR PROPIO (reemplaza el picker nativo del navegador, que
+   en muchos Android muestra barras negras confusas). Cuadro SV + barra de
+   tono arcoíris + vista previa y campo hexa. Todo táctil y offline. */
+.cpicker{width:100%;max-width:340px;margin-bottom:16px}
+.cpk-sv{position:relative;width:100%;height:150px;border-radius:8px;overflow:hidden;cursor:crosshair;touch-action:none;background:hsl(160,100%,50%)}
+.cpk-sv-white{position:absolute;inset:0;background:linear-gradient(to right,#fff,rgba(255,255,255,0))}
+.cpk-sv-black{position:absolute;inset:0;background:linear-gradient(to top,#000,rgba(0,0,0,0))}
+.cpk-sv-dot{position:absolute;width:18px;height:18px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.45),0 1px 3px rgba(0,0,0,.4);transform:translate(-50%,-50%);pointer-events:none;left:80%;top:70%}
+.cpk-hue{position:relative;width:100%;height:24px;border-radius:12px;margin-top:14px;cursor:pointer;touch-action:none;background:linear-gradient(to right,#f00 0%,#ff0 17%,#0f0 33%,#0ff 50%,#00f 67%,#f0f 83%,#f00 100%)}
+.cpk-hue-thumb{position:absolute;top:50%;left:50%;width:26px;height:26px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.3),0 1px 4px rgba(0,0,0,.45);transform:translate(-50%,-50%);pointer-events:none}
+.cpk-foot{display:flex;align-items:center;gap:9px;margin-top:14px}
+.cpk-preview{width:38px;height:38px;border-radius:8px;border:1px solid var(--border);flex:0 0 auto}
+.cpk-hex{width:130px;font-family:ui-monospace,monospace;font-size:15px;text-transform:lowercase;padding:9px 11px;border:1px solid var(--border);border-radius:7px;background:var(--card);color:var(--text)}
+.cpk-hint{font-size:12px;color:var(--muted);margin:0 0 10px}
+
 /* THEME PICKER */
 .theme-presets{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px}
 .tpreset{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:5px;background:var(--card);border:2px solid var(--border);border-radius:8px;padding:7px 9px;cursor:pointer;transition:border-color .15s}
@@ -2257,10 +2272,20 @@ input[type=file]{display:none}
           <div class="cpreset" data-color="#1c1917" style="background:#1c1917" title="Negro" onclick="selectColor(this)"></div>
           <div class="cpreset" data-color="#0369a1" style="background:#0369a1" title="Azul" onclick="selectColor(this)"></div>
         </div>
-        <div class="cprow">
-          <input type="color" id="color-picker" value="#064e3b" oninput="applyColor(this.value)">
-          <span style="font-size:13px;color:var(--muted)">Color personalizado</span>
-          <code id="color-hex" style="font-size:12px;background:#f1f5f4;padding:3px 8px;border-radius:4px">#064e3b</code>
+        <p class="cpk-hint">Color personalizado: arrastrá en el cuadro para elegir el tono y el brillo, o escribí el código.</p>
+        <div class="cpicker" id="cpicker">
+          <div class="cpk-sv" id="cpk-sv">
+            <div class="cpk-sv-white"></div>
+            <div class="cpk-sv-black"></div>
+            <div class="cpk-sv-dot" id="cpk-sv-dot"></div>
+          </div>
+          <div class="cpk-hue" id="cpk-hue">
+            <div class="cpk-hue-thumb" id="cpk-hue-thumb"></div>
+          </div>
+          <div class="cpk-foot">
+            <div class="cpk-preview" id="cpk-preview"></div>
+            <input type="text" id="cpk-hex" class="cpk-hex" maxlength="7" inputmode="latin" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Código de color hexadecimal">
+          </div>
         </div>
 
         <div class="st">Diseño del documento</div>
@@ -5098,10 +5123,12 @@ function restoreUI() {
   sv('doc-discount-label',  S.docDiscountLabel);
   sv('doc-discount-note',   S.docDiscountNote);
   // color
-  const cp = document.getElementById('color-picker'); if(cp) cp.value = S.accentColor;
-  const hx = document.getElementById('color-hex'); if(hx) hx.textContent = S.accentColor;
   applyAccent(S.accentColor);
-  document.querySelectorAll('.cpreset').forEach(el=>el.classList.toggle('active', el.dataset.color===S.accentColor));
+  document.querySelectorAll('.cpreset').forEach(el=>el.classList.toggle('active', String(el.dataset.color).toLowerCase()===String(S.accentColor).toLowerCase()));
+  _cpkInit();
+  const _hx = document.getElementById('cpk-hex'); if(_hx) _hx.value = S.accentColor;
+  const _pv = document.getElementById('cpk-preview'); if(_pv) _pv.style.background = S.accentColor;
+  _cpkSetFromHex(S.accentColor);
   // pdf theme
   const _thm = S.pdfTheme || 'clasico';
   document.querySelectorAll('.tpreset').forEach(el=>el.classList.toggle('active', el.dataset.theme===_thm));
@@ -5584,16 +5611,112 @@ function _mixBlack(r, g, b, t) {
   return `rgb(${m(r)},${m(g)},${m(b)})`;
 }
 
-function applyColor(c) {
+// Aplica un color de acento. `reposition` mueve el cursor del selector propio
+// a ese color (true cuando el cambio viene de afuera: preset, campo hexa, carga;
+// false durante el arrastre, para que el punto no "salte" por redondeos HSV).
+function _setAccentColor(c, reposition) {
+  c = safeColor(c);
   S.accentColor = c;
   applyAccent(c);
-  const hx = document.getElementById('color-hex'); if(hx) hx.textContent = c;
-  const cp = document.getElementById('color-picker'); if(cp) cp.value = c;
-  document.querySelectorAll('.cpreset').forEach(el=>el.classList.toggle('active', el.dataset.color===c));
+  const hx = document.getElementById('cpk-hex'); if(hx && hx.value.toLowerCase() !== c) hx.value = c;
+  const pv = document.getElementById('cpk-preview'); if(pv) pv.style.background = c;
+  document.querySelectorAll('.cpreset').forEach(el=>el.classList.toggle('active', String(el.dataset.color).toLowerCase()===c.toLowerCase()));
+  if (reposition) _cpkSetFromHex(c);
   sched();
 }
 
+function applyColor(c) { _setAccentColor(c, true); }
 function selectColor(el) { applyColor(el.dataset.color); }
+
+// ─── SELECTOR DE COLOR PROPIO (HSV) ───────────────────────────────
+// Reemplaza al <input type="color"> nativo (en muchos Android muestra barras
+// negras confusas). Mantiene H/S/V como fuente de verdad del cursor.
+const CPK = { h:160, s:80, v:30 };
+let _cpkReady = false;
+
+function _hsvToRgb(h, s, v) {
+  s/=100; v/=100;
+  const c = v*s, x = c*(1 - Math.abs((h/60)%2 - 1)), m = v - c;
+  let r,g,b;
+  if (h<60)      [r,g,b]=[c,x,0];
+  else if (h<120)[r,g,b]=[x,c,0];
+  else if (h<180)[r,g,b]=[0,c,x];
+  else if (h<240)[r,g,b]=[0,x,c];
+  else if (h<300)[r,g,b]=[x,0,c];
+  else           [r,g,b]=[c,0,x];
+  return [Math.round((r+m)*255), Math.round((g+m)*255), Math.round((b+m)*255)];
+}
+function _rgbToHsv(r, g, b) {
+  r/=255; g/=255; b/=255;
+  const mx = Math.max(r,g,b), mn = Math.min(r,g,b), d = mx-mn;
+  let h = 0;
+  if (d) {
+    if (mx===r)      h = ((g-b)/d) % 6;
+    else if (mx===g) h = (b-r)/d + 2;
+    else             h = (r-g)/d + 4;
+    h *= 60; if (h<0) h += 360;
+  }
+  return [h, (mx ? d/mx : 0)*100, mx*100];
+}
+function _hsvToHex(h, s, v) {
+  const [r,g,b] = _hsvToRgb(h,s,v);
+  return '#' + [r,g,b].map(x => x.toString(16).padStart(2,'0')).join('');
+}
+
+// Repinta cursor del cuadro SV, pulgar del tono y fondo del cuadro.
+function _cpkRender() {
+  const sv = document.getElementById('cpk-sv');
+  const dot = document.getElementById('cpk-sv-dot');
+  const thumb = document.getElementById('cpk-hue-thumb');
+  if (sv)  sv.style.background = `hsl(${CPK.h},100%,50%)`;
+  if (dot) { dot.style.left = CPK.s + '%'; dot.style.top = (100 - CPK.v) + '%'; }
+  if (thumb) thumb.style.left = (CPK.h/360*100) + '%';
+}
+// Posiciona el selector a partir de un color hexa (preset, campo, carga).
+function _cpkSetFromHex(hex) {
+  const rgb = _hexToRgb(hex); if (!rgb) return;
+  const hsv = _rgbToHsv(rgb[0], rgb[1], rgb[2]);
+  CPK.h = hsv[0]; CPK.s = hsv[1]; CPK.v = hsv[2];
+  _cpkRender();
+}
+// Inicializa el selector una sola vez. Usa DELEGACIÓN en `document`: así los
+// handlers sobreviven aunque el panel se reconstruya (los listeners no quedan
+// atados a un nodo puntual) y el arrastre sigue aunque el dedo salga del área.
+function _cpkInit() {
+  if (_cpkReady) return;
+  _cpkReady = true;
+  let active = null;            // 'sv' | 'hue' mientras se arrastra
+  const update = (clientX, clientY) => {
+    const el = document.getElementById(active === 'sv' ? 'cpk-sv' : 'cpk-hue');
+    if (!el) return;
+    const r = el.getBoundingClientRect(); if (!r.width || !r.height) return;
+    const x = Math.min(1, Math.max(0, (clientX - r.left) / r.width));
+    const y = Math.min(1, Math.max(0, (clientY - r.top)  / r.height));
+    if (active === 'sv') { CPK.s = Math.round(x*100); CPK.v = Math.round((1-y)*100); }
+    else                 { CPK.h = Math.round(x*360); }
+    _cpkRender();
+    _setAccentColor(_hsvToHex(CPK.h, CPK.s, CPK.v), false);
+  };
+  document.addEventListener('pointerdown', (e) => {
+    const t = e.target;
+    if (!t || !t.closest) return;
+    if (t.closest('#cpk-sv'))       active = 'sv';
+    else if (t.closest('#cpk-hue')) active = 'hue';
+    else return;
+    update(e.clientX, e.clientY);
+    e.preventDefault();
+  });
+  document.addEventListener('pointermove', (e) => { if (!active) return; update(e.clientX, e.clientY); e.preventDefault(); });
+  const end = () => { active = null; };
+  document.addEventListener('pointerup', end);
+  document.addEventListener('pointercancel', end);
+  // Campo hexa (también por delegación).
+  document.addEventListener('input', (e) => {
+    if (!e.target || e.target.id !== 'cpk-hex') return;
+    let v = e.target.value.trim(); if (v && v[0] !== '#') v = '#' + v;
+    if (/^#[0-9a-fA-F]{6}$/.test(v)) applyColor(v.toLowerCase());
+  });
+}
 
 // ─── TEMA PDF ────────────────────────────────
 function applyPdfTheme(theme) {
