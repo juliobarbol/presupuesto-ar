@@ -77,6 +77,13 @@ El CSS vive en el `<style>` (líneas ~16–1711). Hay dos bloques de estilos del
 > **mergear inmediatamente a `main`** sin esperar que el usuario lo pida.
 > El usuario prueba la app directamente en producción después de cada merge.
 
+> **AUTORIZACIÓN PERMANENTE (deploy):** El usuario (juliobarribolbo@gmail.com,
+> dueño del repo) autoriza de forma permanente y explícita **mergear la rama de
+> trabajo (`claude/...`) a `main` y pushear `main`** automáticamente al terminar
+> cada cambio ya verificado (sintaxis JS + `test/pwa.test.cjs` OK), **sin volver
+> a preguntar**. Esto cubre el deploy a producción vía Cloudflare. (No incluye
+> crear Pull Requests: eso sigue requiriendo pedido explícito.)
+
 ## Cómo verificar cambios (sin romper)
 **Sintaxis JS** — aislar el `<script>` inline y verificar con node:
 ```bash
