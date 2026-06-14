@@ -13,7 +13,7 @@
 //
 //  Para forzar actualizacion tras un deploy: subir el CACHE_VERSION.
 
-const CACHE_VERSION = 'presupuesto-v42';
+const CACHE_VERSION = 'presupuesto-v43';
 const APP_SHELL = [
   './',
   './index.html',
@@ -175,4 +175,30 @@ function stashSharedFiles(files) {
 // -- Permitir actualizacion inmediata desde la pagina ---------
 self.addEventListener('message', (event) => {
   if (event.data === 'SKIP_WAITING') self.skipWaiting();
+});
+
+// -- Push: mostrar notificación de seguimiento ---
+self.addEventListener('push', (event) => {
+  let data = { title: 'Presupuesto AR', body: 'Tenés seguimientos pendientes.' };
+  try { if (event.data) data = Object.assign(data, event.data.json()); } catch(e) {}
+  event.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: './icon-192.png',
+      badge: './icon-192.png',
+      data: { go: data.go || '' },
+    })
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const go = event.notification.data?.go;
+  const url = go ? `./?go=${go}` : './';
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(wins => {
+      for (const w of wins) if ('focus' in w) return w.focus();
+      return clients.openWindow(url);
+    })
+  );
 });

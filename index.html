@@ -2133,6 +2133,19 @@ input[type=file]{display:none}
             </div>
           </div>
 
+          <!-- ── NOTIFICACIONES PUSH ── -->
+          <!-- Oculta hasta que esté configurado el Worker (initPush). -->
+          <div class="fu-config" id="push-section" style="display:none">
+            <div class="fu-config-head">
+              <span class="st" style="margin:0;border:none;padding:0">📲 Avisos con la app cerrada</span>
+              <label class="fu-switch">
+                <input type="checkbox" id="push-enabled" onchange="onPushToggle(this.checked)">
+                <span class="fu-slider"></span>
+              </label>
+            </div>
+            <p class="fu-help">Te llega una notificación al teléfono cuando un presupuesto llega al día de seguimiento, aunque la app esté cerrada. Usa el mismo aviso que el sistema de seguimiento de arriba.</p>
+          </div>
+
           <!-- ── MENSAJE DE ENVÍO POR WHATSAPP ── -->
           <div class="fu-config">
             <div class="fu-config-head">
@@ -2624,7 +2637,14 @@ const LS = {
   GDRIVE_LAST:    'pq_gdrive_last',
   GDRIVE_EMAIL:   'pq_gdrive_email',
   PDF_THEME:      'pq_pdf_theme',
+  PUSH_DEVICE_ID: 'pq_push_device_id',
 };
+
+// Notificaciones push (avisos de seguimiento con la app cerrada). Ambos se
+// rellenan a mano tras desplegar push-worker/ (ver docs/push-setup.md). Si
+// están vacíos, toda la función queda inerte y la sección no aparece en la UI.
+const PUSH_WORKER_URL = '';
+const PUSH_VAPID_KEY  = '';
 
 const DEF = {
   _schemaVersion: APP_SCHEMA_VERSION,
@@ -2649,7 +2669,7 @@ const DEF = {
   coCuit:'', coWhatsapp:'', coCity:'', coEmail:'',
   coTechNotes:'', coFooter:'',
   showTechNotes:true, showFooter:true,
-  accentColor:'#064e3b', pdfTheme:'clasico', pdfCompact:false, customColors:[], validityDays:30, showExpiry:true,
+  accentColor:'#064e3b', pdfTheme:'clasico', pdfCompact:false, customColors:[], pushEnabled:false, validityDays:30, showExpiry:true,
   numPrefix:'2026-', numNext:1,
   // Estimative mode
   isEstimative: false,
@@ -3157,6 +3177,8 @@ function marcarSeguimientoHecho(id) {
   renderHistory();
   if (typeof renderFollowupBanner === 'function') renderFollowupBanner();
   toast('✓ Seguimiento registrado', 'ok');
+  // Ya no hay que recordar este: actualizar la lista en el Worker de push.
+  if (S.pushEnabled && typeof syncPushFollowups === 'function') syncPushFollowups().catch(() => {});
 }
 
 // Construye el enlace wa.me con el mensaje predeterminado para un entry.
@@ -3205,6 +3227,159 @@ function normalizeArgPhone(raw) {
   // Si quedó un "15" después del área es difícil de detectar sin el área;
   // asumimos que el usuario cargó un celular válido. Anteponer 54 9.
   return '549' + d;
+}
+
+// ── PUSH NOTIFICATIONS ─────────────────────────────────────────────────────
+// Avisos de seguimiento que llegan al teléfono aunque la app esté cerrada.
+// El dispositivo se suscribe (Push API + VAPID) y manda al Worker su endpoint
+// + la lista de seguimientos con su fecha de vencimiento. El Worker corre un
+// cron diario y envía el push cuando vence alguno. La app sigue siendo
+// offline-first: los datos viven local; lo único que sale a la red es la
+// suscripción (y solo si hay señal). Inerte si PUSH_WORKER_URL está vacío.
+
+// ID estable por dispositivo (clave del registro en el KV del Worker).
+function _pushDeviceId() {
+  let id = localStorage.getItem(LS.PUSH_DEVICE_ID);
+  if (!id) {
+    id = 'pq-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+    localStorage.setItem(LS.PUSH_DEVICE_ID, id);
+  }
+  return id;
+}
+
+// base64url → Uint8Array (para applicationServerKey).
+function _b64uToUint8(b64) {
+  const pad = '='.repeat((4 - b64.length % 4) % 4);
+  const raw = atob((b64 + pad).replace(/-/g, '+').replace(/_/g, '/'));
+  return Uint8Array.from(raw, (c) => c.charCodeAt(0));
+}
+
+// Arma la lista de seguimientos que el Worker necesita: por cada presupuesto
+// que aún espera seguimiento, su FECHA de vencimiento (envío + días de la
+// config). El Worker compara contra "hoy" en su cron y dispara el push.
+function _buildPushFollowups(cfg) {
+  const h = (typeof getH === 'function') ? getH() : [];
+  const out = [];
+  for (const e of h) {
+    const est = e.estado || 'borrador';
+    if (!cfg.estados.includes(est)) continue;
+    if (!e.enviadoEn) continue;
+    if (e.seguimientoHechoEn && new Date(e.seguimientoHechoEn) >= new Date(e.enviadoEn)) continue;
+    const dueMs = new Date(e.enviadoEn).getTime() + cfg.days * 86400000;
+    let dueDate;
+    try {
+      dueDate = (typeof toLocalISODate === 'function')
+        ? toLocalISODate(new Date(dueMs))
+        : new Date(dueMs).toISOString().slice(0, 10);
+    } catch (_) { dueDate = new Date(dueMs).toISOString().slice(0, 10); }
+    out.push({
+      id: e.id,
+      clientName: e.clientName || '(sin nombre)',
+      date: dueDate,
+      diasDesdeEnvio: (typeof daysSince === 'function') ? (daysSince(e.enviadoEn) || 0) : 0,
+    });
+  }
+  return out;
+}
+
+// Sube al Worker la suscripción + los seguimientos al día. Silencioso: si no
+// hay URL, no hay señal o no hay suscripción, no hace nada.
+async function syncPushFollowups(sub) {
+  if (!PUSH_WORKER_URL || navigator.onLine === false) return;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const subscription = sub || await reg.pushManager.getSubscription();
+    if (!subscription) return;
+    const cfg = (typeof getFollowupCfg === 'function')
+      ? getFollowupCfg() : { enabled: false, estados: [], days: 10 };
+    const followups = cfg.enabled ? _buildPushFollowups(cfg) : [];
+    await fetch(PUSH_WORKER_URL + '/subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ deviceId: _pushDeviceId(), subscription: subscription.toJSON(), followups }),
+    });
+  } catch (e) {}
+}
+
+// Suscribe el dispositivo (lo llama el toggle tras conceder permiso).
+async function pushSubscribe() {
+  if (!PUSH_WORKER_URL || !PUSH_VAPID_KEY) return;
+  if (!('PushManager' in window)) { toast('Tu navegador no soporta notificaciones push', 'err'); return; }
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: _b64uToUint8(PUSH_VAPID_KEY),
+      });
+    }
+    await syncPushFollowups(sub);
+    S.pushEnabled = true;
+    saveLS();
+    const el = document.getElementById('push-enabled');
+    if (el) el.checked = true;
+    toast('Notificaciones activadas', 'ok');
+  } catch (e) {
+    toast('No se pudieron activar las notificaciones', 'err');
+    const el = document.getElementById('push-enabled');
+    if (el) el.checked = false;
+  }
+}
+
+// Cancela la suscripción local y la borra del Worker.
+async function pushUnsubscribe() {
+  try {
+    const deviceId = _pushDeviceId();
+    if (PUSH_WORKER_URL) {
+      fetch(PUSH_WORKER_URL + '/subscribe', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deviceId }),
+      }).catch(() => {});
+    }
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if (sub) await sub.unsubscribe();
+  } catch (e) {}
+  S.pushEnabled = false;
+  saveLS();
+  const el = document.getElementById('push-enabled');
+  if (el) el.checked = false;
+  toast('Notificaciones desactivadas', '');
+}
+
+// Handler del toggle: pide permiso al prender, desuscribe al apagar.
+async function onPushToggle(on) {
+  if (on) {
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') {
+      toast('Permiso de notificaciones denegado. Habilitalo en ajustes del teléfono.', 'err');
+      const el = document.getElementById('push-enabled');
+      if (el) el.checked = false;
+      return;
+    }
+    await pushSubscribe();
+  } else {
+    await pushUnsubscribe();
+  }
+}
+
+// Al iniciar: mostrar la sección solo si el push está configurado; si ya
+// estaba activado, re-sincronizar los seguimientos (cambian con el tiempo).
+async function initPush() {
+  if (!PUSH_WORKER_URL || !PUSH_VAPID_KEY) return;
+  if (!('PushManager' in window)) return;
+  const ps = document.getElementById('push-section');
+  if (ps) ps.style.display = '';
+  if (!S.pushEnabled) return;
+  if (Notification.permission === 'granted') {
+    syncPushFollowups().catch(() => {});
+  } else {
+    // El usuario revocó el permiso desde el sistema: reflejarlo.
+    S.pushEnabled = false;
+    saveLS();
+  }
 }
 
 // ===== js/photos.js =====
@@ -6431,6 +6606,8 @@ function loadFollowupUI() {
   });
   if (opts) opts.style.opacity = cfg.enabled ? '1' : '.45';
   if (opts) opts.style.pointerEvents = cfg.enabled ? 'auto' : 'none';
+  const pushEl = document.getElementById('push-enabled');
+  if (pushEl) pushEl.checked = !!S.pushEnabled;
 }
 
 // Lee los campos del panel y guarda la config. Refresca banner e historial.
@@ -6459,6 +6636,8 @@ function saveFollowupFromUI() {
   }
   renderFollowupBanner();
   if (document.getElementById('panel-historial')?.classList.contains('active')) renderHistory();
+  // Cambió la config → re-sincronizar los seguimientos del Worker de push.
+  if (S.pushEnabled && typeof syncPushFollowups === 'function') syncPushFollowups().catch(() => {});
 }
 
 // Guarda la plantilla del mensaje de ENVÍO por WhatsApp (campo propio).
@@ -8421,6 +8600,8 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   // Copia de seguridad en Google Drive (inerte si no está configurada).
   if (typeof gdriveInitOnLoad === 'function') gdriveInitOnLoad();
+  // Notificaciones push (inerte si no está configurado el Worker).
+  if (typeof initPush === 'function') initPush();
   // Al pasar la app a segundo plano, subir cambios pendientes de inmediato
   // (solo si hay señal; sin conexión queda pendiente para el evento 'online').
   document.addEventListener('visibilitychange', () => {
@@ -8439,6 +8620,8 @@ window.addEventListener('DOMContentLoaded', async () => {
       clearTimeout(GDRIVE._timer);
       gdriveUpload().then(gdriveUpdateUI).catch(() => {});
     }
+    // Al volver la señal, re-sincronizar los seguimientos del Worker de push.
+    if (typeof syncPushFollowups === 'function' && S.pushEnabled) syncPushFollowups().catch(() => {});
   });
 
   // Accesos directos del manifest (long-press en el ícono): al abrir con
