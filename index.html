@@ -225,6 +225,8 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;font-size:14px;background
 .cpresets{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
 .cpreset{width:32px;height:32px;border-radius:50%;border:3px solid transparent;cursor:pointer;transition:.15s}
 .cpreset:hover,.cpreset.active{border-color:#fff;box-shadow:0 0 0 2px var(--muted)}
+.cpreset-add{display:flex;align-items:center;justify-content:center;border:2px dashed var(--muted);color:var(--muted);font-size:20px;line-height:1;background:transparent;box-shadow:none}
+.cpreset-add:hover,.cpreset-add.active{border-color:var(--accent);color:var(--accent);box-shadow:none}
 .cprow{display:flex;align-items:center;gap:10px;margin-bottom:16px}
 .cprow input[type=color]{width:44px;height:36px;border:1px solid var(--border);border-radius:6px;padding:2px;cursor:pointer;background:#fff}
 
@@ -2271,7 +2273,9 @@ input[type=file]{display:none}
           <div class="cpreset" data-color="#164e63" style="background:#164e63" title="Cian oscuro" onclick="selectColor(this)"></div>
           <div class="cpreset" data-color="#1c1917" style="background:#1c1917" title="Negro" onclick="selectColor(this)"></div>
           <div class="cpreset" data-color="#0369a1" style="background:#0369a1" title="Azul" onclick="selectColor(this)"></div>
+          <div class="cpreset cpreset-add" id="cpreset-add" title="Guardar el color actual" onclick="addCurrentColor()">+</div>
         </div>
+        <p class="cpk-hint" style="margin-bottom:14px">Tocá <b>+</b> para guardar el color actual en la selección rápida. Mantené presionado un color tuyo para quitarlo.</p>
         <p class="cpk-hint">Color personalizado: arrastrá en el cuadro para elegir el tono y el brillo, o escribí el código.</p>
         <div class="cpicker" id="cpicker">
           <div class="cpk-sv" id="cpk-sv">
@@ -2645,7 +2649,7 @@ const DEF = {
   coCuit:'', coWhatsapp:'', coCity:'', coEmail:'',
   coTechNotes:'', coFooter:'',
   showTechNotes:true, showFooter:true,
-  accentColor:'#064e3b', pdfTheme:'clasico', pdfCompact:false, validityDays:30, showExpiry:true,
+  accentColor:'#064e3b', pdfTheme:'clasico', pdfCompact:false, customColors:[], validityDays:30, showExpiry:true,
   numPrefix:'2026-', numNext:1,
   // Estimative mode
   isEstimative: false,
@@ -5124,7 +5128,8 @@ function restoreUI() {
   sv('doc-discount-note',   S.docDiscountNote);
   // color
   applyAccent(S.accentColor);
-  document.querySelectorAll('.cpreset').forEach(el=>el.classList.toggle('active', String(el.dataset.color).toLowerCase()===String(S.accentColor).toLowerCase()));
+  renderCustomColors();
+  document.querySelectorAll('.cpreset').forEach(el=>el.classList.toggle('active', String(el.dataset.color||'').toLowerCase()===String(S.accentColor).toLowerCase()));
   _cpkInit();
   const _hx = document.getElementById('cpk-hex'); if(_hx) _hx.value = S.accentColor;
   const _pv = document.getElementById('cpk-preview'); if(_pv) _pv.style.background = S.accentColor;
@@ -5627,6 +5632,57 @@ function _setAccentColor(c, reposition) {
 
 function applyColor(c) { _setAccentColor(c, true); }
 function selectColor(el) { applyColor(el.dataset.color); }
+
+// ─── COLORES RÁPIDOS PERSONALIZADOS ───────────────────────────────
+// El usuario puede guardar colores propios (de la paleta) en la fila de
+// selección rápida. Viven en S.customColors (se persisten con el resto del
+// estado). OJO: S es copia superficial de DEF, así que SIEMPRE reasignamos
+// el array (concat/filter), nunca push, para no contaminar DEF.customColors.
+function addCurrentColor() {
+  const c = safeColor(S.accentColor);
+  const exists = Array.prototype.some.call(
+    document.querySelectorAll('#color-presets .cpreset[data-color]'),
+    el => String(el.dataset.color).toLowerCase() === c.toLowerCase());
+  if (exists) { toast('Ese color ya está en la selección rápida.', 'info'); return; }
+  if ((S.customColors || []).length >= 12) { toast('Llegaste al máximo de 12 colores guardados.', 'info'); return; }
+  S.customColors = (S.customColors || []).concat([c]);
+  renderCustomColors();
+  saveLS();   // acción deliberada: persistir ya (sin esperar el debounce)
+  toast('⭐ Color agregado a la selección rápida.', 'ok');
+}
+function removeCustomColor(c) {
+  S.customColors = (S.customColors || []).filter(x => String(x).toLowerCase() !== String(c).toLowerCase());
+  renderCustomColors();
+  saveLS();   // acción deliberada: persistir ya (sin esperar el debounce)
+}
+async function _confirmRemoveColor(c) {
+  const ok = await confirmDlg('Quitar color', '¿Quitar este color de la selección rápida?', 'Quitar', 'btn-d');
+  if (ok) { removeCustomColor(c); toast('Color quitado.', 'info'); }
+}
+// Re-dibuja los chips personalizados (antes del botón "+"). Cada chip se
+// selecciona con un toque y se quita manteniéndolo presionado (long-press).
+function renderCustomColors() {
+  const row = document.getElementById('color-presets'); if (!row) return;
+  Array.prototype.forEach.call(row.querySelectorAll('.cpreset-custom'), n => n.remove());
+  const addBtn = document.getElementById('cpreset-add');
+  const cur = String(S.accentColor || '').toLowerCase();
+  (S.customColors || []).forEach(c => {
+    const el = document.createElement('div');
+    el.className = 'cpreset cpreset-custom' + (String(c).toLowerCase() === cur ? ' active' : '');
+    el.dataset.color = c;
+    el.style.background = c;
+    el.title = c + ' · mantené presionado para quitar';
+    let lpTimer = null, lpFired = false;
+    const startLP = () => { lpFired = false; lpTimer = setTimeout(() => { lpFired = true; _confirmRemoveColor(c); }, 550); };
+    const cancelLP = () => { if (lpTimer) { clearTimeout(lpTimer); lpTimer = null; } };
+    el.addEventListener('pointerdown', startLP);
+    el.addEventListener('pointerup', cancelLP);
+    el.addEventListener('pointerleave', cancelLP);
+    el.addEventListener('pointercancel', cancelLP);
+    el.addEventListener('click', () => { if (lpFired) { lpFired = false; return; } selectColor(el); });
+    if (addBtn) row.insertBefore(el, addBtn); else row.appendChild(el);
+  });
+}
 
 // ─── SELECTOR DE COLOR PROPIO (HSV) ───────────────────────────────
 // Reemplaza al <input type="color"> nativo (en muchos Android muestra barras
