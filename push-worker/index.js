@@ -117,6 +117,29 @@ export default {
 
     if (request.method === 'OPTIONS') return new Response(null, {status:204, headers:CORS});
 
+    // GET /test — dispara un push de prueba a todos los dispositivos suscritos.
+    // Usalo desde el navegador para confirmar que las notificaciones funcionan.
+    if (url.pathname === '/test' && request.method === 'GET') {
+      const { keys } = await env.PUSH_KV.list({ prefix: 'sub:' });
+      let ok = 0;
+      for (const {name} of keys) {
+        try {
+          const data = JSON.parse(await env.PUSH_KV.get(name));
+          if (!data?.subscription) continue;
+          const sent = await sendPush(data.subscription, {
+            title: 'Presupuesto AR — prueba ✓',
+            body: 'Las notificaciones funcionan. Ya vas a recibir los avisos de seguimiento.',
+            go: 'historial',
+          }, env);
+          if (sent) ok++;
+        } catch(e) {}
+      }
+      const msg = ok > 0
+        ? `✓ Push enviado a ${ok} dispositivo(s). Revisá las notificaciones del teléfono.`
+        : 'No hay dispositivos suscritos todavía. Activá el toggle en la app primero.';
+      return new Response(msg, { headers: { ...CORS, 'Content-Type': 'text/plain; charset=utf-8' } });
+    }
+
     if (url.pathname === '/subscribe' && request.method === 'POST') {
       try {
         const { deviceId, subscription, followups } = await request.json();
