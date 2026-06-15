@@ -215,6 +215,10 @@ body{background-color:var(--bg)}
 .fg input,.fg textarea,.fg select{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-field);font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--card);outline:none;transition:.15s;-webkit-appearance:none;appearance:none}
 .fg input:focus,.fg textarea:focus,.fg select:focus{border-color:var(--accent-fg);box-shadow:0 0 0 3px rgba(var(--accent-rgb),.1)}
 .fg textarea{resize:none;min-height:60px}
+/* Cajas que crecen con el contenido (sin scroll dentro del scroll al editar
+   listas largas en el celular). field-sizing:content auto-ajusta la altura;
+   rows + resize:vertical son el fallback en navegadores sin soporte. */
+.fg textarea.ta-grow{field-sizing:content;min-height:96px;max-height:50vh;resize:vertical}
 .fg input[readonly]{background:var(--surface);cursor:default}
 .r2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .r3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
@@ -2363,25 +2367,27 @@ input[type=file]{display:none}
           <div class="fg"><label>Disclaimer servicios con costo fijo</label>
             <textarea id="doc-disclaimer-svc" rows="3"></textarea></div>
 
-          <div class="fg"><label>Título del plan de trabajo</label>
-            <input type="text" id="doc-work-plan-title" placeholder="Plan de Trabajo">
-            <div class="hint">Encabezado de la sección que aparece antes del precio.</div></div>
+          <div class="st" style="margin-top:24px">Sección "Plan de trabajo" — lo que incluye</div>
+          <p class="hint" style="margin-bottom:14px">Lista de beneficios y tareas incluidas. En el PDF aparece <strong>debajo de los detalles del trabajo</strong> y sirve para mostrar el valor del trabajo, no solo el número. Se prende o apaga con el toggle <em>"Mostrar plan de trabajo"</em>.</p>
 
-          <div class="fg"><label>Plan de trabajo / Lo que incluye (uno por línea)</label>
-            <textarea id="doc-work-plan" rows="5"></textarea>
-            <div class="hint">Cada línea es un beneficio o tarea incluida. Aparece antes del precio para mostrar el valor del trabajo, no solo el número.</div></div>
+          <div class="fg"><label>Título de la sección</label>
+            <input type="text" id="doc-work-plan-title" placeholder="Plan de Trabajo"></div>
 
-          <div class="fg"><label>Criterios de costeo (uno por línea)</label>
-            <textarea id="doc-criteria" rows="5"></textarea>
-            <div class="hint">Cada línea aparece como un ítem en la grilla de criterios del PDF.</div></div>
+          <div class="fg"><label>Contenido — un beneficio o tarea por línea</label>
+            <textarea id="doc-work-plan" class="ta-grow" rows="6"></textarea></div>
 
-          <div class="fg"><label>Título de la sección de criterios</label>
-            <input type="text" id="doc-criteria-title" placeholder="Cómo Trabajamos">
-            <div class="hint">Encabezado visible en el PDF sobre la sección de criterios.</div></div>
+          <div class="st" style="margin-top:24px">Sección "Cómo trabajamos" — criterios de costeo</div>
+          <p class="hint" style="margin-bottom:14px">Explica <strong>por qué el costo varía</strong> según cada trabajo (altura, acceso, riesgos, especie…). Aparece más abajo en el PDF. Se prende o apaga con el toggle <em>"Mostrar criterios de costeo"</em>.</p>
 
-          <div class="fg"><label>Introducción de la sección de criterios</label>
-            <input type="text" id="doc-criteria-intro" placeholder="Cada trabajo es evaluado en función de sus condiciones reales...">
-            <div class="hint">Texto que aparece antes de la lista de criterios en el PDF.</div></div>
+          <div class="fg"><label>Título de la sección</label>
+            <input type="text" id="doc-criteria-title" placeholder="Cómo Trabajamos"></div>
+
+          <div class="fg"><label>Introducción — texto antes de la lista</label>
+            <input type="text" id="doc-criteria-intro" placeholder="Cada trabajo es evaluado en función de sus condiciones reales..."></div>
+
+          <div class="fg"><label>Criterios — uno por línea</label>
+            <textarea id="doc-criteria" class="ta-grow" rows="6"></textarea>
+            <div class="hint">Opcional: poné un subtítulo con <code>Subtítulo | descripción</code> (ej. <em>Altura y Acceso | Evaluamos el ingreso…</em>). Sin la barra, la línea va como texto simple.</div></div>
 
           <div class="fg"><label>Etiqueta del descuento en el PDF</label>
             <input type="text" id="doc-discount-label" placeholder="Bonificación por trabajos combinados">
@@ -2884,7 +2890,10 @@ const DEF = {
   docEstBanner:    'Presupuesto Estimativo — Basado en fotos y/o videos',
   docDisclaimer:   'Este presupuesto es estimativo y se basa en las fotos y/o videos enviados. El valor final puede ajustarse luego de una inspección presencial, ya que hay aspectos que solo pueden evaluarse en el lugar.',
   docDisclaimerSvc:'Los costos de servicios adicionales (camión, volquetes, etc.) son valores consultados con los proveedores al momento de la emisión de este presupuesto. En caso de demorar la confirmación de fecha, dichos valores serán consultados nuevamente antes de iniciar el trabajo.',
-  docCriteria:     'La altura del árbol y el acceso al sitio.\nEl volumen de material a extraer: ramas, troncos y restos vegetales.\nLa proximidad a estructuras sensibles: edificaciones, tendido eléctrico u otras instalaciones.\nLa especie, el estado fitosanitario y la complejidad estructural del árbol.',
+  // Formato "Subtítulo | descripción" por línea (el subtítulo es opcional).
+  // Alimenta la grilla "Cómo Trabajamos" del presupuesto normal y los factores
+  // del estimativo. Ver parseCriteria().
+  docCriteria:     'Altura y Acceso | Evaluamos las condiciones de ingreso al árbol y la zona de trabajo antes de operar.\nVolumen de Material | Planificamos el retiro ordenado para no comprometer el espacio ni la propiedad.\nRiesgos Presentes | Identificamos proximidad a edificaciones, cercos o instalaciones y aplicamos las medidas de seguridad correspondientes.\nEstado y Especie del Árbol | La especie y condición sanitaria del ejemplar determinan la técnica y el tiempo necesario.',
   docGreeting:     'Saludos,',
   docCriteriaTitle:  'Cómo Trabajamos',
   docCriteriaIntro:  'Cada trabajo es evaluado en función de sus condiciones reales. El costo refleja la complejidad técnica de cada situación:',
@@ -3038,6 +3047,14 @@ function migrateState(raw) {
     next.itemsB = Array.isArray(next.itemsB) ? next.itemsB : [];
     next.estItems = Array.isArray(next.estItems) ? next.estItems : [];
   }
+  // Migración de "criterios de costeo" al formato editable "Subtítulo |
+  // descripción". Antes la grilla "Cómo Trabajamos" del presupuesto normal era
+  // texto fijo en el código y este campo (texto plano) se ignoraba ahí. Si el
+  // usuario nunca lo tocó (coincide exacto con el viejo default), lo llevamos
+  // al nuevo default para que conserve el look con subtítulos. Si lo
+  // personalizó, se respeta tal cual (parseCriteria maneja líneas sin "|").
+  const OLD_CRITERIA_DEFAULT = 'La altura del árbol y el acceso al sitio.\nEl volumen de material a extraer: ramas, troncos y restos vegetales.\nLa proximidad a estructuras sensibles: edificaciones, tendido eléctrico u otras instalaciones.\nLa especie, el estado fitosanitario y la complejidad estructural del árbol.';
+  if (next.docCriteria === OLD_CRITERIA_DEFAULT) next.docCriteria = DEF.docCriteria;
   next._schemaVersion = APP_SCHEMA_VERSION;
   return next;
 }
@@ -7976,6 +7993,17 @@ function _buildWorkPlanHTML(color){
     </div>`;
 }
 
+// Parsea las líneas de "criterios de costeo" (S.docCriteria). Cada línea puede
+// ser "Subtítulo | descripción" (dos partes) o solo texto. Devuelve [{s,p}]
+// (s = subtítulo opcional, p = descripción). Se usa en el presupuesto normal
+// (grilla Cómo Trabajamos) y en el estimativo (factores).
+function parseCriteria(text){
+  return (text||'').split('\n').map(l=>l.trim()).filter(Boolean).map(l=>{
+    const i = l.indexOf('|');
+    return i >= 0 ? { s: l.slice(0,i).trim(), p: l.slice(i+1).trim() } : { s: '', p: l };
+  });
+}
+
 function buildDoc() {
   if (S.isRisk)       { buildRiskDoc(); return; }
   if (S.isEstimative) { buildEstDoc(); return; }
@@ -8037,17 +8065,17 @@ function buildDoc() {
       </div>
     </div>` : '';
 
-  const critH = S.showCriteria ? `
+  // La grilla se arma desde S.docCriteria (editable), no de texto fijo. Cada
+  // línea puede ser "Subtítulo | descripción" o solo texto (ver parseCriteria).
+  const critItems = parseCriteria(S.docCriteria).map(c =>
+    `<div class="pcrit-item">${c.s ? `<span class="pcrit-s">${esc(c.s)}</span>` : ''}<span class="pcrit-p">${esc(c.p)}</span></div>`
+  ).join('');
+  const critH = (S.showCriteria && critItems) ? `
     <div class="pcrit">
       <div class="pcrit-t">${esc(S.docCriteriaTitle||'Cómo Trabajamos')}</div>
       <div class="pcrit-box">
         <div class="pcrit-intro">${esc(S.docCriteriaIntro||'Cada trabajo es evaluado en función de sus condiciones reales. El costo refleja la complejidad técnica de cada situación:')}</div>
-        <div class="pcrit-grid">
-          <div class="pcrit-item"><span class="pcrit-s">Altura y Acceso</span><span class="pcrit-p">Evaluamos las condiciones de ingreso al árbol y la zona de trabajo antes de operar.</span></div>
-          <div class="pcrit-item"><span class="pcrit-s">Volumen de Material</span><span class="pcrit-p">Planificamos el retiro ordenado para no comprometer el espacio ni la propiedad.</span></div>
-          <div class="pcrit-item"><span class="pcrit-s">Riesgos Presentes</span><span class="pcrit-p">Identificamos proximidad a edificaciones, cercos o instalaciones y aplicamos las medidas de seguridad correspondientes.</span></div>
-          <div class="pcrit-item"><span class="pcrit-s">Estado y Especie del Árbol</span><span class="pcrit-p">La especie y condición sanitaria del ejemplar determinan la técnica y el tiempo necesario.</span></div>
-        </div>
+        <div class="pcrit-grid">${critItems}</div>
       </div>
     </div>` : '';
 
@@ -8563,9 +8591,7 @@ function buildEstDoc() {
     <div class="pest-factors">
       <div class="pest-factors-t" style="color:${color};border-color:${color}">Para estimar el costo se consideran</div>
       <div class="pest-factors-grid">
-        ${(S.docCriteria||'La altura del árbol y el acceso al sitio.\nEl volumen de material a extraer: ramas, troncos y restos vegetales.\nLa proximidad a estructuras sensibles: edificaciones, tendido eléctrico u otras instalaciones.\nLa especie, el estado fitosanitario y la complejidad estructural del árbol.')
-          .split('\n').filter(l=>l.trim())
-          .map(l=>`<div class="pest-factor" style="color:${color}">${esc(l.trim())}</div>`).join('')}
+        ${parseCriteria(S.docCriteria).map(c=>`<div class="pest-factor" style="color:${color}">${c.s?`<strong>${esc(c.s)}:</strong> `:''}${esc(c.p)}</div>`).join('')}
       </div>
     </div>` : ''}
 
