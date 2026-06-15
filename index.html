@@ -2192,6 +2192,12 @@ input[type=file]{display:none}
 
         <div class="st">Opciones del documento</div>
         <div class="trow"><span class="tlabel">Mostrar plan de trabajo</span><label class="tgl"><input type="checkbox" id="show-work-plan" checked><span class="tgl-sl"></span></label></div>
+        <div class="trow"><span class="tlabel">Plan de trabajo a medida <span style="font-weight:400;color:var(--muted)">(solo este presupuesto)</span></span><label class="tgl"><input type="checkbox" id="wp-override" onchange="toggleWorkPlanOverride()"><span class="tgl-sl"></span></label></div>
+        <div id="wp-override-box" class="fg" style="display:none;margin:4px 0 6px">
+          <input type="text" id="wp-custom-title" placeholder="Título (ej. Plan de Trabajo)" style="margin-bottom:6px">
+          <textarea id="wp-custom" class="ta-grow" rows="6" placeholder="Un ítem por línea. Detallá lo exclusivo de este trabajo…"></textarea>
+          <div class="hint">Reemplaza el plan de trabajo <strong>solo en este presupuesto</strong>. El plan por defecto (Empresa → Textos del PDF) no se modifica. Al crear un presupuesto nuevo vuelve a usarse el default.</div>
+        </div>
         <div class="trow"><span class="tlabel">Mostrar criterios de costeo</span><label class="tgl"><input type="checkbox" id="show-criteria" checked><span class="tgl-sl"></span></label></div>
         <div class="trow"><span class="tlabel">Mostrar firma del titular</span><label class="tgl"><input type="checkbox" id="show-sig-owner" checked><span class="tgl-sl"></span></label></div>
         <div class="trow"><span class="tlabel">Mostrar firma del cliente</span><label class="tgl"><input type="checkbox" id="show-sig-client"><span class="tgl-sl"></span></label></div>
@@ -2915,6 +2921,13 @@ const DEF = {
   // editables, uno por línea. Sugeridos por defecto, el usuario ajusta/borra.
   workPlanTitle:     'Plan de Trabajo',
   workPlan:          'Trabajo realizado por personal capacitado en trepa y poda en altura.\nEquipo y herramientas profesionales (cuerdas, arnés, motosierra).\nCortes técnicos que cuidan la salud y la estructura del árbol.\nLimpieza y retiro ordenado de todo el material generado.\nMedidas de seguridad para personas, propiedad e instalaciones.',
+  // Override del plan de trabajo SOLO para el presupuesto actual (no toca el
+  // default global de arriba). Se activa con un toggle en el Editor. Útil para
+  // detallar cosas exclusivas de ese trabajo. Se resetea en cada presupuesto
+  // nuevo y viaja en el snapshot del historial.
+  workPlanOverride:     false,
+  workPlanCustom:       '',
+  workPlanCustomTitle:  '',
   docDiscountLabel:  'Bonificación por trabajos combinados',
   docDiscountNote:   'Al realizar los trabajos en la misma jornada se optimizan los tiempos de montaje y logística, beneficio que trasladamos al cliente.',
   // Orden de las secciones del cuerpo del presupuesto normal (editable desde
@@ -5539,6 +5552,10 @@ function restoreUI() {
   sv('payment-conditions', S.paymentConditions);
   sv('observations', S.observations);
   sc('show-work-plan', S.showWorkPlan !== false);
+  sc('wp-override', !!S.workPlanOverride);
+  sv('wp-custom-title', S.workPlanCustomTitle);
+  sv('wp-custom', S.workPlanCustom);
+  { const box = document.getElementById('wp-override-box'); if (box) box.style.display = S.workPlanOverride ? 'block' : 'none'; }
   sc('show-criteria', S.showCriteria);
   sc('show-expiry',   S.showExpiry !== false);
   sc('show-sig-owner', S.showSigOwner);
@@ -5628,6 +5645,9 @@ function syncFromUI() {
   S.paymentConditions = gv('payment-conditions');
   S.observations      = gv('observations');
   S.showWorkPlan      = gc('show-work-plan');
+  S.workPlanOverride    = gc('wp-override');
+  S.workPlanCustomTitle = gv('wp-custom-title');
+  S.workPlanCustom      = gv('wp-custom');
   S.showCriteria      = gc('show-criteria');
   S.showExpiry        = gc('show-expiry');
   S.showSigOwner      = gc('show-sig-owner');
@@ -6856,6 +6876,23 @@ function moveSection(id, dir) {
   refreshPreviewIfOpen();
 }
 
+// Toggle del plan de trabajo a medida (Editor). Muestra/oculta la caja de
+// edición y, al activarlo por primera vez, precarga el plan global como punto
+// de partida para que el usuario lo ajuste en vez de escribir de cero.
+function toggleWorkPlanOverride() {
+  const on  = gc('wp-override');
+  const box = document.getElementById('wp-override-box');
+  if (box) box.style.display = on ? 'block' : 'none';
+  if (on) {
+    const ta = document.getElementById('wp-custom');
+    const ti = document.getElementById('wp-custom-title');
+    if (ta && !ta.value.trim()) ta.value = S.workPlan || '';
+    if (ti && !ti.value.trim()) ti.value = S.workPlanTitle || '';
+  }
+  syncFromUI();
+  refreshPreviewIfOpen();
+}
+
 // Abre WhatsApp con un mensaje de ENVÍO (no de seguimiento) dirigido al
 // cliente del presupuesto actual. wa.me solo permite texto: el PDF se
 // adjunta a mano, por eso el recordatorio en el toast.
@@ -7235,6 +7272,9 @@ async function newQuote() {
   S.numNext = calcNextNumFromHistory();
   S.items=[]; S.estItems=[]; S.itemsB=[]; S.clientName=''; S.clientContact=''; S.workAddress='';
   S.discount=0; S.surcharge=0; S.paymentConditions=''; S.observations=''; S.estObservations='';
+  // El plan de trabajo a medida es excepcional por presupuesto: se descarta al
+  // crear uno nuevo para volver a usar el default global.
+  S.workPlanOverride=false; S.workPlanCustom=''; S.workPlanCustomTitle='';
   S.isEstimative = false;
   S.isRisk = false;
   // Resetear escenarios A/B a defaults
@@ -8095,18 +8135,22 @@ function _buildDocHeader(theme, S, color, contacts, badgeLabel, badgeDate, showP
 
 // Construye la sección "Plan de Trabajo / Lo que incluye". Se muestra ANTES del
 // precio para encuadrar el importe como valor (qué recibe el cliente) y no como
-// un gasto. Bullets desde S.workPlan (uno por línea). Devuelve '' si está
+// un gasto. Bullets desde S.workPlan (uno por línea), o desde el override por
+// presupuesto (S.workPlanCustom) si está activado. Devuelve '' si está
 // desactivada (S.showWorkPlan === false) o si no hay líneas.
 function _buildWorkPlanHTML(color){
   if (S.showWorkPlan === false) return '';
-  const lines = (S.workPlan || '').split('\n')
+  const useCustom = !!S.workPlanOverride;
+  const titleSrc = useCustom ? (S.workPlanCustomTitle || S.workPlanTitle) : S.workPlanTitle;
+  const bodySrc  = useCustom ? S.workPlanCustom : S.workPlan;
+  const lines = (bodySrc || '').split('\n')
     .map(l => l.replace(/^[•\-–]\s*/, '').trim())
     .filter(Boolean);
   if (!lines.length) return '';
   const items = lines.map(l => `<li>${esc(l)}</li>`).join('');
   return `
     <div class="pplan">
-      <div class="pplan-t">${esc(S.workPlanTitle || 'Plan de Trabajo')}</div>
+      <div class="pplan-t">${esc(titleSrc || 'Plan de Trabajo')}</div>
       <div class="pplan-box" style="color:${color}">
         <ul class="pplan-list">${items}</ul>
       </div>
