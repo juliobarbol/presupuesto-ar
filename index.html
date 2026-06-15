@@ -2921,14 +2921,15 @@ const DEF = {
   // Empresa → Textos del PDF). El encabezado/cliente quedan arriba y las
   // fotos/firmas/pie quedan al final; solo estas secciones intermedias se
   // reordenan. Ver DOC_SECTIONS / sanitizeSectionOrder / buildDoc.
-  docSectionOrder: ['details','plan','criteria','observations','payment','validity','notes'],
+  docSectionOrder: ['details','total','plan','criteria','observations','payment','validity','notes'],
 };
 
 // Secciones reordenables del cuerpo del presupuesto normal. El orden lo define
 // S.docSectionOrder; este array es la lista canónica (ids + etiqueta para la UI)
 // y el orden "de fábrica" si falta la preferencia del usuario.
 const DOC_SECTIONS = [
-  { id:'details',      label:'Detalles del trabajo + Total' },
+  { id:'details',      label:'Detalles del trabajo (tabla)' },
+  { id:'total',        label:'Total del trabajo' },
   { id:'plan',         label:'Plan de trabajo (lo que incluye)' },
   { id:'criteria',     label:'Cómo trabajamos (criterios)' },
   { id:'observations', label:'Observaciones' },
@@ -2937,9 +2938,11 @@ const DOC_SECTIONS = [
   { id:'notes',        label:'Notas adicionales' },
 ];
 
-// Devuelve un orden válido: filtra ids desconocidos/duplicados y agrega al final
-// (en su posición canónica) cualquier sección que falte. Así nunca se pierde una
-// sección aunque el orden guardado venga viejo o corrupto.
+// Devuelve un orden válido: filtra ids desconocidos/duplicados y agrega las
+// secciones que falten JUNTO a su vecino canónico (la sección anterior en
+// DOC_SECTIONS), no al final. Así, si se suma una sección nueva (ej. el total
+// separado), aparece donde corresponde para quien ya tenía un orden guardado,
+// y nunca se pierde una sección aunque el orden venga viejo o corrupto.
 function sanitizeSectionOrder(order){
   const ids = DOC_SECTIONS.map(s => s.id);
   const seen = new Set();
@@ -2947,7 +2950,16 @@ function sanitizeSectionOrder(order){
   (Array.isArray(order) ? order : []).forEach(id => {
     if (ids.includes(id) && !seen.has(id)) { out.push(id); seen.add(id); }
   });
-  ids.forEach(id => { if (!seen.has(id)) out.push(id); });
+  DOC_SECTIONS.forEach((sec, idx) => {
+    if (seen.has(sec.id)) return;
+    let insertAt = out.length;
+    for (let k = idx - 1; k >= 0; k--) {
+      const p = out.indexOf(DOC_SECTIONS[k].id);
+      if (p >= 0) { insertAt = p + 1; break; }
+    }
+    out.splice(insertAt, 0, sec.id);
+    seen.add(sec.id);
+  });
   return out;
 }
 
@@ -7938,14 +7950,10 @@ function _buildItemsRowsHTML(arr, color, cur) {
 
 // Construye el bloque completo de UNA sección de ítems (psec + ptotals).
 // label opcional: si viene, va arriba como subtítulo del escenario.
-function _buildSceneBlockHTML(arr, label, color, cur, includeDisc) {
+// Tabla de ítems ("Detalles del Trabajo"). Sin el total: en el presupuesto
+// normal el total es una sección aparte y reordenable (ver buildDoc).
+function _buildSceneTableHTML(arr, label, color, cur) {
   const rows = _buildItemsRowsHTML(arr, color, cur);
-  const {subtotal, discAmt, total} = calcTotals(arr);
-  const discLabel = S.docDiscountLabel || 'Descuento';
-  const discH = (includeDisc && S.discount > 0) ? `
-    <div class="pdisc-row"><span>Subtotal:</span><span>${fmtMDoc(subtotal,cur)}</span></div>
-    <div class="pdisc-row" style="color:#dc2626"><span>${esc(discLabel)} (${S.discount}%):</span><span>− ${fmtMDoc(discAmt,cur)}</span></div>
-    ${S.docDiscountNote ? `<div class="pdisc-note">${esc(S.docDiscountNote)}</div>` : ''}` : '';
   const sectionTitle = label
     ? `<span style="font-size:9pt;font-weight:600;color:#64748b;display:block;margin-bottom:3px">${esc(label)}</span>Detalles del Trabajo`
     : 'Detalles del Trabajo';
@@ -7961,8 +7969,18 @@ function _buildSceneBlockHTML(arr, label, color, cur, includeDisc) {
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>
-    </div>
+    </div>`;
+}
 
+// Caja del total (con subtotal/descuento si corresponde).
+function _buildSceneTotalsHTML(arr, label, color, cur, includeDisc) {
+  const {subtotal, discAmt, total} = calcTotals(arr);
+  const discLabel = S.docDiscountLabel || 'Descuento';
+  const discH = (includeDisc && S.discount > 0) ? `
+    <div class="pdisc-row"><span>Subtotal:</span><span>${fmtMDoc(subtotal,cur)}</span></div>
+    <div class="pdisc-row" style="color:#dc2626"><span>${esc(discLabel)} (${S.discount}%):</span><span>− ${fmtMDoc(discAmt,cur)}</span></div>
+    ${S.docDiscountNote ? `<div class="pdisc-note">${esc(S.docDiscountNote)}</div>` : ''}` : '';
+  return `
     <div class="ptotals">
       ${discH}
       <div class="ptotal-box" style="color:${color};border-color:${color};background:${color}12">
@@ -7970,6 +7988,14 @@ function _buildSceneBlockHTML(arr, label, color, cur, includeDisc) {
         <div class="ptotal-amt" style="color:${color}">${fmtMDoc(total,cur)}</div>
       </div>
     </div>`;
+}
+
+// Bloque completo (tabla + total). Se usa en modo escenarios A/B, donde cada
+// opción debe llevar su total pegado a su tabla (no se pueden reordenar por
+// separado dos totales distintos).
+function _buildSceneBlockHTML(arr, label, color, cur, includeDisc) {
+  return _buildSceneTableHTML(arr, label, color, cur)
+    + '\n\n' + _buildSceneTotalsHTML(arr, label, color, cur, includeDisc);
 }
 
 // Construye el HTML del header del documento según el tema activo.
@@ -8117,15 +8143,18 @@ function buildDoc() {
   if(S.coCity)     contacts.push(`${pdfIcon('location')} ${esc(S.coCity)}`);
   if(S.coCuit)     contacts.push(`CUIT: ${esc(S.coCuit)}`);
 
-  // En modo escenarios A/B se renderizan DOS bloques (cada uno con su
-  // tabla de ítems y su total). En modo normal, un solo bloque.
-  let bodyBlocks;
+  // Detalles (tabla) y Total son secciones separadas y reordenables. En modo
+  // escenarios A/B cada opción lleva su total pegado a su tabla, así que el
+  // bloque va combinado en "details" y la sección "total" queda vacía.
+  let detailsH, totalH;
   if (S.scenariosEnabled) {
-    bodyBlocks =
+    detailsH =
       _buildSceneBlockHTML(S.items,  S.scenarioLabelA || 'Opción A', color, cur, true) +
       _buildSceneBlockHTML(S.itemsB, S.scenarioLabelB || 'Opción B', color, cur, true);
+    totalH = '';
   } else {
-    bodyBlocks = _buildSceneBlockHTML(S.items, '', color, cur, true);
+    detailsH = _buildSceneTableHTML(S.items, '', color, cur);
+    totalH   = _buildSceneTotalsHTML(S.items, '', color, cur, true);
   }
 
 
@@ -8201,7 +8230,8 @@ function buildDoc() {
   // Textos del PDF → "Orden de las secciones"). El encabezado/cliente van
   // arriba y fotos/firmas/pie quedan fijos al final.
   const _sectionMap = {
-    details:      bodyBlocks,
+    details:      detailsH,
+    total:        totalH,
     plan:         _buildWorkPlanHTML(color),
     criteria:     critH,
     observations: obsH,
