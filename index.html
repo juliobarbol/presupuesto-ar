@@ -8094,9 +8094,9 @@ function buildDoc() {
       </div>
     </div>
 
-    ${_buildWorkPlanHTML(color)}
-
     ${bodyBlocks}
+
+    ${_buildWorkPlanHTML(color)}
 
     ${S.observations?`<div class="pobs">
       <div class="pobs-t">Observaciones</div>
@@ -8526,8 +8526,6 @@ function buildEstDoc() {
       </div>
     </div>
 
-    ${_buildWorkPlanHTML(color)}
-
     ${(workItems.length > 0 || noteItems.length > 0) ? `
     <div class="psec">
       <div class="psec-t" style="color:${color};border-color:${color}">Trabajos Estimados</div>
@@ -8542,6 +8540,8 @@ function buildEstDoc() {
     </div>` : ''}
 
     ${totalsHtml}
+
+    ${_buildWorkPlanHTML(color)}
 
     <div class="pest-disclaimer">
       <div class="pest-disclaimer-title">Importante</div>
