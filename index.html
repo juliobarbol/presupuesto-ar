@@ -1267,15 +1267,12 @@ input[type=file]{display:none}
   .pdisc-note{font-size:var(--fs-micro);color:var(--c-muted-2);font-style:italic;margin-top:2px;max-width:240pt;text-align:right}
   .ptotal-box{padding:11px 16px;border-radius:var(--r-md);min-width:175pt;border:2pt solid currentColor}
   .ptotal-lbl{font-size:var(--fs-micro);font-weight:700;text-transform:uppercase;letter-spacing:var(--ls-label);opacity:.7;margin-bottom:2px}
-  /* font-size bajado de 26pt → 21pt (~19%): un precio en cuerpo menor se
-     percibe como un importe menor (Coulter & Coulter 2005, "Size Does
-     Matter"). Combinado con el símbolo en superíndice (.pcur) y sin centavos,
-     baja el peso visual del número sin perder legibilidad. */
-  .ptotal-amt{font-family:'DM Serif Display',serif;font-size:21pt;line-height:1}
-  /* Símbolo de moneda a media altura (superíndice). Atenúa el "dolor de
-     pagar" que dispara el signo $ (estudio Cornell/CIA, 2009) manteniendo la
-     claridad. En em para escalar con cualquier contexto (total, ítems, etc). */
-  .pcur{font-size:.5em;font-weight:inherit;vertical-align:.42em;margin-right:.1em;letter-spacing:0}
+  /* Total prominente y claro a propósito: la evidencia de que achicar el
+     número baja la magnitud percibida es débil y no replicada (Coulter 2005),
+     y trabajo posterior recomienda lo contrario (Yan et al. 2022). La palanca
+     real es el contexto de valor (plan de trabajo / justificación), no el
+     tamaño del número. */
+  .ptotal-amt{font-family:'DM Serif Display',serif;font-size:26pt;line-height:1}
 
   /* ──────────────────────────────────────────────────────────────
      ZONA ADMINISTRATIVA — H3 secundario
@@ -1844,7 +1841,7 @@ input[type=file]{display:none}
 .pdoc.pdoc-compact .psec { padding-top: 9px; }
 .pdoc.pdoc-compact .ptable tbody td { padding-top: 5px; padding-bottom: 5px; }
 .pdoc.pdoc-compact .ptotals { padding-top: 8px; padding-bottom: 8px; }
-.pdoc.pdoc-compact .ptotal-amt { font-size: 17pt; }
+.pdoc.pdoc-compact .ptotal-amt { font-size: 20pt; }
 .pdoc.pdoc-compact .ptitle { font-size: 12pt; margin-bottom: 8px; }
 </style>
 
@@ -2972,14 +2969,17 @@ function centsToMoney(cents) { return (Number.isFinite(cents) ? cents : 0) / 100
 function roundMoney(v) { return centsToMoney(moneyToCents(v)); }
 function fmtM(v,c){ return sym(c)+' '+roundMoney(v).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 // Formato de dinero para el DOCUMENTO del cliente (PDF/vista previa). Difiere
-// de fmtM por dos razones psicológicas (ver investigación de presentación de
-// precios): (1) SIN centavos — un número más corto se percibe como un importe
-// menor y aleja al lector del cálculo frío; (2) el símbolo de moneda va en un
-// <span class="pcur"> a media altura (superíndice), lo que atenúa el "dolor de
-// pagar" sin perder claridad. Devuelve HTML, así que solo se usa al construir
-// el documento (nunca con textContent). En la UI de edición se sigue usando
-// fmtM (con centavos y símbolo normal) para no perder precisión.
-function fmtMDoc(v,c){ return `<span class="pcur">${sym(c)}</span>`+roundMoney(v).toLocaleString('es-AR',{maximumFractionDigits:0}); }
+// de fmtM en una sola cosa con respaldo sólido: va SIN centavos. En Argentina,
+// con inflación alta y montos de cientos de miles/millones, los centavos son
+// económicamente nulos y un total tipo "$284.999,76" se lee como generado por
+// máquina y resta confianza; "$285.000" es la norma. Además, más dígitos
+// inflan la magnitud percibida (Coulter, Choi & Monroe 2012).
+// El símbolo $ se deja a tamaño normal y claro a propósito: la idea de
+// achicarlo/superíndice (estudio de menús Cornell 2009) no está replicada y en
+// un presupuesto, donde el cliente necesita entender que es plata, achicarlo
+// puede leerse como evasivo. En la UI de edición se sigue usando fmtM (con
+// centavos) para no perder precisión.
+function fmtMDoc(v,c){ return sym(c)+' '+roundMoney(v).toLocaleString('es-AR',{maximumFractionDigits:0}); }
 
 // ─── CÁLCULO DE NIVEL DE RIESGO (matriz ISA Basic) ───────────────────────────
 // Probabilidad de falla × Probabilidad de impacto → Probabilidad de daño
