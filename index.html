@@ -219,6 +219,15 @@ body{background-color:var(--bg)}
    listas largas en el celular). field-sizing:content auto-ajusta la altura;
    rows + resize:vertical son el fallback en navegadores sin soporte. */
 .fg textarea.ta-grow{field-sizing:content;min-height:96px;max-height:50vh;resize:vertical}
+/* Lista reordenable de secciones del PDF (Empresa → Textos del PDF). */
+.sord-list{display:flex;flex-direction:column;gap:6px}
+.sord-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-field);background:var(--card)}
+.sord-num{flex:none;width:20px;height:20px;border-radius:50%;background:var(--accent-fg);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.sord-label{flex:1;font-size:13px;color:var(--text)}
+.sord-btns{flex:none;display:flex;gap:4px}
+.sord-btn{width:30px;height:30px;border:1px solid var(--border);border-radius:var(--radius-field);background:var(--bg);color:var(--text);font-size:12px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;-webkit-appearance:none;appearance:none}
+.sord-btn:active{background:var(--accent-fg);color:#fff;border-color:var(--accent-fg)}
+.sord-btn:disabled{opacity:.3;cursor:default}
 .fg input[readonly]{background:var(--surface);cursor:default}
 .r2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .r3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
@@ -2339,7 +2348,11 @@ input[type=file]{display:none}
 
         <!-- ── SUB-TAB TEXTOS DEL PDF ── -->
         <div id="subpanel-textos" class="subpanel">
-          <div class="st">Visibilidad en el documento</div>
+          <div class="st">Orden de las secciones del PDF</div>
+          <p class="hint" style="margin-bottom:10px">Reordená con las flechas cómo aparecen las secciones del presupuesto normal. El encabezado y los datos del cliente van siempre arriba; las fotos, firmas y el pie quedan al final.</p>
+          <div id="doc-section-order" class="sord-list"></div>
+
+          <div class="st" style="margin-top:24px">Visibilidad en el documento</div>
           <div class="trow"><span class="tlabel">Mostrar notas técnicas adicionales</span><label class="tgl"><input type="checkbox" id="show-tech-notes" checked><span class="tgl-sl"></span></label></div>
           <div class="trow"><span class="tlabel">Mostrar pie de página</span><label class="tgl"><input type="checkbox" id="show-footer" checked><span class="tgl-sl"></span></label></div>
 
@@ -2904,7 +2917,39 @@ const DEF = {
   workPlan:          'Trabajo realizado por personal capacitado en trepa y poda en altura.\nEquipo y herramientas profesionales (cuerdas, arnés, motosierra).\nCortes técnicos que cuidan la salud y la estructura del árbol.\nLimpieza y retiro ordenado de todo el material generado.\nMedidas de seguridad para personas, propiedad e instalaciones.',
   docDiscountLabel:  'Bonificación por trabajos combinados',
   docDiscountNote:   'Al realizar los trabajos en la misma jornada se optimizan los tiempos de montaje y logística, beneficio que trasladamos al cliente.',
+  // Orden de las secciones del cuerpo del presupuesto normal (editable desde
+  // Empresa → Textos del PDF). El encabezado/cliente quedan arriba y las
+  // fotos/firmas/pie quedan al final; solo estas secciones intermedias se
+  // reordenan. Ver DOC_SECTIONS / sanitizeSectionOrder / buildDoc.
+  docSectionOrder: ['details','plan','criteria','observations','payment','validity','notes'],
 };
+
+// Secciones reordenables del cuerpo del presupuesto normal. El orden lo define
+// S.docSectionOrder; este array es la lista canónica (ids + etiqueta para la UI)
+// y el orden "de fábrica" si falta la preferencia del usuario.
+const DOC_SECTIONS = [
+  { id:'details',      label:'Detalles del trabajo + Total' },
+  { id:'plan',         label:'Plan de trabajo (lo que incluye)' },
+  { id:'criteria',     label:'Cómo trabajamos (criterios)' },
+  { id:'observations', label:'Observaciones' },
+  { id:'payment',      label:'Condiciones de pago' },
+  { id:'validity',     label:'Vigencia' },
+  { id:'notes',        label:'Notas adicionales' },
+];
+
+// Devuelve un orden válido: filtra ids desconocidos/duplicados y agrega al final
+// (en su posición canónica) cualquier sección que falte. Así nunca se pierde una
+// sección aunque el orden guardado venga viejo o corrupto.
+function sanitizeSectionOrder(order){
+  const ids = DOC_SECTIONS.map(s => s.id);
+  const seen = new Set();
+  const out = [];
+  (Array.isArray(order) ? order : []).forEach(id => {
+    if (ids.includes(id) && !seen.has(id)) { out.push(id); seen.add(id); }
+  });
+  ids.forEach(id => { if (!seen.has(id)) out.push(id); });
+  return out;
+}
 
 // ─── ESTADOS COMERCIALES DEL PRESUPUESTO ─────────────────────
 // El estado vive a nivel del entry del historial (no del snapshot),
@@ -5516,6 +5561,7 @@ function restoreUI() {
   sv('doc-criteria-intro',  S.docCriteriaIntro);
   sv('doc-discount-label',  S.docDiscountLabel);
   sv('doc-discount-note',   S.docDiscountNote);
+  if (typeof renderSectionOrder === 'function') renderSectionOrder();
   // color
   applyAccent(S.accentColor);
   renderCustomColors();
@@ -6748,6 +6794,54 @@ function previewCurrent() {
   overlay.classList.add('open');
   document.body.style.overflow = 'hidden';
   requestAnimationFrame(_scalePreview);
+}
+
+// Si la vista previa está abierta, la regenera con el estado actual. Se usa al
+// reordenar las secciones del PDF para ver el cambio al instante.
+function refreshPreviewIfOpen() {
+  const overlay = document.getElementById('doc-preview-overlay');
+  if (!overlay || !overlay.classList.contains('open')) return;
+  const docEl     = document.getElementById('doc-a4');
+  const contentEl = document.getElementById('doc-preview-content');
+  try { buildDoc(); } catch (e) { return; }
+  if (docEl && contentEl) {
+    contentEl.innerHTML = docEl.innerHTML;
+    requestAnimationFrame(_scalePreview);
+  }
+}
+
+// ─── ORDEN DE LAS SECCIONES DEL PDF ──────────────────────────
+// Lista reordenable (flechas ↑/↓, robusto en celular) que controla
+// S.docSectionOrder. Cada cambio guarda y refresca la vista previa si está
+// abierta. Ver DOC_SECTIONS / sanitizeSectionOrder / buildDoc.
+function renderSectionOrder() {
+  const host = document.getElementById('doc-section-order');
+  if (!host) return;
+  const order = sanitizeSectionOrder(S.docSectionOrder);
+  S.docSectionOrder = order; // deja el estado normalizado
+  host.innerHTML = order.map((id, i) => {
+    const sec = DOC_SECTIONS.find(s => s.id === id);
+    return `<div class="sord-row">
+      <span class="sord-num">${i + 1}</span>
+      <span class="sord-label">${esc(sec ? sec.label : id)}</span>
+      <span class="sord-btns">
+        <button type="button" class="sord-btn" onclick="moveSection('${id}',-1)" ${i === 0 ? 'disabled' : ''} aria-label="Subir">▲</button>
+        <button type="button" class="sord-btn" onclick="moveSection('${id}',1)" ${i === order.length - 1 ? 'disabled' : ''} aria-label="Bajar">▼</button>
+      </span>
+    </div>`;
+  }).join('');
+}
+
+function moveSection(id, dir) {
+  const order = sanitizeSectionOrder(S.docSectionOrder);
+  const i = order.indexOf(id);
+  const j = i + dir;
+  if (i < 0 || j < 0 || j >= order.length) return;
+  [order[i], order[j]] = [order[j], order[i]];
+  S.docSectionOrder = order;
+  saveLS();
+  renderSectionOrder();
+  refreshPreviewIfOpen();
 }
 
 // Abre WhatsApp con un mensaje de ENVÍO (no de seguimiento) dirigido al
@@ -8087,6 +8181,36 @@ function buildDoc() {
     sigH = `<div class="psigs">${sx}</div>`;
   }
 
+  const obsH = S.observations ? `<div class="pobs">
+      <div class="pobs-t">Observaciones</div>
+      <div class="pobs-txt">${esc(S.observations).replace(/\n/g,'<br>')}</div>
+    </div>` : '';
+  const payH = S.paymentConditions ? `<div class="pcond">
+      <div class="pcond-t">Condiciones de Pago</div>
+      <div class="pcond-txt">${esc(S.paymentConditions).replace(/\n/g,'<br>')}</div>
+    </div>` : '';
+  const validH = S.showExpiry !== false ? `<div class="pvalid">
+      <span>${pdfIcon('warning')} PRESUPUESTO CON ${S.validityDays} DÍAS DE VIGENCIA</span>
+      <span class="pvalid-date">Vence el ${fmtD(S.dateExpiry)}</span>
+    </div>` : '';
+  const notesH = (S.showTechNotes && techH) ? `<div class="pnotes">
+      <div class="pnotes-t">Notas Adicionales</div>
+      <ul>${techH}</ul>
+    </div>` : '';
+  // Cuerpo del presupuesto en el ORDEN elegido por el usuario (Empresa →
+  // Textos del PDF → "Orden de las secciones"). El encabezado/cliente van
+  // arriba y fotos/firmas/pie quedan fijos al final.
+  const _sectionMap = {
+    details:      bodyBlocks,
+    plan:         _buildWorkPlanHTML(color),
+    criteria:     critH,
+    observations: obsH,
+    payment:      payH,
+    validity:     validH,
+    notes:        notesH,
+  };
+  const bodyOrderedH = sanitizeSectionOrder(S.docSectionOrder).map(id => _sectionMap[id] || '').join('\n\n');
+
   const theme = S.pdfTheme || 'clasico';
   const doc = document.getElementById('doc-a4'); if(!doc) return;
   // ── Estructura wrapper-table ───────────────────────────────────────────────
@@ -8122,31 +8246,7 @@ function buildDoc() {
       </div>
     </div>
 
-    ${bodyBlocks}
-
-    ${_buildWorkPlanHTML(color)}
-
-    ${S.observations?`<div class="pobs">
-      <div class="pobs-t">Observaciones</div>
-      <div class="pobs-txt">${esc(S.observations).replace(/\n/g,'<br>')}</div>
-    </div>`:''}
-
-    ${S.paymentConditions?`<div class="pcond">
-      <div class="pcond-t">Condiciones de Pago</div>
-      <div class="pcond-txt">${esc(S.paymentConditions).replace(/\n/g,'<br>')}</div>
-    </div>`:''}
-
-    ${S.showExpiry !== false ? `<div class="pvalid">
-      <span>${pdfIcon('warning')} PRESUPUESTO CON ${S.validityDays} DÍAS DE VIGENCIA</span>
-      <span class="pvalid-date">Vence el ${fmtD(S.dateExpiry)}</span>
-    </div>` : ''}
-
-    ${critH}
-
-    ${S.showTechNotes&&techH?`<div class="pnotes">
-      <div class="pnotes-t">Notas Adicionales</div>
-      <ul>${techH}</ul>
-    </div>`:''}
+    ${bodyOrderedH}
 
     ${fotosH}
 
