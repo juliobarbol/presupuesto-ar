@@ -1267,7 +1267,15 @@ input[type=file]{display:none}
   .pdisc-note{font-size:var(--fs-micro);color:var(--c-muted-2);font-style:italic;margin-top:2px;max-width:240pt;text-align:right}
   .ptotal-box{padding:11px 16px;border-radius:var(--r-md);min-width:175pt;border:2pt solid currentColor}
   .ptotal-lbl{font-size:var(--fs-micro);font-weight:700;text-transform:uppercase;letter-spacing:var(--ls-label);opacity:.7;margin-bottom:2px}
-  .ptotal-amt{font-family:'DM Serif Display',serif;font-size:26pt;line-height:1}
+  /* font-size bajado de 26pt → 21pt (~19%): un precio en cuerpo menor se
+     percibe como un importe menor (Coulter & Coulter 2005, "Size Does
+     Matter"). Combinado con el símbolo en superíndice (.pcur) y sin centavos,
+     baja el peso visual del número sin perder legibilidad. */
+  .ptotal-amt{font-family:'DM Serif Display',serif;font-size:21pt;line-height:1}
+  /* Símbolo de moneda a media altura (superíndice). Atenúa el "dolor de
+     pagar" que dispara el signo $ (estudio Cornell/CIA, 2009) manteniendo la
+     claridad. En em para escalar con cualquier contexto (total, ítems, etc). */
+  .pcur{font-size:.5em;font-weight:inherit;vertical-align:.42em;margin-right:.1em;letter-spacing:0}
 
   /* ──────────────────────────────────────────────────────────────
      ZONA ADMINISTRATIVA — H3 secundario
@@ -1311,6 +1319,19 @@ input[type=file]{display:none}
   .pcrit-item{margin-bottom:0}
   .pcrit-s{font-size:var(--fs-small);font-weight:700;color:var(--c-text);display:block;margin-bottom:1px}
   .pcrit-p{font-size:var(--fs-micro);color:var(--c-muted);line-height:1.5;display:block}
+
+  /* ──────────────────────────────────────────────────────────────
+     PLAN DE TRABAJO / LO QUE INCLUYE — sección de VALOR que se muestra
+     antes del precio. Encuadra el importe como inversión justificada por
+     el trabajo (framing de valor + anclaje): el cliente lee primero lo que
+     recibe y recién después el número. Bullets editables por presupuesto.
+     ────────────────────────────────────────────────────────────── */
+  .pplan{padding:14px var(--page-x) 0}
+  .pplan-t{font-size:var(--fs-h3);font-weight:700;text-transform:uppercase;letter-spacing:var(--ls-label);color:var(--c-muted);margin-bottom:8px}
+  .pplan-box{padding:13px 16px;background:var(--c-bg-soft);border-radius:var(--r-md);border-left:3pt solid currentColor}
+  .pplan-list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:8px 22px}
+  .pplan-list li{font-size:var(--fs-small);color:var(--c-text-2);line-height:1.5;padding-left:17px;position:relative}
+  .pplan-list li::before{content:'';position:absolute;left:0;top:.42em;width:7px;height:7px;border-radius:2px;background:currentColor;opacity:.55}
 
   /* ──────────────────────────────────────────────────────────────
      FIRMAS — más respiración, anti-corte
@@ -1823,7 +1844,7 @@ input[type=file]{display:none}
 .pdoc.pdoc-compact .psec { padding-top: 9px; }
 .pdoc.pdoc-compact .ptable tbody td { padding-top: 5px; padding-bottom: 5px; }
 .pdoc.pdoc-compact .ptotals { padding-top: 8px; padding-bottom: 8px; }
-.pdoc.pdoc-compact .ptotal-amt { font-size: 20pt; }
+.pdoc.pdoc-compact .ptotal-amt { font-size: 17pt; }
 .pdoc.pdoc-compact .ptitle { font-size: 12pt; margin-bottom: 8px; }
 </style>
 
@@ -2160,6 +2181,7 @@ input[type=file]{display:none}
         </div>
 
         <div class="st">Opciones del documento</div>
+        <div class="trow"><span class="tlabel">Mostrar plan de trabajo</span><label class="tgl"><input type="checkbox" id="show-work-plan" checked><span class="tgl-sl"></span></label></div>
         <div class="trow"><span class="tlabel">Mostrar criterios de costeo</span><label class="tgl"><input type="checkbox" id="show-criteria" checked><span class="tgl-sl"></span></label></div>
         <div class="trow"><span class="tlabel">Mostrar firma del titular</span><label class="tgl"><input type="checkbox" id="show-sig-owner" checked><span class="tgl-sl"></span></label></div>
         <div class="trow"><span class="tlabel">Mostrar firma del cliente</span><label class="tgl"><input type="checkbox" id="show-sig-client"><span class="tgl-sl"></span></label></div>
@@ -2343,6 +2365,14 @@ input[type=file]{display:none}
 
           <div class="fg"><label>Disclaimer servicios con costo fijo</label>
             <textarea id="doc-disclaimer-svc" rows="3"></textarea></div>
+
+          <div class="fg"><label>Título del plan de trabajo</label>
+            <input type="text" id="doc-work-plan-title" placeholder="Plan de Trabajo">
+            <div class="hint">Encabezado de la sección que aparece antes del precio.</div></div>
+
+          <div class="fg"><label>Plan de trabajo / Lo que incluye (uno por línea)</label>
+            <textarea id="doc-work-plan" rows="5"></textarea>
+            <div class="hint">Cada línea es un beneficio o tarea incluida. Aparece antes del precio para mostrar el valor del trabajo, no solo el número.</div></div>
 
           <div class="fg"><label>Criterios de costeo (uno por línea)</label>
             <textarea id="doc-criteria" rows="5"></textarea>
@@ -2812,6 +2842,7 @@ const DEF = {
   scenarioLabelB: 'Opción B — Poda',
   itemsB: [],
   showCriteria:true, showSigOwner:true, showSigClient:false,
+  showWorkPlan:true,
   logo:'',
   coName:'',
   coOwner:'',
@@ -2860,6 +2891,11 @@ const DEF = {
   docGreeting:     'Saludos,',
   docCriteriaTitle:  'Cómo Trabajamos',
   docCriteriaIntro:  'Cada trabajo es evaluado en función de sus condiciones reales. El costo refleja la complejidad técnica de cada situación:',
+  // Sección "Plan de Trabajo / Lo que incluye": va antes del precio y encuadra
+  // el importe como valor (qué recibe el cliente) en lugar de un gasto. Bullets
+  // editables, uno por línea. Sugeridos por defecto, el usuario ajusta/borra.
+  workPlanTitle:     'Plan de Trabajo',
+  workPlan:          'Trabajo realizado por personal capacitado en trepa y poda en altura.\nEquipo y herramientas profesionales (cuerdas, arnés, motosierra).\nCortes técnicos que cuidan la salud y la estructura del árbol.\nLimpieza y retiro ordenado de todo el material generado.\nMedidas de seguridad para personas, propiedad e instalaciones.',
   docDiscountLabel:  'Bonificación por trabajos combinados',
   docDiscountNote:   'Al realizar los trabajos en la misma jornada se optimizan los tiempos de montaje y logística, beneficio que trasladamos al cliente.',
 };
@@ -2935,6 +2971,15 @@ function moneyToCents(v) {
 function centsToMoney(cents) { return (Number.isFinite(cents) ? cents : 0) / 100; }
 function roundMoney(v) { return centsToMoney(moneyToCents(v)); }
 function fmtM(v,c){ return sym(c)+' '+roundMoney(v).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+// Formato de dinero para el DOCUMENTO del cliente (PDF/vista previa). Difiere
+// de fmtM por dos razones psicológicas (ver investigación de presentación de
+// precios): (1) SIN centavos — un número más corto se percibe como un importe
+// menor y aleja al lector del cálculo frío; (2) el símbolo de moneda va en un
+// <span class="pcur"> a media altura (superíndice), lo que atenúa el "dolor de
+// pagar" sin perder claridad. Devuelve HTML, así que solo se usa al construir
+// el documento (nunca con textContent). En la UI de edición se sigue usando
+// fmtM (con centavos y símbolo normal) para no perder precisión.
+function fmtMDoc(v,c){ return `<span class="pcur">${sym(c)}</span>`+roundMoney(v).toLocaleString('es-AR',{maximumFractionDigits:0}); }
 
 // ─── CÁLCULO DE NIVEL DE RIESGO (matriz ISA Basic) ───────────────────────────
 // Probabilidad de falla × Probabilidad de impacto → Probabilidad de daño
@@ -5419,6 +5464,7 @@ function restoreUI() {
   sv('surcharge-pct', S.surcharge||0);
   sv('payment-conditions', S.paymentConditions);
   sv('observations', S.observations);
+  sc('show-work-plan', S.showWorkPlan !== false);
   sc('show-criteria', S.showCriteria);
   sc('show-expiry',   S.showExpiry !== false);
   sc('show-sig-owner', S.showSigOwner);
@@ -5445,6 +5491,8 @@ function restoreUI() {
   sv('doc-est-banner',    S.docEstBanner);
   sv('doc-disclaimer',    S.docDisclaimer);
   sv('doc-disclaimer-svc',S.docDisclaimerSvc);
+  sv('doc-work-plan-title', S.workPlanTitle);
+  sv('doc-work-plan',       S.workPlan);
   sv('doc-criteria',      S.docCriteria);
   sv('doc-greeting',      S.docGreeting);
   sv('doc-criteria-title',  S.docCriteriaTitle);
@@ -5504,6 +5552,7 @@ function syncFromUI() {
   S.discount          = parseFloat(gv('discount')) || 0;
   S.paymentConditions = gv('payment-conditions');
   S.observations      = gv('observations');
+  S.showWorkPlan      = gc('show-work-plan');
   S.showCriteria      = gc('show-criteria');
   S.showExpiry        = gc('show-expiry');
   S.showSigOwner      = gc('show-sig-owner');
@@ -5532,6 +5581,8 @@ function syncFromUI() {
   S.docEstBanner      = gv('doc-est-banner')    || S.docEstBanner;
   S.docDisclaimer     = gv('doc-disclaimer')    || S.docDisclaimer;
   S.docDisclaimerSvc  = gv('doc-disclaimer-svc')|| S.docDisclaimerSvc;
+  S.workPlanTitle     = gv('doc-work-plan-title') || S.workPlanTitle;
+  S.workPlan          = gv('doc-work-plan')       || S.workPlan;
   S.docCriteria       = gv('doc-criteria')      || S.docCriteria;
   S.docGreeting       = gv('doc-greeting');
   S.docCriteriaTitle  = gv('doc-criteria-title') || S.docCriteriaTitle;
@@ -7741,7 +7792,7 @@ function _buildItemsRowsHTML(arr, color, cur) {
   arr.forEach(item => {
     if(item.type==='tree'){
       n++;
-      const p = item.price!==''?fmtM(item.price,cur):'—';
+      const p = item.price!==''?fmtMDoc(item.price,cur):'—';
       rows+=`<tr>
         <td class="td-n">${n}</td>
         <td class="td-sp" style="color:${color}">${esc(item.species||'Sin especificar')}</td>
@@ -7758,9 +7809,9 @@ function _buildItemsRowsHTML(arr, color, cur) {
       } else if(item.showQty && qty > 1){
         // qty-breakdown: gris claro chiquito (CSS), MUY débil
         // strong: subtotal real, peso completo
-        pCell = `<span class="qty-breakdown">${qty} × ${fmtM(item.price,cur)}</span><strong>${fmtM(total,cur)}</strong>`;
+        pCell = `<span class="qty-breakdown">${qty} × ${fmtMDoc(item.price,cur)}</span><strong>${fmtMDoc(total,cur)}</strong>`;
       } else {
-        pCell = fmtM(total, cur);
+        pCell = fmtMDoc(total, cur);
       }
       rows+=`<tr>
         <td class="td-n">${n}</td>
@@ -7781,8 +7832,8 @@ function _buildSceneBlockHTML(arr, label, color, cur, includeDisc) {
   const {subtotal, discAmt, total} = calcTotals(arr);
   const discLabel = S.docDiscountLabel || 'Descuento';
   const discH = (includeDisc && S.discount > 0) ? `
-    <div class="pdisc-row"><span>Subtotal:</span><span>${fmtM(subtotal,cur)}</span></div>
-    <div class="pdisc-row" style="color:#dc2626"><span>${esc(discLabel)} (${S.discount}%):</span><span>− ${fmtM(discAmt,cur)}</span></div>
+    <div class="pdisc-row"><span>Subtotal:</span><span>${fmtMDoc(subtotal,cur)}</span></div>
+    <div class="pdisc-row" style="color:#dc2626"><span>${esc(discLabel)} (${S.discount}%):</span><span>− ${fmtMDoc(discAmt,cur)}</span></div>
     ${S.docDiscountNote ? `<div class="pdisc-note">${esc(S.docDiscountNote)}</div>` : ''}` : '';
   const sectionTitle = label
     ? `<span style="font-size:9pt;font-weight:600;color:#64748b;display:block;margin-bottom:3px">${esc(label)}</span>Detalles del Trabajo`
@@ -7795,7 +7846,7 @@ function _buildSceneBlockHTML(arr, label, color, cur, includeDisc) {
           <th style="width:18pt">#</th>
           <th style="width:100pt">Especie/s</th>
           <th>Trabajo a realizar</th>
-          <th class="thr">Costo</th>
+          <th class="thr">Valor</th>
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>
@@ -7804,8 +7855,8 @@ function _buildSceneBlockHTML(arr, label, color, cur, includeDisc) {
     <div class="ptotals">
       ${discH}
       <div class="ptotal-box" style="color:${color};border-color:${color};background:${color}12">
-        <div class="ptotal-lbl" style="color:${color}">${label ? esc(label) + ' — Costo Total' : 'Costo Total del Trabajo'}</div>
-        <div class="ptotal-amt" style="color:${color}">${fmtM(total,cur)}</div>
+        <div class="ptotal-lbl" style="color:${color}">${label ? esc(label) + ' — Total' : 'Total del trabajo'}</div>
+        <div class="ptotal-amt" style="color:${color}">${fmtMDoc(total,cur)}</div>
       </div>
     </div>`;
 }
@@ -7903,6 +7954,26 @@ function _buildDocHeader(theme, S, color, contacts, badgeLabel, badgeDate, showP
       ${dateHTML}
     </div>
   </div>`;
+}
+
+// Construye la sección "Plan de Trabajo / Lo que incluye". Se muestra ANTES del
+// precio para encuadrar el importe como valor (qué recibe el cliente) y no como
+// un gasto. Bullets desde S.workPlan (uno por línea). Devuelve '' si está
+// desactivada (S.showWorkPlan === false) o si no hay líneas.
+function _buildWorkPlanHTML(color){
+  if (S.showWorkPlan === false) return '';
+  const lines = (S.workPlan || '').split('\n')
+    .map(l => l.replace(/^[•\-–]\s*/, '').trim())
+    .filter(Boolean);
+  if (!lines.length) return '';
+  const items = lines.map(l => `<li>${esc(l)}</li>`).join('');
+  return `
+    <div class="pplan">
+      <div class="pplan-t">${esc(S.workPlanTitle || 'Plan de Trabajo')}</div>
+      <div class="pplan-box" style="color:${color}">
+        <ul class="pplan-list">${items}</ul>
+      </div>
+    </div>`;
 }
 
 function buildDoc() {
@@ -8023,6 +8094,8 @@ function buildDoc() {
       </div>
     </div>
 
+    ${_buildWorkPlanHTML(color)}
+
     ${bodyBlocks}
 
     ${S.observations?`<div class="pobs">
@@ -8119,7 +8192,7 @@ function buildRiskDoc() {
     S.items.forEach(item => {
       if (item.type === 'tree') {
         n++;
-        const p = item.price !== '' ? fmtM(item.price, cur) : '—';
+        const p = item.price !== '' ? fmtMDoc(item.price, cur) : '—';
         rows += `<tr>
           <td class="td-n">${n}</td>
           <td class="td-sp" style="color:${color}">${esc(item.species||'Sin especificar')}</td>
@@ -8134,9 +8207,9 @@ function buildRiskDoc() {
         if (!hasPrice) {
           pCell = '—';
         } else if (item.showQty && qty > 1) {
-          pCell = `<span style="font-size:8pt;color:#64748b">${qty} × ${fmtM(item.price,cur)}</span><br><strong>${fmtM(itTotal,cur)}</strong>`;
+          pCell = `<span style="font-size:8pt;color:#64748b">${qty} × ${fmtMDoc(item.price,cur)}</span><br><strong>${fmtMDoc(itTotal,cur)}</strong>`;
         } else {
-          pCell = fmtM(itTotal, cur);
+          pCell = fmtMDoc(itTotal, cur);
         }
         rows += `<tr>
           <td class="td-n">${n}</td>
@@ -8151,8 +8224,8 @@ function buildRiskDoc() {
 
   const discLabel = S.docDiscountLabel || 'Descuento';
   const discH = S.discount > 0 ? `
-    <div class="pdisc-row"><span>Subtotal:</span><span>${fmtM(subtotal,cur)}</span></div>
-    <div class="pdisc-row" style="color:#dc2626"><span>${esc(discLabel)} (${S.discount}%):</span><span>− ${fmtM(discAmt,cur)}</span></div>
+    <div class="pdisc-row"><span>Subtotal:</span><span>${fmtMDoc(subtotal,cur)}</span></div>
+    <div class="pdisc-row" style="color:#dc2626"><span>${esc(discLabel)} (${S.discount}%):</span><span>− ${fmtMDoc(discAmt,cur)}</span></div>
     ${S.docDiscountNote ? `<div class="pdisc-note">${esc(S.docDiscountNote)}</div>` : ''}` : '';
 
   let sigH = '';
@@ -8284,7 +8357,7 @@ function buildRiskDoc() {
           <th style="width:18pt">#</th>
           <th style="width:100pt">Especie/s</th>
           <th>Trabajo a realizar</th>
-          <th class="thr">Costo</th>
+          <th class="thr">Valor</th>
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>
@@ -8294,8 +8367,8 @@ function buildRiskDoc() {
     <div class="ptotals">
       ${discH}
       <div class="ptotal-box" style="color:${color};border-color:${color};background:${color}12">
-        <div class="ptotal-lbl" style="color:${color}">Costo Total del Trabajo</div>
-        <div class="ptotal-amt" style="color:${color}">${fmtM(total,cur)}</div>
+        <div class="ptotal-lbl" style="color:${color}">Total del trabajo</div>
+        <div class="ptotal-amt" style="color:${color}">${fmtMDoc(total,cur)}</div>
       </div>
     </div>
 
@@ -8364,7 +8437,7 @@ function buildEstDoc() {
         <div class="pest-item">
           <div class="pest-item-num" style="color:${color}">${workN}. Trabajo Estimado</div>
           <div class="pest-item-desc">${esc(item.desc||'Sin descripción').replace(/\n/g,'<br>')}</div>
-          ${hasPrice ? `<div class="pest-item-price" style="color:${color}">Costo estimado: ${fmtM(item.price,cur)}</div>` : ''}
+          ${hasPrice ? `<div class="pest-item-price" style="color:${color}">Valor estimado: ${fmtMDoc(item.price,cur)}</div>` : ''}
         </div>`;
     } else if (item.type === 'note') {
       workRows += `
@@ -8384,9 +8457,9 @@ function buildEstDoc() {
     if(!hasPrice){
       priceHtml = '—';
     } else if(item.showQty && qty > 1){
-      priceHtml = `<span style="font-size:8pt;color:#64748b;display:block">${qty} × ${fmtM(item.price,cur)}</span><strong>${fmtM(total,cur)}</strong>`;
+      priceHtml = `<span style="font-size:8pt;color:#64748b;display:block">${qty} × ${fmtMDoc(item.price,cur)}</span><strong>${fmtMDoc(total,cur)}</strong>`;
     } else {
-      priceHtml = fmtM(total, cur);
+      priceHtml = fmtMDoc(total, cur);
     }
     svcRows += `
       <div class="pest-svc-row">
@@ -8401,13 +8474,13 @@ function buildEstDoc() {
     totalsHtml = `<div class="ptotals">`;
     if (showBreakdown) {
       totalsHtml += `
-        <div class="pdisc-row"><span>Trabajos estimados:</span><span>${fmtM(estSubtotal,cur)}</span></div>
-        <div class="pdisc-row"><span>Servicios / costos fijos:</span><span>${fmtM(svcSubtotal,cur)}</span></div>`;
+        <div class="pdisc-row"><span>Trabajos estimados:</span><span>${fmtMDoc(estSubtotal,cur)}</span></div>
+        <div class="pdisc-row"><span>Servicios / costos fijos:</span><span>${fmtMDoc(svcSubtotal,cur)}</span></div>`;
     }
     totalsHtml += `
       <div class="ptotal-box" style="color:${color};border-color:${color};background:${color}12">
-        <div class="ptotal-lbl" style="color:${color}">Costo Total${workItems.length>0?' (Estimado)':' Confirmado'}</div>
-        <div class="ptotal-amt" style="color:${color}">${fmtM(grandTotal,cur)}</div>
+        <div class="ptotal-lbl" style="color:${color}">Total${workItems.length>0?' (Estimado)':' Confirmado'}</div>
+        <div class="ptotal-amt" style="color:${color}">${fmtMDoc(grandTotal,cur)}</div>
       </div>
     </div>`;
   }
@@ -8453,6 +8526,8 @@ function buildEstDoc() {
       </div>
     </div>
 
+    ${_buildWorkPlanHTML(color)}
+
     ${(workItems.length > 0 || noteItems.length > 0) ? `
     <div class="psec">
       <div class="psec-t" style="color:${color};border-color:${color}">Trabajos Estimados</div>
@@ -8463,7 +8538,7 @@ function buildEstDoc() {
     <div class="pest-services-section">
       <div class="pest-services-t">Servicios / Costos Fijos Confirmados</div>
       ${svcRows}
-      ${svcSubtotal > 0 && workItems.length > 0 ? `<div style="display:flex;justify-content:flex-end;padding-top:5px;font-size:8.5pt;color:#64748b">Subtotal servicios: <strong style="margin-left:8px;color:#374151">${fmtM(svcSubtotal,cur)}</strong></div>` : ''}
+      ${svcSubtotal > 0 && workItems.length > 0 ? `<div style="display:flex;justify-content:flex-end;padding-top:5px;font-size:8.5pt;color:#64748b">Subtotal servicios: <strong style="margin-left:8px;color:#374151">${fmtMDoc(svcSubtotal,cur)}</strong></div>` : ''}
     </div>` : ''}
 
     ${totalsHtml}
