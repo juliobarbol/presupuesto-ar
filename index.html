@@ -219,6 +219,18 @@ body{background-color:var(--bg)}
    listas largas en el celular). field-sizing:content auto-ajusta la altura;
    rows + resize:vertical son el fallback en navegadores sin soporte. */
 .fg textarea.ta-grow{field-sizing:content;min-height:96px;max-height:50vh;resize:vertical}
+/* Editor de listas "uno por ítem": cada punto en su propio casillero, con
+   número y botón de borrar, para que se vea claramente la división de cada
+   ítem (en vez de un bloque de texto donde las líneas largas se mezclan). */
+.linelist{display:flex;flex-direction:column;gap:6px}
+.llrow{display:flex;align-items:center;gap:8px}
+.llnum{flex:none;width:20px;height:20px;border-radius:50%;background:var(--accent-fg);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.llinput{flex:1;min-width:0;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-field);font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--card);outline:none;-webkit-appearance:none;appearance:none}
+.llinput:focus{border-color:var(--accent-fg);box-shadow:0 0 0 3px rgba(var(--accent-rgb),.1)}
+.lldel{flex:none;width:30px;height:30px;border:1px solid var(--border);border-radius:var(--radius-field);background:var(--bg);color:var(--muted);font-size:18px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;-webkit-appearance:none;appearance:none}
+.lldel:active{background:var(--red,#dc2626);color:#fff;border-color:var(--red,#dc2626)}
+.lladd{align-self:flex-start;margin-top:2px;padding:6px 12px;border:1px dashed var(--border);border-radius:var(--radius-field);background:transparent;color:var(--accent-fg);font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer}
+.lladd:active{background:rgba(var(--accent-rgb),.08)}
 /* Lista reordenable de secciones del PDF (Empresa → Textos del PDF). */
 .sord-list{display:flex;flex-direction:column;gap:6px}
 .sord-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-field);background:var(--card)}
@@ -2195,7 +2207,7 @@ input[type=file]{display:none}
         <div class="trow"><span class="tlabel">Plan de trabajo a medida <span style="font-weight:400;color:var(--muted)">(solo este presupuesto)</span></span><label class="tgl"><input type="checkbox" id="wp-override" onchange="toggleWorkPlanOverride()"><span class="tgl-sl"></span></label></div>
         <div id="wp-override-box" class="fg" style="display:none;margin:4px 0 6px">
           <input type="text" id="wp-custom-title" placeholder="Título (ej. Plan de Trabajo)" style="margin-bottom:6px">
-          <textarea id="wp-custom" class="ta-grow" rows="6" placeholder="Un ítem por línea. Detallá lo exclusivo de este trabajo…"></textarea>
+          <div id="wp-custom-list" class="linelist"></div>
           <div class="hint">Reemplaza el plan de trabajo <strong>solo en este presupuesto</strong>. El plan por defecto (Empresa → Textos del PDF) no se modifica. Al crear un presupuesto nuevo vuelve a usarse el default.</div>
         </div>
         <div class="trow"><span class="tlabel">Mostrar criterios de costeo</span><label class="tgl"><input type="checkbox" id="show-criteria" checked><span class="tgl-sl"></span></label></div>
@@ -2392,8 +2404,8 @@ input[type=file]{display:none}
           <div class="fg"><label>Título de la sección</label>
             <input type="text" id="doc-work-plan-title" placeholder="Plan de Trabajo"></div>
 
-          <div class="fg"><label>Contenido — un beneficio o tarea por línea</label>
-            <textarea id="doc-work-plan" class="ta-grow" rows="6"></textarea></div>
+          <div class="fg"><label>Contenido — un beneficio o tarea por ítem</label>
+            <div id="doc-work-plan-list" class="linelist"></div></div>
 
           <div class="st" style="margin-top:24px">Sección "Cómo trabajamos" — criterios de costeo</div>
           <p class="hint" style="margin-bottom:14px">Explica <strong>por qué el costo varía</strong> según cada trabajo (altura, acceso, riesgos, especie…). Aparece más abajo en el PDF. Se prende o apaga con el toggle <em>"Mostrar criterios de costeo"</em>.</p>
@@ -2404,9 +2416,9 @@ input[type=file]{display:none}
           <div class="fg"><label>Introducción — texto antes de la lista</label>
             <input type="text" id="doc-criteria-intro" placeholder="Cada trabajo es evaluado en función de sus condiciones reales..."></div>
 
-          <div class="fg"><label>Criterios — uno por línea</label>
-            <textarea id="doc-criteria" class="ta-grow" rows="6"></textarea>
-            <div class="hint">Opcional: poné un subtítulo con <code>Subtítulo | descripción</code> (ej. <em>Altura y Acceso | Evaluamos el ingreso…</em>). Sin la barra, la línea va como texto simple.</div></div>
+          <div class="fg"><label>Criterios — uno por ítem</label>
+            <div id="doc-criteria-list" class="linelist"></div>
+            <div class="hint">Opcional: poné un subtítulo con <code>Subtítulo | descripción</code> (ej. <em>Altura y Acceso | Evaluamos el ingreso…</em>). Sin la barra, el ítem va como texto simple.</div></div>
 
           <div class="fg"><label>Etiqueta del descuento en el PDF</label>
             <input type="text" id="doc-discount-label" placeholder="Bonificación por trabajos combinados">
@@ -5554,7 +5566,7 @@ function restoreUI() {
   sc('show-work-plan', S.showWorkPlan !== false);
   sc('wp-override', !!S.workPlanOverride);
   sv('wp-custom-title', S.workPlanCustomTitle);
-  sv('wp-custom', S.workPlanCustom);
+  renderLineList('wp-custom-list');
   { const box = document.getElementById('wp-override-box'); if (box) box.style.display = S.workPlanOverride ? 'block' : 'none'; }
   sc('show-criteria', S.showCriteria);
   sc('show-expiry',   S.showExpiry !== false);
@@ -5583,8 +5595,8 @@ function restoreUI() {
   sv('doc-disclaimer',    S.docDisclaimer);
   sv('doc-disclaimer-svc',S.docDisclaimerSvc);
   sv('doc-work-plan-title', S.workPlanTitle);
-  sv('doc-work-plan',       S.workPlan);
-  sv('doc-criteria',      S.docCriteria);
+  renderLineList('doc-work-plan-list');
+  renderLineList('doc-criteria-list');
   sv('doc-greeting',      S.docGreeting);
   sv('doc-criteria-title',  S.docCriteriaTitle);
   sv('doc-criteria-intro',  S.docCriteriaIntro);
@@ -5647,7 +5659,7 @@ function syncFromUI() {
   S.showWorkPlan      = gc('show-work-plan');
   S.workPlanOverride    = gc('wp-override');
   S.workPlanCustomTitle = gv('wp-custom-title');
-  S.workPlanCustom      = gv('wp-custom');
+  // S.workPlanCustom lo maneja el editor de lista (wp-custom-list).
   S.showCriteria      = gc('show-criteria');
   S.showExpiry        = gc('show-expiry');
   S.showSigOwner      = gc('show-sig-owner');
@@ -5677,8 +5689,8 @@ function syncFromUI() {
   S.docDisclaimer     = gv('doc-disclaimer')    || S.docDisclaimer;
   S.docDisclaimerSvc  = gv('doc-disclaimer-svc')|| S.docDisclaimerSvc;
   S.workPlanTitle     = gv('doc-work-plan-title') || S.workPlanTitle;
-  S.workPlan          = gv('doc-work-plan')       || S.workPlan;
-  S.docCriteria       = gv('doc-criteria')      || S.docCriteria;
+  // S.workPlan y S.docCriteria los manejan sus editores de lista
+  // (doc-work-plan-list / doc-criteria-list).
   S.docGreeting       = gv('doc-greeting');
   S.docCriteriaTitle  = gv('doc-criteria-title') || S.docCriteriaTitle;
   S.docCriteriaIntro  = gv('doc-criteria-intro') || S.docCriteriaIntro;
@@ -6884,13 +6896,76 @@ function toggleWorkPlanOverride() {
   const box = document.getElementById('wp-override-box');
   if (box) box.style.display = on ? 'block' : 'none';
   if (on) {
-    const ta = document.getElementById('wp-custom');
-    const ti = document.getElementById('wp-custom-title');
-    if (ta && !ta.value.trim()) ta.value = S.workPlan || '';
-    if (ti && !ti.value.trim()) ti.value = S.workPlanTitle || '';
+    // Precargar el plan global como punto de partida si todavía no hay nada.
+    if (!(S.workPlanCustom || '').trim())      S.workPlanCustom = S.workPlan || '';
+    if (!(S.workPlanCustomTitle || '').trim()) S.workPlanCustomTitle = S.workPlanTitle || '';
+    sv('wp-custom-title', S.workPlanCustomTitle);
+    renderLineList('wp-custom-list');
   }
   syncFromUI();
   refreshPreviewIfOpen();
+}
+
+// ─── EDITOR DE LISTAS "UNO POR ÍTEM" ─────────────────────────
+// Reemplaza los textarea "uno por línea" por una lista donde cada ítem es su
+// propio casillero (numerado, con botón de borrar). Así se ve claramente la
+// división de cada punto, en vez de un bloque de texto donde las líneas largas
+// se mezclan. Se serializa al MISMO string con '\n' que antes, así no cambia
+// ni el almacenamiento ni la construcción del PDF.
+const LINELISTS = {
+  'wp-custom-list':     { get:()=>S.workPlanCustom, set:v=>{S.workPlanCustom=v;}, ph:'Ej. Tala dirigida sobre la medianera del vecino.' },
+  'doc-work-plan-list': { get:()=>S.workPlan,        set:v=>{S.workPlan=v;},        ph:'Ej. Trabajo realizado por personal capacitado…' },
+  'doc-criteria-list':  { get:()=>S.docCriteria,     set:v=>{S.docCriteria=v;},     ph:'Ej. Altura y Acceso | Evaluamos el ingreso…' },
+};
+
+function renderLineList(hostId, rows) {
+  const host = document.getElementById(hostId);
+  const cfg  = LINELISTS[hostId];
+  if (!host || !cfg) return;
+  if (!rows) { const v = cfg.get() || ''; rows = (v === '') ? [''] : v.split('\n'); }
+  if (!rows.length) rows = [''];
+  host.innerHTML = rows.map((l, i) => `
+    <div class="llrow">
+      <span class="llnum">${i + 1}</span>
+      <input type="text" class="llinput" value="${esc(l)}" placeholder="${esc(cfg.ph || '')}"
+             oninput="onLineListInput('${hostId}')" onkeydown="onLineListKey(event,'${hostId}',${i})">
+      <button type="button" class="lldel" onclick="removeLineListRow('${hostId}',${i})" aria-label="Quitar ítem">×</button>
+    </div>`).join('') +
+    `<button type="button" class="lladd" onclick="addLineListRow('${hostId}')">+ Agregar ítem</button>`;
+}
+
+// Lee las filas tal como están en el DOM (incluye vacías, para no perder el
+// cursor mientras se edita). El valor que se guarda filtra las vacías.
+function _lineListRows(hostId) {
+  const host = document.getElementById(hostId);
+  return host ? [...host.querySelectorAll('.llinput')].map(i => i.value) : [];
+}
+function _commitLineList(hostId) {
+  const cfg = LINELISTS[hostId]; if (!cfg) return;
+  cfg.set(_lineListRows(hostId).filter(v => v.trim() !== '').join('\n'));
+  saveLS();
+  refreshPreviewIfOpen();
+}
+function onLineListInput(hostId) { _commitLineList(hostId); }
+function addLineListRow(hostId) {
+  const rows = _lineListRows(hostId); rows.push('');
+  renderLineList(hostId, rows); _commitLineList(hostId);
+  const ins = document.getElementById(hostId).querySelectorAll('.llinput');
+  if (ins.length) ins[ins.length - 1].focus();
+}
+function removeLineListRow(hostId, i) {
+  const rows = _lineListRows(hostId); rows.splice(i, 1);
+  if (!rows.length) rows.push('');
+  renderLineList(hostId, rows); _commitLineList(hostId);
+}
+// Enter inserta un ítem nuevo debajo (flujo natural al escribir una lista).
+function onLineListKey(e, hostId, i) {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  const rows = _lineListRows(hostId); rows.splice(i + 1, 0, '');
+  renderLineList(hostId, rows); _commitLineList(hostId);
+  const ins = document.getElementById(hostId).querySelectorAll('.llinput');
+  if (ins[i + 1]) ins[i + 1].focus();
 }
 
 // Abre WhatsApp con un mensaje de ENVÍO (no de seguimiento) dirigido al
