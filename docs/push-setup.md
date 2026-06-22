@@ -12,14 +12,16 @@
 1. El teléfono se suscribe a push (Push API + clave VAPID) y le manda al Worker
    su endpoint + la lista de seguimientos (con su **fecha de aviso**) y la de
    vencimientos (con la **fecha de vigencia** de cada presupuesto).
-2. El **Worker de Cloudflare** (`push-worker/`) corre un **cron diario** y, por
+2. El **Worker de Cloudflare** (`push-worker/`) corre un **cron varias veces al
+   día** (por defecto 09/14/19 hs Argentina = `0 12,17,22 * * *` UTC) y, por
    cada dispositivo, manda un push si hay algún seguimiento que llegó a su día
-   o algún presupuesto enviado cuya vigencia ya pasó.
+   o algún presupuesto enviado cuya vigencia ya pasó. Tiene **deduplicación**:
+   cada presupuesto avisa una sola vez por día aunque el cron corra varias veces.
 3. El push lo entrega el navegador/Android (transporte FCM transparente: **no
    hace falta cuenta de Firebase**). El Service Worker muestra la notificación.
 
 ```
-[Teléfono/PWA] --suscripción+seguimientos--> [Worker + KV] --cron diario--> push --> [Teléfono]
+[Teléfono/PWA] --suscripción+seguimientos--> [Worker + KV] --cron 3x/día--> push --> [Teléfono]
 ```
 
 ---

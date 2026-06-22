@@ -7,4 +7,5 @@ binding = "PUSH_KV"
 id = "21623cf5895f4789a6a4d4a688b9e686"
 
 [triggers]
-crons = ["0 11 * * *"]
+# 3 veces al día, en hora de Argentina (UTC-3): 09:00, 14:00 y 19:00 ART.
+crons = ["0 12,17,22 * * *"]

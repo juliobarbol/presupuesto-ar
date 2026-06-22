@@ -144,7 +144,11 @@ export default {
       try {
         const { deviceId, subscription, followups, expiries } = await request.json();
         if (!deviceId || !subscription) return new Response('Bad request', {status:400, headers:CORS});
-        await env.PUSH_KV.put(`sub:${deviceId}`, JSON.stringify({subscription, followups: followups || [], expiries: expiries || []}));
+        // Preservar el estado de deduplicación (notified) entre re-sincronizaciones:
+        // si la app vuelve a suscribir, no debe perder qué ya se avisó hoy.
+        let prev = {};
+        try { prev = JSON.parse(await env.PUSH_KV.get(`sub:${deviceId}`)) || {}; } catch(_) {}
+        await env.PUSH_KV.put(`sub:${deviceId}`, JSON.stringify({subscription, followups: followups || [], expiries: expiries || [], notified: prev.notified || {}}));
         return new Response('OK', {headers:CORS});
       } catch(e) { return new Response('Error', {status:500, headers:CORS}); }
     }
@@ -161,40 +165,71 @@ export default {
   },
 
   async scheduled(event, env) {
-    const today = new Date().toISOString().slice(0,10);
-    const { keys } = await env.PUSH_KV.list({ prefix: 'sub:' });
-
-    await Promise.all(keys.map(async ({name}) => {
-      try {
-        const data = JSON.parse(await env.PUSH_KV.get(name));
-        if (!data?.subscription) return;
-
-        // Seguimientos: presupuestos enviados que ya llegaron al día de aviso.
-        const due = (data.followups || []).filter(f => f.date <= today);
-        if (due.length) {
-          const n = due.length;
-          const title = n === 1
-            ? `Seguimiento: ${due[0].clientName}`
-            : `${n} clientes para seguimiento`;
-          const body = n === 1
-            ? `Llevan ${due[0].diasDesdeEnvio} días sin respuesta.`
-            : due.slice(0,3).map(f=>f.clientName).join(', ') + (n>3?' y más.':'.');
-          await sendPush(data.subscription, {title, body, go:'historial'}, env);
-        }
-
-        // Vencimientos: presupuestos enviados cuya fecha de vigencia ya pasó.
-        const exp = (data.expiries || []).filter(f => f.date < today);
-        if (exp.length) {
-          const n = exp.length;
-          const title = n === 1
-            ? `Presupuesto vencido: ${exp[0].clientName}`
-            : `${n} presupuestos vencidos`;
-          const body = n === 1
-            ? 'Pasó su fecha de vigencia. Buen momento para contactar al cliente.'
-            : exp.slice(0,3).map(f=>f.clientName).join(', ') + (n>3?' y más.':'.');
-          await sendPush(data.subscription, {title, body, go:'historial'}, env);
-        }
-      } catch(e) { console.error('Push error', name, e.message); }
-    }));
+    await runDue(env);
   },
 };
+
+// ── Lógica de avisos (la usan el cron y, si hace falta, un disparo manual) ──
+// Recorre cada dispositivo y manda los avisos que correspondan HOY, con
+// deduplicación: cada presupuesto avisa una sola vez por día (clave en
+// `notified`), sin importar cuántas veces corra el cron en el día.
+export async function runDue(env) {
+  const today = new Date().toISOString().slice(0,10);
+  const { keys } = await env.PUSH_KV.list({ prefix: 'sub:' });
+  let total = 0;
+
+  await Promise.all(keys.map(async ({name}) => {
+    try {
+      const data = JSON.parse(await env.PUSH_KV.get(name));
+      if (!data?.subscription) return;
+      const notified = data.notified || {};
+      let changed = false;
+
+      // Seguimientos al día de aviso que NO se avisaron todavía hoy.
+      const due = (data.followups || [])
+        .filter(f => f.date <= today && notified['fu:' + f.id] !== today);
+      if (due.length) {
+        const n = due.length;
+        const title = n === 1
+          ? `Seguimiento: ${due[0].clientName}`
+          : `${n} clientes para seguimiento`;
+        const body = n === 1
+          ? `Llevan ${due[0].diasDesdeEnvio} días sin respuesta.`
+          : due.slice(0,3).map(f=>f.clientName).join(', ') + (n>3?' y más.':'.');
+        if (await sendPush(data.subscription, {title, body, go:'historial'}, env)) {
+          due.forEach(f => { notified['fu:' + f.id] = today; });
+          changed = true; total++;
+        }
+      }
+
+      // Vencidos (fecha de vigencia pasada) que NO se avisaron todavía hoy.
+      const exp = (data.expiries || [])
+        .filter(f => f.date < today && notified['vc:' + f.id] !== today);
+      if (exp.length) {
+        const n = exp.length;
+        const title = n === 1
+          ? `Presupuesto vencido: ${exp[0].clientName}`
+          : `${n} presupuestos vencidos`;
+        const body = n === 1
+          ? 'Pasó su fecha de vigencia. Buen momento para contactar al cliente.'
+          : exp.slice(0,3).map(f=>f.clientName).join(', ') + (n>3?' y más.':'.');
+        if (await sendPush(data.subscription, {title, body, go:'historial'}, env)) {
+          exp.forEach(f => { notified['vc:' + f.id] = today; });
+          changed = true; total++;
+        }
+      }
+
+      // Limpiar marcas de días anteriores para que `notified` no crezca sin fin.
+      for (const k of Object.keys(notified)) {
+        if (notified[k] < today) { delete notified[k]; changed = true; }
+      }
+
+      if (changed) {
+        data.notified = notified;
+        await env.PUSH_KV.put(name, JSON.stringify(data));
+      }
+    } catch(e) { console.error('Push error', name, e.message); }
+  }));
+
+  return total;
+}
