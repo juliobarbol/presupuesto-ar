@@ -97,6 +97,9 @@ async function sendPush(sub, payload, env) {
       'Content-Type': 'application/octet-stream',
       'Content-Encoding': 'aes128gcm',
       'TTL': '86400',
+      // Urgency alta: en Android, sin esto FCM puede demorar/agrupar el push
+      // mientras el teléfono está en reposo (doze). "high" mejora la entrega.
+      'Urgency': 'high',
     },
     body,
   });
