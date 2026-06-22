@@ -978,6 +978,14 @@ input[type=file]{display:none}
 .fub-done:active{background:#bbf7d0}
 .fub-more{font-size:12px;color:#a16207;text-align:center;padding:4px;font-style:italic}
 
+/* Badge ⌛ de presupuesto vencido en la tarjeta del historial */
+.hbadge-expired{display:inline-block;font-size:10px;font-weight:700;padding:1px 8px;border-radius:var(--radius-box);margin-left:6px;vertical-align:middle;background:#fee2e2;color:#991b1b}
+/* Banner de presupuestos vencidos (reusa la estructura .fub-*, en rojo) */
+.expiry-banner{background:linear-gradient(135deg,#fef2f2,#fee2e2);border:1px solid #fca5a5;border-radius:var(--radius-box);padding:14px 16px;margin-bottom:14px}
+.expiry-banner .fub-title{color:#991b1b}
+.expiry-banner .fub-sub,.expiry-banner .fub-item-days,.expiry-banner .fub-more{color:#b91c1c}
+.expiry-banner .fub-item{border-color:#fecaca}
+
 /* Panel de configuración de seguimiento (pestaña Empresa) */
 .fu-config{margin-top:18px;padding:16px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-box)}
 .fu-config-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
@@ -1064,6 +1072,15 @@ input[type=file]{display:none}
 :root[data-theme="dark"] .fub-more{color:#fcd34d}
 :root[data-theme="dark"] .fub-item{background:#1f1b0c;border-color:#5c4a1c}
 :root[data-theme="dark"] .hbadge-followup{background:#4a3a12;color:#fcd34d}
+
+/* Banner y filas de presupuestos vencidos (rojo) */
+:root[data-theme="dark"] .expiry-banner{background:linear-gradient(135deg,#2a1212,#331616);border-color:#5c1c1c}
+:root[data-theme="dark"] .expiry-banner .fub-title,
+:root[data-theme="dark"] .expiry-banner .fub-item-days,
+:root[data-theme="dark"] .expiry-banner .fub-sub,
+:root[data-theme="dark"] .expiry-banner .fub-more{color:#fca5a5}
+:root[data-theme="dark"] .expiry-banner .fub-item{background:#1f0c0c;border-color:#5c1c1c}
+:root[data-theme="dark"] .hbadge-expired{background:rgba(239,68,68,.18);color:#fca5a5}
 
 /* Badges y chips claros → tintes oscuros translúcidos */
 :root[data-theme="dark"] .ib-tree{background:rgba(34,197,94,.18);color:#86efac}
@@ -2317,6 +2334,13 @@ input[type=file]{display:none}
                 </div>
               </div>
               <div class="fg">
+                <label class="fu-chk" style="font-weight:600">
+                  <input type="checkbox" id="fu-expiry-enabled" onchange="saveFollowupFromUI()">
+                  Avisarme también cuando un presupuesto enviado se venza
+                </label>
+                <span class="fu-vars">Usa la fecha de vencimiento de cada presupuesto (emisión + días de validez).</span>
+              </div>
+              <div class="fg">
                 <label>Mensaje de seguimiento (editable)</label>
                 <textarea id="fu-template" rows="4" onchange="saveFollowupFromUI()" oninput="saveFollowupFromUI()"></textarea>
                 <span class="fu-vars">Variables: <code>{cliente}</code> <code>{numero}</code> <code>{empresa}</code></span>
@@ -2334,7 +2358,7 @@ input[type=file]{display:none}
                 <span class="fu-slider"></span>
               </label>
             </div>
-            <p class="fu-help">Te llega una notificación al teléfono cuando un presupuesto llega al día de seguimiento, aunque la app esté cerrada. Usa el mismo aviso que el sistema de seguimiento de arriba.</p>
+            <p class="fu-help">Te llega una notificación al teléfono cuando un presupuesto llega al día de seguimiento o se vence, aunque la app esté cerrada. Usa los mismos avisos del sistema de seguimiento de arriba.</p>
           </div>
 
           <!-- ── MENSAJE DE ENVÍO POR WHATSAPP ── -->
@@ -2602,6 +2626,7 @@ input[type=file]{display:none}
       <!-- ══ TAB HISTORIAL ══ -->
       <div id="panel-historial" class="tab-panel">
         <div id="followup-banner" class="followup-banner" style="display:none"></div>
+        <div id="expiry-banner" class="expiry-banner" style="display:none"></div>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
           <div class="st" style="margin:0;border:none;padding:0">Presupuestos guardados <span id="hist-count" class="nbadge" style="margin-left:6px">0</span></div>
           <button class="btn btn-d btn-sm" onclick="clearHistory()">🗑 Limpiar todo</button>
@@ -3400,6 +3425,7 @@ function _stickyShowVariant(which) {
 const FOLLOWUP_DEF = {
   enabled: true,        // sistema de seguimiento on/off
   days: 10,             // días tras el envío para recordar (editable)
+  expiryEnabled: true,  // avisar cuando un presupuesto enviado se vence
   estados: ['enviado'], // qué estados disparan recordatorio
   // Plantilla del mensaje de SEGUIMIENTO. Variables: {cliente} {numero} {empresa}
   waTemplate: 'Hola {cliente}, ¿cómo andás? Te escribo por el presupuesto que te pasé. No es para apurarte, sino para saber si te quedó alguna duda o si querés que repasemos algo del trabajo.',
@@ -3472,6 +3498,62 @@ function marcarSeguimientoHecho(id) {
   if (typeof renderFollowupBanner === 'function') renderFollowupBanner();
   toast('✓ Seguimiento registrado', 'ok');
   // Ya no hay que recordar este: actualizar la lista en el Worker de push.
+  if (S.pushEnabled && typeof syncPushFollowups === 'function') syncPushFollowups().catch(() => {});
+}
+
+// Días transcurridos entre una fecha de CALENDARIO (YYYY-MM-DD) y hoy, en
+// días locales (tz-safe: compara partes de fecha, no instantes UTC). Positivo
+// si la fecha ya pasó. Sirve para vencimientos, que son fechas sin hora.
+function daysSinceDate(iso) {
+  if (!iso) return null;
+  const p = String(iso).split('-');
+  if (p.length !== 3) return null;
+  const then = Date.UTC(+p[0], +p[1] - 1, +p[2]);
+  const t = today().split('-');
+  const now = Date.UTC(+t[0], +t[1] - 1, +t[2]);
+  if (isNaN(then) || isNaN(now)) return null;
+  return Math.round((now - then) / 86400000);
+}
+
+// Devuelve los presupuestos ENVIADOS cuya fecha de vencimiento ya pasó.
+// Un presupuesto entra si:
+//   - el aviso de vencimiento está habilitado (cfg.expiryEnabled)
+//   - su estado está en la lista que dispara seguimiento (cfg.estados)
+//   - tiene fecha de envío (enviadoEn) → fue enviado al cliente
+//   - su snapshot tiene fecha de vencimiento (dateExpiry) ya pasada (< hoy)
+//   - no se marcó como visto el vencimiento (vencimientoVistoEn)
+function getExpiredQuotes() {
+  const cfg = getFollowupCfg();
+  if (!cfg.enabled || !cfg.expiryEnabled) return [];
+  const h = (typeof getH === 'function') ? getH() : [];
+  const out = [];
+  for (const e of h) {
+    const est = e.estado || 'borrador';
+    if (!cfg.estados.includes(est)) continue;
+    if (!e.enviadoEn) continue;
+    const exp = e.snapshot && e.snapshot.dateExpiry;
+    if (!exp) continue;
+    const d = daysSinceDate(exp);
+    if (d === null || d < 1) continue; // vence "hoy" todavía es válido
+    if (e.vencimientoVistoEn) continue;
+    out.push({ entry: e, dias: d });
+  }
+  // Más vencidos primero (más urgentes)
+  out.sort((a, b) => b.dias - a.dias);
+  return out;
+}
+
+// Marca que ya se vio el vencimiento de un presupuesto (deja de avisar).
+function marcarVencimientoVisto(id) {
+  const h = getH();
+  const e = h.find(x => x.id === id);
+  if (!e) return;
+  e.vencimientoVistoEn = new Date().toISOString();
+  setH(h);
+  renderHistory();
+  if (typeof renderExpiryBanner === 'function') renderExpiryBanner();
+  toast('✓ Listo, no te aviso más de este', 'ok');
+  // Ya no hay que avisar de este: actualizar la lista en el Worker de push.
   if (S.pushEnabled && typeof syncPushFollowups === 'function') syncPushFollowups().catch(() => {});
 }
 
@@ -3576,8 +3658,30 @@ function _buildPushFollowups(cfg) {
   return out;
 }
 
-// Sube al Worker la suscripción + los seguimientos al día. Silencioso: si no
-// hay URL, no hay señal o no hay suscripción, no hace nada.
+// Arma la lista de vencimientos que el Worker necesita: por cada presupuesto
+// enviado y aún sin marcar como visto, la FECHA en que vence. El Worker
+// compara contra "hoy" en su cron y dispara el push cuando ya pasó.
+function _buildPushExpiries(cfg) {
+  const h = (typeof getH === 'function') ? getH() : [];
+  const out = [];
+  for (const e of h) {
+    const est = e.estado || 'borrador';
+    if (!cfg.estados.includes(est)) continue;
+    if (!e.enviadoEn) continue;
+    if (e.vencimientoVistoEn) continue;
+    const exp = e.snapshot && e.snapshot.dateExpiry;
+    if (!exp) continue;
+    out.push({
+      id: e.id,
+      clientName: e.clientName || '(sin nombre)',
+      date: exp,
+    });
+  }
+  return out;
+}
+
+// Sube al Worker la suscripción + los seguimientos y vencimientos al día.
+// Silencioso: si no hay URL, no hay señal o no hay suscripción, no hace nada.
 async function syncPushFollowups(sub) {
   if (!PUSH_WORKER_URL || navigator.onLine === false) return;
   try {
@@ -3587,10 +3691,11 @@ async function syncPushFollowups(sub) {
     const cfg = (typeof getFollowupCfg === 'function')
       ? getFollowupCfg() : { enabled: false, estados: [], days: 10 };
     const followups = cfg.enabled ? _buildPushFollowups(cfg) : [];
+    const expiries = (cfg.enabled && cfg.expiryEnabled) ? _buildPushExpiries(cfg) : [];
     await fetch(PUSH_WORKER_URL + '/subscribe', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ deviceId: _pushDeviceId(), subscription: subscription.toJSON(), followups }),
+      body: JSON.stringify({ deviceId: _pushDeviceId(), subscription: subscription.toJSON(), followups, expiries }),
     });
   } catch (e) {}
 }
@@ -6999,6 +7104,8 @@ window.addEventListener('resize', () => {
 // Renderiza el banner de seguimientos pendientes arriba del historial.
 // Se llama al arrancar la app y al entrar a la pestaña Historial.
 function renderFollowupBanner() {
+  // Los dos banners (seguimiento y vencidos) se refrescan juntos.
+  if (typeof renderExpiryBanner === 'function') renderExpiryBanner();
   const el = document.getElementById('followup-banner');
   if (!el) return;
   const pend = (typeof getPendingFollowups === 'function') ? getPendingFollowups() : [];
@@ -7025,6 +7132,42 @@ function renderFollowupBanner() {
           <div class="fub-item-acts">
             <a class="fub-wa" href="${wa}" target="_blank" rel="noopener" onclick="_afterWhatsapp(${e.id})">💬 WhatsApp</a>
             <button class="fub-done" onclick="marcarSeguimientoHecho(${e.id})" title="Ya hice el seguimiento">✓</button>
+          </div>
+        </div>`;
+      }).join('')}
+      ${n>5 ? `<div class="fub-more">y ${n-5} más…</div>` : ''}
+    </div>`;
+}
+
+// Banner de presupuestos vencidos (arriba del historial, en rojo). Mismo
+// patrón que el de seguimiento, pero para los que ya pasaron su vencimiento.
+function renderExpiryBanner() {
+  const el = document.getElementById('expiry-banner');
+  if (!el) return;
+  const venc = (typeof getExpiredQuotes === 'function') ? getExpiredQuotes() : [];
+  if (!venc.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
+
+  const n = venc.length;
+  el.style.display = 'block';
+  el.innerHTML = `
+    <div class="fub-head">
+      <span class="fub-icon">⌛</span>
+      <span class="fub-title">${n} presupuesto${n>1?'s':''} vencido${n>1?'s':''}</span>
+    </div>
+    <div class="fub-sub">Pasó su fecha de vigencia sin cerrarse. Conviene avisarle al cliente o pasarle un presupuesto actualizado.</div>
+    <div class="fub-list">
+      ${venc.slice(0,5).map(p => {
+        const e = p.entry;
+        const wa = buildWhatsappLink(e);
+        return `<div class="fub-item">
+          <div class="fub-item-info">
+            <span class="fub-item-num">${esc(e.quoteNumber||'—')}</span>
+            <span class="fub-item-client">${esc(e.clientName||'(sin nombre)')}</span>
+            <span class="fub-item-days">venció hace ${p.dias} día${p.dias>1?'s':''}</span>
+          </div>
+          <div class="fub-item-acts">
+            <a class="fub-wa" href="${wa}" target="_blank" rel="noopener">💬 WhatsApp</a>
+            <button class="fub-done" onclick="marcarVencimientoVisto(${e.id})" title="No avisarme más de este">✓</button>
           </div>
         </div>`;
       }).join('')}
@@ -7066,6 +7209,22 @@ function followupBadgeFor(e) {
   return `<span class="hbadge-followup" title="Pendiente de seguimiento">🔔 ${d}d</span>`;
 }
 
+// Devuelve el HTML del indicador ⌛ "vencido" para una tarjeta, o '' si ese
+// presupuesto no está vencido (mismas reglas que getExpiredQuotes).
+function expiryBadgeFor(e) {
+  const cfg = (typeof getFollowupCfg === 'function') ? getFollowupCfg() : null;
+  if (!cfg || !cfg.enabled || !cfg.expiryEnabled) return '';
+  const est = e.estado || 'borrador';
+  if (!cfg.estados.includes(est)) return '';
+  if (!e.enviadoEn) return '';
+  if (e.vencimientoVistoEn) return '';
+  const exp = e.snapshot && e.snapshot.dateExpiry;
+  if (!exp) return '';
+  const d = daysSinceDate(exp);
+  if (d === null || d < 1) return '';
+  return `<span class="hbadge-expired" title="Presupuesto vencido">⌛ vencido</span>`;
+}
+
 // ─── SEGUIMIENTO: configuración (UI) ─────────
 // Carga la config guardada en los campos del panel (pestaña Empresa).
 function loadFollowupUI() {
@@ -7076,6 +7235,8 @@ function loadFollowupUI() {
   const opts = document.getElementById('fu-options');
   if (en) en.checked = !!cfg.enabled;
   if (dy) dy.value = cfg.days;
+  const exp = document.getElementById('fu-expiry-enabled');
+  if (exp) exp.checked = !!cfg.expiryEnabled;
   if (tpl) tpl.value = cfg.waTemplate;
   const sendTpl = document.getElementById('wa-send-template');
   if (sendTpl) sendTpl.value = cfg.waSendTemplate || FOLLOWUP_DEF.waSendTemplate;
@@ -7098,9 +7259,11 @@ function saveFollowupFromUI() {
   let days = parseInt(dy && dy.value) || 10;
   if (days < 1) days = 1;
   if (days > 365) days = 365;
+  const exp = document.getElementById('fu-expiry-enabled');
   const cfg = setFollowupCfg({
     enabled: en ? !!en.checked : true,
     days,
+    expiryEnabled: exp ? !!exp.checked : true,
     estados: estados.length ? estados : ['enviado'],
     waTemplate: (tpl && tpl.value.trim()) ? tpl.value : FOLLOWUP_DEF.waTemplate,
     // Preservar la plantilla de envío (se edita en su propio campo).
@@ -7257,7 +7420,7 @@ function renderHistory() {
     return `
     <div class="hitem">
       <div class="hinfo">
-        <div class="hnum">${esc(e.quoteNumber||'—')}${e.isEstimative?'<span class="hbadge-est">Estimativo</span>':''}<span class="hbadge-estado" style="color:${txtCol};background:${bgCol}">${estadoLabel(est)}</span>${followupBadgeFor(e)}</div>
+        <div class="hnum">${esc(e.quoteNumber||'—')}${e.isEstimative?'<span class="hbadge-est">Estimativo</span>':''}<span class="hbadge-estado" style="color:${txtCol};background:${bgCol}">${estadoLabel(est)}</span>${followupBadgeFor(e)}${expiryBadgeFor(e)}</div>
         ${!groupedByClient?`<div class="hclient ${!e.clientName?'is-draft':''}">${esc(e.clientName||'(borrador sin nombre de cliente)')}</div>`:''}
         <div class="hmeta">${esc(e.currency||'')} ${fmtM(e.total||0,e.currency||'ARS')} · ${e.itemCount||0} ítem(s) · ${fmtD(((e.snapshot&&e.snapshot.dateIssue)||e.savedAt||'').slice(0,10))}</div>
       </div>

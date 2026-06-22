@@ -142,9 +142,9 @@ export default {
 
     if (url.pathname === '/subscribe' && request.method === 'POST') {
       try {
-        const { deviceId, subscription, followups } = await request.json();
+        const { deviceId, subscription, followups, expiries } = await request.json();
         if (!deviceId || !subscription) return new Response('Bad request', {status:400, headers:CORS});
-        await env.PUSH_KV.put(`sub:${deviceId}`, JSON.stringify({subscription, followups: followups || []}));
+        await env.PUSH_KV.put(`sub:${deviceId}`, JSON.stringify({subscription, followups: followups || [], expiries: expiries || []}));
         return new Response('OK', {headers:CORS});
       } catch(e) { return new Response('Error', {status:500, headers:CORS}); }
     }
@@ -168,18 +168,32 @@ export default {
       try {
         const data = JSON.parse(await env.PUSH_KV.get(name));
         if (!data?.subscription) return;
+
+        // Seguimientos: presupuestos enviados que ya llegaron al día de aviso.
         const due = (data.followups || []).filter(f => f.date <= today);
-        if (!due.length) return;
+        if (due.length) {
+          const n = due.length;
+          const title = n === 1
+            ? `Seguimiento: ${due[0].clientName}`
+            : `${n} clientes para seguimiento`;
+          const body = n === 1
+            ? `Llevan ${due[0].diasDesdeEnvio} días sin respuesta.`
+            : due.slice(0,3).map(f=>f.clientName).join(', ') + (n>3?' y más.':'.');
+          await sendPush(data.subscription, {title, body, go:'historial'}, env);
+        }
 
-        const n = due.length;
-        const title = n === 1
-          ? `Seguimiento: ${due[0].clientName}`
-          : `${n} clientes para seguimiento`;
-        const body = n === 1
-          ? `Llevan ${due[0].diasDesdeEnvio} días sin respuesta.`
-          : due.slice(0,3).map(f=>f.clientName).join(', ') + (n>3?' y más.':'.');
-
-        await sendPush(data.subscription, {title, body, go:'historial'}, env);
+        // Vencimientos: presupuestos enviados cuya fecha de vigencia ya pasó.
+        const exp = (data.expiries || []).filter(f => f.date < today);
+        if (exp.length) {
+          const n = exp.length;
+          const title = n === 1
+            ? `Presupuesto vencido: ${exp[0].clientName}`
+            : `${n} presupuestos vencidos`;
+          const body = n === 1
+            ? 'Pasó su fecha de vigencia. Buen momento para contactar al cliente.'
+            : exp.slice(0,3).map(f=>f.clientName).join(', ') + (n>3?' y más.':'.');
+          await sendPush(data.subscription, {title, body, go:'historial'}, env);
+        }
       } catch(e) { console.error('Push error', name, e.message); }
     }));
   },
