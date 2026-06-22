@@ -1,17 +1,20 @@
 # Notificaciones push — Puesta en marcha (paso a paso)
 
 > Avisos en el teléfono **con la app cerrada** cuando un presupuesto llega al
-> día de seguimiento. La app sigue siendo **offline-first**: los datos viven en
-> el dispositivo. Lo único que sale a la red es la *suscripción* y la *lista de
-> seguimientos* (solo cuando hay señal). Si nunca configurás esto, la app
-> funciona igual que siempre y la sección de avisos ni aparece.
+> día de seguimiento o cuando **se vence**. La app sigue siendo **offline-first**:
+> los datos viven en el dispositivo. Lo único que sale a la red es la *suscripción*
+> y las *listas de seguimientos y vencimientos* (solo cuando hay señal). Si nunca
+> configurás esto, la app funciona igual que siempre y la sección de avisos ni
+> aparece.
 
 ## Cómo funciona (resumen)
 
 1. El teléfono se suscribe a push (Push API + clave VAPID) y le manda al Worker
-   su endpoint + la lista de seguimientos con su **fecha de vencimiento**.
+   su endpoint + la lista de seguimientos (con su **fecha de aviso**) y la de
+   vencimientos (con la **fecha de vigencia** de cada presupuesto).
 2. El **Worker de Cloudflare** (`push-worker/`) corre un **cron diario** y, por
-   cada dispositivo, manda un push si hay algún seguimiento vencido ese día.
+   cada dispositivo, manda un push si hay algún seguimiento que llegó a su día
+   o algún presupuesto enviado cuya vigencia ya pasó.
 3. El push lo entrega el navegador/Android (transporte FCM transparente: **no
    hace falta cuenta de Firebase**). El Service Worker muestra la notificación.
 
@@ -115,7 +118,8 @@ toggle y aceptá el permiso de notificaciones. Listo.
   mano desde el panel de Cloudflare (Workers → tu worker → Triggers → "Trigger"
   del cron) o con `npx wrangler dev --test-scheduled` y pegando
   `http://localhost:8787/__scheduled`. Para ver un push real necesitás un
-  presupuesto en estado "enviado" cuya fecha de seguimiento ya haya vencido.
+  presupuesto en estado "enviado" cuya fecha de seguimiento ya haya llegado, o
+  cuya fecha de vigencia ya haya pasado (aviso de vencido).
 - **Ver suscripciones guardadas**: `npx wrangler kv key list --binding PUSH_KV`.
 
 ---
@@ -142,6 +146,6 @@ Para un uso de un podador (decenas de presupuestos) sobra de lejos.
   directo.
 - **El Worker es independiente del PWA shell**: no va en `APP_SHELL` de `sw.js`
   ni se cachea. Desplegarlo o no, no afecta el offline de la app.
-- **Privacidad**: al Worker solo le llega el nombre del cliente y la fecha de
-  seguimiento (para armar el texto del aviso). No se mandan montos, direcciones,
-  fotos ni el detalle del presupuesto.
+- **Privacidad**: al Worker solo le llega el nombre del cliente y las fechas de
+  seguimiento/vencimiento (para armar el texto del aviso). No se mandan montos,
+  direcciones, fotos ni el detalle del presupuesto.
