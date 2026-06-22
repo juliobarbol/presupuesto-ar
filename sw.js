@@ -13,7 +13,7 @@
 //
 //  Para forzar actualizacion tras un deploy: subir el CACHE_VERSION.
 
-const CACHE_VERSION = 'presupuesto-v56';
+const CACHE_VERSION = 'presupuesto-v57';
 const APP_SHELL = [
   './',
   './index.html',
@@ -186,6 +186,15 @@ self.addEventListener('push', (event) => {
       body: data.body,
       icon: './icon-192.png',
       badge: './icon-192.png',
+      lang: 'es-AR',
+      // tag + renotify: si llega otro aviso, reemplaza al anterior pero vuelve
+      // a sonar/vibrar (mejor que apilar o que quede silencioso).
+      tag: 'presupuesto-aviso',
+      renotify: true,
+      // requireInteraction: en Android la deja fija hasta que la tocás, así no
+      // se pierde si no estás mirando el teléfono en ese momento.
+      requireInteraction: true,
+      vibrate: [120, 60, 120],
       data: { go: data.go || '' },
     })
   );
