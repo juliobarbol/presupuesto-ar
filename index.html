@@ -11,8 +11,13 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" href="favicon.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
+<!-- Fuentes auto-hospedadas (offline-first). Antes venían de fonts.googleapis.com
+     con un <link> que NO pasaba por el Service Worker y se colgaba con datos sin
+     saldo. Ahora viven en el mismo origen y entran en APP_SHELL (ver sw.js). -->
+<link href="fonts.css" rel="stylesheet">
+<!-- Fija el tema (claro/oscuro) ANTES de pintar para evitar el flash blanco
+     al abrir en modo oscuro. Usa la clave literal de LS.THEME ('pq_theme'). -->
+<script>try{var _tm=localStorage.getItem('pq_theme')||'auto';var _td=_tm==='dark'||(_tm==='auto'&&window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches);document.documentElement.setAttribute('data-theme',_td?'dark':'light');}catch(e){}</script>
 <style>
 /* ===== css/base.css ===== */
 /* ═══════════════════════════════════════
@@ -30,18 +35,79 @@ a{-webkit-tap-highlight-color:transparent}
   --accent-rgb:6,78,59;
   --accent-dark:#043f2f;
   --accent-2:#0a7a5a;
+  /* --accent-fg: color de la marca cuando se usa como TEXTO/borde sobre una
+     superficie neutra. En claro es el acento tal cual; en oscuro lo aclara
+     applyAccent (o el bloque [data-theme=dark]) para que se lea sobre fondo
+     oscuro. Los rellenos (botones, topbar) siguen usando --accent. */
+  --accent-fg:var(--accent);
+  --accent-tint:#f0f9f4; /* verde muy suave para chips/cajas de marca */
   --bg:#f0f4f3;
   --panel:#ffffff;
   --card:#ffffff;
+  /* Superficies neutras elevadas (de más clara a más oscura en modo claro). */
+  --surface:#f8faf9;      /* cards/paneles suaves (icard, msec, hitem…) */
+  --surface-2:#f1f5f4;    /* pista de switches/segmentados, botón secundario */
+  --surface-3:#f3f4f6;    /* pista de subtabs */
+  --surface-hover:#e5ebe9;/* hover de botones/superficies */
+  --surface-hover2:#f0f4f3;/* hover de cabeceras colapsables */
   --border:#e2e8f0;
   --text:#1a2e25;
   --text-2:#374151;
   --muted:#64748b;
+  --faint:#cbd5e1;        /* íconos muy tenues (manija de arrastre, estrella off) */
+  --toggle-off:#cbd5e1;   /* pista de toggle apagado */
   --red:#dc2626;
   --red-light:#fee2e2;
+  /* Escala de radios unificada (inspirada en daisyUI: field/box/pill). */
+  --radius-field:8px;     /* inputs, botones, controles chicos */
+  --radius-box:12px;      /* cards, paneles, modales, banners */
+  --radius-pill:999px;    /* chips y badges tipo píldora */
+  /* Elevación sutil para cards (look "flotante" limpio). */
+  --shadow-card:0 1px 2px rgba(16,40,32,.04),0 1px 3px rgba(16,40,32,.07);
+  --shadow-card-hover:0 4px 14px rgba(16,40,32,.12);
+}
+
+/* ═══ MODO OSCURO ═══════════════════════════════════════════════════
+   Se activa con [data-theme="dark"] en <html> (lo setea applyTheme en JS,
+   con opción "auto" que sigue prefers-color-scheme). Solo afecta la UI de
+   pantalla: el documento/PDF (#doc-a4, .pdoc) mantiene su fondo blanco.
+   Los rellenos de marca (botones, topbar) siguen verdes; el acento como
+   TEXTO usa --accent-fg (aclarado). Las cajas semánticas tintadas (avisos
+   ámbar, badges) quedan como "notas" claras sobre el fondo oscuro. */
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0e1512;
+  --panel:#151d18;
+  --card:#1a231e;
+  --surface:#1e2823;
+  --surface-2:#243029;
+  --surface-3:#202a24;
+  --surface-hover:#2b372f;
+  --surface-hover2:#2b372f;
+  --border:#2d3a33;
+  --text:#e6ede9;
+  --text-2:#c2cdc7;
+  --muted:#8a988f;
+  --faint:#46554c;
+  --toggle-off:#3b4a42;
+  --red:#f87171;
+  --red-light:#3a1f1f;
+  --accent-tint:rgba(16,185,129,.12);
+  /* Valores para el verde por defecto. Para acentos personalizados los
+     recalcula applyAccent inline (mezclando hacia claro/oscuro). */
+  --accent-fg:#4fc99e;
+  --accent-light:#15332a;
+  --accent-dark:#0c8f68;
+  --accent-2:#0c8f68;
+  --shadow-card:0 1px 2px rgba(0,0,0,.32),0 1px 3px rgba(0,0,0,.42);
+  --shadow-card-hover:0 6px 20px rgba(0,0,0,.55);
 }
 
 html,body{height:100%;font-family:'DM Sans',sans-serif;font-size:14px;background:var(--bg);color:var(--text)}
+/* Fondo plano y limpio (estilo daisyUI): un solo color de base. La
+   profundidad la dan las sombras sutiles de las cards, no un patrón. El PDF
+   (#doc-a4) tiene su propio fondo blanco y nunca hereda este. */
+body{background-color:var(--bg)}
 #app{display:flex;flex-direction:column;height:100vh;height:-webkit-fill-available;overflow:hidden}
 
 /* TOPBAR — compacto: una sola línea con logo + menú "⋯" para acciones
@@ -53,7 +119,7 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;font-size:14px;background
 .save-status{transition:opacity .25s,color .25s}
 .save-status.saving{color:rgba(255,255,255,.85);font-style:italic}
 .save-status.saved{color:rgba(255,255,255,.85)}
-.tbtn{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22);color:#fff;padding:5px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-family:'DM Sans',sans-serif;font-weight:500;transition:.15s}
+.tbtn{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22);color:#fff;padding:5px 12px;border-radius:var(--radius-field);cursor:pointer;font-size:12px;font-family:'DM Sans',sans-serif;font-weight:500;transition:.15s}
 .tbtn:hover{background:rgba(255,255,255,.26)}
 .tbtn-menu{padding:4px 10px;font-size:18px;line-height:1;font-weight:700}
 
@@ -61,23 +127,23 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;font-size:14px;background
 .topbar-menu{position:relative}
 .top-menu-pop{
   position:absolute;top:calc(100% + 6px);right:0;
-  min-width:180px;background:#fff;border:1px solid var(--border);
-  border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.12);
+  min-width:180px;background:var(--card);border:1px solid var(--border);
+  border-radius:var(--radius-box);box-shadow:0 4px 16px rgba(0,0,0,.12);
   padding:4px;z-index:100;
 }
 .top-menu-item{
   display:flex;align-items:center;gap:10px;width:100%;
   padding:9px 12px;background:transparent;border:none;cursor:pointer;
   font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);
-  text-align:left;border-radius:6px;transition:.12s;
+  text-align:left;border-radius:var(--radius-field);transition:.12s;
 }
-.top-menu-item:hover{background:var(--accent-light,#f0f9f4)}
-.top-menu-item > span{font-weight:700;color:var(--accent);width:14px;text-align:center}
+.top-menu-item:hover{background:var(--accent-light,var(--accent-tint))}
+.top-menu-item > span{font-weight:700;color:var(--accent-fg);width:14px;text-align:center}
 
 /* TABS */
-#tabs{display:flex;border-bottom:1px solid var(--border);background:#f8faf9;flex-shrink:0}
+#tabs{display:flex;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0}
 .tab-btn{flex:1;padding:10px 4px;border:none;background:transparent;cursor:pointer;font-size:12px;font-weight:500;color:var(--muted);font-family:'DM Sans',sans-serif;transition:.15s;border-bottom:2px solid transparent}
-.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);background:#fff}
+.tab-btn.active{color:var(--accent-fg);border-bottom-color:var(--accent-fg);background:var(--card)}
 .tab-btn:hover:not(.active){background:rgba(0,0,0,.03)}
 
 /* MAIN */
@@ -90,7 +156,7 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;font-size:14px;background
 
 /* TOAST */
 #toast-container{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:9000;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none}
-.toast{background:#1a2e25;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:500;box-shadow:0 4px 16px rgba(0,0,0,.2);opacity:0;transform:translateY(8px);transition:.25s;pointer-events:none;white-space:nowrap;max-width:90vw}
+.toast{background:#1a2e25;color:#fff;padding:10px 18px;border-radius:var(--radius-box);font-size:13px;font-weight:500;box-shadow:0 4px 16px rgba(0,0,0,.2);opacity:0;transform:translateY(8px);transition:.25s;pointer-events:none;white-space:nowrap;max-width:90vw}
 .toast.show{opacity:1;transform:translateY(0)}
 .toast.toast-ok{background:var(--accent)}
 .toast.toast-err{background:#dc2626}
@@ -99,18 +165,30 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;font-size:14px;background
 /* CONFIRM MODAL */
 #confirm-overlay{display:none;position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(0,0,0,.45);z-index:2000;align-items:center;justify-content:center}
 #confirm-overlay.open{display:flex}
-#confirm-box{background:#fff;border-radius:12px;padding:24px;width:360px;max-width:92vw;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+#confirm-box{background:var(--card);border-radius:var(--radius-box);padding:24px;width:360px;max-width:92vw;box-shadow:0 20px 60px rgba(0,0,0,.25)}
 #confirm-box h4{font-family:'DM Serif Display',serif;font-size:17px;margin-bottom:10px;color:var(--text)}
 #confirm-box p{font-size:13px;color:var(--muted);margin-bottom:20px;line-height:1.5}
 #confirm-box .cbtns{display:flex;gap:8px;justify-content:flex-end}
+/* ── Bandeja de fotos compartidas (Web Share Target) ── */
+#share-overlay{display:none;position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(0,0,0,.45);z-index:2000;align-items:center;justify-content:center}
+#share-overlay.open{display:flex}
+#share-box{background:var(--card);border-radius:var(--radius-box);padding:24px;width:440px;max-width:92vw;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+#share-box h4{font-family:'DM Serif Display',serif;font-size:17px;margin-bottom:10px;color:var(--text)}
+#share-box p{font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.5}
+#share-tray-list{overflow-y:auto;display:flex;flex-direction:column;gap:10px;margin-bottom:18px;-webkit-overflow-scrolling:touch}
+.share-row{display:flex;align-items:center;gap:12px}
+.share-thumb{width:56px;height:56px;flex-shrink:0;border-radius:var(--radius-box);overflow:hidden;background:var(--surface-2);display:flex;align-items:center;justify-content:center;font-size:22px}
+.share-thumb img{width:100%;height:100%;object-fit:cover}
+.share-dest{flex:1;min-width:0}
+#share-box .cbtns{display:flex;gap:8px;justify-content:flex-end}
 
 /* MODAL */
 #moverlay{display:none;position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center}
 #moverlay.open{display:flex}
-#mbox{background:#fff;border-radius:12px;padding:24px;width:440px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,.25);max-height:85vh;overflow-y:auto}
+#mbox{background:var(--card);border-radius:var(--radius-box);padding:24px;width:440px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,.25);max-height:85vh;overflow-y:auto}
 #mbox h3{font-family:'DM Serif Display',serif;font-size:18px;margin-bottom:16px}
-.msec{margin-bottom:12px;padding:14px;background:#f8faf9;border-radius:8px;border:1px solid var(--border)}
-.msec h4{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--accent);margin-bottom:10px}
+.msec{margin-bottom:12px;padding:14px;background:var(--surface);border-radius:var(--radius-box);border:1px solid var(--border)}
+.msec h4{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--accent-fg);margin-bottom:10px}
 
 /* MOBILE */
 @media (max-width:600px){
@@ -134,10 +212,35 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;font-size:14px;background
 /* FORM */
 .fg{margin-bottom:14px}
 .fg label{display:block;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
-.fg input,.fg textarea,.fg select{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:#fff;outline:none;transition:.15s;-webkit-appearance:none;appearance:none}
-.fg input:focus,.fg textarea:focus,.fg select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(var(--accent-rgb),.1)}
+.fg input,.fg textarea,.fg select{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-field);font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--card);outline:none;transition:.15s;-webkit-appearance:none;appearance:none}
+.fg input:focus,.fg textarea:focus,.fg select:focus{border-color:var(--accent-fg);box-shadow:0 0 0 3px rgba(var(--accent-rgb),.1)}
 .fg textarea{resize:none;min-height:60px}
-.fg input[readonly]{background:#f8faf9;cursor:default}
+/* Cajas que crecen con el contenido (sin scroll dentro del scroll al editar
+   listas largas en el celular). field-sizing:content auto-ajusta la altura;
+   rows + resize:vertical son el fallback en navegadores sin soporte. */
+.fg textarea.ta-grow{field-sizing:content;min-height:96px;max-height:50vh;resize:vertical}
+/* Editor de listas "uno por ítem": cada punto en su propio casillero, con
+   número y botón de borrar, para que se vea claramente la división de cada
+   ítem (en vez de un bloque de texto donde las líneas largas se mezclan). */
+.linelist{display:flex;flex-direction:column;gap:6px}
+.llrow{display:flex;align-items:center;gap:8px}
+.llnum{flex:none;width:20px;height:20px;border-radius:50%;background:var(--accent-fg);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.llinput{flex:1;min-width:0;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-field);font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--card);outline:none;-webkit-appearance:none;appearance:none}
+.llinput:focus{border-color:var(--accent-fg);box-shadow:0 0 0 3px rgba(var(--accent-rgb),.1)}
+.lldel{flex:none;width:30px;height:30px;border:1px solid var(--border);border-radius:var(--radius-field);background:var(--bg);color:var(--muted);font-size:18px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;-webkit-appearance:none;appearance:none}
+.lldel:active{background:var(--red,#dc2626);color:#fff;border-color:var(--red,#dc2626)}
+.lladd{align-self:flex-start;margin-top:2px;padding:6px 12px;border:1px dashed var(--border);border-radius:var(--radius-field);background:transparent;color:var(--accent-fg);font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer}
+.lladd:active{background:rgba(var(--accent-rgb),.08)}
+/* Lista reordenable de secciones del PDF (Empresa → Textos del PDF). */
+.sord-list{display:flex;flex-direction:column;gap:6px}
+.sord-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-field);background:var(--card)}
+.sord-num{flex:none;width:20px;height:20px;border-radius:50%;background:var(--accent-fg);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.sord-label{flex:1;font-size:13px;color:var(--text)}
+.sord-btns{flex:none;display:flex;gap:4px}
+.sord-btn{width:30px;height:30px;border:1px solid var(--border);border-radius:var(--radius-field);background:var(--bg);color:var(--text);font-size:12px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;-webkit-appearance:none;appearance:none}
+.sord-btn:active{background:var(--accent-fg);color:#fff;border-color:var(--accent-fg)}
+.sord-btn:disabled{opacity:.3;cursor:default}
+.fg input[readonly]{background:var(--surface);cursor:default}
 .r2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .r3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
 .r4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px}
@@ -164,23 +267,23 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;font-size:14px;background
 .st:first-child{margin-top:0}
 
 /* BUTTONS */
-.btn{display:inline-flex;align-items:center;gap:5px;padding:8px 14px;border-radius:7px;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;transition:.15s}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:8px 14px;border-radius:var(--radius-field);border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;transition:.15s}
 .btn-p{background:var(--accent);color:#fff}.btn-p:hover{background:var(--accent-dark)}
-.btn-s{background:#f1f5f4;color:var(--text);border:1px solid var(--border)}.btn-s:hover{background:#e5ebe9}
+.btn-s{background:var(--surface-2);color:var(--text);border:1px solid var(--border)}.btn-s:hover{background:var(--surface-hover)}
 .btn-d{background:var(--red-light);color:var(--red);border:1px solid #fca5a5}.btn-d:hover{background:#fecaca}
-.btn-g{background:transparent;color:var(--muted);padding:5px 9px}.btn-g:hover{background:#f1f5f4;color:var(--text)}
+.btn-g{background:transparent;color:var(--muted);padding:5px 9px}.btn-g:hover{background:var(--surface-2);color:var(--text)}
 .btn-sm{padding:5px 10px;font-size:12px}
 .btn-bl{width:100%;justify-content:center;margin-bottom:8px}
 .arow{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
 
 /* ITEM CARDS */
 #items-list{margin-bottom:12px}
-.icard{background:#f8faf9;border:1px solid var(--border);border-radius:8px;padding:10px 10px 8px 34px;margin-bottom:8px;position:relative;transition:.15s}
+.icard{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-box);padding:10px 10px 8px 34px;margin-bottom:8px;position:relative;transition:.15s}
 .icard.dragging{opacity:.4;border-style:dashed}
-.icard.drag-over{border-color:var(--accent);background:var(--accent-light)}
-.drag-h{position:absolute;left:9px;top:13px;color:#cbd5e1;font-size:18px;cursor:grab;user-select:none;line-height:1}
+.icard.drag-over{border-color:var(--accent-fg);background:var(--accent-light)}
+.drag-h{position:absolute;left:9px;top:13px;color:var(--faint);font-size:18px;cursor:grab;user-select:none;line-height:1}
 .drag-h:active{cursor:grabbing}
-.ibadge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;margin-bottom:8px;display:inline-block}
+.ibadge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:var(--radius-box);margin-bottom:8px;display:inline-block}
 .ib-tree{background:#dcfce7;color:#166534}
 .ib-svc{background:#dbeafe;color:#1e40af}
 .ib-note{background:#fef3c7;color:#92400e}
@@ -191,45 +294,72 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;font-size:14px;background
 .item-grid-2{display:grid;grid-template-columns:1fr 170px;gap:8px}
 @media(max-width:600px){.item-grid-2{grid-template-columns:1fr}.item-grid-2.mb8{margin-bottom:8px}}
 .isub{font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px}
-.ii{width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:5px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:#fff;outline:none;transition:.15s;-webkit-appearance:none;appearance:none}
-.ii:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(var(--accent-rgb),.08)}
-.ita{width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:5px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:#fff;outline:none;resize:none;min-height:52px;transition:.15s;-webkit-appearance:none;appearance:none}
-.ita:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(var(--accent-rgb),.08)}
+.ii{width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius-field);font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--card);outline:none;transition:.15s;-webkit-appearance:none;appearance:none}
+.ii:focus{border-color:var(--accent-fg);box-shadow:0 0 0 2px rgba(var(--accent-rgb),.08)}
+.ita{width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius-field);font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--card);outline:none;resize:none;min-height:52px;transition:.15s;-webkit-appearance:none;appearance:none}
+.ita:focus{border-color:var(--accent-fg);box-shadow:0 0 0 2px rgba(var(--accent-rgb),.08)}
 
 /* TOGGLE */
-.trow{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid #f1f5f4}
+.trow{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--surface-2)}
 .trow:last-child{border-bottom:none}
 .tlabel{font-size:13px;color:var(--text)}
 .tgl{position:relative;width:38px;height:21px;flex-shrink:0}
 .tgl input{opacity:0;width:0;height:0}
-.tgl-sl{position:absolute;top:0;right:0;bottom:0;left:0;background:#cbd5e1;border-radius:21px;cursor:pointer;transition:.2s}
-.tgl-sl::before{content:'';position:absolute;height:15px;width:15px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s}
+.tgl-sl{position:absolute;top:0;right:0;bottom:0;left:0;background:var(--toggle-off);border-radius:21px;cursor:pointer;transition:background .25s cubic-bezier(.4,0,.2,1);box-shadow:inset 0 1px 2px rgba(0,0,0,.10)}
+.tgl-sl::before{content:'';position:absolute;height:15px;width:15px;left:3px;top:3px;background:var(--card);border-radius:50%;box-shadow:0 1px 2px rgba(0,0,0,.28),0 1px 3px rgba(0,0,0,.10);transition:transform .28s cubic-bezier(.34,1.3,.64,1)}
 .tgl input:checked+.tgl-sl{background:var(--accent)}
 .tgl input:checked+.tgl-sl::before{transform:translateX(17px)}
+.tgl-sl:hover{filter:brightness(.96)}
+.tgl input:focus-visible+.tgl-sl{box-shadow:inset 0 1px 2px rgba(0,0,0,.10),0 0 0 3px rgba(var(--accent-rgb),.28)}
 
 /* COLOR */
 .cpresets{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
 .cpreset{width:32px;height:32px;border-radius:50%;border:3px solid transparent;cursor:pointer;transition:.15s}
 .cpreset:hover,.cpreset.active{border-color:#fff;box-shadow:0 0 0 2px var(--muted)}
+.cpreset-add{display:flex;align-items:center;justify-content:center;border:2px dashed var(--muted);color:var(--muted);font-size:20px;line-height:1;background:transparent;box-shadow:none}
+.cpreset-add:hover,.cpreset-add.active{border-color:var(--accent-fg);color:var(--accent-fg);box-shadow:none}
 .cprow{display:flex;align-items:center;gap:10px;margin-bottom:16px}
-.cprow input[type=color]{width:44px;height:36px;border:1px solid var(--border);border-radius:6px;padding:2px;cursor:pointer;background:#fff}
+.cprow input[type=color]{width:44px;height:36px;border:1px solid var(--border);border-radius:var(--radius-field);padding:2px;cursor:pointer;background:var(--card)}
+
+/* SELECTOR DE COLOR PROPIO (reemplaza el picker nativo del navegador, que
+   en muchos Android muestra barras negras confusas). Cuadro SV + barra de
+   tono arcoíris + vista previa y campo hexa. Todo táctil y offline. */
+.cpicker{width:100%;max-width:340px;margin-bottom:16px}
+.cpk-sv{position:relative;width:100%;height:150px;border-radius:var(--radius-box);overflow:hidden;cursor:crosshair;touch-action:none;background:hsl(160,100%,50%)}
+.cpk-sv-white{position:absolute;inset:0;background:linear-gradient(to right,#fff,rgba(255,255,255,0))}
+.cpk-sv-black{position:absolute;inset:0;background:linear-gradient(to top,#000,rgba(0,0,0,0))}
+.cpk-sv-dot{position:absolute;width:18px;height:18px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.45),0 1px 3px rgba(0,0,0,.4);transform:translate(-50%,-50%);pointer-events:none;left:80%;top:70%}
+.cpk-hue{position:relative;width:100%;height:24px;border-radius:var(--radius-box);margin-top:14px;cursor:pointer;touch-action:none;background:linear-gradient(to right,#f00 0%,#ff0 17%,#0f0 33%,#0ff 50%,#00f 67%,#f0f 83%,#f00 100%)}
+.cpk-hue-thumb{position:absolute;top:50%;left:50%;width:26px;height:26px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.3),0 1px 4px rgba(0,0,0,.45);transform:translate(-50%,-50%);pointer-events:none}
+.cpk-foot{display:flex;align-items:center;gap:9px;margin-top:14px}
+.cpk-preview{width:38px;height:38px;border-radius:var(--radius-box);border:1px solid var(--border);flex:0 0 auto}
+.cpk-hex{width:130px;font-family:ui-monospace,monospace;font-size:15px;text-transform:lowercase;padding:9px 11px;border:1px solid var(--border);border-radius:var(--radius-field);background:var(--card);color:var(--text)}
+.cpk-hint{font-size:12px;color:var(--muted);margin:0 0 10px}
 
 /* THEME PICKER */
 .theme-presets{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px}
-.tpreset{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:5px;background:var(--card);border:2px solid var(--border);border-radius:8px;padding:7px 9px;cursor:pointer;transition:border-color .15s}
-.tpreset.active{border-color:var(--accent)}
+.tpreset{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:5px;background:var(--card);border:2px solid var(--border);border-radius:var(--radius-box);padding:7px 9px;cursor:pointer;transition:border-color .15s}
+.tpreset.active{border-color:var(--accent-fg)}
 .tpreset:hover:not(.active){border-color:var(--muted)}
-.tpreset-swatch{width:56px;height:36px;border-radius:3px;overflow:hidden;position:relative;background:#fff;border:1px solid var(--border)}
+.tpreset-swatch{width:56px;height:36px;border-radius:3px;overflow:hidden;position:relative;background:var(--card);border:1px solid var(--border)}
 .tpreset-label{font-size:11px;color:var(--text);font-weight:500;white-space:nowrap}
 
 /* HISTORY */
-.hitem{background:#f8faf9;border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;display:flex;align-items:center;gap:10px}
+.hitem{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-box);padding:10px 12px;margin-bottom:8px;display:flex;align-items:center;gap:10px}
 .hinfo{flex:1;min-width:0}
-.hnum{font-size:12px;font-weight:700;color:var(--accent)}
+.hnum{font-size:12px;font-weight:700;color:var(--accent-fg)}
 .hclient{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hmeta{font-size:11px;color:var(--muted)}
 .hacts{display:flex;gap:4px;flex-shrink:0}
 .empty-h{text-align:center;padding:40px;color:var(--muted);font-size:13px}
+/* Resaltado temporal de una tarjeta cuando se llega a ella desde un aviso
+   (banner de vencidos/seguimiento). Parpadea/destella unas veces y se apaga. */
+@keyframes hitemFlash{
+  0%,100%{box-shadow:0 0 0 0 rgba(var(--accent-rgb),0);border-color:var(--border)}
+  8%,33%,58%{box-shadow:0 0 0 3px rgba(var(--accent-rgb),.6),0 0 18px 4px rgba(var(--accent-rgb),.5);border-color:var(--accent-fg)}
+  20%,45%,70%{box-shadow:0 0 0 1px rgba(var(--accent-rgb),.15);border-color:var(--border)}
+}
+.hitem-flash{animation:hitemFlash 2.4s ease-in-out 1;scroll-margin-top:80px;scroll-margin-bottom:80px}
 
 /* DELETE ICON BUTTON: discreto, esquina superior derecha. Anti-tap
    accidental: chico (32×32), color gris suave que solo se vuelve rojo
@@ -237,7 +367,7 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;font-size:14px;background
    y filas del historial — antes era anti-patrón "big red trap". */
 .btn-icon-del{
   background:transparent;border:none;cursor:pointer;
-  width:32px;height:32px;border-radius:6px;
+  width:32px;height:32px;border-radius:var(--radius-field);
   display:flex;align-items:center;justify-content:center;
   color:#9ca3af;font-size:16px;line-height:1;
   flex-shrink:0;padding:0;transition:.15s;
@@ -250,16 +380,16 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;font-size:14px;background
 .svc-pinned-header{
   display:flex;align-items:center;justify-content:space-between;
   margin-bottom:8px;padding:6px 10px;
-  background:var(--accent-light);border-radius:6px;
-  font-size:11px;color:var(--accent);
+  background:var(--accent-light);border-radius:var(--radius-field);
+  font-size:11px;color:var(--accent-fg);
 }
 .svc-pinned-info{display:flex;align-items:center;gap:4px}
 .svc-pinned-limit{font-size:10px;opacity:.7}
 .svc-list{display:flex;flex-direction:column;gap:4px}
 .svc-row{
   display:flex;align-items:center;gap:8px;
-  background:#fff;border:1px solid var(--border);
-  border-radius:8px;padding:6px 10px;
+  background:var(--card);border:1px solid var(--border);
+  border-radius:var(--radius-box);padding:6px 10px;
   transition:.15s;
 }
 .svc-row.is-pinned{
@@ -269,10 +399,10 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;font-size:14px;background
 .svc-pin-btn{
   background:none;border:none;cursor:pointer;
   font-size:18px;line-height:1;padding:4px;
-  color:#cbd5e1;
+  color:var(--faint);
   width:32px;height:32px;
   display:flex;align-items:center;justify-content:center;
-  border-radius:6px;flex-shrink:0;transition:.15s;
+  border-radius:var(--radius-field);flex-shrink:0;transition:.15s;
 }
 .svc-pin-btn:hover{background:#fef3c7;color:#d97706}
 .svc-pin-btn.active{color:#d97706}
@@ -296,13 +426,13 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;font-size:14px;background
 .client-qa{
   display:inline-flex;align-items:center;gap:5px;
   font-size:11px;font-weight:600;
-  text-decoration:none;color:var(--accent);
-  background:#fff;border:1px solid var(--border);
+  text-decoration:none;color:var(--accent-fg);
+  background:var(--card);border:1px solid var(--border);
   border-radius:14px;padding:4px 10px;
   transition:.15s;
 }
 .client-qa:hover,.client-qa:active{
-  background:var(--accent);color:#fff;border-color:var(--accent);
+  background:var(--accent);color:#fff;border-color:var(--accent-fg);
 }
 .client-qa span{font-size:11px}
 
@@ -317,14 +447,20 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;font-size:14px;background
 /* ACCIONES FINALES DEL EDITOR: jerarquía clara. Primero el hint
    explicando el autoguardado, después el CTA principal (Imprimir)
    grande y solo, después las secundarias en fila chica. */
-.actions-hint{
-  font-size:12px;color:var(--muted);
-  margin-bottom:10px;padding:10px 12px;
-  background:#fff7ed;border:1px solid #fed7aa;
-  border-radius:8px;
-  display:flex;align-items:flex-start;gap:8px;line-height:1.4;
+/* ALERT — caja de aviso reusable (inspirada en daisyUI). Fondo y borde con
+   alpha sobre el color semántico, así se adapta solo a claro/oscuro; solo el
+   color del texto se aclara en modo oscuro (ver bloque [data-theme=dark]).
+   Variantes: .alert-info / .alert-success / .alert-warning / .alert-error. */
+.alert{
+  display:flex;align-items:flex-start;gap:8px;
+  padding:10px 12px;border-radius:var(--radius-box);
+  border:1px solid;font-size:12px;line-height:1.45;
 }
-.actions-hint > span:first-child{flex-shrink:0;font-size:14px}
+.alert .alert-ico{flex-shrink:0;font-size:14px;line-height:1.35}
+.alert-info{background:rgba(37,99,235,.08);border-color:rgba(37,99,235,.26);color:#1e40af}
+.alert-success{background:rgba(5,150,105,.10);border-color:rgba(5,150,105,.28);color:#065f46}
+.alert-warning{background:rgba(217,119,6,.10);border-color:rgba(217,119,6,.30);color:#92400e}
+.alert-error{background:rgba(220,38,38,.08);border-color:rgba(220,38,38,.28);color:#991b1b}
 .btn-cta{
   width:100%;padding:14px 16px;font-size:15px;font-weight:700;
   margin-bottom:10px;
@@ -338,9 +474,9 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;font-size:14px;background
 /* SCENARIOS PANEL (A/B): compacto. Una sola línea cuando está apagado.
    Cuando se activa, expande con los selectores A/B y las etiquetas. */
 .scenarios-panel{
-  background:#f8faf9;
+  background:var(--surface);
   border:1px solid var(--border);
-  border-radius:8px;
+  border-radius:var(--radius-box);
   padding:8px 12px;
   margin-bottom:14px;
 }
@@ -377,17 +513,17 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;font-size:14px;background
    para reducir scroll. Mismo concepto que las tabs principales pero
    inline-pill dentro del panel. */
 .subtabs{
-  display:flex;gap:4px;background:#f3f4f6;
-  border:1px solid var(--border);border-radius:10px;
+  display:flex;gap:4px;background:var(--surface-3);
+  border:1px solid var(--border);border-radius:var(--radius-box);
   padding:4px;margin-bottom:18px;
 }
 .subtab-btn{
   flex:1;padding:8px 6px;border:none;background:transparent;
   font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;
-  color:var(--muted);cursor:pointer;border-radius:7px;transition:.15s;
+  color:var(--muted);cursor:pointer;border-radius:var(--radius-field);transition:.15s;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
-.subtab-btn.active{background:#fff;color:var(--accent);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.subtab-btn.active{background:var(--card);color:var(--accent-fg);box-shadow:0 1px 3px rgba(0,0,0,.08)}
 .subtab-btn:hover:not(.active){background:rgba(0,0,0,.04)}
 .subpanel{display:none}
 .subpanel.active{display:block}
@@ -402,9 +538,9 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;font-size:14px;background
 .quick-services{
   display:flex;flex-wrap:wrap;gap:6px;
   margin:8px 0 10px;padding:8px 10px;
-  background:#f0f9f4;
+  background:var(--accent-tint);
   border:1px solid var(--border);
-  border-radius:8px;
+  border-radius:var(--radius-box);
 }
 .quick-services-label{
   font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;
@@ -412,14 +548,14 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;font-size:14px;background
 }
 .qs-chip{
   display:inline-flex;align-items:center;gap:4px;
-  background:#fff;border:1px solid var(--border);
+  background:var(--card);border:1px solid var(--border);
   border-radius:18px;padding:6px 12px;
   font-size:12px;font-weight:500;color:var(--text);
   cursor:pointer;transition:.12s;
   white-space:nowrap;
 }
 .qs-chip:hover,.qs-chip:active{
-  background:var(--accent);color:#fff;border-color:var(--accent);
+  background:var(--accent);color:#fff;border-color:var(--accent-fg);
 }
 .qs-chip-plus{font-size:14px;font-weight:700;line-height:1;opacity:.7}
 
@@ -432,7 +568,7 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;font-size:14px;background
    Solo se muestra cuando la pestaña activa es "editor" (ver switchTab). */
 .sticky-totals{
   position:fixed;bottom:0;left:0;right:0;
-  background:#fff;
+  background:var(--card);
   border-top:1px solid var(--border);
   box-shadow:0 -2px 12px rgba(0,0,0,.06);
   padding:10px 14px env(safe-area-inset-bottom,10px);
@@ -446,7 +582,7 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;font-size:14px;background
 .st-item{display:flex;flex-direction:column;gap:1px;min-width:0}
 .st-lbl{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)}
 .st-val{font-size:15px;font-weight:700;color:var(--text);white-space:nowrap}
-.st-val.accent{color:var(--accent);font-size:17px}
+.st-val.accent{color:var(--accent-fg);font-size:17px}
 .st-total .st-val{font-size:17px}
 .st-total .st-val.accent{font-size:19px}
 /* En móvil más compacto */
@@ -463,8 +599,8 @@ body.has-sticky-totals{padding-bottom:64px}
 @media (max-width:600px){body.has-sticky-totals{padding-bottom:58px}}
 
 /* LOGO */
-.lu-area{border:2px dashed var(--border);border-radius:8px;padding:20px;text-align:center;cursor:pointer;margin-bottom:10px;transition:.15s;background:#fafafa}
-.lu-area:hover{border-color:var(--accent);background:var(--accent-light)}
+.lu-area{border:2px dashed var(--border);border-radius:var(--radius-box);padding:20px;text-align:center;cursor:pointer;margin-bottom:10px;transition:.15s;background:var(--surface)}
+.lu-area:hover{border-color:var(--accent-fg);background:var(--accent-light)}
 .lu-img{max-height:80px;max-width:200px;border-radius:4px}
 input[type=file]{display:none}
 
@@ -473,7 +609,7 @@ input[type=file]{display:none}
    Abierto = panel con descripción, input %, botones Aplicar/Quitar. */
 .surcharge-panel{
   background:linear-gradient(135deg,#fffbeb,#fef3c7);
-  border:1px solid #fcd34d;border-radius:10px;
+  border:1px solid #fcd34d;border-radius:var(--radius-box);
   margin-bottom:16px;overflow:hidden;
 }
 .surcharge-header{
@@ -502,42 +638,42 @@ input[type=file]{display:none}
 .surcharge-body{padding:0 14px 12px}
 .surcharge-body .sp-desc{font-size:11px;color:#78350f;line-height:1.45;margin-bottom:10px}
 .surcharge-body .sp-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.surcharge-input{width:72px;padding:7px 10px;border:1.5px solid #f59e0b;border-radius:7px;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:700;color:#92400e;background:#fff;outline:none;text-align:center;-webkit-appearance:none;appearance:none}
+.surcharge-input{width:72px;padding:7px 10px;border:1.5px solid #f59e0b;border-radius:var(--radius-field);font-family:'DM Sans',sans-serif;font-size:15px;font-weight:700;color:#92400e;background:var(--card);outline:none;text-align:center;-webkit-appearance:none;appearance:none}
 .surcharge-input:focus{border-color:#d97706;box-shadow:0 0 0 3px rgba(245,158,11,.18)}
 .surcharge-pct{font-size:16px;font-weight:700;color:#92400e}
-.sp-apply-btn{background:#f59e0b;color:#fff;border:none;border-radius:7px;padding:7px 13px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;cursor:pointer;transition:.15s;white-space:nowrap}
+.sp-apply-btn{background:#f59e0b;color:#fff;border:none;border-radius:var(--radius-field);padding:7px 13px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;cursor:pointer;transition:.15s;white-space:nowrap}
 .sp-apply-btn:hover{background:#d97706}
 .sp-apply-btn:active{transform:scale(.97)}
-.sp-clear-btn{background:transparent;color:#92400e;border:1.5px solid #fcd34d;border-radius:7px;padding:6px 10px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:.15s}
+.sp-clear-btn{background:transparent;color:#92400e;border:1.5px solid #fcd34d;border-radius:var(--radius-field);padding:6px 10px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:.15s}
 .sp-clear-btn:hover{background:#fef3c7}
 
 /* Adjusted price badge inside item cards */
-.adj-badge{display:inline-flex;align-items:center;gap:4px;margin-top:4px;font-size:10px;font-weight:700;color:#92400e;background:#fef3c7;border:1px solid #fcd34d;border-radius:5px;padding:2px 7px}
+.adj-badge{display:inline-flex;align-items:center;gap:4px;margin-top:4px;font-size:10px;font-weight:700;color:#92400e;background:#fef3c7;border:1px solid #fcd34d;border-radius:var(--radius-field);padding:2px 7px}
 .adj-badge .adj-orig{text-decoration:line-through;opacity:.6;font-weight:400}
 
 /* LIVE TOTALS */
-#totals-bar{background:#fff;border:1px solid var(--border);border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;gap:16px;flex-wrap:wrap;align-items:center}
+#totals-bar{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-box);padding:12px 16px;margin-bottom:16px;display:flex;gap:16px;flex-wrap:wrap;align-items:center}
 .tbar-item{display:flex;flex-direction:column;gap:1px}
 .tbar-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
 .tbar-val{font-size:15px;font-weight:700;color:var(--text)}
-.tbar-val.accent{color:var(--accent)}
+.tbar-val.accent{color:var(--accent-fg)}
 .tbar-sep{height:32px;width:1px;background:var(--border);flex-shrink:0}
 
 /* HISTORY SEARCH */
-.hsearch{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:#fff;outline:none;transition:.15s;margin-bottom:12px;-webkit-appearance:none;appearance:none}
-.hsearch:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(var(--accent-rgb),.1)}
+.hsearch{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-field);font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--card);outline:none;transition:.15s;margin-bottom:12px;-webkit-appearance:none;appearance:none}
+.hsearch:focus{border-color:var(--accent-fg);box-shadow:0 0 0 3px rgba(var(--accent-rgb),.1)}
 
 /* MODE SWITCH */
-.mode-switch{display:flex;align-items:stretch;gap:0;background:#f1f5f4;border:1px solid var(--border);border-radius:9px;padding:3px;margin-bottom:18px}
-.mode-btn{flex:1;padding:8px 10px;border:none;border-radius:7px;cursor:pointer;font-family:'DM Sans',sans-serif;background:transparent;color:var(--muted);transition:.18s;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;line-height:1.2}
+.mode-switch{display:flex;align-items:stretch;gap:0;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-box);padding:3px;margin-bottom:18px}
+.mode-btn{flex:1;padding:8px 10px;border:none;border-radius:var(--radius-field);cursor:pointer;font-family:'DM Sans',sans-serif;background:transparent;color:var(--muted);transition:.18s;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;line-height:1.2}
 .mode-btn-title{font-size:12px;font-weight:600;display:block}
 .mode-btn-sub{font-size:10px;font-weight:400;opacity:.75;display:block}
-.mode-btn.active{background:#fff;color:var(--accent);box-shadow:0 1px 4px rgba(0,0,0,.10)}
+.mode-btn.active{background:var(--card);color:var(--accent-fg);box-shadow:0 1px 4px rgba(0,0,0,.10)}
 .mode-btn.active.est{background:var(--accent);color:#fff;box-shadow:0 1px 6px rgba(var(--accent-rgb),.25)}
 .mode-btn.active .mode-btn-sub{opacity:.85}
 
 /* ESTIMATIVE BANNER */
-#est-banner{background:linear-gradient(135deg,var(--accent),var(--accent-2));border-radius:10px;padding:12px 16px;margin-bottom:16px;align-items:flex-start;gap:10px;display:none}
+#est-banner{background:linear-gradient(135deg,var(--accent),var(--accent-2));border-radius:var(--radius-box);padding:12px 16px;margin-bottom:16px;align-items:flex-start;gap:10px;display:none}
 #est-banner.show{display:flex}
 .est-banner-icon{font-size:22px;flex-shrink:0;margin-top:1px}
 .est-banner-body{flex:1}
@@ -545,21 +681,21 @@ input[type=file]{display:none}
 .est-banner-desc{font-size:11px;color:rgba(255,255,255,.75);line-height:1.4}
 
 /* HIST badge for estimative quotes */
-.hbadge-est{display:inline-block;font-size:10px;font-weight:700;padding:1px 7px;border-radius:8px;background:#d1fae5;color:#065f46;margin-left:6px;vertical-align:middle}
+.hbadge-est{display:inline-block;font-size:10px;font-weight:700;padding:1px 7px;border-radius:var(--radius-box);background:#d1fae5;color:#065f46;margin-left:6px;vertical-align:middle}
 /* Badge de estado comercial (color inline según el estado) */
-.hbadge-estado{display:inline-block;font-size:10px;font-weight:700;padding:1px 8px;border-radius:8px;margin-left:6px;vertical-align:middle;text-transform:uppercase;letter-spacing:.3px}
+.hbadge-estado{display:inline-block;font-size:10px;font-weight:700;padding:1px 8px;border-radius:var(--radius-box);margin-left:6px;vertical-align:middle;text-transform:uppercase;letter-spacing:.3px}
 /* Selector de estado en la tarjeta del historial */
-.hestado-sel{font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;color:var(--text);background:#fff;border:1px solid var(--border);border-radius:6px;padding:5px 8px;outline:none;-webkit-appearance:none;appearance:none;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2364748b' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;padding-right:26px}
-.hestado-sel:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(var(--accent-rgb),.1)}
+.hestado-sel{font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;color:var(--text);background:var(--card);border:1px solid var(--border);border-radius:var(--radius-field);padding:5px 8px;outline:none;-webkit-appearance:none;appearance:none;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2364748b' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;padding-right:26px}
+.hestado-sel:focus{border-color:var(--accent-fg);box-shadow:0 0 0 3px rgba(var(--accent-rgb),.1)}
 /* Toast con botón de acción (ej: "¿Marcar como enviado?") */
 .toast-action{display:flex;align-items:center;gap:12px}
-.toast-action .toast-btn{font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;color:#fff;background:var(--accent);border:none;border-radius:6px;padding:6px 12px;cursor:pointer;white-space:nowrap}
+.toast-action .toast-btn{font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;color:#fff;background:var(--accent);border:none;border-radius:var(--radius-field);padding:6px 12px;cursor:pointer;white-space:nowrap}
 .toast-action .toast-btn:active{opacity:.85}
 
 /* MISC */
 .divider{height:1px;background:var(--border);margin:16px 0}
 .hint{font-size:11px;color:var(--muted);margin-top:4px}
-.nbadge{display:inline-block;background:var(--accent);color:#fff;font-size:11px;font-weight:600;border-radius:10px;padding:1px 8px;min-width:22px;text-align:center}
+.nbadge{display:inline-block;background:var(--accent);color:#fff;font-size:11px;font-weight:600;border-radius:var(--radius-box);padding:1px 8px;min-width:22px;text-align:center}
 
 /* MOBILE overrides */
 @media (max-width:600px){
@@ -613,14 +749,14 @@ input[type=file]{display:none}
 
 /* Botón "📝 Frases" — discreto, no compite con el campo */
 .phrase-btn{
-  background:#f0f9f4;border:1px solid #bbf7d0;
-  color:var(--accent);cursor:pointer;
+  background:var(--accent-tint);border:1px solid #bbf7d0;
+  color:var(--accent-fg);cursor:pointer;
   font-family:'DM Sans',sans-serif;font-size:11px;font-weight:600;
   padding:3px 9px;border-radius:14px;
   display:inline-flex;align-items:center;gap:3px;
   white-space:nowrap;flex-shrink:0;transition:.15s;
 }
-.phrase-btn:hover,.phrase-btn:active{background:#dcfce7;border-color:var(--accent)}
+.phrase-btn:hover,.phrase-btn:active{background:var(--accent-light);border-color:var(--accent-fg)}
 /* Variante mini para inputs dentro de items (más compacto) */
 .phrase-btn-mini{padding:2px 7px;font-size:10px}
 
@@ -639,7 +775,7 @@ input[type=file]{display:none}
 }
 #phrases-overlay.open{display:flex}
 #phrases-box{
-  background:#fff;border-radius:14px;
+  background:var(--card);border-radius:14px;
   width:100%;max-width:520px;max-height:80vh;
   display:flex;flex-direction:column;
   box-shadow:0 10px 40px rgba(0,0,0,.25);
@@ -653,9 +789,9 @@ input[type=file]{display:none}
 .phrases-close{
   background:none;border:none;cursor:pointer;
   font-size:18px;color:var(--muted);padding:4px 8px;
-  border-radius:6px;line-height:1;
+  border-radius:var(--radius-field);line-height:1;
 }
-.phrases-close:hover{background:#f3f4f6;color:var(--text)}
+.phrases-close:hover{background:var(--surface-3);color:var(--text)}
 
 /* Lista scrolleable de frases */
 .phrases-list{
@@ -664,10 +800,10 @@ input[type=file]{display:none}
 }
 .phrase-row{
   display:flex;align-items:flex-start;gap:6px;
-  border:1px solid var(--border);border-radius:8px;
-  background:#fff;transition:.12s;
+  border:1px solid var(--border);border-radius:var(--radius-box);
+  background:var(--card);transition:.12s;
 }
-.phrase-row:hover{border-color:var(--accent);background:#f8faf9}
+.phrase-row:hover{border-color:var(--accent-fg);background:var(--surface)}
 .phrase-text{
   flex:1;background:none;border:none;cursor:pointer;
   text-align:left;padding:10px 12px;
@@ -687,7 +823,7 @@ input[type=file]{display:none}
 .phrases-footer{
   border-top:1px solid var(--border);padding:12px 14px;
   display:flex;flex-direction:column;gap:8px;flex-shrink:0;
-  background:#fafbfc;border-radius:0 0 14px 14px;
+  background:var(--surface);border-radius:0 0 14px 14px;
 }
 .phrases-add-row{display:flex;gap:6px}
 .phrases-add-row .ii{flex:1;min-width:0}
@@ -718,7 +854,7 @@ input[type=file]{display:none}
 }
 .phrase-move-btn:not(:disabled):hover,
 .phrase-move-btn:not(:disabled):active{
-  background:#f0f9f4;color:var(--accent);
+  background:var(--accent-tint);color:var(--accent-fg);
 }
 .phrase-move-btn:disabled{opacity:.3;cursor:not-allowed}
 .phrase-move-btn.phrase-up-btn{border-bottom:1px solid var(--border)}
@@ -733,15 +869,15 @@ input[type=file]{display:none}
 .collapsible-header{
   display:flex;align-items:center;gap:8px;
   width:100%;
-  background:#f8faf9;border:1px solid var(--border);
-  border-radius:8px;padding:11px 14px;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius-box);padding:11px 14px;
   cursor:pointer;font-family:'DM Sans',sans-serif;
   font-size:13px;font-weight:700;
   text-transform:uppercase;letter-spacing:.6px;
   color:var(--text-2);
   transition:.15s;text-align:left;
 }
-.collapsible-header:hover{background:#f0f4f3}
+.collapsible-header:hover{background:var(--surface-hover2)}
 .collapsible-header .ch-chevron{
   font-size:12px;color:var(--muted);
   transition:transform .2s;
@@ -750,8 +886,8 @@ input[type=file]{display:none}
 .collapsible-section.is-open .ch-chevron{transform:rotate(180deg)}
 .collapsible-header .ch-count{
   font-size:11px;font-weight:600;
-  color:var(--accent);background:var(--accent-light);
-  padding:2px 8px;border-radius:12px;
+  color:var(--accent-fg);background:var(--accent-light);
+  padding:2px 8px;border-radius:var(--radius-box);
   letter-spacing:.3px;text-transform:none;
   flex-shrink:0;
 }
@@ -772,20 +908,20 @@ input[type=file]{display:none}
    identidad visual (header verde más fuerte por relevancia). */
 
 .hmonth{
-  margin-bottom:10px;border-radius:10px;
-  border:1px solid var(--border);background:#fff;
+  margin-bottom:10px;border-radius:var(--radius-box);
+  border:1px solid var(--border);background:var(--card);
   overflow:hidden;
 }
 .hmonth-header{
   width:100%;
   display:flex;align-items:center;gap:10px;
   padding:11px 14px;
-  background:#f8faf9;
+  background:var(--surface);
   border:none;cursor:pointer;
   font-family:'DM Sans',sans-serif;text-align:left;
   transition:.15s;
 }
-.hmonth-header:hover{background:#f0f4f3}
+.hmonth-header:hover{background:var(--surface-hover2)}
 .hmonth-title{
   flex:1;min-width:0;
   font-size:13px;font-weight:700;
@@ -794,12 +930,12 @@ input[type=file]{display:none}
 }
 .hmonth-count{
   font-size:11px;font-weight:700;
-  color:var(--accent);background:var(--accent-light);
-  padding:2px 9px;border-radius:12px;
+  color:var(--accent-fg);background:var(--accent-light);
+  padding:2px 9px;border-radius:var(--radius-box);
   flex-shrink:0;
 }
 .hmonth-total{
-  font-size:12px;font-weight:700;color:var(--accent);
+  font-size:12px;font-weight:700;color:var(--accent-fg);
   flex-shrink:0;
   font-variant-numeric:tabular-nums;
 }
@@ -828,47 +964,59 @@ input[type=file]{display:none}
    SEGUIMIENTO COMERCIAL
 ═══════════════════════════════════════ */
 /* Badge 🔔 en la tarjeta del historial */
-.hbadge-followup{display:inline-block;font-size:10px;font-weight:700;padding:1px 8px;border-radius:8px;margin-left:6px;vertical-align:middle;background:#fef3c7;color:#92400e;animation:fuPulse 2s ease-in-out infinite}
+.hbadge-followup{display:inline-block;font-size:10px;font-weight:700;padding:1px 8px;border-radius:var(--radius-box);margin-left:6px;vertical-align:middle;background:#fef3c7;color:#92400e;animation:fuPulse 2s ease-in-out infinite}
 @keyframes fuPulse{0%,100%{opacity:1}50%{opacity:.6}}
 
 /* Banner de seguimientos pendientes (arriba del historial) */
-.followup-banner{background:linear-gradient(135deg,#fffbeb,#fef3c7);border:1px solid #fcd34d;border-radius:12px;padding:14px 16px;margin-bottom:14px}
+.followup-banner{background:linear-gradient(135deg,#fffbeb,#fef3c7);border:1px solid #fcd34d;border-radius:var(--radius-box);padding:14px 16px;margin-bottom:14px}
 .fub-head{display:flex;align-items:center;gap:8px}
 .fub-icon{font-size:18px}
 .fub-title{font-size:15px;font-weight:700;color:#92400e}
 .fub-sub{font-size:12.5px;color:#a16207;margin:4px 0 10px;line-height:1.45}
 .fub-list{display:flex;flex-direction:column;gap:8px}
-.fub-item{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#fff;border:1px solid #fde68a;border-radius:8px;padding:9px 11px}
-.fub-item-info{display:flex;flex-direction:column;gap:1px;min-width:0;flex:1}
-.fub-item-num{font-size:13px;font-weight:700;color:var(--accent)}
+.fub-item{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--card);border:1px solid #fde68a;border-radius:var(--radius-box);padding:9px 11px}
+.fub-item-info{display:flex;flex-direction:column;gap:1px;min-width:0;flex:1;cursor:pointer;border-radius:6px;padding:2px 5px;margin:-2px -5px;transition:background .15s}
+.fub-item-info:active{background:rgba(0,0,0,.06)}
+.fub-item-info .fub-item-num{text-decoration:underline;text-decoration-style:dotted;text-underline-offset:2px}
+.fub-item-num{font-size:13px;font-weight:700;color:var(--accent-fg)}
 .fub-item-client{font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fub-item-days{font-size:11px;color:#a16207;font-weight:600}
 .fub-item-acts{display:flex;align-items:center;gap:6px;flex-shrink:0}
-.fub-wa{font-size:12.5px;font-weight:700;color:#fff;background:#25d366;border:none;border-radius:7px;padding:8px 12px;text-decoration:none;white-space:nowrap}
+.fub-wa{font-size:12.5px;font-weight:700;color:#fff;background:#25d366;border:none;border-radius:var(--radius-field);padding:8px 12px;text-decoration:none;white-space:nowrap}
 .fub-wa:active{background:#1da851}
-.fub-done{font-size:14px;font-weight:700;color:#16a34a;background:#dcfce7;border:1px solid #86efac;border-radius:7px;width:36px;height:36px;cursor:pointer;flex-shrink:0}
+.fub-done{font-size:14px;font-weight:700;color:#16a34a;background:#dcfce7;border:1px solid #86efac;border-radius:var(--radius-field);width:36px;height:36px;cursor:pointer;flex-shrink:0}
 .fub-done:active{background:#bbf7d0}
 .fub-more{font-size:12px;color:#a16207;text-align:center;padding:4px;font-style:italic}
 
+/* Badge ⌛ de presupuesto vencido en la tarjeta del historial */
+.hbadge-expired{display:inline-block;font-size:10px;font-weight:700;padding:1px 8px;border-radius:var(--radius-box);margin-left:6px;vertical-align:middle;background:#fee2e2;color:#991b1b}
+/* Banner de presupuestos vencidos (reusa la estructura .fub-*, en rojo) */
+.expiry-banner{background:linear-gradient(135deg,#fef2f2,#fee2e2);border:1px solid #fca5a5;border-radius:var(--radius-box);padding:14px 16px;margin-bottom:14px}
+.expiry-banner .fub-title{color:#991b1b}
+.expiry-banner .fub-sub,.expiry-banner .fub-item-days,.expiry-banner .fub-more{color:#b91c1c}
+.expiry-banner .fub-item{border-color:#fecaca}
+
 /* Panel de configuración de seguimiento (pestaña Empresa) */
-.fu-config{margin-top:18px;padding:16px;background:var(--bg);border:1px solid var(--border);border-radius:12px}
+.fu-config{margin-top:18px;padding:16px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-box)}
 .fu-config-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .fu-help{font-size:12.5px;color:var(--muted);line-height:1.5;margin:8px 0 14px}
 .fu-vars{display:block;font-size:11.5px;color:var(--muted);margin-top:5px}
-.fu-vars code{background:var(--accent-light);color:var(--accent);padding:1px 5px;border-radius:4px;font-size:11px;margin-right:3px}
+.fu-vars code{background:var(--accent-light);color:var(--accent-fg);padding:1px 5px;border-radius:4px;font-size:11px;margin-right:3px}
 .fu-estados{display:flex;gap:16px;flex-wrap:wrap;margin-top:4px}
 .fu-chk{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--text);cursor:pointer}
-.fu-chk input{-webkit-appearance:none;appearance:none;width:22px;height:22px;min-width:22px;border:2px solid var(--border);border-radius:6px;background:#fff;cursor:pointer;position:relative;margin:0;transition:.15s}
-.fu-chk input:checked{background:var(--accent);border-color:var(--accent)}
+.fu-chk input{-webkit-appearance:none;appearance:none;width:22px;height:22px;min-width:22px;border:2px solid var(--border);border-radius:var(--radius-field);background:var(--card);cursor:pointer;position:relative;margin:0;transition:.15s}
+.fu-chk input:checked{background:var(--accent);border-color:var(--accent-fg)}
 .fu-chk input:checked::after{content:'';position:absolute;left:6px;top:2px;width:6px;height:11px;border:solid #fff;border-width:0 2.5px 2.5px 0;transform:rotate(45deg)}
 
 /* Switch on/off */
 .fu-switch{position:relative;display:inline-block;width:48px;height:28px;flex-shrink:0}
 .fu-switch input{opacity:0;width:0;height:0}
-.fu-slider{position:absolute;inset:0;background:#cbd5e1;border-radius:28px;transition:.2s;cursor:pointer}
-.fu-slider::before{content:'';position:absolute;height:22px;width:22px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.2s}
+.fu-slider{position:absolute;inset:0;background:var(--toggle-off);border-radius:28px;transition:background .25s cubic-bezier(.4,0,.2,1);cursor:pointer;box-shadow:inset 0 1px 2px rgba(0,0,0,.10)}
+.fu-slider::before{content:'';position:absolute;height:22px;width:22px;left:3px;bottom:3px;background:var(--card);border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,.28),0 1px 4px rgba(0,0,0,.10);transition:transform .28s cubic-bezier(.34,1.3,.64,1)}
 .fu-switch input:checked + .fu-slider{background:var(--accent)}
 .fu-switch input:checked + .fu-slider::before{transform:translateX(20px)}
+.fu-slider:hover{filter:brightness(.96)}
+.fu-switch input:focus-visible + .fu-slider{box-shadow:inset 0 1px 2px rgba(0,0,0,.10),0 0 0 3px rgba(var(--accent-rgb),.28)}
 #fu-options{transition:opacity .2s}
 
 /* Subtítulo de sección con botón de acción a la derecha */
@@ -877,11 +1025,92 @@ input[type=file]{display:none}
 
 /* Vista previa de foto en el ítem del editor */
 .item-photo-preview{position:relative;margin-top:8px;display:inline-block}
-.item-photo-preview img{max-width:140px;max-height:140px;border-radius:8px;border:1px solid var(--border);display:block;object-fit:cover}
+.item-photo-preview img{max-width:140px;max-height:140px;border-radius:var(--radius-box);border:1px solid var(--border);display:block;object-fit:cover;cursor:zoom-in}
 .item-photo-remove{position:absolute;top:-8px;right:-8px;width:24px;height:24px;border-radius:50%;background:var(--red);color:#fff;border:2px solid #fff;font-size:12px;font-weight:700;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,.2)}
 /* Placeholder cuando la foto vive en otro dispositivo (ID sin caché local) */
-.item-photo-missing{width:140px;min-height:90px;padding:12px 10px;border-radius:8px;border:1px dashed var(--border);background:var(--bg-soft,#f6f7f9);color:var(--muted);font-size:11px;text-align:center;display:flex;flex-direction:column;justify-content:center;gap:4px}
+.item-photo-missing{width:140px;min-height:90px;padding:12px 10px;border-radius:var(--radius-box);border:1px dashed var(--border);background:var(--surface);color:var(--muted);font-size:11px;text-align:center;display:flex;flex-direction:column;justify-content:center;gap:4px}
 .item-photo-missing span{font-size:10px;opacity:.8}
+/* Visor de foto a pantalla completa (tocar la miniatura de un ítem) */
+#photo-viewer-overlay{display:none;position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(0,0,0,.92);z-index:2100;align-items:center;justify-content:center;padding:16px}
+#photo-viewer-overlay.open{display:flex}
+#photo-viewer-overlay img{max-width:100%;max-height:100%;border-radius:var(--radius-box);object-fit:contain;cursor:zoom-out}
+#photo-viewer-close{position:absolute;top:14px;right:16px;width:42px;height:42px;border-radius:50%;background:rgba(255,255,255,.16);color:#fff;border:none;font-size:22px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center}
+
+/* ═══ ELEVACIÓN DE CARDS ════════════════════════════════════════════
+   Sombra sutil + leve "levantada" en hover para las cards principales,
+   dándoles el look flotante y limpio de daisyUI sin recargar la UI.    */
+.icard,.hitem,.svc-row,#totals-bar,.hmonth,.client-card{box-shadow:var(--shadow-card)}
+.icard,.hmonth{transition:box-shadow .15s,border-color .15s,background .15s,transform .15s}
+.icard:hover,.hmonth:hover{box-shadow:var(--shadow-card-hover)}
+/* La card arrastrándose no debe "flotar" (se ve raro con opacity). */
+.icard.dragging{box-shadow:none}
+
+/* ═══ AJUSTES PARA MODO OSCURO ══════════════════════════════════════
+   Solo lo que no se resuelve con variables: cajas semánticas tintadas
+   (ámbar/seguimiento), badges y bordes claros sueltos. La idea es que
+   sigan leyéndose como "notas" pero sin quemar la vista en oscuro.    */
+:root[data-theme="dark"] .alert-info{color:#93c5fd}
+:root[data-theme="dark"] .alert-success{color:#6ee7b7}
+:root[data-theme="dark"] .alert-warning{color:#fcd34d}
+:root[data-theme="dark"] .alert-error{color:#fca5a5}
+
+/* Botón "borrar" con tinte rojo adaptativo */
+:root[data-theme="dark"] .btn-d{border-color:rgba(248,113,113,.4)}
+:root[data-theme="dark"] .btn-icon-del:hover,
+:root[data-theme="dark"] .btn-icon-del:active{background:rgba(248,113,113,.18);color:#fca5a5}
+
+/* Panel de recargo (ámbar) → superficie cálida oscura */
+:root[data-theme="dark"] .surcharge-panel{background:linear-gradient(135deg,#2a2410,#332b12);border-color:#5c4a1c}
+:root[data-theme="dark"] .surcharge-header,
+:root[data-theme="dark"] .sp-label,
+:root[data-theme="dark"] .surcharge-pct,
+:root[data-theme="dark"] .surcharge-input,
+:root[data-theme="dark"] .sp-chevron{color:#fcd34d}
+:root[data-theme="dark"] .surcharge-body .sp-desc,
+:root[data-theme="dark"] .sp-clear-btn{color:#fde68a}
+:root[data-theme="dark"] .surcharge-input{background:#1f1b0c;border-color:#a16207}
+:root[data-theme="dark"] .sp-status{background:#4a3a12;color:#fde68a}
+:root[data-theme="dark"] .sp-clear-btn{border-color:#5c4a1c}
+:root[data-theme="dark"] .sp-clear-btn:hover{background:#3a3012}
+:root[data-theme="dark"] .adj-badge{background:#332b12;border-color:#5c4a1c;color:#fcd34d}
+
+/* Banner y filas de seguimiento (ámbar) */
+:root[data-theme="dark"] .followup-banner{background:linear-gradient(135deg,#2a2410,#332b12);border-color:#5c4a1c}
+:root[data-theme="dark"] .fub-title,
+:root[data-theme="dark"] .fub-item-days,
+:root[data-theme="dark"] .fub-sub,
+:root[data-theme="dark"] .fub-more{color:#fcd34d}
+:root[data-theme="dark"] .fub-item{background:#1f1b0c;border-color:#5c4a1c}
+:root[data-theme="dark"] .hbadge-followup{background:#4a3a12;color:#fcd34d}
+
+/* Banner y filas de presupuestos vencidos (rojo) */
+:root[data-theme="dark"] .expiry-banner{background:linear-gradient(135deg,#2a1212,#331616);border-color:#5c1c1c}
+:root[data-theme="dark"] .expiry-banner .fub-title,
+:root[data-theme="dark"] .expiry-banner .fub-item-days,
+:root[data-theme="dark"] .expiry-banner .fub-sub,
+:root[data-theme="dark"] .expiry-banner .fub-more{color:#fca5a5}
+:root[data-theme="dark"] .expiry-banner .fub-item{background:#1f0c0c;border-color:#5c1c1c}
+:root[data-theme="dark"] .hbadge-expired{background:rgba(239,68,68,.18);color:#fca5a5}
+
+/* Badges y chips claros → tintes oscuros translúcidos */
+:root[data-theme="dark"] .ib-tree{background:rgba(34,197,94,.18);color:#86efac}
+:root[data-theme="dark"] .ib-svc{background:rgba(59,130,246,.18);color:#93c5fd}
+:root[data-theme="dark"] .ib-note{background:rgba(217,119,6,.20);color:#fcd34d}
+:root[data-theme="dark"] .ib-fixed{background:rgba(139,92,246,.20);color:#c4b5fd}
+:root[data-theme="dark"] .hbadge-est{background:rgba(16,185,129,.18);color:#6ee7b7}
+:root[data-theme="dark"] .svc-row.is-pinned{background:rgba(217,119,6,.10);border-color:#5c4a1c}
+:root[data-theme="dark"] .svc-row.is-pinned .svc-name{color:#fde68a}
+
+/* Detalles que quedan demasiado claros con literales */
+:root[data-theme="dark"] .phrase-btn{background:var(--accent-tint);border-color:rgba(79,201,158,.35)}
+:root[data-theme="dark"] .lu-area{background:var(--surface)}
+
+/* ═══ SELECTOR DE TEMA (claro/oscuro/auto) en Empresa ═══ */
+.theme-mode{display:flex;gap:0;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-field);padding:3px;margin-bottom:6px;max-width:320px}
+.theme-mode-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:8px 6px;border:none;background:transparent;color:var(--muted);cursor:pointer;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;border-radius:6px;transition:.15s}
+.theme-mode-btn.active{background:var(--card);color:var(--accent-fg);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.theme-mode-btn:hover:not(.active){background:rgba(0,0,0,.04)}
+:root[data-theme="dark"] .theme-mode-btn:hover:not(.active){background:rgba(255,255,255,.05)}
 
 /* ===== css/print.css ===== */
 /* ═══════════════════════════════════════
@@ -911,6 +1140,8 @@ input[type=file]{display:none}
   #app,
   #moverlay,
   #confirm-overlay,
+  #share-overlay,
+  #photo-viewer-overlay,
   #phrases-overlay,
   #sticky-totals,
   #toast-container{display:none!important}
@@ -1088,6 +1319,11 @@ input[type=file]{display:none}
   .pdisc-note{font-size:var(--fs-micro);color:var(--c-muted-2);font-style:italic;margin-top:2px;max-width:240pt;text-align:right}
   .ptotal-box{padding:11px 16px;border-radius:var(--r-md);min-width:175pt;border:2pt solid currentColor}
   .ptotal-lbl{font-size:var(--fs-micro);font-weight:700;text-transform:uppercase;letter-spacing:var(--ls-label);opacity:.7;margin-bottom:2px}
+  /* Total prominente y claro a propósito: la evidencia de que achicar el
+     número baja la magnitud percibida es débil y no replicada (Coulter 2005),
+     y trabajo posterior recomienda lo contrario (Yan et al. 2022). La palanca
+     real es el contexto de valor (plan de trabajo / justificación), no el
+     tamaño del número. */
   .ptotal-amt{font-family:'DM Serif Display',serif;font-size:26pt;line-height:1}
 
   /* ──────────────────────────────────────────────────────────────
@@ -1132,6 +1368,19 @@ input[type=file]{display:none}
   .pcrit-item{margin-bottom:0}
   .pcrit-s{font-size:var(--fs-small);font-weight:700;color:var(--c-text);display:block;margin-bottom:1px}
   .pcrit-p{font-size:var(--fs-micro);color:var(--c-muted);line-height:1.5;display:block}
+
+  /* ──────────────────────────────────────────────────────────────
+     PLAN DE TRABAJO / LO QUE INCLUYE — sección de VALOR que se muestra
+     antes del precio. Encuadra el importe como inversión justificada por
+     el trabajo (framing de valor + anclaje): el cliente lee primero lo que
+     recibe y recién después el número. Bullets editables por presupuesto.
+     ────────────────────────────────────────────────────────────── */
+  .pplan{padding:14px var(--page-x) 0}
+  .pplan-t{font-size:var(--fs-h3);font-weight:700;text-transform:uppercase;letter-spacing:var(--ls-label);color:var(--c-muted);margin-bottom:8px}
+  .pplan-box{padding:13px 16px;background:var(--c-bg-soft);border-radius:var(--r-md);border-left:3pt solid currentColor}
+  .pplan-list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:8px 22px}
+  .pplan-list li{font-size:var(--fs-small);color:var(--c-text-2);line-height:1.5;padding-left:17px;position:relative}
+  .pplan-list li::before{content:'';position:absolute;left:0;top:.42em;width:7px;height:7px;border-radius:2px;background:currentColor;opacity:.55}
 
   /* ──────────────────────────────────────────────────────────────
      FIRMAS — más respiración, anti-corte
@@ -1213,8 +1462,8 @@ input[type=file]{display:none}
 .fact-card-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:6px}
 .fact-card-val{font-size:18px;font-weight:700;color:var(--text)}
 .fact-card-sub{font-size:11px;color:var(--muted);margin-top:2px}
-.fact-card.highlight{border-color:var(--accent);background:#f0fdf4}
-.fact-card.highlight .fact-card-val{color:var(--accent)}
+.fact-card.highlight{border-color:var(--accent-fg);background:#f0fdf4}
+.fact-card.highlight .fact-card-val{color:var(--accent-fg)}
 
 .fact-alert{border-radius:8px;padding:11px 14px;margin-bottom:14px;font-size:12px;font-weight:500;display:flex;align-items:center;gap:8px}
 .fact-alert.ok{background:#d1fae5;color:#065f46;border:1px solid #6ee7b7}
@@ -1223,13 +1472,13 @@ input[type=file]{display:none}
 
 .fact-tope-row{display:flex;align-items:center;gap:10px;background:#f8faf9;border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:14px}
 .fact-tope-row input{flex:1;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:#fff;outline:none;-webkit-appearance:none;appearance:none}
-.fact-tope-row input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(var(--accent-rgb),.1)}
+.fact-tope-row input:focus{border-color:var(--accent-fg);box-shadow:0 0 0 3px rgba(var(--accent-rgb),.1)}
 .fact-tope-row label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;white-space:nowrap}
 
 .fact-reg-list{margin-bottom:12px}
 .fact-reg-item{background:#f8faf9;border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:7px;display:flex;align-items:center;gap:10px}
 .fact-reg-info{flex:1;min-width:0}
-.fact-reg-date{font-size:11px;font-weight:700;color:var(--accent)}
+.fact-reg-date{font-size:11px;font-weight:700;color:var(--accent-fg)}
 .fact-reg-client{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fact-reg-meta{font-size:11px;color:var(--muted)}
 .fact-reg-amt{font-size:14px;font-weight:700;color:var(--text);white-space:nowrap}
@@ -1247,7 +1496,7 @@ input[type=file]{display:none}
 .fact-ai-result.show{display:block}
 .fact-ai-loading{display:none;align-items:center;gap:8px;font-size:12px;color:var(--muted);margin-top:8px}
 .fact-ai-loading.show{display:flex}
-.fact-spinner{width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
+.fact-spinner{width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--accent-fg);border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 
 @media(max-width:600px){
@@ -1542,6 +1791,110 @@ input[type=file]{display:none}
 }
 .pdoc.pdoc-theme-minimalista .ph-name,
 .pdoc.pdoc-theme-minimalista .ph-badge-num { font-family: system-ui,-apple-system,Arial,sans-serif; }
+
+/* Tema: Lateral — banda de color a la izquierda del encabezado (look de       */
+/* estudio/consultora). El header repetido por página mantiene la banda.       */
+.pdoc.pdoc-theme-lateral {
+  --c-bg-soft:      #f5f7fa;
+  --c-zebra:        #fafbfc;
+  --c-divider-soft: #dde3ea;
+}
+.pdoc.pdoc-theme-lateral .ph {
+  align-items: stretch;
+  gap: 0;
+  padding-left: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+.pdoc.pdoc-theme-lateral .ph-band {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 70px;
+  padding: 14px 12px;
+  margin-right: 16px;
+}
+.pdoc.pdoc-theme-lateral .ph-band-initial {
+  font-family: 'DM Serif Display', serif;
+  font-size: 24pt;
+  line-height: 1;
+  color: #fff;
+}
+.pdoc.pdoc-theme-lateral .ph-band-logo {
+  max-height: 46px;
+  max-width: 64px;
+  object-fit: contain;
+  background: #fff;
+  padding: 4px;
+  border-radius: 4px;
+}
+.pdoc.pdoc-theme-lateral .ph-co { padding: 16px 0; }
+
+/* Tema: Técnico — austero tipo informe de ingeniería. Sin serif, números      */
+/* tabulares, reglas marcadas, esquinas rectas, títulos en versalitas.         */
+.pdoc.pdoc-theme-tecnico {
+  --c-bg-soft:      #eef1f4;
+  --c-zebra:        #f6f8fa;
+  --c-divider:      #9aa3ad;
+  --c-divider-soft: #cdd3da;
+  --r-sm:           0pt;
+  --r-md:           0pt;
+  font-family: 'DM Sans', system-ui, Arial, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+.pdoc.pdoc-theme-tecnico .ph { border-bottom: 2pt solid var(--c-divider); }
+.pdoc.pdoc-theme-tecnico .ph-name,
+.pdoc.pdoc-theme-tecnico .ph-badge-num,
+.pdoc.pdoc-theme-tecnico .ptotal-amt {
+  font-family: 'DM Sans', system-ui, Arial, sans-serif;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.pdoc.pdoc-theme-tecnico .psec-t {
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+.pdoc.pdoc-theme-tecnico .ptitle { font-family: 'DM Sans', system-ui, Arial, sans-serif; font-weight: 700; }
+
+/* Tema: Elegante — refinado, serif, líneas finas doradas, mucho aire. Para     */
+/* clientes premium. Paleta neutra (a diferencia del Cálido, que es tierra).    */
+.pdoc.pdoc-theme-elegante {
+  --c-bg-soft:      #faf9f7;
+  --c-zebra:        #fcfbfa;
+  --c-divider:      #c9b99a;
+  --c-divider-soft: #e7e0d2;
+  --c-muted:        #6b6358;
+  --c-muted-2:      #9a9081;
+  font-family: Georgia, 'Times New Roman', serif;
+}
+.pdoc.pdoc-theme-elegante .ph { border-top-width: 1pt; border-bottom: 1pt solid var(--c-divider); }
+.pdoc.pdoc-theme-elegante .ph-name,
+.pdoc.pdoc-theme-elegante .ph-badge-num,
+.pdoc.pdoc-theme-elegante .ptotal-amt,
+.pdoc.pdoc-theme-elegante .ptitle,
+.pdoc.pdoc-theme-elegante .psec-t { font-family: 'DM Serif Display', Georgia, serif; }
+.pdoc.pdoc-theme-elegante .psec-t { font-weight: 400; letter-spacing: .01em; }
+.pdoc.pdoc-theme-elegante .ph-sub,
+.pdoc.pdoc-theme-elegante .ph-contact { font-family: Georgia, 'Times New Roman', serif; font-style: italic; }
+.pdoc.pdoc-theme-elegante .ph-badge-num { font-size: calc(var(--fs-h2) + 4pt); }
+
+/* Modificador: Compacto — ORTOGONAL al tema. Densifica fuentes y paddings para */
+/* que los presupuestos con muchos ítems entren en menos páginas. Se combina    */
+/* con cualquier diseño (clase extra pdoc-compact sobre la misma tabla).        */
+.pdoc.pdoc-compact {
+  --fs-micro:  7pt;
+  --fs-small:  9pt;
+  --fs-body:   10pt;
+  --fs-h3:     8.5pt;
+  --fs-h2:     11pt;
+  --page-x:    14mm;
+}
+.pdoc.pdoc-compact .ph { padding-top: 10px; padding-bottom: 8px; }
+.pdoc.pdoc-compact .psec { padding-top: 9px; }
+.pdoc.pdoc-compact .ptable tbody td { padding-top: 5px; padding-bottom: 5px; }
+.pdoc.pdoc-compact .ptotals { padding-top: 8px; padding-bottom: 8px; }
+.pdoc.pdoc-compact .ptotal-amt { font-size: 20pt; }
+.pdoc.pdoc-compact .ptitle { font-size: 12pt; margin-bottom: 8px; }
 </style>
 
 
@@ -1605,7 +1958,7 @@ input[type=file]{display:none}
 
         <div class="st">Identificación</div>
         <div class="r4">
-          <div class="fg"><label>N° Presupuesto</label><input type="text" id="quote-number" readonly style="color:var(--accent);font-weight:700"></div>
+          <div class="fg"><label>N° Presupuesto</label><input type="text" id="quote-number" readonly style="color:var(--accent-fg);font-weight:700"></div>
           <div class="fg"><label>Fecha de emisión</label><input type="date" id="date-issue" oninput="onDateChange()"></div>
           <div class="fg" id="expiry-fg">
             <label class="expiry-label">
@@ -1877,6 +2230,13 @@ input[type=file]{display:none}
         </div>
 
         <div class="st">Opciones del documento</div>
+        <div class="trow"><span class="tlabel">Mostrar plan de trabajo</span><label class="tgl"><input type="checkbox" id="show-work-plan" checked><span class="tgl-sl"></span></label></div>
+        <div class="trow"><span class="tlabel">Plan de trabajo a medida <span style="font-weight:400;color:var(--muted)">(solo este presupuesto)</span></span><label class="tgl"><input type="checkbox" id="wp-override" onchange="toggleWorkPlanOverride()"><span class="tgl-sl"></span></label></div>
+        <div id="wp-override-box" class="fg" style="display:none;margin:4px 0 6px">
+          <input type="text" id="wp-custom-title" placeholder="Título (ej. Plan de Trabajo)" style="margin-bottom:6px">
+          <div id="wp-custom-list" class="linelist"></div>
+          <div class="hint">Reemplaza el plan de trabajo <strong>solo en este presupuesto</strong>. El plan por defecto (Empresa → Textos del PDF) no se modifica. Al crear un presupuesto nuevo vuelve a usarse el default.</div>
+        </div>
         <div class="trow"><span class="tlabel">Mostrar criterios de costeo</span><label class="tgl"><input type="checkbox" id="show-criteria" checked><span class="tgl-sl"></span></label></div>
         <div class="trow"><span class="tlabel">Mostrar firma del titular</span><label class="tgl"><input type="checkbox" id="show-sig-owner" checked><span class="tgl-sl"></span></label></div>
         <div class="trow"><span class="tlabel">Mostrar firma del cliente</span><label class="tgl"><input type="checkbox" id="show-sig-client"><span class="tgl-sl"></span></label></div>
@@ -1900,8 +2260,8 @@ input[type=file]{display:none}
 
         <!-- HINT antes de las acciones: el usuario lee la lógica
              ANTES de tomar la decisión, no después. -->
-        <div class="actions-hint">
-          <span>💡</span>
+        <div class="alert alert-info" style="margin-bottom:10px">
+          <span class="alert-ico">💡</span>
           <span>El presupuesto se guarda automáticamente al imprimir o al crear uno nuevo.</span>
         </div>
 
@@ -1984,11 +2344,31 @@ input[type=file]{display:none}
                 </div>
               </div>
               <div class="fg">
+                <label class="fu-chk" style="font-weight:600">
+                  <input type="checkbox" id="fu-expiry-enabled" onchange="saveFollowupFromUI()">
+                  Avisarme también cuando un presupuesto enviado se venza
+                </label>
+                <span class="fu-vars">Usa la fecha de vencimiento de cada presupuesto (emisión + días de validez).</span>
+              </div>
+              <div class="fg">
                 <label>Mensaje de seguimiento (editable)</label>
                 <textarea id="fu-template" rows="4" onchange="saveFollowupFromUI()" oninput="saveFollowupFromUI()"></textarea>
                 <span class="fu-vars">Variables: <code>{cliente}</code> <code>{numero}</code> <code>{empresa}</code></span>
               </div>
             </div>
+          </div>
+
+          <!-- ── NOTIFICACIONES PUSH ── -->
+          <!-- Oculta hasta que esté configurado el Worker (initPush). -->
+          <div class="fu-config" id="push-section" style="display:none">
+            <div class="fu-config-head">
+              <span class="st" style="margin:0;border:none;padding:0">📲 Avisos con la app cerrada</span>
+              <label class="fu-switch">
+                <input type="checkbox" id="push-enabled" onchange="onPushToggle(this.checked)">
+                <span class="fu-slider"></span>
+              </label>
+            </div>
+            <p class="fu-help">Te llega una notificación al teléfono cuando un presupuesto llega al día de seguimiento o se vence, aunque la app esté cerrada. Usa los mismos avisos del sistema de seguimiento de arriba.</p>
           </div>
 
           <!-- ── MENSAJE DE ENVÍO POR WHATSAPP ── -->
@@ -2020,7 +2400,11 @@ input[type=file]{display:none}
 
         <!-- ── SUB-TAB TEXTOS DEL PDF ── -->
         <div id="subpanel-textos" class="subpanel">
-          <div class="st">Visibilidad en el documento</div>
+          <div class="st">Orden de las secciones del PDF</div>
+          <p class="hint" style="margin-bottom:10px">Reordená con las flechas cómo aparecen las secciones del presupuesto normal. El encabezado y los datos del cliente van siempre arriba; las fotos, firmas y el pie quedan al final.</p>
+          <div id="doc-section-order" class="sord-list"></div>
+
+          <div class="st" style="margin-top:24px">Visibilidad en el documento</div>
           <div class="trow"><span class="tlabel">Mostrar notas técnicas adicionales</span><label class="tgl"><input type="checkbox" id="show-tech-notes" checked><span class="tgl-sl"></span></label></div>
           <div class="trow"><span class="tlabel">Mostrar pie de página</span><label class="tgl"><input type="checkbox" id="show-footer" checked><span class="tgl-sl"></span></label></div>
 
@@ -2048,17 +2432,27 @@ input[type=file]{display:none}
           <div class="fg"><label>Disclaimer servicios con costo fijo</label>
             <textarea id="doc-disclaimer-svc" rows="3"></textarea></div>
 
-          <div class="fg"><label>Criterios de costeo (uno por línea)</label>
-            <textarea id="doc-criteria" rows="5"></textarea>
-            <div class="hint">Cada línea aparece como un ítem en la grilla de criterios del PDF.</div></div>
+          <div class="st" style="margin-top:24px">Sección "Plan de trabajo" — lo que incluye</div>
+          <p class="hint" style="margin-bottom:14px">Lista de beneficios y tareas incluidas. En el PDF aparece <strong>debajo de los detalles del trabajo</strong> y sirve para mostrar el valor del trabajo, no solo el número. Se prende o apaga con el toggle <em>"Mostrar plan de trabajo"</em>.</p>
 
-          <div class="fg"><label>Título de la sección de criterios</label>
-            <input type="text" id="doc-criteria-title" placeholder="Cómo Trabajamos">
-            <div class="hint">Encabezado visible en el PDF sobre la sección de criterios.</div></div>
+          <div class="fg"><label>Título de la sección</label>
+            <input type="text" id="doc-work-plan-title" placeholder="Plan de Trabajo"></div>
 
-          <div class="fg"><label>Introducción de la sección de criterios</label>
-            <input type="text" id="doc-criteria-intro" placeholder="Cada trabajo es evaluado en función de sus condiciones reales...">
-            <div class="hint">Texto que aparece antes de la lista de criterios en el PDF.</div></div>
+          <div class="fg"><label>Contenido — un beneficio o tarea por ítem</label>
+            <div id="doc-work-plan-list" class="linelist"></div></div>
+
+          <div class="st" style="margin-top:24px">Sección "Cómo trabajamos" — criterios de costeo</div>
+          <p class="hint" style="margin-bottom:14px">Explica <strong>por qué el costo varía</strong> según cada trabajo (altura, acceso, riesgos, especie…). Aparece más abajo en el PDF. Se prende o apaga con el toggle <em>"Mostrar criterios de costeo"</em>.</p>
+
+          <div class="fg"><label>Título de la sección</label>
+            <input type="text" id="doc-criteria-title" placeholder="Cómo Trabajamos"></div>
+
+          <div class="fg"><label>Introducción — texto antes de la lista</label>
+            <input type="text" id="doc-criteria-intro" placeholder="Cada trabajo es evaluado en función de sus condiciones reales..."></div>
+
+          <div class="fg"><label>Criterios — uno por ítem</label>
+            <div id="doc-criteria-list" class="linelist"></div>
+            <div class="hint">Opcional: poné un subtítulo con <code>Subtítulo | descripción</code> (ej. <em>Altura y Acceso | Evaluamos el ingreso…</em>). Sin la barra, el ítem va como texto simple.</div></div>
 
           <div class="fg"><label>Etiqueta del descuento en el PDF</label>
             <input type="text" id="doc-discount-label" placeholder="Bonificación por trabajos combinados">
@@ -2121,6 +2515,14 @@ input[type=file]{display:none}
 
       <!-- ══ TAB ESTILO ══ -->
       <div id="panel-estilo" class="tab-panel">
+        <div class="st">Apariencia de la app</div>
+        <div class="theme-mode" id="theme-mode" role="group" aria-label="Tema de la aplicación">
+          <button type="button" class="theme-mode-btn" data-mode="auto" onclick="setThemeMode('auto')">🌗 Auto</button>
+          <button type="button" class="theme-mode-btn" data-mode="light" onclick="setThemeMode('light')">☀️ Claro</button>
+          <button type="button" class="theme-mode-btn" data-mode="dark" onclick="setThemeMode('dark')">🌙 Oscuro</button>
+        </div>
+        <p class="hint" style="margin-bottom:16px">Cambia el tema de la pantalla. «Auto» sigue el modo del teléfono. No afecta al PDF, que siempre se imprime en claro.</p>
+
         <div class="st">Color del documento</div>
         <div class="cpresets" id="color-presets">
           <div class="cpreset active" data-color="#064e3b" style="background:#064e3b" title="Verde oscuro" onclick="selectColor(this)"></div>
@@ -2131,11 +2533,23 @@ input[type=file]{display:none}
           <div class="cpreset" data-color="#164e63" style="background:#164e63" title="Cian oscuro" onclick="selectColor(this)"></div>
           <div class="cpreset" data-color="#1c1917" style="background:#1c1917" title="Negro" onclick="selectColor(this)"></div>
           <div class="cpreset" data-color="#0369a1" style="background:#0369a1" title="Azul" onclick="selectColor(this)"></div>
+          <div class="cpreset cpreset-add" id="cpreset-add" title="Guardar el color actual" onclick="addCurrentColor()">+</div>
         </div>
-        <div class="cprow">
-          <input type="color" id="color-picker" value="#064e3b" oninput="applyColor(this.value)">
-          <span style="font-size:13px;color:var(--muted)">Color personalizado</span>
-          <code id="color-hex" style="font-size:12px;background:#f1f5f4;padding:3px 8px;border-radius:4px">#064e3b</code>
+        <p class="cpk-hint" style="margin-bottom:14px">Tocá <b>+</b> para guardar el color actual en la selección rápida. Mantené presionado un color tuyo para quitarlo.</p>
+        <p class="cpk-hint">Color personalizado: arrastrá en el cuadro para elegir el tono y el brillo, o escribí el código.</p>
+        <div class="cpicker" id="cpicker">
+          <div class="cpk-sv" id="cpk-sv">
+            <div class="cpk-sv-white"></div>
+            <div class="cpk-sv-black"></div>
+            <div class="cpk-sv-dot" id="cpk-sv-dot"></div>
+          </div>
+          <div class="cpk-hue" id="cpk-hue">
+            <div class="cpk-hue-thumb" id="cpk-hue-thumb"></div>
+          </div>
+          <div class="cpk-foot">
+            <div class="cpk-preview" id="cpk-preview"></div>
+            <input type="text" id="cpk-hex" class="cpk-hex" maxlength="7" inputmode="latin" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Código de color hexadecimal">
+          </div>
         </div>
 
         <div class="st">Diseño del documento</div>
@@ -2172,15 +2586,43 @@ input[type=file]{display:none}
             </div>
             <span class="tpreset-label">Minimalista</span>
           </button>
+          <button class="tpreset" data-theme="lateral" onclick="applyPdfTheme('lateral')">
+            <div class="tpreset-swatch" style="display:flex;padding:0">
+              <div style="width:32%;background:var(--accent)"></div>
+              <div style="flex:1;padding:5px 5px">
+                <div style="height:7px;background:var(--border);border-radius:1px;margin-bottom:3px"></div>
+                <div style="height:4px;background:#e5e7eb;border-radius:1px;width:70%"></div>
+              </div>
+            </div>
+            <span class="tpreset-label">Lateral</span>
+          </button>
+          <button class="tpreset" data-theme="tecnico" onclick="applyPdfTheme('tecnico')">
+            <div class="tpreset-swatch" style="border-bottom:2px solid #475569">
+              <div style="margin:5px 5px 2px;height:7px;background:#cbd5e1;border-radius:0"></div>
+              <div style="margin:2px 5px;height:4px;background:#e2e8f0;border-radius:0"></div>
+              <div style="margin:2px 5px;height:4px;background:#e2e8f0;border-radius:0;width:55%"></div>
+            </div>
+            <span class="tpreset-label">Técnico</span>
+          </button>
+          <button class="tpreset" data-theme="elegante" onclick="applyPdfTheme('elegante')">
+            <div class="tpreset-swatch" style="border-top:1px solid #c9b99a;background:#faf9f7">
+              <div style="margin:5px 6px 3px;height:8px;background:#d8cdb6;border-radius:1px;width:58%"></div>
+              <div style="margin:3px 6px;height:4px;background:#e7e0d2;border-radius:1px"></div>
+              <div style="margin:3px 6px;height:4px;background:#e7e0d2;border-radius:1px;width:65%"></div>
+            </div>
+            <span class="tpreset-label">Elegante</span>
+          </button>
         </div>
-        <p class="hint" style="margin-bottom:16px">El diseño afecta la presentación del documento impreso/PDF.</p>
+        <p class="hint" style="margin-bottom:10px">El diseño afecta la presentación del documento impreso/PDF.</p>
+        <div class="trow"><span class="tlabel">Modo compacto <span style="color:var(--muted);font-weight:400">· densifica para aprovechar el papel (muchos ítems)</span></span><label class="tgl"><input type="checkbox" id="pdf-compact" onchange="applyPdfCompact(this.checked)"><span class="tgl-sl"></span></label></div>
+        <p class="hint" style="margin-bottom:16px">Se puede combinar con cualquier diseño.</p>
 
         <div class="st">Numeración</div>
         <div class="r2">
           <div class="fg"><label>Prefijo</label><input type="text" id="num-prefix" value="2026-" oninput="updateNumPreview()"></div>
           <div class="fg"><label>Próximo número</label><input type="number" id="num-next" value="1" min="1" inputmode="numeric" oninput="updateNumPreview()"></div>
         </div>
-        <div class="fg"><label>Vista previa</label><input type="text" id="num-preview" readonly style="color:var(--accent);font-weight:700"></div>
+        <div class="fg"><label>Vista previa</label><input type="text" id="num-preview" readonly style="color:var(--accent-fg);font-weight:700"></div>
         <button class="btn btn-p btn-sm" onclick="applyNumConfig()">Aplicar configuración de numeración</button>
 
         <div class="st">Validez</div>
@@ -2194,6 +2636,7 @@ input[type=file]{display:none}
       <!-- ══ TAB HISTORIAL ══ -->
       <div id="panel-historial" class="tab-panel">
         <div id="followup-banner" class="followup-banner" style="display:none"></div>
+        <div id="expiry-banner" class="expiry-banner" style="display:none"></div>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
           <div class="st" style="margin:0;border:none;padding:0">Presupuestos guardados <span id="hist-count" class="nbadge" style="margin-left:6px">0</span></div>
           <button class="btn btn-d btn-sm" onclick="clearHistory()">🗑 Limpiar todo</button>
@@ -2341,6 +2784,30 @@ input[type=file]{display:none}
   </div>
 </div>
 
+<!-- ════════════════════ BANDEJA DE FOTOS COMPARTIDAS ════════════════════
+     Web Share Target: se abre cuando el usuario comparte fotos a la app.
+     Por cada foto, elige el destino (árbol nuevo / ítem existente / descartar).
+     La lógica vive en js/items.js (processSharedPhotos/openShareTray). -->
+<div id="share-overlay" role="presentation">
+  <div id="share-box" role="dialog" aria-modal="true" aria-labelledby="share-title">
+    <h4 id="share-title">📷 Fotos compartidas</h4>
+    <p>Recibiste <strong id="share-tray-count">0</strong> foto(s). Elegí el destino de cada una:</p>
+    <div id="share-tray-list"></div>
+    <div class="cbtns">
+      <button class="btn btn-s" id="share-cancel" onclick="closeShareTray()">Cancelar</button>
+      <button class="btn btn-p" id="share-ok" onclick="confirmShareTray()">Agregar al presupuesto</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════ VISOR DE FOTO ════════════════════
+     Pantalla completa para revisar la foto de un ítem durante la edición.
+     Se abre al tocar la miniatura; se cierra tocando la imagen/fondo o ✕. -->
+<div id="photo-viewer-overlay" role="dialog" aria-modal="true" aria-label="Foto del ítem" onclick="closePhotoViewer()">
+  <button id="photo-viewer-close" type="button" aria-label="Cerrar" onclick="closePhotoViewer()">✕</button>
+  <img id="photo-viewer-img" src="" alt="Foto del ítem">
+</div>
+
 <!-- ════════════════════ PHRASES MODAL ════════════════════
      Biblioteca de frases reusables. Se abre desde un botón "📝 Frases"
      al lado de textareas (descripciones, observaciones, condiciones).
@@ -2418,7 +2885,15 @@ const LS = {
   GDRIVE_LAST:    'pq_gdrive_last',
   GDRIVE_EMAIL:   'pq_gdrive_email',
   PDF_THEME:      'pq_pdf_theme',
+  PUSH_DEVICE_ID: 'pq_push_device_id',
+  THEME:          'pq_theme',
 };
+
+// Notificaciones push (avisos de seguimiento con la app cerrada). Ambos se
+// rellenan a mano tras desplegar push-worker/ (ver docs/push-setup.md). Si
+// están vacíos, toda la función queda inerte y la sección no aparece en la UI.
+const PUSH_WORKER_URL = 'https://presupuesto-push.juliobarribolbo.workers.dev';
+const PUSH_VAPID_KEY  = 'BBlrB43TWc5wHAHPhY0kcMwt4g9f1tBejOZ5W5zWc6OU273X9DCvunkB4Cu9zkdXEWom3IRqPi7fxa9Au0vAWiE';
 
 const DEF = {
   _schemaVersion: APP_SCHEMA_VERSION,
@@ -2436,6 +2911,7 @@ const DEF = {
   scenarioLabelB: 'Opción B — Poda',
   itemsB: [],
   showCriteria:true, showSigOwner:true, showSigClient:false,
+  showWorkPlan:true,
   logo:'',
   coName:'',
   coOwner:'',
@@ -2443,7 +2919,7 @@ const DEF = {
   coCuit:'', coWhatsapp:'', coCity:'', coEmail:'',
   coTechNotes:'', coFooter:'',
   showTechNotes:true, showFooter:true,
-  accentColor:'#064e3b', pdfTheme:'clasico', validityDays:30, showExpiry:true,
+  accentColor:'#064e3b', pdfTheme:'clasico', pdfCompact:false, customColors:[], pushEnabled:false, validityDays:30, showExpiry:true,
   numPrefix:'2026-', numNext:1,
   // Estimative mode
   isEstimative: false,
@@ -2480,13 +2956,72 @@ const DEF = {
   docEstBanner:    'Presupuesto Estimativo — Basado en fotos y/o videos',
   docDisclaimer:   'Este presupuesto es estimativo y se basa en las fotos y/o videos enviados. El valor final puede ajustarse luego de una inspección presencial, ya que hay aspectos que solo pueden evaluarse en el lugar.',
   docDisclaimerSvc:'Los costos de servicios adicionales (camión, volquetes, etc.) son valores consultados con los proveedores al momento de la emisión de este presupuesto. En caso de demorar la confirmación de fecha, dichos valores serán consultados nuevamente antes de iniciar el trabajo.',
-  docCriteria:     'La altura del árbol y el acceso al sitio.\nEl volumen de material a extraer: ramas, troncos y restos vegetales.\nLa proximidad a estructuras sensibles: edificaciones, tendido eléctrico u otras instalaciones.\nLa especie, el estado fitosanitario y la complejidad estructural del árbol.',
+  // Formato "Subtítulo | descripción" por línea (el subtítulo es opcional).
+  // Alimenta la grilla "Cómo Trabajamos" del presupuesto normal y los factores
+  // del estimativo. Ver parseCriteria().
+  docCriteria:     'Altura y Acceso | Evaluamos las condiciones de ingreso al árbol y la zona de trabajo antes de operar.\nVolumen de Material | Planificamos el retiro ordenado para no comprometer el espacio ni la propiedad.\nRiesgos Presentes | Identificamos proximidad a edificaciones, cercos o instalaciones y aplicamos las medidas de seguridad correspondientes.\nEstado y Especie del Árbol | La especie y condición sanitaria del ejemplar determinan la técnica y el tiempo necesario.',
   docGreeting:     'Saludos,',
   docCriteriaTitle:  'Cómo Trabajamos',
   docCriteriaIntro:  'Cada trabajo es evaluado en función de sus condiciones reales. El costo refleja la complejidad técnica de cada situación:',
+  // Sección "Plan de Trabajo / Lo que incluye": va antes del precio y encuadra
+  // el importe como valor (qué recibe el cliente) en lugar de un gasto. Bullets
+  // editables, uno por línea. Sugeridos por defecto, el usuario ajusta/borra.
+  workPlanTitle:     'Plan de Trabajo',
+  workPlan:          'Trabajo realizado por personal capacitado en trepa y poda en altura.\nEquipo y herramientas profesionales (cuerdas, arnés, motosierra).\nCortes técnicos que cuidan la salud y la estructura del árbol.\nLimpieza y retiro ordenado de todo el material generado.\nMedidas de seguridad para personas, propiedad e instalaciones.',
+  // Override del plan de trabajo SOLO para el presupuesto actual (no toca el
+  // default global de arriba). Se activa con un toggle en el Editor. Útil para
+  // detallar cosas exclusivas de ese trabajo. Se resetea en cada presupuesto
+  // nuevo y viaja en el snapshot del historial.
+  workPlanOverride:     false,
+  workPlanCustom:       '',
+  workPlanCustomTitle:  '',
   docDiscountLabel:  'Bonificación por trabajos combinados',
   docDiscountNote:   'Al realizar los trabajos en la misma jornada se optimizan los tiempos de montaje y logística, beneficio que trasladamos al cliente.',
+  // Orden de las secciones del cuerpo del presupuesto normal (editable desde
+  // Empresa → Textos del PDF). El encabezado/cliente quedan arriba y las
+  // fotos/firmas/pie quedan al final; solo estas secciones intermedias se
+  // reordenan. Ver DOC_SECTIONS / sanitizeSectionOrder / buildDoc.
+  docSectionOrder: ['details','total','plan','criteria','observations','payment','validity','notes'],
 };
+
+// Secciones reordenables del cuerpo del presupuesto normal. El orden lo define
+// S.docSectionOrder; este array es la lista canónica (ids + etiqueta para la UI)
+// y el orden "de fábrica" si falta la preferencia del usuario.
+const DOC_SECTIONS = [
+  { id:'details',      label:'Detalles del trabajo (tabla)' },
+  { id:'total',        label:'Total del trabajo' },
+  { id:'plan',         label:'Plan de trabajo (lo que incluye)' },
+  { id:'criteria',     label:'Cómo trabajamos (criterios)' },
+  { id:'observations', label:'Observaciones' },
+  { id:'payment',      label:'Condiciones de pago' },
+  { id:'validity',     label:'Vigencia' },
+  { id:'notes',        label:'Notas adicionales' },
+];
+
+// Devuelve un orden válido: filtra ids desconocidos/duplicados y agrega las
+// secciones que falten JUNTO a su vecino canónico (la sección anterior en
+// DOC_SECTIONS), no al final. Así, si se suma una sección nueva (ej. el total
+// separado), aparece donde corresponde para quien ya tenía un orden guardado,
+// y nunca se pierde una sección aunque el orden venga viejo o corrupto.
+function sanitizeSectionOrder(order){
+  const ids = DOC_SECTIONS.map(s => s.id);
+  const seen = new Set();
+  const out = [];
+  (Array.isArray(order) ? order : []).forEach(id => {
+    if (ids.includes(id) && !seen.has(id)) { out.push(id); seen.add(id); }
+  });
+  DOC_SECTIONS.forEach((sec, idx) => {
+    if (seen.has(sec.id)) return;
+    let insertAt = out.length;
+    for (let k = idx - 1; k >= 0; k--) {
+      const p = out.indexOf(DOC_SECTIONS[k].id);
+      if (p >= 0) { insertAt = p + 1; break; }
+    }
+    out.splice(insertAt, 0, sec.id);
+    seen.add(sec.id);
+  });
+  return out;
+}
 
 // ─── ESTADOS COMERCIALES DEL PRESUPUESTO ─────────────────────
 // El estado vive a nivel del entry del historial (no del snapshot),
@@ -2559,6 +3094,18 @@ function moneyToCents(v) {
 function centsToMoney(cents) { return (Number.isFinite(cents) ? cents : 0) / 100; }
 function roundMoney(v) { return centsToMoney(moneyToCents(v)); }
 function fmtM(v,c){ return sym(c)+' '+roundMoney(v).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+// Formato de dinero para el DOCUMENTO del cliente (PDF/vista previa). Difiere
+// de fmtM en una sola cosa con respaldo sólido: va SIN centavos. En Argentina,
+// con inflación alta y montos de cientos de miles/millones, los centavos son
+// económicamente nulos y un total tipo "$284.999,76" se lee como generado por
+// máquina y resta confianza; "$285.000" es la norma. Además, más dígitos
+// inflan la magnitud percibida (Coulter, Choi & Monroe 2012).
+// El símbolo $ se deja a tamaño normal y claro a propósito: la idea de
+// achicarlo/superíndice (estudio de menús Cornell 2009) no está replicada y en
+// un presupuesto, donde el cliente necesita entender que es plata, achicarlo
+// puede leerse como evasivo. En la UI de edición se sigue usando fmtM (con
+// centavos) para no perder precisión.
+function fmtMDoc(v,c){ return sym(c)+' '+roundMoney(v).toLocaleString('es-AR',{maximumFractionDigits:0}); }
 
 // ─── CÁLCULO DE NIVEL DE RIESGO (matriz ISA Basic) ───────────────────────────
 // Probabilidad de falla × Probabilidad de impacto → Probabilidad de daño
@@ -2617,6 +3164,14 @@ function migrateState(raw) {
     next.itemsB = Array.isArray(next.itemsB) ? next.itemsB : [];
     next.estItems = Array.isArray(next.estItems) ? next.estItems : [];
   }
+  // Migración de "criterios de costeo" al formato editable "Subtítulo |
+  // descripción". Antes la grilla "Cómo Trabajamos" del presupuesto normal era
+  // texto fijo en el código y este campo (texto plano) se ignoraba ahí. Si el
+  // usuario nunca lo tocó (coincide exacto con el viejo default), lo llevamos
+  // al nuevo default para que conserve el look con subtítulos. Si lo
+  // personalizó, se respeta tal cual (parseCriteria maneja líneas sin "|").
+  const OLD_CRITERIA_DEFAULT = 'La altura del árbol y el acceso al sitio.\nEl volumen de material a extraer: ramas, troncos y restos vegetales.\nLa proximidad a estructuras sensibles: edificaciones, tendido eléctrico u otras instalaciones.\nLa especie, el estado fitosanitario y la complejidad estructural del árbol.';
+  if (next.docCriteria === OLD_CRITERIA_DEFAULT) next.docCriteria = DEF.docCriteria;
   next._schemaVersion = APP_SCHEMA_VERSION;
   return next;
 }
@@ -2880,6 +3435,7 @@ function _stickyShowVariant(which) {
 const FOLLOWUP_DEF = {
   enabled: true,        // sistema de seguimiento on/off
   days: 10,             // días tras el envío para recordar (editable)
+  expiryEnabled: true,  // avisar cuando un presupuesto enviado se vence
   estados: ['enviado'], // qué estados disparan recordatorio
   // Plantilla del mensaje de SEGUIMIENTO. Variables: {cliente} {numero} {empresa}
   waTemplate: 'Hola {cliente}, ¿cómo andás? Te escribo por el presupuesto que te pasé. No es para apurarte, sino para saber si te quedó alguna duda o si querés que repasemos algo del trabajo.',
@@ -2951,6 +3507,64 @@ function marcarSeguimientoHecho(id) {
   renderHistory();
   if (typeof renderFollowupBanner === 'function') renderFollowupBanner();
   toast('✓ Seguimiento registrado', 'ok');
+  // Ya no hay que recordar este: actualizar la lista en el Worker de push.
+  if (S.pushEnabled && typeof syncPushFollowups === 'function') syncPushFollowups().catch(() => {});
+}
+
+// Días transcurridos entre una fecha de CALENDARIO (YYYY-MM-DD) y hoy, en
+// días locales (tz-safe: compara partes de fecha, no instantes UTC). Positivo
+// si la fecha ya pasó. Sirve para vencimientos, que son fechas sin hora.
+function daysSinceDate(iso) {
+  if (!iso) return null;
+  const p = String(iso).split('-');
+  if (p.length !== 3) return null;
+  const then = Date.UTC(+p[0], +p[1] - 1, +p[2]);
+  const t = today().split('-');
+  const now = Date.UTC(+t[0], +t[1] - 1, +t[2]);
+  if (isNaN(then) || isNaN(now)) return null;
+  return Math.round((now - then) / 86400000);
+}
+
+// Devuelve los presupuestos ENVIADOS cuya fecha de vencimiento ya pasó.
+// Un presupuesto entra si:
+//   - el aviso de vencimiento está habilitado (cfg.expiryEnabled)
+//   - su estado está en la lista que dispara seguimiento (cfg.estados)
+//   - tiene fecha de envío (enviadoEn) → fue enviado al cliente
+//   - su snapshot tiene fecha de vencimiento (dateExpiry) ya pasada (< hoy)
+//   - no se marcó como visto el vencimiento (vencimientoVistoEn)
+function getExpiredQuotes() {
+  const cfg = getFollowupCfg();
+  if (!cfg.enabled || !cfg.expiryEnabled) return [];
+  const h = (typeof getH === 'function') ? getH() : [];
+  const out = [];
+  for (const e of h) {
+    const est = e.estado || 'borrador';
+    if (!cfg.estados.includes(est)) continue;
+    if (!e.enviadoEn) continue;
+    const exp = e.snapshot && e.snapshot.dateExpiry;
+    if (!exp) continue;
+    const d = daysSinceDate(exp);
+    if (d === null || d < 1) continue; // vence "hoy" todavía es válido
+    if (e.vencimientoVistoEn) continue;
+    out.push({ entry: e, dias: d });
+  }
+  // Más vencidos primero (más urgentes)
+  out.sort((a, b) => b.dias - a.dias);
+  return out;
+}
+
+// Marca que ya se vio el vencimiento de un presupuesto (deja de avisar).
+function marcarVencimientoVisto(id) {
+  const h = getH();
+  const e = h.find(x => x.id === id);
+  if (!e) return;
+  e.vencimientoVistoEn = new Date().toISOString();
+  setH(h);
+  renderHistory();
+  if (typeof renderExpiryBanner === 'function') renderExpiryBanner();
+  toast('✓ Listo, no te aviso más de este', 'ok');
+  // Ya no hay que avisar de este: actualizar la lista en el Worker de push.
+  if (S.pushEnabled && typeof syncPushFollowups === 'function') syncPushFollowups().catch(() => {});
 }
 
 // Construye el enlace wa.me con el mensaje predeterminado para un entry.
@@ -2999,6 +3613,182 @@ function normalizeArgPhone(raw) {
   // Si quedó un "15" después del área es difícil de detectar sin el área;
   // asumimos que el usuario cargó un celular válido. Anteponer 54 9.
   return '549' + d;
+}
+
+// ── PUSH NOTIFICATIONS ─────────────────────────────────────────────────────
+// Avisos de seguimiento que llegan al teléfono aunque la app esté cerrada.
+// El dispositivo se suscribe (Push API + VAPID) y manda al Worker su endpoint
+// + la lista de seguimientos con su fecha de vencimiento. El Worker corre un
+// cron diario y envía el push cuando vence alguno. La app sigue siendo
+// offline-first: los datos viven local; lo único que sale a la red es la
+// suscripción (y solo si hay señal). Inerte si PUSH_WORKER_URL está vacío.
+
+// ID estable por dispositivo (clave del registro en el KV del Worker).
+function _pushDeviceId() {
+  let id = localStorage.getItem(LS.PUSH_DEVICE_ID);
+  if (!id) {
+    id = 'pq-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+    localStorage.setItem(LS.PUSH_DEVICE_ID, id);
+  }
+  return id;
+}
+
+// base64url → Uint8Array (para applicationServerKey).
+function _b64uToUint8(b64) {
+  const pad = '='.repeat((4 - b64.length % 4) % 4);
+  const raw = atob((b64 + pad).replace(/-/g, '+').replace(/_/g, '/'));
+  return Uint8Array.from(raw, (c) => c.charCodeAt(0));
+}
+
+// Arma la lista de seguimientos que el Worker necesita: por cada presupuesto
+// que aún espera seguimiento, su FECHA de vencimiento (envío + días de la
+// config). El Worker compara contra "hoy" en su cron y dispara el push.
+function _buildPushFollowups(cfg) {
+  const h = (typeof getH === 'function') ? getH() : [];
+  const out = [];
+  for (const e of h) {
+    const est = e.estado || 'borrador';
+    if (!cfg.estados.includes(est)) continue;
+    if (!e.enviadoEn) continue;
+    if (e.seguimientoHechoEn && new Date(e.seguimientoHechoEn) >= new Date(e.enviadoEn)) continue;
+    const dueMs = new Date(e.enviadoEn).getTime() + cfg.days * 86400000;
+    let dueDate;
+    try {
+      dueDate = (typeof toLocalISODate === 'function')
+        ? toLocalISODate(new Date(dueMs))
+        : new Date(dueMs).toISOString().slice(0, 10);
+    } catch (_) { dueDate = new Date(dueMs).toISOString().slice(0, 10); }
+    out.push({
+      id: e.id,
+      clientName: e.clientName || '(sin nombre)',
+      date: dueDate,
+      diasDesdeEnvio: (typeof daysSince === 'function') ? (daysSince(e.enviadoEn) || 0) : 0,
+    });
+  }
+  return out;
+}
+
+// Arma la lista de vencimientos que el Worker necesita: por cada presupuesto
+// enviado y aún sin marcar como visto, la FECHA en que vence. El Worker
+// compara contra "hoy" en su cron y dispara el push cuando ya pasó.
+function _buildPushExpiries(cfg) {
+  const h = (typeof getH === 'function') ? getH() : [];
+  const out = [];
+  for (const e of h) {
+    const est = e.estado || 'borrador';
+    if (!cfg.estados.includes(est)) continue;
+    if (!e.enviadoEn) continue;
+    if (e.vencimientoVistoEn) continue;
+    const exp = e.snapshot && e.snapshot.dateExpiry;
+    if (!exp) continue;
+    out.push({
+      id: e.id,
+      clientName: e.clientName || '(sin nombre)',
+      date: exp,
+    });
+  }
+  return out;
+}
+
+// Sube al Worker la suscripción + los seguimientos y vencimientos al día.
+// Silencioso: si no hay URL, no hay señal o no hay suscripción, no hace nada.
+async function syncPushFollowups(sub) {
+  if (!PUSH_WORKER_URL || navigator.onLine === false) return;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const subscription = sub || await reg.pushManager.getSubscription();
+    if (!subscription) return;
+    const cfg = (typeof getFollowupCfg === 'function')
+      ? getFollowupCfg() : { enabled: false, estados: [], days: 10 };
+    const followups = cfg.enabled ? _buildPushFollowups(cfg) : [];
+    const expiries = (cfg.enabled && cfg.expiryEnabled) ? _buildPushExpiries(cfg) : [];
+    await fetch(PUSH_WORKER_URL + '/subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ deviceId: _pushDeviceId(), subscription: subscription.toJSON(), followups, expiries }),
+    });
+  } catch (e) {}
+}
+
+// Suscribe el dispositivo (lo llama el toggle tras conceder permiso).
+async function pushSubscribe() {
+  if (!PUSH_WORKER_URL || !PUSH_VAPID_KEY) return;
+  if (!('PushManager' in window)) { toast('Tu navegador no soporta notificaciones push', 'err'); return; }
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: _b64uToUint8(PUSH_VAPID_KEY),
+      });
+    }
+    await syncPushFollowups(sub);
+    S.pushEnabled = true;
+    saveLS();
+    const el = document.getElementById('push-enabled');
+    if (el) el.checked = true;
+    toast('Notificaciones activadas', 'ok');
+  } catch (e) {
+    toast('No se pudieron activar las notificaciones', 'err');
+    const el = document.getElementById('push-enabled');
+    if (el) el.checked = false;
+  }
+}
+
+// Cancela la suscripción local y la borra del Worker.
+async function pushUnsubscribe() {
+  try {
+    const deviceId = _pushDeviceId();
+    if (PUSH_WORKER_URL) {
+      fetch(PUSH_WORKER_URL + '/subscribe', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deviceId }),
+      }).catch(() => {});
+    }
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if (sub) await sub.unsubscribe();
+  } catch (e) {}
+  S.pushEnabled = false;
+  saveLS();
+  const el = document.getElementById('push-enabled');
+  if (el) el.checked = false;
+  toast('Notificaciones desactivadas', '');
+}
+
+// Handler del toggle: pide permiso al prender, desuscribe al apagar.
+async function onPushToggle(on) {
+  if (on) {
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') {
+      toast('Permiso de notificaciones denegado. Habilitalo en ajustes del teléfono.', 'err');
+      const el = document.getElementById('push-enabled');
+      if (el) el.checked = false;
+      return;
+    }
+    await pushSubscribe();
+  } else {
+    await pushUnsubscribe();
+  }
+}
+
+// Al iniciar: mostrar la sección solo si el push está configurado; si ya
+// estaba activado, re-sincronizar los seguimientos (cambian con el tiempo).
+async function initPush() {
+  if (!PUSH_WORKER_URL || !PUSH_VAPID_KEY) return;
+  if (!('PushManager' in window)) return;
+  const ps = document.getElementById('push-section');
+  if (ps) ps.style.display = '';
+  if (!S.pushEnabled) return;
+  if (Notification.permission === 'granted') {
+    syncPushFollowups().catch(() => {});
+  } else {
+    // El usuario revocó el permiso desde el sistema: reflejarlo.
+    S.pushEnabled = false;
+    saveLS();
+  }
 }
 
 // ===== js/photos.js =====
@@ -3175,6 +3965,49 @@ function restorePhotosFromBackup(map){
     const store = tx.objectStore(PHOTO_STORE);
     entries.forEach(([id, v]) => store.put(v, id));
   }).catch(e => console.error('No se pudieron persistir las fotos del backup en IndexedDB', e));
+}
+
+// ─── BANDEJA DE FOTOS COMPARTIDAS (Web Share Target) ──────────────
+// El Service Worker stashea aquí los blobs de las fotos que el usuario
+// compartió a la app desde la galería/cámara (el redirect del POST pierde
+// el body). La página los lee al abrir con ?share=1 y vacía la bandeja.
+// Ver sw.js (handler del POST) y core.js (detección de ?share=1).
+// IMPORTANTE: el nombre de DB/store debe coincidir con el del SW.
+const SHARE_INBOX_DB = 'pq_share_inbox';
+const SHARE_INBOX_STORE = 'inbox';
+
+function openShareInboxDB(){
+  return new Promise((resolve, reject) => {
+    let req;
+    try { req = indexedDB.open(SHARE_INBOX_DB, 1); }
+    catch(e){ reject(e); return; }
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(SHARE_INBOX_STORE)) {
+        db.createObjectStore(SHARE_INBOX_STORE, { autoIncrement: true });
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+// Lee todos los blobs de la bandeja y la vacía en la misma transacción.
+// Devuelve [] si no hay nada o si IndexedDB no está disponible (nunca rechaza).
+async function drainShareInbox(){
+  try {
+    const db = await openShareInboxDB();
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction(SHARE_INBOX_STORE, 'readwrite');
+      const store = tx.objectStore(SHARE_INBOX_STORE);
+      const getAll = store.getAll();
+      getAll.onsuccess = () => { store.clear(); resolve(getAll.result || []); };
+      getAll.onerror = () => reject(getAll.error);
+    });
+  } catch(e){
+    console.warn('No se pudo leer la bandeja de fotos compartidas', e);
+    return [];
+  }
 }
 
 // ===== js/clients.js =====
@@ -4198,8 +5031,8 @@ function renderItems() {
             <input class="ii qty-f" type="number" min="1" step="1" inputmode="numeric" value="${qty}"
               style="width:64px;text-align:center;font-weight:700;font-size:14px">
             ${qty > 1 && hasPrice
-              ? `<span class="qty-preview" style="font-size:11px;color:var(--accent);font-weight:600">${qty} × ${fmtM(item.price, S.currency||'ARS')} = ${fmtM(total, S.currency||'ARS')}</span>`
-              : `<span class="qty-preview" style="font-size:11px;color:var(--accent);font-weight:600"></span>`}
+              ? `<span class="qty-preview" style="font-size:11px;color:var(--accent-fg);font-weight:600">${qty} × ${fmtM(item.price, S.currency||'ARS')} = ${fmtM(total, S.currency||'ARS')}</span>`
+              : `<span class="qty-preview" style="font-size:11px;color:var(--accent-fg);font-weight:600"></span>`}
           </div>
           <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:11px;color:var(--muted);white-space:nowrap;flex-shrink:0">
             <span class="tgl" style="width:32px;height:18px">
@@ -4233,7 +5066,7 @@ function renderItems() {
     </div>
     ${item.photo ? (
       safeImgSrc(getPhotoData(item.photo))
-        ? `<div class="item-photo-preview"><img src="${safeImgSrc(getPhotoData(item.photo))}" alt="Foto"><button type="button" class="item-photo-remove" title="Quitar foto">✕</button></div>`
+        ? `<div class="item-photo-preview"><img src="${safeImgSrc(getPhotoData(item.photo))}" alt="Foto" title="Tocar para ampliar"><button type="button" class="item-photo-remove" title="Quitar foto">✕</button></div>`
         : `<div class="item-photo-preview item-photo-missing">📷 Foto no disponible<br><span>Restaurá tu backup en este dispositivo</span><button type="button" class="item-photo-remove" title="Quitar foto">✕</button></div>`
     ) : ''}`;
     card.innerHTML = inner;
@@ -4295,6 +5128,9 @@ function renderItems() {
     if (photoBtn) photoBtn.addEventListener('click', ()=>pickItemPhoto(idx));
     const photoRm = card.querySelector('.item-photo-remove');
     if (photoRm) photoRm.addEventListener('click', ()=>{ setItemField(idx,'photo',null); renderItems(); });
+    // Tocar la miniatura abre el visor a pantalla completa para revisar la foto.
+    const photoImg = card.querySelector('.item-photo-preview img');
+    if (photoImg) photoImg.addEventListener('click', ()=>openPhotoViewer(photoImg.src));
 
     card.addEventListener('dragstart', e=>{ dragSrc=idx; card.classList.add('dragging'); e.dataTransfer.effectAllowed='move'; });
     card.addEventListener('dragend',   ()=>{ card.classList.remove('dragging'); document.querySelectorAll('.icard').forEach(c=>c.classList.remove('drag-over')); });
@@ -4490,8 +5326,8 @@ function renderEstItems() {
             <input class="ii est-qty-f" type="number" min="1" step="1" inputmode="numeric" value="${qty}"
               style="width:64px;text-align:center;font-weight:700;font-size:14px">
             ${qty > 1 && hasPrice
-              ? `<span class="qty-preview" style="font-size:11px;color:var(--accent);font-weight:600">${qty} × ${fmtM(item.price, S.currency||'ARS')} = ${fmtM(total, S.currency||'ARS')}</span>`
-              : `<span class="qty-preview" style="font-size:11px;color:var(--accent);font-weight:600"></span>`}
+              ? `<span class="qty-preview" style="font-size:11px;color:var(--accent-fg);font-weight:600">${qty} × ${fmtM(item.price, S.currency||'ARS')} = ${fmtM(total, S.currency||'ARS')}</span>`
+              : `<span class="qty-preview" style="font-size:11px;color:var(--accent-fg);font-weight:600"></span>`}
           </div>
           <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:11px;color:var(--muted);white-space:nowrap;flex-shrink:0">
             <span class="tgl" style="width:32px;height:18px">
@@ -4633,6 +5469,160 @@ function pickItemPhoto(idx) {
   input.click();
 }
 
+// ═══════════════════════════════════════════════════════════
+// BANDEJA DE FOTOS COMPARTIDAS — Web Share Target (solo Android)
+// ═══════════════════════════════════════════════════════════
+// Flujo: el usuario comparte N fotos a la app → el SW las stashea en
+// IndexedDB y redirige a ?share=1 → core.js llama a processSharedPhotos().
+// Cada foto se comprime y se guarda (savePhoto → ref p_...). Luego se abre
+// una bandeja (modal) para que el usuario decida el destino de cada foto:
+// crear un árbol nuevo (por defecto) o asignarla a un ítem existente.
+// Las fotos viven en los ítems NORMALES (S.items); por eso forzamos modo
+// normal al aplicar (el usuario puede pasar a estimativo después a mano).
+const MAX_SHARED_PHOTOS = 12;   // tope para no reventar cuota/render
+let _shareTrayRefs = [];        // refs de fotos pendientes de asignar
+
+async function processSharedPhotos(){
+  const blobs = await drainShareInbox();
+  if (!blobs.length) return;
+  const slice = blobs.slice(0, MAX_SHARED_PHOTOS);
+  if (blobs.length > MAX_SHARED_PHOTOS) {
+    toast(`Se recibieron muchas fotos; se procesan las primeras ${MAX_SHARED_PHOTOS}`, 'info', 3500);
+  } else {
+    toast('Procesando fotos compartidas…', 'info', 1500);
+  }
+  const refs = [];
+  for (const blob of slice) {
+    try {
+      const dataUrl = await compressImage(blob, 1000, 0.7);
+      const ref = await savePhoto(dataUrl);
+      refs.push(ref);
+    } catch(e){ console.warn('No se pudo procesar una foto compartida', e); }
+  }
+  if (!refs.length) { toast('No se pudieron procesar las fotos', 'err'); return; }
+  openShareTray(refs);
+}
+
+// Muestra la bandeja con las miniaturas recibidas. Por cada foto, un <select>
+// elige el destino: árbol nuevo (default), un ítem existente, o descartar.
+function openShareTray(refs){
+  _shareTrayRefs = refs.slice();
+  const ov   = document.getElementById('share-overlay');
+  const list = document.getElementById('share-tray-list');
+  // Sin modal disponible (versión vieja en caché): fallback que auto-crea
+  // un árbol por foto, sin perder las fotos recibidas.
+  if (!ov || !list) { assignSharedToNewItems(refs); return; }
+
+  const arr = activeItemsArr();
+  const existingOpts = arr
+    .map((it, i) => ({ it, i }))
+    .filter(({ it }) => it.type === 'tree' || it.type === 'service')
+    .map(({ it, i }) => {
+      const label = it.type === 'tree'
+        ? (it.species || `Árbol ${i + 1}`)
+        : (it.desc || `Servicio ${i + 1}`);
+      return `<option value="${i}">Asignar a: ${esc(label)}</option>`;
+    }).join('');
+
+  list.innerHTML = refs.map((ref, idx) => {
+    const src = safeImgSrc(getPhotoData(ref));
+    return `
+      <div class="share-row">
+        <div class="share-thumb">${src ? `<img src="${src}" alt="Foto compartida">` : '📷'}</div>
+        <select class="ii share-dest" data-idx="${idx}">
+          <option value="new" selected>➕ Crear árbol nuevo</option>
+          ${existingOpts}
+          <option value="skip">✕ Descartar</option>
+        </select>
+      </div>`;
+  }).join('');
+
+  const cnt = document.getElementById('share-tray-count');
+  if (cnt) cnt.textContent = refs.length;
+  ov.classList.add('open');
+}
+
+// Aplica las decisiones de la bandeja: crea árboles nuevos o asigna a ítems
+// existentes según el <select> de cada foto. Fuerza modo normal para que los
+// ítems con foto queden visibles en el editor.
+function confirmShareTray(){
+  const ov = document.getElementById('share-overlay');
+  const arr = activeItemsArr();
+  let assigned = 0;
+  if (ov) {
+    ov.querySelectorAll('.share-dest').forEach(sel => {
+      const idx = parseInt(sel.dataset.idx, 10);
+      const ref = _shareTrayRefs[idx];
+      if (!ref) return;
+      const dest = sel.value;
+      if (dest === 'skip') return;
+      if (dest === 'new') {
+        arr.push({ id: Date.now() + idx, type: 'tree', species: '', desc: '', price: '', qty: 1, showQty: false, photo: ref });
+        assigned++;
+      } else {
+        const di = parseInt(dest, 10);
+        if (arr[di]) { arr[di].photo = ref; assigned++; }
+      }
+    });
+  }
+  closeShareTray();
+  if (assigned) {
+    setMode('normal');           // las fotos viven en ítems normales (S.items)
+    renderItems();
+    switchTab('editor');
+    sched();
+    toast(`${assigned} foto${assigned > 1 ? 's' : ''} agregada${assigned > 1 ? 's' : ''} al presupuesto`, 'ok');
+  } else {
+    toast('No se agregó ninguna foto', 'info');
+  }
+}
+
+// Fallback (sin modal): un árbol nuevo por cada foto recibida.
+function assignSharedToNewItems(refs){
+  const arr = activeItemsArr();
+  refs.forEach((ref, i) => {
+    arr.push({ id: Date.now() + i, type: 'tree', species: '', desc: '', price: '', qty: 1, showQty: false, photo: ref });
+  });
+  setMode('normal');
+  renderItems();
+  switchTab('editor');
+  sched();
+  toast(`${refs.length} foto${refs.length > 1 ? 's' : ''} agregada${refs.length > 1 ? 's' : ''}`, 'ok');
+}
+
+function closeShareTray(){
+  const ov = document.getElementById('share-overlay');
+  if (ov) ov.classList.remove('open');
+  _shareTrayRefs = [];
+}
+
+// ─── VISOR DE FOTO A PANTALLA COMPLETA ────────────────────────────
+// Para revisar la foto de un ítem durante la edición (evaluar el árbol,
+// decidir el trabajo y el precio). Recibe un dataURL ya validado con
+// safeImgSrc(); si viene vacío no abre nada.
+function openPhotoViewer(src){
+  if (!src) return;
+  const ov  = document.getElementById('photo-viewer-overlay');
+  const img = document.getElementById('photo-viewer-img');
+  if (!ov || !img) return;
+  img.src = src;
+  ov.classList.add('open');
+}
+
+function closePhotoViewer(){
+  const ov  = document.getElementById('photo-viewer-overlay');
+  const img = document.getElementById('photo-viewer-img');
+  if (ov)  ov.classList.remove('open');
+  if (img) img.src = '';   // liberar el dataURL en memoria
+}
+
+// Cerrar el visor con Escape (en desktop). En el celular se cierra tocando.
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  const ov = document.getElementById('photo-viewer-overlay');
+  if (ov && ov.classList.contains('open')) closePhotoViewer();
+});
+
 // Comprime una imagen: la redimensiona para que el lado mayor no supere
 // maxSide px y la re-codifica como JPEG con la calidad dada. Devuelve una
 // promesa con el dataURL resultante.
@@ -4688,6 +5678,11 @@ function restoreUI() {
   sv('surcharge-pct', S.surcharge||0);
   sv('payment-conditions', S.paymentConditions);
   sv('observations', S.observations);
+  sc('show-work-plan', S.showWorkPlan !== false);
+  sc('wp-override', !!S.workPlanOverride);
+  sv('wp-custom-title', S.workPlanCustomTitle);
+  renderLineList('wp-custom-list');
+  { const box = document.getElementById('wp-override-box'); if (box) box.style.display = S.workPlanOverride ? 'block' : 'none'; }
   sc('show-criteria', S.showCriteria);
   sc('show-expiry',   S.showExpiry !== false);
   sc('show-sig-owner', S.showSigOwner);
@@ -4714,20 +5709,27 @@ function restoreUI() {
   sv('doc-est-banner',    S.docEstBanner);
   sv('doc-disclaimer',    S.docDisclaimer);
   sv('doc-disclaimer-svc',S.docDisclaimerSvc);
-  sv('doc-criteria',      S.docCriteria);
+  sv('doc-work-plan-title', S.workPlanTitle);
+  renderLineList('doc-work-plan-list');
+  renderLineList('doc-criteria-list');
   sv('doc-greeting',      S.docGreeting);
   sv('doc-criteria-title',  S.docCriteriaTitle);
   sv('doc-criteria-intro',  S.docCriteriaIntro);
   sv('doc-discount-label',  S.docDiscountLabel);
   sv('doc-discount-note',   S.docDiscountNote);
+  if (typeof renderSectionOrder === 'function') renderSectionOrder();
   // color
-  const cp = document.getElementById('color-picker'); if(cp) cp.value = S.accentColor;
-  const hx = document.getElementById('color-hex'); if(hx) hx.textContent = S.accentColor;
   applyAccent(S.accentColor);
-  document.querySelectorAll('.cpreset').forEach(el=>el.classList.toggle('active', el.dataset.color===S.accentColor));
+  renderCustomColors();
+  document.querySelectorAll('.cpreset').forEach(el=>el.classList.toggle('active', String(el.dataset.color||'').toLowerCase()===String(S.accentColor).toLowerCase()));
+  _cpkInit();
+  const _hx = document.getElementById('cpk-hex'); if(_hx) _hx.value = S.accentColor;
+  const _pv = document.getElementById('cpk-preview'); if(_pv) _pv.style.background = S.accentColor;
+  _cpkSetFromHex(S.accentColor);
   // pdf theme
   const _thm = S.pdfTheme || 'clasico';
   document.querySelectorAll('.tpreset').forEach(el=>el.classList.toggle('active', el.dataset.theme===_thm));
+  const _cmp = document.getElementById('pdf-compact'); if(_cmp) _cmp.checked = !!S.pdfCompact;
   // logo
   if(S.logo) showLogo(S.logo);
   // expiry visibility
@@ -4769,6 +5771,10 @@ function syncFromUI() {
   S.discount          = parseFloat(gv('discount')) || 0;
   S.paymentConditions = gv('payment-conditions');
   S.observations      = gv('observations');
+  S.showWorkPlan      = gc('show-work-plan');
+  S.workPlanOverride    = gc('wp-override');
+  S.workPlanCustomTitle = gv('wp-custom-title');
+  // S.workPlanCustom lo maneja el editor de lista (wp-custom-list).
   S.showCriteria      = gc('show-criteria');
   S.showExpiry        = gc('show-expiry');
   S.showSigOwner      = gc('show-sig-owner');
@@ -4797,7 +5803,9 @@ function syncFromUI() {
   S.docEstBanner      = gv('doc-est-banner')    || S.docEstBanner;
   S.docDisclaimer     = gv('doc-disclaimer')    || S.docDisclaimer;
   S.docDisclaimerSvc  = gv('doc-disclaimer-svc')|| S.docDisclaimerSvc;
-  S.docCriteria       = gv('doc-criteria')      || S.docCriteria;
+  S.workPlanTitle     = gv('doc-work-plan-title') || S.workPlanTitle;
+  // S.workPlan y S.docCriteria los manejan sus editores de lista
+  // (doc-work-plan-list / doc-criteria-list).
   S.docGreeting       = gv('doc-greeting');
   S.docCriteriaTitle  = gv('doc-criteria-title') || S.docCriteriaTitle;
   S.docCriteriaIntro  = gv('doc-criteria-intro') || S.docCriteriaIntro;
@@ -5174,22 +6182,59 @@ function applyNumConfig() {
 // Para el verde por defecto se conserva el mint original del CSS.
 function applyAccent(c) {
   const root = document.documentElement.style;
-  root.setProperty('--accent', c);
   const rgb = _hexToRgb(c);
-  // Para el verde por defecto se quitan los overrides y rige el CSS de
-  // :root (look idéntico al original). Para cualquier otro color se
-  // derivan tonos coherentes para hovers, sombras, anillos y gradientes.
-  if (rgb && String(c).toLowerCase() !== '#064e3b') {
+  const isDefault = String(c).toLowerCase() === '#064e3b';
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  // Para el verde por defecto se quitan TODOS los overrides y rigen los
+  // valores de :root / [data-theme=dark] (look idéntico al original en cada
+  // tema). Para cualquier otro color se derivan tonos coherentes — y en modo
+  // oscuro el acento como texto se aclara (--accent-fg) y el tinte mezcla
+  // hacia la card, para que se lea bien sobre fondo oscuro.
+  if (rgb && !isDefault) {
     const [r, g, b] = rgb;
-    root.setProperty('--accent-rgb',   `${r},${g},${b}`);
-    root.setProperty('--accent-light', _mixWhite(r, g, b, 0.88));
-    root.setProperty('--accent-dark',  _mixBlack(r, g, b, 0.18));
-    root.setProperty('--accent-2',     _mixWhite(r, g, b, 0.25));
+    root.setProperty('--accent', c);
+    root.setProperty('--accent-rgb', `${r},${g},${b}`);
+    if (dark) {
+      root.setProperty('--accent-fg',    _mixWhite(r, g, b, 0.5));
+      root.setProperty('--accent-light', _mix(r, g, b, 26, 35, 30, 0.82));
+      root.setProperty('--accent-dark',  _mixWhite(r, g, b, 0.12));
+      root.setProperty('--accent-2',     _mixWhite(r, g, b, 0.28));
+    } else {
+      root.setProperty('--accent-fg',    c);
+      root.setProperty('--accent-light', _mixWhite(r, g, b, 0.88));
+      root.setProperty('--accent-dark',  _mixBlack(r, g, b, 0.18));
+      root.setProperty('--accent-2',     _mixWhite(r, g, b, 0.25));
+    }
   } else {
-    ['--accent-rgb', '--accent-light', '--accent-dark', '--accent-2']
+    ['--accent', '--accent-rgb', '--accent-fg', '--accent-light', '--accent-dark', '--accent-2']
       .forEach(v => root.removeProperty(v));
   }
 }
+
+// ─── MODO OSCURO ──────────────────────────────────────────────────────
+// Tema de la UI de pantalla (el PDF/documento siempre va en claro). Tres
+// modos: 'auto' (sigue el sistema), 'light', 'dark'. Se persiste por
+// dispositivo en LS.THEME. applyTheme re-deriva los tonos del acento para
+// el tema activo (colores personalizados) y refleja el selector.
+function _prefersDark() {
+  return !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+}
+function _effectiveDark(mode) {
+  return mode === 'dark' || (mode === 'auto' && _prefersDark());
+}
+function applyTheme(mode) {
+  mode = (mode === 'light' || mode === 'dark') ? mode : 'auto';
+  S.themeMode = mode;
+  const dark = _effectiveDark(mode);
+  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+  // Recalcular los tonos del acento para el tema activo (no afecta al verde
+  // por defecto, que usa los valores de CSS).
+  if (S.accentColor) applyAccent(S.accentColor);
+  document.querySelectorAll('.theme-mode-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.mode === mode));
+  try { localStorage.setItem(LS.THEME, mode); } catch (_) {}
+}
+function setThemeMode(mode) { applyTheme(mode); }
 function _hexToRgb(c) {
   let h = String(c).replace('#', '');
   if (h.length === 3) h = h.split('').map(x => x + x).join('');
@@ -5205,22 +6250,183 @@ function _mixBlack(r, g, b, t) {
   const m = v => Math.round(v * (1 - t));
   return `rgb(${m(r)},${m(g)},${m(b)})`;
 }
+// Mezcla un color (r,g,b) hacia otro color destino (R,G,B) en proporción t.
+function _mix(r, g, b, R, G, B, t) {
+  const m = (a, z) => Math.round(a * (1 - t) + z * t);
+  return `rgb(${m(r, R)},${m(g, G)},${m(b, B)})`;
+}
 
-function applyColor(c) {
+// Aplica un color de acento. `reposition` mueve el cursor del selector propio
+// a ese color (true cuando el cambio viene de afuera: preset, campo hexa, carga;
+// false durante el arrastre, para que el punto no "salte" por redondeos HSV).
+function _setAccentColor(c, reposition) {
+  c = safeColor(c);
   S.accentColor = c;
   applyAccent(c);
-  const hx = document.getElementById('color-hex'); if(hx) hx.textContent = c;
-  const cp = document.getElementById('color-picker'); if(cp) cp.value = c;
-  document.querySelectorAll('.cpreset').forEach(el=>el.classList.toggle('active', el.dataset.color===c));
+  const hx = document.getElementById('cpk-hex'); if(hx && hx.value.toLowerCase() !== c) hx.value = c;
+  const pv = document.getElementById('cpk-preview'); if(pv) pv.style.background = c;
+  document.querySelectorAll('.cpreset').forEach(el=>el.classList.toggle('active', String(el.dataset.color).toLowerCase()===c.toLowerCase()));
+  if (reposition) _cpkSetFromHex(c);
   sched();
 }
 
+function applyColor(c) { _setAccentColor(c, true); }
 function selectColor(el) { applyColor(el.dataset.color); }
+
+// ─── COLORES RÁPIDOS PERSONALIZADOS ───────────────────────────────
+// El usuario puede guardar colores propios (de la paleta) en la fila de
+// selección rápida. Viven en S.customColors (se persisten con el resto del
+// estado). OJO: S es copia superficial de DEF, así que SIEMPRE reasignamos
+// el array (concat/filter), nunca push, para no contaminar DEF.customColors.
+function addCurrentColor() {
+  const c = safeColor(S.accentColor);
+  const exists = Array.prototype.some.call(
+    document.querySelectorAll('#color-presets .cpreset[data-color]'),
+    el => String(el.dataset.color).toLowerCase() === c.toLowerCase());
+  if (exists) { toast('Ese color ya está en la selección rápida.', 'info'); return; }
+  if ((S.customColors || []).length >= 12) { toast('Llegaste al máximo de 12 colores guardados.', 'info'); return; }
+  S.customColors = (S.customColors || []).concat([c]);
+  renderCustomColors();
+  saveLS();   // acción deliberada: persistir ya (sin esperar el debounce)
+  toast('⭐ Color agregado a la selección rápida.', 'ok');
+}
+function removeCustomColor(c) {
+  S.customColors = (S.customColors || []).filter(x => String(x).toLowerCase() !== String(c).toLowerCase());
+  renderCustomColors();
+  saveLS();   // acción deliberada: persistir ya (sin esperar el debounce)
+}
+async function _confirmRemoveColor(c) {
+  const ok = await confirmDlg('Quitar color', '¿Quitar este color de la selección rápida?', 'Quitar', 'btn-d');
+  if (ok) { removeCustomColor(c); toast('Color quitado.', 'info'); }
+}
+// Re-dibuja los chips personalizados (antes del botón "+"). Cada chip se
+// selecciona con un toque y se quita manteniéndolo presionado (long-press).
+function renderCustomColors() {
+  const row = document.getElementById('color-presets'); if (!row) return;
+  Array.prototype.forEach.call(row.querySelectorAll('.cpreset-custom'), n => n.remove());
+  const addBtn = document.getElementById('cpreset-add');
+  const cur = String(S.accentColor || '').toLowerCase();
+  (S.customColors || []).forEach(c => {
+    const el = document.createElement('div');
+    el.className = 'cpreset cpreset-custom' + (String(c).toLowerCase() === cur ? ' active' : '');
+    el.dataset.color = c;
+    el.style.background = c;
+    el.title = c + ' · mantené presionado para quitar';
+    let lpTimer = null, lpFired = false;
+    const startLP = () => { lpFired = false; lpTimer = setTimeout(() => { lpFired = true; _confirmRemoveColor(c); }, 550); };
+    const cancelLP = () => { if (lpTimer) { clearTimeout(lpTimer); lpTimer = null; } };
+    el.addEventListener('pointerdown', startLP);
+    el.addEventListener('pointerup', cancelLP);
+    el.addEventListener('pointerleave', cancelLP);
+    el.addEventListener('pointercancel', cancelLP);
+    el.addEventListener('click', () => { if (lpFired) { lpFired = false; return; } selectColor(el); });
+    if (addBtn) row.insertBefore(el, addBtn); else row.appendChild(el);
+  });
+}
+
+// ─── SELECTOR DE COLOR PROPIO (HSV) ───────────────────────────────
+// Reemplaza al <input type="color"> nativo (en muchos Android muestra barras
+// negras confusas). Mantiene H/S/V como fuente de verdad del cursor.
+const CPK = { h:160, s:80, v:30 };
+let _cpkReady = false;
+
+function _hsvToRgb(h, s, v) {
+  s/=100; v/=100;
+  const c = v*s, x = c*(1 - Math.abs((h/60)%2 - 1)), m = v - c;
+  let r,g,b;
+  if (h<60)      [r,g,b]=[c,x,0];
+  else if (h<120)[r,g,b]=[x,c,0];
+  else if (h<180)[r,g,b]=[0,c,x];
+  else if (h<240)[r,g,b]=[0,x,c];
+  else if (h<300)[r,g,b]=[x,0,c];
+  else           [r,g,b]=[c,0,x];
+  return [Math.round((r+m)*255), Math.round((g+m)*255), Math.round((b+m)*255)];
+}
+function _rgbToHsv(r, g, b) {
+  r/=255; g/=255; b/=255;
+  const mx = Math.max(r,g,b), mn = Math.min(r,g,b), d = mx-mn;
+  let h = 0;
+  if (d) {
+    if (mx===r)      h = ((g-b)/d) % 6;
+    else if (mx===g) h = (b-r)/d + 2;
+    else             h = (r-g)/d + 4;
+    h *= 60; if (h<0) h += 360;
+  }
+  return [h, (mx ? d/mx : 0)*100, mx*100];
+}
+function _hsvToHex(h, s, v) {
+  const [r,g,b] = _hsvToRgb(h,s,v);
+  return '#' + [r,g,b].map(x => x.toString(16).padStart(2,'0')).join('');
+}
+
+// Repinta cursor del cuadro SV, pulgar del tono y fondo del cuadro.
+function _cpkRender() {
+  const sv = document.getElementById('cpk-sv');
+  const dot = document.getElementById('cpk-sv-dot');
+  const thumb = document.getElementById('cpk-hue-thumb');
+  if (sv)  sv.style.background = `hsl(${CPK.h},100%,50%)`;
+  if (dot) { dot.style.left = CPK.s + '%'; dot.style.top = (100 - CPK.v) + '%'; }
+  if (thumb) thumb.style.left = (CPK.h/360*100) + '%';
+}
+// Posiciona el selector a partir de un color hexa (preset, campo, carga).
+function _cpkSetFromHex(hex) {
+  const rgb = _hexToRgb(hex); if (!rgb) return;
+  const hsv = _rgbToHsv(rgb[0], rgb[1], rgb[2]);
+  CPK.h = hsv[0]; CPK.s = hsv[1]; CPK.v = hsv[2];
+  _cpkRender();
+}
+// Inicializa el selector una sola vez. Usa DELEGACIÓN en `document`: así los
+// handlers sobreviven aunque el panel se reconstruya (los listeners no quedan
+// atados a un nodo puntual) y el arrastre sigue aunque el dedo salga del área.
+function _cpkInit() {
+  if (_cpkReady) return;
+  _cpkReady = true;
+  let active = null;            // 'sv' | 'hue' mientras se arrastra
+  const update = (clientX, clientY) => {
+    const el = document.getElementById(active === 'sv' ? 'cpk-sv' : 'cpk-hue');
+    if (!el) return;
+    const r = el.getBoundingClientRect(); if (!r.width || !r.height) return;
+    const x = Math.min(1, Math.max(0, (clientX - r.left) / r.width));
+    const y = Math.min(1, Math.max(0, (clientY - r.top)  / r.height));
+    if (active === 'sv') { CPK.s = Math.round(x*100); CPK.v = Math.round((1-y)*100); }
+    else                 { CPK.h = Math.round(x*360); }
+    _cpkRender();
+    _setAccentColor(_hsvToHex(CPK.h, CPK.s, CPK.v), false);
+  };
+  document.addEventListener('pointerdown', (e) => {
+    const t = e.target;
+    if (!t || !t.closest) return;
+    if (t.closest('#cpk-sv'))       active = 'sv';
+    else if (t.closest('#cpk-hue')) active = 'hue';
+    else return;
+    update(e.clientX, e.clientY);
+    e.preventDefault();
+  });
+  document.addEventListener('pointermove', (e) => { if (!active) return; update(e.clientX, e.clientY); e.preventDefault(); });
+  const end = () => { active = null; };
+  document.addEventListener('pointerup', end);
+  document.addEventListener('pointercancel', end);
+  // Campo hexa (también por delegación).
+  document.addEventListener('input', (e) => {
+    if (!e.target || e.target.id !== 'cpk-hex') return;
+    let v = e.target.value.trim(); if (v && v[0] !== '#') v = '#' + v;
+    if (/^#[0-9a-fA-F]{6}$/.test(v)) applyColor(v.toLowerCase());
+  });
+}
 
 // ─── TEMA PDF ────────────────────────────────
 function applyPdfTheme(theme) {
   S.pdfTheme = theme;
   document.querySelectorAll('.tpreset').forEach(el => el.classList.toggle('active', el.dataset.theme === theme));
+  sched();
+}
+
+// Modificador "Compacto": densifica el documento (fuentes y paddings más
+// chicos) para que los presupuestos con muchos ítems entren en menos páginas.
+// Es ORTOGONAL al tema: se aplica como clase extra (pdoc-compact) y se combina
+// con cualquier diseño.
+function applyPdfCompact(on) {
+  S.pdfCompact = !!on;
   sched();
 }
 
@@ -5749,6 +6955,134 @@ function previewCurrent() {
   requestAnimationFrame(_scalePreview);
 }
 
+// Si la vista previa está abierta, la regenera con el estado actual. Se usa al
+// reordenar las secciones del PDF para ver el cambio al instante.
+function refreshPreviewIfOpen() {
+  const overlay = document.getElementById('doc-preview-overlay');
+  if (!overlay || !overlay.classList.contains('open')) return;
+  const docEl     = document.getElementById('doc-a4');
+  const contentEl = document.getElementById('doc-preview-content');
+  try { buildDoc(); } catch (e) { return; }
+  if (docEl && contentEl) {
+    contentEl.innerHTML = docEl.innerHTML;
+    requestAnimationFrame(_scalePreview);
+  }
+}
+
+// ─── ORDEN DE LAS SECCIONES DEL PDF ──────────────────────────
+// Lista reordenable (flechas ↑/↓, robusto en celular) que controla
+// S.docSectionOrder. Cada cambio guarda y refresca la vista previa si está
+// abierta. Ver DOC_SECTIONS / sanitizeSectionOrder / buildDoc.
+function renderSectionOrder() {
+  const host = document.getElementById('doc-section-order');
+  if (!host) return;
+  const order = sanitizeSectionOrder(S.docSectionOrder);
+  S.docSectionOrder = order; // deja el estado normalizado
+  host.innerHTML = order.map((id, i) => {
+    const sec = DOC_SECTIONS.find(s => s.id === id);
+    return `<div class="sord-row">
+      <span class="sord-num">${i + 1}</span>
+      <span class="sord-label">${esc(sec ? sec.label : id)}</span>
+      <span class="sord-btns">
+        <button type="button" class="sord-btn" onclick="moveSection('${id}',-1)" ${i === 0 ? 'disabled' : ''} aria-label="Subir">▲</button>
+        <button type="button" class="sord-btn" onclick="moveSection('${id}',1)" ${i === order.length - 1 ? 'disabled' : ''} aria-label="Bajar">▼</button>
+      </span>
+    </div>`;
+  }).join('');
+}
+
+function moveSection(id, dir) {
+  const order = sanitizeSectionOrder(S.docSectionOrder);
+  const i = order.indexOf(id);
+  const j = i + dir;
+  if (i < 0 || j < 0 || j >= order.length) return;
+  [order[i], order[j]] = [order[j], order[i]];
+  S.docSectionOrder = order;
+  saveLS();
+  renderSectionOrder();
+  refreshPreviewIfOpen();
+}
+
+// Toggle del plan de trabajo a medida (Editor). Muestra/oculta la caja de
+// edición y, al activarlo por primera vez, precarga el plan global como punto
+// de partida para que el usuario lo ajuste en vez de escribir de cero.
+function toggleWorkPlanOverride() {
+  const on  = gc('wp-override');
+  const box = document.getElementById('wp-override-box');
+  if (box) box.style.display = on ? 'block' : 'none';
+  if (on) {
+    // Precargar el plan global como punto de partida si todavía no hay nada.
+    if (!(S.workPlanCustom || '').trim())      S.workPlanCustom = S.workPlan || '';
+    if (!(S.workPlanCustomTitle || '').trim()) S.workPlanCustomTitle = S.workPlanTitle || '';
+    sv('wp-custom-title', S.workPlanCustomTitle);
+    renderLineList('wp-custom-list');
+  }
+  syncFromUI();
+  refreshPreviewIfOpen();
+}
+
+// ─── EDITOR DE LISTAS "UNO POR ÍTEM" ─────────────────────────
+// Reemplaza los textarea "uno por línea" por una lista donde cada ítem es su
+// propio casillero (numerado, con botón de borrar). Así se ve claramente la
+// división de cada punto, en vez de un bloque de texto donde las líneas largas
+// se mezclan. Se serializa al MISMO string con '\n' que antes, así no cambia
+// ni el almacenamiento ni la construcción del PDF.
+const LINELISTS = {
+  'wp-custom-list':     { get:()=>S.workPlanCustom, set:v=>{S.workPlanCustom=v;}, ph:'Ej. Tala dirigida sobre la medianera del vecino.' },
+  'doc-work-plan-list': { get:()=>S.workPlan,        set:v=>{S.workPlan=v;},        ph:'Ej. Trabajo realizado por personal capacitado…' },
+  'doc-criteria-list':  { get:()=>S.docCriteria,     set:v=>{S.docCriteria=v;},     ph:'Ej. Altura y Acceso | Evaluamos el ingreso…' },
+};
+
+function renderLineList(hostId, rows) {
+  const host = document.getElementById(hostId);
+  const cfg  = LINELISTS[hostId];
+  if (!host || !cfg) return;
+  if (!rows) { const v = cfg.get() || ''; rows = (v === '') ? [''] : v.split('\n'); }
+  if (!rows.length) rows = [''];
+  host.innerHTML = rows.map((l, i) => `
+    <div class="llrow">
+      <span class="llnum">${i + 1}</span>
+      <input type="text" class="llinput" value="${esc(l)}" placeholder="${esc(cfg.ph || '')}"
+             oninput="onLineListInput('${hostId}')" onkeydown="onLineListKey(event,'${hostId}',${i})">
+      <button type="button" class="lldel" onclick="removeLineListRow('${hostId}',${i})" aria-label="Quitar ítem">×</button>
+    </div>`).join('') +
+    `<button type="button" class="lladd" onclick="addLineListRow('${hostId}')">+ Agregar ítem</button>`;
+}
+
+// Lee las filas tal como están en el DOM (incluye vacías, para no perder el
+// cursor mientras se edita). El valor que se guarda filtra las vacías.
+function _lineListRows(hostId) {
+  const host = document.getElementById(hostId);
+  return host ? [...host.querySelectorAll('.llinput')].map(i => i.value) : [];
+}
+function _commitLineList(hostId) {
+  const cfg = LINELISTS[hostId]; if (!cfg) return;
+  cfg.set(_lineListRows(hostId).filter(v => v.trim() !== '').join('\n'));
+  saveLS();
+  refreshPreviewIfOpen();
+}
+function onLineListInput(hostId) { _commitLineList(hostId); }
+function addLineListRow(hostId) {
+  const rows = _lineListRows(hostId); rows.push('');
+  renderLineList(hostId, rows); _commitLineList(hostId);
+  const ins = document.getElementById(hostId).querySelectorAll('.llinput');
+  if (ins.length) ins[ins.length - 1].focus();
+}
+function removeLineListRow(hostId, i) {
+  const rows = _lineListRows(hostId); rows.splice(i, 1);
+  if (!rows.length) rows.push('');
+  renderLineList(hostId, rows); _commitLineList(hostId);
+}
+// Enter inserta un ítem nuevo debajo (flujo natural al escribir una lista).
+function onLineListKey(e, hostId, i) {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  const rows = _lineListRows(hostId); rows.splice(i + 1, 0, '');
+  renderLineList(hostId, rows); _commitLineList(hostId);
+  const ins = document.getElementById(hostId).querySelectorAll('.llinput');
+  if (ins[i + 1]) ins[i + 1].focus();
+}
+
 // Abre WhatsApp con un mensaje de ENVÍO (no de seguimiento) dirigido al
 // cliente del presupuesto actual. wa.me solo permite texto: el PDF se
 // adjunta a mano, por eso el recordatorio en el toast.
@@ -5780,6 +7114,8 @@ window.addEventListener('resize', () => {
 // Renderiza el banner de seguimientos pendientes arriba del historial.
 // Se llama al arrancar la app y al entrar a la pestaña Historial.
 function renderFollowupBanner() {
+  // Los dos banners (seguimiento y vencidos) se refrescan juntos.
+  if (typeof renderExpiryBanner === 'function') renderExpiryBanner();
   const el = document.getElementById('followup-banner');
   if (!el) return;
   const pend = (typeof getPendingFollowups === 'function') ? getPendingFollowups() : [];
@@ -5798,7 +7134,7 @@ function renderFollowupBanner() {
         const e = p.entry;
         const wa = buildWhatsappLink(e);
         return `<div class="fub-item">
-          <div class="fub-item-info">
+          <div class="fub-item-info" onclick="goToHistoryEntry(${e.id})" role="button" tabindex="0" title="Ver este presupuesto en el historial">
             <span class="fub-item-num">${esc(e.quoteNumber||'—')}</span>
             <span class="fub-item-client">${esc(e.clientName||'(sin nombre)')}</span>
             <span class="fub-item-days">hace ${p.dias} días</span>
@@ -5806,6 +7142,42 @@ function renderFollowupBanner() {
           <div class="fub-item-acts">
             <a class="fub-wa" href="${wa}" target="_blank" rel="noopener" onclick="_afterWhatsapp(${e.id})">💬 WhatsApp</a>
             <button class="fub-done" onclick="marcarSeguimientoHecho(${e.id})" title="Ya hice el seguimiento">✓</button>
+          </div>
+        </div>`;
+      }).join('')}
+      ${n>5 ? `<div class="fub-more">y ${n-5} más…</div>` : ''}
+    </div>`;
+}
+
+// Banner de presupuestos vencidos (arriba del historial, en rojo). Mismo
+// patrón que el de seguimiento, pero para los que ya pasaron su vencimiento.
+function renderExpiryBanner() {
+  const el = document.getElementById('expiry-banner');
+  if (!el) return;
+  const venc = (typeof getExpiredQuotes === 'function') ? getExpiredQuotes() : [];
+  if (!venc.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
+
+  const n = venc.length;
+  el.style.display = 'block';
+  el.innerHTML = `
+    <div class="fub-head">
+      <span class="fub-icon">⌛</span>
+      <span class="fub-title">${n} presupuesto${n>1?'s':''} vencido${n>1?'s':''}</span>
+    </div>
+    <div class="fub-sub">Pasó su fecha de vigencia sin cerrarse. Conviene avisarle al cliente o pasarle un presupuesto actualizado.</div>
+    <div class="fub-list">
+      ${venc.slice(0,5).map(p => {
+        const e = p.entry;
+        const wa = buildWhatsappLink(e);
+        return `<div class="fub-item">
+          <div class="fub-item-info" onclick="goToHistoryEntry(${e.id})" role="button" tabindex="0" title="Ver este presupuesto en el historial">
+            <span class="fub-item-num">${esc(e.quoteNumber||'—')}</span>
+            <span class="fub-item-client">${esc(e.clientName||'(sin nombre)')}</span>
+            <span class="fub-item-days">venció hace ${p.dias} día${p.dias>1?'s':''}</span>
+          </div>
+          <div class="fub-item-acts">
+            <a class="fub-wa" href="${wa}" target="_blank" rel="noopener">💬 WhatsApp</a>
+            <button class="fub-done" onclick="marcarVencimientoVisto(${e.id})" title="No avisarme más de este">✓</button>
           </div>
         </div>`;
       }).join('')}
@@ -5847,6 +7219,22 @@ function followupBadgeFor(e) {
   return `<span class="hbadge-followup" title="Pendiente de seguimiento">🔔 ${d}d</span>`;
 }
 
+// Devuelve el HTML del indicador ⌛ "vencido" para una tarjeta, o '' si ese
+// presupuesto no está vencido (mismas reglas que getExpiredQuotes).
+function expiryBadgeFor(e) {
+  const cfg = (typeof getFollowupCfg === 'function') ? getFollowupCfg() : null;
+  if (!cfg || !cfg.enabled || !cfg.expiryEnabled) return '';
+  const est = e.estado || 'borrador';
+  if (!cfg.estados.includes(est)) return '';
+  if (!e.enviadoEn) return '';
+  if (e.vencimientoVistoEn) return '';
+  const exp = e.snapshot && e.snapshot.dateExpiry;
+  if (!exp) return '';
+  const d = daysSinceDate(exp);
+  if (d === null || d < 1) return '';
+  return `<span class="hbadge-expired" title="Presupuesto vencido">⌛ vencido</span>`;
+}
+
 // ─── SEGUIMIENTO: configuración (UI) ─────────
 // Carga la config guardada en los campos del panel (pestaña Empresa).
 function loadFollowupUI() {
@@ -5857,6 +7245,8 @@ function loadFollowupUI() {
   const opts = document.getElementById('fu-options');
   if (en) en.checked = !!cfg.enabled;
   if (dy) dy.value = cfg.days;
+  const exp = document.getElementById('fu-expiry-enabled');
+  if (exp) exp.checked = !!cfg.expiryEnabled;
   if (tpl) tpl.value = cfg.waTemplate;
   const sendTpl = document.getElementById('wa-send-template');
   if (sendTpl) sendTpl.value = cfg.waSendTemplate || FOLLOWUP_DEF.waSendTemplate;
@@ -5865,6 +7255,8 @@ function loadFollowupUI() {
   });
   if (opts) opts.style.opacity = cfg.enabled ? '1' : '.45';
   if (opts) opts.style.pointerEvents = cfg.enabled ? 'auto' : 'none';
+  const pushEl = document.getElementById('push-enabled');
+  if (pushEl) pushEl.checked = !!S.pushEnabled;
 }
 
 // Lee los campos del panel y guarda la config. Refresca banner e historial.
@@ -5877,9 +7269,11 @@ function saveFollowupFromUI() {
   let days = parseInt(dy && dy.value) || 10;
   if (days < 1) days = 1;
   if (days > 365) days = 365;
+  const exp = document.getElementById('fu-expiry-enabled');
   const cfg = setFollowupCfg({
     enabled: en ? !!en.checked : true,
     days,
+    expiryEnabled: exp ? !!exp.checked : true,
     estados: estados.length ? estados : ['enviado'],
     waTemplate: (tpl && tpl.value.trim()) ? tpl.value : FOLLOWUP_DEF.waTemplate,
     // Preservar la plantilla de envío (se edita en su propio campo).
@@ -5893,6 +7287,8 @@ function saveFollowupFromUI() {
   }
   renderFollowupBanner();
   if (document.getElementById('panel-historial')?.classList.contains('active')) renderHistory();
+  // Cambió la config → re-sincronizar los seguimientos del Worker de push.
+  if (S.pushEnabled && typeof syncPushFollowups === 'function') syncPushFollowups().catch(() => {});
 }
 
 // Guarda la plantilla del mensaje de ENVÍO por WhatsApp (campo propio).
@@ -6012,14 +7408,14 @@ function renderHistory() {
     const totalPresupuestado = h.reduce((sum,e)=>sum+(e.total||0), 0);
     const cur = h[0].currency||'ARS';
     summaryHtml = `<div style="background:var(--accent-light);border:1px solid #a7f3d0;border-radius:8px;padding:10px 14px;margin-bottom:10px;display:flex;gap:20px;align-items:center;flex-wrap:wrap">
-      <div><div style="font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px">Cliente</div>
+      <div><div style="font-size:10px;font-weight:700;color:var(--accent-fg);text-transform:uppercase;letter-spacing:.5px">Cliente</div>
         <div style="font-size:14px;font-weight:700;color:var(--text)">${esc(h[0].clientName||'—')}</div></div>
       <div style="width:1px;height:32px;background:#a7f3d0"></div>
-      <div><div style="font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px">Presupuestos</div>
+      <div><div style="font-size:10px;font-weight:700;color:var(--accent-fg);text-transform:uppercase;letter-spacing:.5px">Presupuestos</div>
         <div style="font-size:14px;font-weight:700;color:var(--text)">${h.length}</div></div>
       <div style="width:1px;height:32px;background:#a7f3d0"></div>
-      <div><div style="font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px">Total acumulado</div>
-        <div style="font-size:14px;font-weight:700;color:var(--accent)">${fmtM(totalPresupuestado,cur)}</div></div>
+      <div><div style="font-size:10px;font-weight:700;color:var(--accent-fg);text-transform:uppercase;letter-spacing:.5px">Total acumulado</div>
+        <div style="font-size:14px;font-weight:700;color:var(--accent-fg)">${fmtM(totalPresupuestado,cur)}</div></div>
     </div>`;
   }
 
@@ -6032,9 +7428,9 @@ function renderHistory() {
     ).join('');
     const tieneDir = !!((e.snapshot && e.snapshot.workAddress || '').trim());
     return `
-    <div class="hitem">
+    <div class="hitem" data-id="${e.id}">
       <div class="hinfo">
-        <div class="hnum">${esc(e.quoteNumber||'—')}${e.isEstimative?'<span class="hbadge-est">Estimativo</span>':''}<span class="hbadge-estado" style="color:${txtCol};background:${bgCol}">${estadoLabel(est)}</span>${followupBadgeFor(e)}</div>
+        <div class="hnum">${esc(e.quoteNumber||'—')}${e.isEstimative?'<span class="hbadge-est">Estimativo</span>':''}<span class="hbadge-estado" style="color:${txtCol};background:${bgCol}">${estadoLabel(est)}</span>${followupBadgeFor(e)}${expiryBadgeFor(e)}</div>
         ${!groupedByClient?`<div class="hclient ${!e.clientName?'is-draft':''}">${esc(e.clientName||'(borrador sin nombre de cliente)')}</div>`:''}
         <div class="hmeta">${esc(e.currency||'')} ${fmtM(e.total||0,e.currency||'ARS')} · ${e.itemCount||0} ítem(s) · ${fmtD(((e.snapshot&&e.snapshot.dateIssue)||e.savedAt||'').slice(0,10))}</div>
       </div>
@@ -6105,6 +7501,38 @@ function renderHistory() {
   list.innerHTML = html;
 }
 
+// Lleva al usuario hasta un presupuesto puntual dentro del historial y lo
+// resalta (parpadeo/luminescencia). Se usa al tocar un aviso del banner de
+// vencidos o de seguimiento: en vez de solo abrir WhatsApp, el usuario puede
+// "ir a ver" el presupuesto en su lugar del listado.
+function goToHistoryEntry(id) {
+  const e = getH().find(x => x.id === id);
+  if (!e) return;
+  // Limpiar filtros activos para garantizar que la tarjeta esté en el DOM
+  // (una búsqueda o filtro podría estar ocultando justo ese presupuesto).
+  const searchEl = document.getElementById('hist-search');
+  const clientEl = document.getElementById('hist-client-filter');
+  const estadoEl = document.getElementById('hist-estado-filter');
+  if (searchEl) searchEl.value = '';
+  if (clientEl) clientEl.value = '';
+  if (estadoEl) estadoEl.value = '';
+  // Asegurar que el mes que contiene el presupuesto quede desplegado.
+  _userTouchedMonths = true;
+  _expandedMonths.add(_monthKey(e));
+  // Ir a la pestaña Historial (esto re-renderiza el listado ya expandido).
+  switchTab('historial');
+  // Tras el render, ubicar la tarjeta, centrarla y destacarla.
+  requestAnimationFrame(() => {
+    const card = document.querySelector(`.hitem[data-id="${id}"]`);
+    if (!card) return;
+    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    card.classList.remove('hitem-flash');
+    void card.offsetWidth; // reinicia la animación si ya estaba aplicada
+    card.classList.add('hitem-flash');
+    setTimeout(() => card.classList.remove('hitem-flash'), 2600);
+  });
+}
+
 // Toggle de un mes individual del historial. Persiste el estado en
 // memoria para la sesión actual.
 function toggleHistoryMonth(key) {
@@ -6124,6 +7552,9 @@ async function newQuote() {
   S.numNext = calcNextNumFromHistory();
   S.items=[]; S.estItems=[]; S.itemsB=[]; S.clientName=''; S.clientContact=''; S.workAddress='';
   S.discount=0; S.surcharge=0; S.paymentConditions=''; S.observations=''; S.estObservations='';
+  // El plan de trabajo a medida es excepcional por presupuesto: se descarta al
+  // crear uno nuevo para volver a usar el default global.
+  S.workPlanOverride=false; S.workPlanCustom=''; S.workPlanCustomTitle='';
   S.isEstimative = false;
   S.isRisk = false;
   // Resetear escenarios A/B a defaults
@@ -6530,12 +7961,22 @@ function gdriveGetToken(opts){
     if (typeof navigator !== 'undefined' && navigator.onLine === false) { reject(new Error('offline')); return; }
     gdriveEnsureClient().then(() => {
       GDRIVE._pending = { resolve, reject };
-      const req = { prompt: '' };
       let hint = ''; try { hint = localStorage.getItem(LS.GDRIVE_EMAIL) || ''; } catch(_){}
-      if (hint) req.hint = hint;            // pista de cuenta → renueva en silencio
-      // Solo la primera conexión (sin email recordado y a pedido del usuario)
-      // puede pedir consentimiento/selector explícito.
-      if (interactive && !hint) req.prompt = 'consent';
+      const req = {};
+      // ⚠️ El campo de GIS es `login_hint`, NO `hint` (que Google ignora). Con
+      // varias cuentas abiertas en el navegador, ESTO es lo que evita el
+      // selector: le decimos a Google EXACTAMENTE qué cuenta usar.
+      if (hint) req.login_hint = hint;
+      if (interactive) {
+        // Botón tocado por el usuario: si todavía no sabemos la cuenta (primera
+        // conexión) dejamos aparecer el consentimiento/selector (única vez). Si
+        // ya la sabemos, prompt vacío = renovación silenciosa sin volver a pedir.
+        req.prompt = hint ? '' : 'consent';
+      } else {
+        // Llamadas en segundo plano (apertura, auto-backup): NUNCA mostrar UI.
+        // Si no se puede renovar callado, falla y queda el botón "Conectar".
+        req.prompt = 'none';
+      }
       GDRIVE._tokenClient.requestAccessToken(req);
     }).catch(reject);
   });
@@ -6794,7 +8235,7 @@ function _buildItemsRowsHTML(arr, color, cur) {
   arr.forEach(item => {
     if(item.type==='tree'){
       n++;
-      const p = item.price!==''?fmtM(item.price,cur):'—';
+      const p = item.price!==''?fmtMDoc(item.price,cur):'—';
       rows+=`<tr>
         <td class="td-n">${n}</td>
         <td class="td-sp" style="color:${color}">${esc(item.species||'Sin especificar')}</td>
@@ -6811,9 +8252,9 @@ function _buildItemsRowsHTML(arr, color, cur) {
       } else if(item.showQty && qty > 1){
         // qty-breakdown: gris claro chiquito (CSS), MUY débil
         // strong: subtotal real, peso completo
-        pCell = `<span class="qty-breakdown">${qty} × ${fmtM(item.price,cur)}</span><strong>${fmtM(total,cur)}</strong>`;
+        pCell = `<span class="qty-breakdown">${qty} × ${fmtMDoc(item.price,cur)}</span><strong>${fmtMDoc(total,cur)}</strong>`;
       } else {
-        pCell = fmtM(total, cur);
+        pCell = fmtMDoc(total, cur);
       }
       rows+=`<tr>
         <td class="td-n">${n}</td>
@@ -6829,14 +8270,10 @@ function _buildItemsRowsHTML(arr, color, cur) {
 
 // Construye el bloque completo de UNA sección de ítems (psec + ptotals).
 // label opcional: si viene, va arriba como subtítulo del escenario.
-function _buildSceneBlockHTML(arr, label, color, cur, includeDisc) {
+// Tabla de ítems ("Detalles del Trabajo"). Sin el total: en el presupuesto
+// normal el total es una sección aparte y reordenable (ver buildDoc).
+function _buildSceneTableHTML(arr, label, color, cur) {
   const rows = _buildItemsRowsHTML(arr, color, cur);
-  const {subtotal, discAmt, total} = calcTotals(arr);
-  const discLabel = S.docDiscountLabel || 'Descuento';
-  const discH = (includeDisc && S.discount > 0) ? `
-    <div class="pdisc-row"><span>Subtotal:</span><span>${fmtM(subtotal,cur)}</span></div>
-    <div class="pdisc-row" style="color:#dc2626"><span>${esc(discLabel)} (${S.discount}%):</span><span>− ${fmtM(discAmt,cur)}</span></div>
-    ${S.docDiscountNote ? `<div class="pdisc-note">${esc(S.docDiscountNote)}</div>` : ''}` : '';
   const sectionTitle = label
     ? `<span style="font-size:9pt;font-weight:600;color:#64748b;display:block;margin-bottom:3px">${esc(label)}</span>Detalles del Trabajo`
     : 'Detalles del Trabajo';
@@ -6848,19 +8285,37 @@ function _buildSceneBlockHTML(arr, label, color, cur, includeDisc) {
           <th style="width:18pt">#</th>
           <th style="width:100pt">Especie/s</th>
           <th>Trabajo a realizar</th>
-          <th class="thr">Costo</th>
+          <th class="thr">Valor</th>
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>
-    </div>
+    </div>`;
+}
 
+// Caja del total (con subtotal/descuento si corresponde).
+function _buildSceneTotalsHTML(arr, label, color, cur, includeDisc) {
+  const {subtotal, discAmt, total} = calcTotals(arr);
+  const discLabel = S.docDiscountLabel || 'Descuento';
+  const discH = (includeDisc && S.discount > 0) ? `
+    <div class="pdisc-row"><span>Subtotal:</span><span>${fmtMDoc(subtotal,cur)}</span></div>
+    <div class="pdisc-row" style="color:#dc2626"><span>${esc(discLabel)} (${S.discount}%):</span><span>− ${fmtMDoc(discAmt,cur)}</span></div>
+    ${S.docDiscountNote ? `<div class="pdisc-note">${esc(S.docDiscountNote)}</div>` : ''}` : '';
+  return `
     <div class="ptotals">
       ${discH}
       <div class="ptotal-box" style="color:${color};border-color:${color};background:${color}12">
-        <div class="ptotal-lbl" style="color:${color}">${label ? esc(label) + ' — Costo Total' : 'Costo Total del Trabajo'}</div>
-        <div class="ptotal-amt" style="color:${color}">${fmtM(total,cur)}</div>
+        <div class="ptotal-lbl" style="color:${color}">${label ? esc(label) + ' — Total' : 'Total del trabajo'}</div>
+        <div class="ptotal-amt" style="color:${color}">${fmtMDoc(total,cur)}</div>
       </div>
     </div>`;
+}
+
+// Bloque completo (tabla + total). Se usa en modo escenarios A/B, donde cada
+// opción debe llevar su total pegado a su tabla (no se pueden reordenar por
+// separado dos totales distintos).
+function _buildSceneBlockHTML(arr, label, color, cur, includeDisc) {
+  return _buildSceneTableHTML(arr, label, color, cur)
+    + '\n\n' + _buildSceneTotalsHTML(arr, label, color, cur, includeDisc);
 }
 
 // Construye el HTML del header del documento según el tema activo.
@@ -6914,7 +8369,33 @@ function _buildDocHeader(theme, S, color, contacts, badgeLabel, badgeDate, showP
     </div>`;
   }
 
-  // Clásico y Cálido: misma estructura, el CSS del tema Cálido se ocupa del resto
+  if (theme === 'lateral') {
+    // Banda de color a la izquierda (look de estudio/consultora). Dentro de la
+    // banda va el logo sobre un chip blanco (para que cualquier logo se lea
+    // bien sobre el color) o, si no hay logo, la inicial del emisor en blanco.
+    const dateHTML = badgeDate ? `<div class="ph-badge-date" style="color:rgba(255,255,255,.7)">${badgeDate}</div>` : '';
+    const initial  = esc(((S.coName || 'P').trim().charAt(0) || 'P').toUpperCase());
+    const bandInner = S.logo
+      ? `<img src="${safeImgSrc(S.logo)}" class="ph-band-logo" alt="Logo">`
+      : `<span class="ph-band-initial">${initial}</span>`;
+    return `
+    <div class="ph">
+      <div class="ph-band" style="background:${color}">${bandInner}</div>
+      <div class="ph-co">
+        <div class="ph-name" style="color:${color}">${nameStr}</div>
+        <div class="ph-sub">${subStr}</div>
+        <div class="ph-contacts">${contactsHTML}</div>
+      </div>
+      <div class="ph-badge" style="background:${color};padding:8pt 10pt">
+        <div class="ph-badge-lbl" style="color:rgba(255,255,255,.75)">${esc(badgeLabel)}</div>
+        <div class="ph-badge-num" style="color:#fff">${numStr}</div>
+        ${dateHTML}
+      </div>
+    </div>`;
+  }
+
+  // Clásico, Cálido, Técnico y Elegante: misma estructura; el CSS de cada tema
+  // (tipografía, paleta, reglas) se ocupa del resto.
   const dateHTML = badgeDate ? `<div class="ph-badge-date">${badgeDate}</div>` : '';
   return `
   <div class="ph" style="border-top:5px solid ${color}">
@@ -6930,6 +8411,41 @@ function _buildDocHeader(theme, S, color, contacts, badgeLabel, badgeDate, showP
       ${dateHTML}
     </div>
   </div>`;
+}
+
+// Construye la sección "Plan de Trabajo / Lo que incluye". Se muestra ANTES del
+// precio para encuadrar el importe como valor (qué recibe el cliente) y no como
+// un gasto. Bullets desde S.workPlan (uno por línea), o desde el override por
+// presupuesto (S.workPlanCustom) si está activado. Devuelve '' si está
+// desactivada (S.showWorkPlan === false) o si no hay líneas.
+function _buildWorkPlanHTML(color){
+  if (S.showWorkPlan === false) return '';
+  const useCustom = !!S.workPlanOverride;
+  const titleSrc = useCustom ? (S.workPlanCustomTitle || S.workPlanTitle) : S.workPlanTitle;
+  const bodySrc  = useCustom ? S.workPlanCustom : S.workPlan;
+  const lines = (bodySrc || '').split('\n')
+    .map(l => l.replace(/^[•\-–]\s*/, '').trim())
+    .filter(Boolean);
+  if (!lines.length) return '';
+  const items = lines.map(l => `<li>${esc(l)}</li>`).join('');
+  return `
+    <div class="pplan">
+      <div class="pplan-t">${esc(titleSrc || 'Plan de Trabajo')}</div>
+      <div class="pplan-box" style="color:${color}">
+        <ul class="pplan-list">${items}</ul>
+      </div>
+    </div>`;
+}
+
+// Parsea las líneas de "criterios de costeo" (S.docCriteria). Cada línea puede
+// ser "Subtítulo | descripción" (dos partes) o solo texto. Devuelve [{s,p}]
+// (s = subtítulo opcional, p = descripción). Se usa en el presupuesto normal
+// (grilla Cómo Trabajamos) y en el estimativo (factores).
+function parseCriteria(text){
+  return (text||'').split('\n').map(l=>l.trim()).filter(Boolean).map(l=>{
+    const i = l.indexOf('|');
+    return i >= 0 ? { s: l.slice(0,i).trim(), p: l.slice(i+1).trim() } : { s: '', p: l };
+  });
 }
 
 function buildDoc() {
@@ -6951,15 +8467,18 @@ function buildDoc() {
   if(S.coCity)     contacts.push(`${pdfIcon('location')} ${esc(S.coCity)}`);
   if(S.coCuit)     contacts.push(`CUIT: ${esc(S.coCuit)}`);
 
-  // En modo escenarios A/B se renderizan DOS bloques (cada uno con su
-  // tabla de ítems y su total). En modo normal, un solo bloque.
-  let bodyBlocks;
+  // Detalles (tabla) y Total son secciones separadas y reordenables. En modo
+  // escenarios A/B cada opción lleva su total pegado a su tabla, así que el
+  // bloque va combinado en "details" y la sección "total" queda vacía.
+  let detailsH, totalH;
   if (S.scenariosEnabled) {
-    bodyBlocks =
+    detailsH =
       _buildSceneBlockHTML(S.items,  S.scenarioLabelA || 'Opción A', color, cur, true) +
       _buildSceneBlockHTML(S.itemsB, S.scenarioLabelB || 'Opción B', color, cur, true);
+    totalH = '';
   } else {
-    bodyBlocks = _buildSceneBlockHTML(S.items, '', color, cur, true);
+    detailsH = _buildSceneTableHTML(S.items, '', color, cur);
+    totalH   = _buildSceneTotalsHTML(S.items, '', color, cur, true);
   }
 
 
@@ -6993,17 +8512,17 @@ function buildDoc() {
       </div>
     </div>` : '';
 
-  const critH = S.showCriteria ? `
+  // La grilla se arma desde S.docCriteria (editable), no de texto fijo. Cada
+  // línea puede ser "Subtítulo | descripción" o solo texto (ver parseCriteria).
+  const critItems = parseCriteria(S.docCriteria).map(c =>
+    `<div class="pcrit-item">${c.s ? `<span class="pcrit-s">${esc(c.s)}</span>` : ''}<span class="pcrit-p">${esc(c.p)}</span></div>`
+  ).join('');
+  const critH = (S.showCriteria && critItems) ? `
     <div class="pcrit">
       <div class="pcrit-t">${esc(S.docCriteriaTitle||'Cómo Trabajamos')}</div>
       <div class="pcrit-box">
         <div class="pcrit-intro">${esc(S.docCriteriaIntro||'Cada trabajo es evaluado en función de sus condiciones reales. El costo refleja la complejidad técnica de cada situación:')}</div>
-        <div class="pcrit-grid">
-          <div class="pcrit-item"><span class="pcrit-s">Altura y Acceso</span><span class="pcrit-p">Evaluamos las condiciones de ingreso al árbol y la zona de trabajo antes de operar.</span></div>
-          <div class="pcrit-item"><span class="pcrit-s">Volumen de Material</span><span class="pcrit-p">Planificamos el retiro ordenado para no comprometer el espacio ni la propiedad.</span></div>
-          <div class="pcrit-item"><span class="pcrit-s">Riesgos Presentes</span><span class="pcrit-p">Identificamos proximidad a edificaciones, cercos o instalaciones y aplicamos las medidas de seguridad correspondientes.</span></div>
-          <div class="pcrit-item"><span class="pcrit-s">Estado y Especie del Árbol</span><span class="pcrit-p">La especie y condición sanitaria del ejemplar determinan la técnica y el tiempo necesario.</span></div>
-        </div>
+        <div class="pcrit-grid">${critItems}</div>
       </div>
     </div>` : '';
 
@@ -7015,6 +8534,37 @@ function buildDoc() {
     sigH = `<div class="psigs">${sx}</div>`;
   }
 
+  const obsH = S.observations ? `<div class="pobs">
+      <div class="pobs-t">Observaciones</div>
+      <div class="pobs-txt">${esc(S.observations).replace(/\n/g,'<br>')}</div>
+    </div>` : '';
+  const payH = S.paymentConditions ? `<div class="pcond">
+      <div class="pcond-t">Condiciones de Pago</div>
+      <div class="pcond-txt">${esc(S.paymentConditions).replace(/\n/g,'<br>')}</div>
+    </div>` : '';
+  const validH = S.showExpiry !== false ? `<div class="pvalid">
+      <span>${pdfIcon('warning')} PRESUPUESTO CON ${S.validityDays} DÍAS DE VIGENCIA</span>
+      <span class="pvalid-date">Vence el ${fmtD(S.dateExpiry)}</span>
+    </div>` : '';
+  const notesH = (S.showTechNotes && techH) ? `<div class="pnotes">
+      <div class="pnotes-t">Notas Adicionales</div>
+      <ul>${techH}</ul>
+    </div>` : '';
+  // Cuerpo del presupuesto en el ORDEN elegido por el usuario (Empresa →
+  // Textos del PDF → "Orden de las secciones"). El encabezado/cliente van
+  // arriba y fotos/firmas/pie quedan fijos al final.
+  const _sectionMap = {
+    details:      detailsH,
+    total:        totalH,
+    plan:         _buildWorkPlanHTML(color),
+    criteria:     critH,
+    observations: obsH,
+    payment:      payH,
+    validity:     validH,
+    notes:        notesH,
+  };
+  const bodyOrderedH = sanitizeSectionOrder(S.docSectionOrder).map(id => _sectionMap[id] || '').join('\n\n');
+
   const theme = S.pdfTheme || 'clasico';
   const doc = document.getElementById('doc-a4'); if(!doc) return;
   // ── Estructura wrapper-table ───────────────────────────────────────────────
@@ -7025,7 +8575,7 @@ function buildDoc() {
   // position:fixed, que no se renderiza correctamente en muchos navegadores
   // móviles). El <tbody> tiene el resto del contenido del presupuesto.
   doc.innerHTML = `
-    <table class="pdoc pdoc-theme-${theme}">
+    <table class="pdoc pdoc-theme-${theme}${S.pdfCompact ? ' pdoc-compact' : ''}">
       <thead>
         <tr><td>
           ${_buildDocHeader(theme, S, color, contacts, 'Presupuesto N°', null, false)}
@@ -7050,29 +8600,7 @@ function buildDoc() {
       </div>
     </div>
 
-    ${bodyBlocks}
-
-    ${S.observations?`<div class="pobs">
-      <div class="pobs-t">Observaciones</div>
-      <div class="pobs-txt">${esc(S.observations).replace(/\n/g,'<br>')}</div>
-    </div>`:''}
-
-    ${S.paymentConditions?`<div class="pcond">
-      <div class="pcond-t">Condiciones de Pago</div>
-      <div class="pcond-txt">${esc(S.paymentConditions).replace(/\n/g,'<br>')}</div>
-    </div>`:''}
-
-    ${S.showExpiry !== false ? `<div class="pvalid">
-      <span>${pdfIcon('warning')} PRESUPUESTO CON ${S.validityDays} DÍAS DE VIGENCIA</span>
-      <span class="pvalid-date">Vence el ${fmtD(S.dateExpiry)}</span>
-    </div>` : ''}
-
-    ${critH}
-
-    ${S.showTechNotes&&techH?`<div class="pnotes">
-      <div class="pnotes-t">Notas Adicionales</div>
-      <ul>${techH}</ul>
-    </div>`:''}
+    ${bodyOrderedH}
 
     ${fotosH}
 
@@ -7146,7 +8674,7 @@ function buildRiskDoc() {
     S.items.forEach(item => {
       if (item.type === 'tree') {
         n++;
-        const p = item.price !== '' ? fmtM(item.price, cur) : '—';
+        const p = item.price !== '' ? fmtMDoc(item.price, cur) : '—';
         rows += `<tr>
           <td class="td-n">${n}</td>
           <td class="td-sp" style="color:${color}">${esc(item.species||'Sin especificar')}</td>
@@ -7161,9 +8689,9 @@ function buildRiskDoc() {
         if (!hasPrice) {
           pCell = '—';
         } else if (item.showQty && qty > 1) {
-          pCell = `<span style="font-size:8pt;color:#64748b">${qty} × ${fmtM(item.price,cur)}</span><br><strong>${fmtM(itTotal,cur)}</strong>`;
+          pCell = `<span style="font-size:8pt;color:#64748b">${qty} × ${fmtMDoc(item.price,cur)}</span><br><strong>${fmtMDoc(itTotal,cur)}</strong>`;
         } else {
-          pCell = fmtM(itTotal, cur);
+          pCell = fmtMDoc(itTotal, cur);
         }
         rows += `<tr>
           <td class="td-n">${n}</td>
@@ -7178,8 +8706,8 @@ function buildRiskDoc() {
 
   const discLabel = S.docDiscountLabel || 'Descuento';
   const discH = S.discount > 0 ? `
-    <div class="pdisc-row"><span>Subtotal:</span><span>${fmtM(subtotal,cur)}</span></div>
-    <div class="pdisc-row" style="color:#dc2626"><span>${esc(discLabel)} (${S.discount}%):</span><span>− ${fmtM(discAmt,cur)}</span></div>
+    <div class="pdisc-row"><span>Subtotal:</span><span>${fmtMDoc(subtotal,cur)}</span></div>
+    <div class="pdisc-row" style="color:#dc2626"><span>${esc(discLabel)} (${S.discount}%):</span><span>− ${fmtMDoc(discAmt,cur)}</span></div>
     ${S.docDiscountNote ? `<div class="pdisc-note">${esc(S.docDiscountNote)}</div>` : ''}` : '';
 
   let sigH = '';
@@ -7198,7 +8726,7 @@ function buildRiskDoc() {
   // Wrapper-table pattern (ver buildDoc): el <thead> con el header se repite
   // nativamente en cada página impresa. <tbody> tiene el resto del informe.
   doc.innerHTML = `
-    <table class="pdoc pdoc-theme-${theme}">
+    <table class="pdoc pdoc-theme-${theme}${S.pdfCompact ? ' pdoc-compact' : ''}">
       <thead>
         <tr><td>
           <!-- ══ ENCABEZADO ══ -->
@@ -7311,7 +8839,7 @@ function buildRiskDoc() {
           <th style="width:18pt">#</th>
           <th style="width:100pt">Especie/s</th>
           <th>Trabajo a realizar</th>
-          <th class="thr">Costo</th>
+          <th class="thr">Valor</th>
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>
@@ -7321,8 +8849,8 @@ function buildRiskDoc() {
     <div class="ptotals">
       ${discH}
       <div class="ptotal-box" style="color:${color};border-color:${color};background:${color}12">
-        <div class="ptotal-lbl" style="color:${color}">Costo Total del Trabajo</div>
-        <div class="ptotal-amt" style="color:${color}">${fmtM(total,cur)}</div>
+        <div class="ptotal-lbl" style="color:${color}">Total del trabajo</div>
+        <div class="ptotal-amt" style="color:${color}">${fmtMDoc(total,cur)}</div>
       </div>
     </div>
 
@@ -7391,7 +8919,7 @@ function buildEstDoc() {
         <div class="pest-item">
           <div class="pest-item-num" style="color:${color}">${workN}. Trabajo Estimado</div>
           <div class="pest-item-desc">${esc(item.desc||'Sin descripción').replace(/\n/g,'<br>')}</div>
-          ${hasPrice ? `<div class="pest-item-price" style="color:${color}">Costo estimado: ${fmtM(item.price,cur)}</div>` : ''}
+          ${hasPrice ? `<div class="pest-item-price" style="color:${color}">Valor estimado: ${fmtMDoc(item.price,cur)}</div>` : ''}
         </div>`;
     } else if (item.type === 'note') {
       workRows += `
@@ -7411,9 +8939,9 @@ function buildEstDoc() {
     if(!hasPrice){
       priceHtml = '—';
     } else if(item.showQty && qty > 1){
-      priceHtml = `<span style="font-size:8pt;color:#64748b;display:block">${qty} × ${fmtM(item.price,cur)}</span><strong>${fmtM(total,cur)}</strong>`;
+      priceHtml = `<span style="font-size:8pt;color:#64748b;display:block">${qty} × ${fmtMDoc(item.price,cur)}</span><strong>${fmtMDoc(total,cur)}</strong>`;
     } else {
-      priceHtml = fmtM(total, cur);
+      priceHtml = fmtMDoc(total, cur);
     }
     svcRows += `
       <div class="pest-svc-row">
@@ -7428,13 +8956,13 @@ function buildEstDoc() {
     totalsHtml = `<div class="ptotals">`;
     if (showBreakdown) {
       totalsHtml += `
-        <div class="pdisc-row"><span>Trabajos estimados:</span><span>${fmtM(estSubtotal,cur)}</span></div>
-        <div class="pdisc-row"><span>Servicios / costos fijos:</span><span>${fmtM(svcSubtotal,cur)}</span></div>`;
+        <div class="pdisc-row"><span>Trabajos estimados:</span><span>${fmtMDoc(estSubtotal,cur)}</span></div>
+        <div class="pdisc-row"><span>Servicios / costos fijos:</span><span>${fmtMDoc(svcSubtotal,cur)}</span></div>`;
     }
     totalsHtml += `
       <div class="ptotal-box" style="color:${color};border-color:${color};background:${color}12">
-        <div class="ptotal-lbl" style="color:${color}">Costo Total${workItems.length>0?' (Estimado)':' Confirmado'}</div>
-        <div class="ptotal-amt" style="color:${color}">${fmtM(grandTotal,cur)}</div>
+        <div class="ptotal-lbl" style="color:${color}">Total${workItems.length>0?' (Estimado)':' Confirmado'}</div>
+        <div class="ptotal-amt" style="color:${color}">${fmtMDoc(grandTotal,cur)}</div>
       </div>
     </div>`;
   }
@@ -7447,7 +8975,7 @@ function buildEstDoc() {
   // Wrapper-table pattern (ver buildDoc): el <thead> con el header se repite
   // nativamente en cada página impresa. <tbody> tiene el resto del documento.
   doc.innerHTML = `
-    <table class="pdoc pdoc-theme-${theme}">
+    <table class="pdoc pdoc-theme-${theme}${S.pdfCompact ? ' pdoc-compact' : ''}">
       <thead>
         <tr><td>
           ${_buildDocHeader(theme, S, color, contacts, 'Presupuesto Estimativo N°', `Fecha: ${fmtD(S.dateIssue)}`, true)}
@@ -7490,10 +9018,12 @@ function buildEstDoc() {
     <div class="pest-services-section">
       <div class="pest-services-t">Servicios / Costos Fijos Confirmados</div>
       ${svcRows}
-      ${svcSubtotal > 0 && workItems.length > 0 ? `<div style="display:flex;justify-content:flex-end;padding-top:5px;font-size:8.5pt;color:#64748b">Subtotal servicios: <strong style="margin-left:8px;color:#374151">${fmtM(svcSubtotal,cur)}</strong></div>` : ''}
+      ${svcSubtotal > 0 && workItems.length > 0 ? `<div style="display:flex;justify-content:flex-end;padding-top:5px;font-size:8.5pt;color:#64748b">Subtotal servicios: <strong style="margin-left:8px;color:#374151">${fmtMDoc(svcSubtotal,cur)}</strong></div>` : ''}
     </div>` : ''}
 
     ${totalsHtml}
+
+    ${_buildWorkPlanHTML(color)}
 
     <div class="pest-disclaimer">
       <div class="pest-disclaimer-title">Importante</div>
@@ -7515,9 +9045,7 @@ function buildEstDoc() {
     <div class="pest-factors">
       <div class="pest-factors-t" style="color:${color};border-color:${color}">Para estimar el costo se consideran</div>
       <div class="pest-factors-grid">
-        ${(S.docCriteria||'La altura del árbol y el acceso al sitio.\nEl volumen de material a extraer: ramas, troncos y restos vegetales.\nLa proximidad a estructuras sensibles: edificaciones, tendido eléctrico u otras instalaciones.\nLa especie, el estado fitosanitario y la complejidad estructural del árbol.')
-          .split('\n').filter(l=>l.trim())
-          .map(l=>`<div class="pest-factor" style="color:${color}">${esc(l.trim())}</div>`).join('')}
+        ${parseCriteria(S.docCriteria).map(c=>`<div class="pest-factor" style="color:${color}">${c.s?`<strong>${esc(c.s)}:</strong> `:''}${esc(c.p)}</div>`).join('')}
       </div>
     </div>` : ''}
 
@@ -7754,6 +9282,17 @@ function factTopeChanged() {
 
 window.addEventListener('DOMContentLoaded', async () => {
   loadLS();
+  // Tema de la UI (claro/oscuro/auto). El atributo data-theme ya lo fijó el
+  // script del <head> para evitar el flash; acá sincronizamos S, el selector
+  // y los tonos del acento, y escuchamos cambios del sistema en modo auto.
+  let _savedTheme = 'auto';
+  try { _savedTheme = localStorage.getItem(LS.THEME) || 'auto'; } catch (_) {}
+  applyTheme(_savedTheme);
+  if (window.matchMedia) {
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+      if ((S.themeMode || 'auto') === 'auto') applyTheme('auto');
+    });
+  }
   // Fotos: hidratar el caché desde IndexedDB ANTES del primer render (así
   // renderItems()/buildDoc() resuelven los IDs de foto sincrónicamente).
   // Nunca rechaza; si IDB no está disponible, sigue con el caché vacío.
@@ -7819,6 +9358,8 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   // Copia de seguridad en Google Drive (inerte si no está configurada).
   if (typeof gdriveInitOnLoad === 'function') gdriveInitOnLoad();
+  // Notificaciones push (inerte si no está configurado el Worker).
+  if (typeof initPush === 'function') initPush();
   // Al pasar la app a segundo plano, subir cambios pendientes de inmediato
   // (solo si hay señal; sin conexión queda pendiente para el evento 'online').
   document.addEventListener('visibilitychange', () => {
@@ -7837,7 +9378,29 @@ window.addEventListener('DOMContentLoaded', async () => {
       clearTimeout(GDRIVE._timer);
       gdriveUpload().then(gdriveUpdateUI).catch(() => {});
     }
+    // Al volver la señal, re-sincronizar los seguimientos del Worker de push.
+    if (typeof syncPushFollowups === 'function' && S.pushEnabled) syncPushFollowups().catch(() => {});
   });
+
+  // Accesos directos del manifest (long-press en el ícono): al abrir con
+  // ?go=… disparamos la acción y limpiamos la URL para que un reload no la
+  // repita. Reutiliza las mismas funciones que los botones de la UI.
+  try {
+    const params = new URLSearchParams(location.search);
+    const go = params.get('go');
+    if (go) {
+      history.replaceState(null, '', location.pathname);
+      if (go === 'nuevo' && typeof newQuote === 'function') newQuote();
+      else if (go === 'historial' && typeof switchTab === 'function') switchTab('historial');
+    }
+    // Web Share Target: el SW redirigió aquí tras compartir fotos a la app.
+    // Limpiamos la URL (para que un reload no reabra la bandeja) y procesamos
+    // los blobs stasheados en IndexedDB (vaciando la bandeja).
+    if (params.get('share') === '1') {
+      history.replaceState(null, '', location.pathname);
+      if (typeof processSharedPhotos === 'function') processSharedPhotos();
+    }
+  } catch (e) {}
 });
 
 // ═══════════════════════════════════════════════════════════
