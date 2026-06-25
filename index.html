@@ -8620,9 +8620,15 @@ function _buildDocHeader(theme, S, color, contacts, badgeLabel, badgeDate, showP
 
   // Clásico, Cálido, Técnico y Elegante: misma estructura; el CSS de cada tema
   // (tipografía, paleta, reglas) se ocupa del resto.
+  // NOTA: la franja de marca de 5px va pintada con `background` (no con
+  // `border-top`). El header vive en un <thead> que el navegador repite por
+  // página; un `border-top` grueso + `border-collapse` se DUPLICA en el borde
+  // inferior de la página anterior al partir el documento (se ve una "raya"
+  // espuria al pie). Un background-gradient se clipea al box del header y no
+  // tiene ese problema, manteniendo el mismo look.
   const dateHTML = badgeDate ? `<div class="ph-badge-date">${badgeDate}</div>` : '';
   return `
-  <div class="ph" style="border-top:5px solid ${color}">
+  <div class="ph" style="background:linear-gradient(${color},${color}) top left / 100% 5px no-repeat, #fff;padding-top:21px">
     ${logoHTML}
     <div class="ph-co">
       <div class="ph-name" style="color:${color}">${nameStr}</div>
