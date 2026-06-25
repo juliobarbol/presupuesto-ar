@@ -1146,6 +1146,13 @@ input[type=file]{display:none}
   #sticky-totals,
   #toast-container{display:none!important}
   #print-zone{display:block!important}
+  /* Forzamos esquema claro al imprimir: en tema oscuro el <html> lleva
+     color-scheme:dark, lo que hace que el navegador pinte el "canvas" de
+     la página (incluido el margen inferior donde va el contador "Página X
+     de Y") con un fondo oscuro → aparecía una barra negra de lado a lado
+     al pie de cada hoja. El cuerpo del documento ya es blanco; esto evita
+     que el área de márgenes herede el fondo oscuro. */
+  :root,html,body{color-scheme:light}
   body,html{margin:0;padding:0;background:#fff}
 }
 
