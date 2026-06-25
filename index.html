@@ -6985,24 +6985,13 @@ function _buildDocHTMLForEntry(e) {
   }
 }
 
-async function sharePdfFromHistory(id) {
-  const e = getH().find(x => x.id === id);
-  if (!e || !e.snapshot) { toast('No se pudo abrir el presupuesto', 'err'); return; }
-
-  toast('⏳ Generando PDF para compartir…', 'info', 4000);
-  let h2p;
-  try {
-    h2p = await ensureHtml2Pdf();
-  } catch (err) {
-    toast('⚠️ No se pudo cargar el generador de PDF. La primera vez necesita conexión.', 'err', 6000);
-    return;
-  }
-
+// Renderiza el documento del entry en un contenedor fuera de pantalla con los
+// MISMOS estilos del documento en pantalla (clases .doc-preview-host >
+// .doc-a4-screen, ver CSS ~1159). Devuelve {host, inner} o null. El llamador
+// DEBE hacer host.remove() al terminar.
+function _offscreenDoc(e) {
   const html = _buildDocHTMLForEntry(e);
-  if (!html) { toast('No se pudo generar el documento', 'err'); return; }
-
-  // Contenedor fuera de pantalla con los MISMOS estilos del documento en
-  // pantalla (clases .doc-preview-host > .doc-a4-screen, ver CSS ~1159).
+  if (!html) return null;
   const host = document.createElement('div');
   host.className = 'doc-preview-host';
   host.style.cssText = 'position:fixed;left:-10000px;top:0;width:210mm;background:#fff;z-index:-1';
@@ -7011,12 +7000,56 @@ async function sharePdfFromHistory(id) {
   inner.innerHTML = html;
   host.appendChild(inner);
   document.body.appendChild(host);
+  return { host, inner };
+}
 
-  // Nombre de archivo legible: "N° - Cliente.pdf"
+// Nombre de archivo legible "N°-Cliente" (sin extensión).
+function _entryFileBase(e) {
   const cliente = (e.clientName || '').trim().replace(/[^\w\sáéíóúñüÁÉÍÓÚÑÜ-]/g, '').trim();
   const num = (e.quoteNumber || 'presupuesto').replace(/[^\w-]/g, '');
-  const fname = (cliente ? `${num}-${cliente}` : num).replace(/\s+/g, '_') + '.pdf';
+  return (cliente ? `${num}-${cliente}` : num).replace(/\s+/g, '_');
+}
 
+// Comparte un File por la bandeja nativa del sistema (navigator.share). Si el
+// dispositivo no soporta compartir archivos (típicamente escritorio), cae al
+// flujo manual: descarga el archivo y abre WhatsApp con texto.
+async function _shareFileOrFallback(file, e) {
+  if (navigator.canShare && navigator.share && navigator.canShare({ files: [file] })) {
+    const empresa = ((e.snapshot && e.snapshot.coName) || S.coName || '').trim();
+    const txt = `Presupuesto ${e.quoteNumber || ''}${empresa ? ' — ' + empresa : ''}`.trim();
+    try {
+      await navigator.share({ files: [file], title: file.name, text: txt });
+    } catch (err) {
+      if (err && err.name !== 'AbortError') { // AbortError = el usuario canceló la bandeja
+        console.error('navigator.share falló', err);
+        toast('No se pudo compartir el archivo', 'err');
+      }
+    }
+    return;
+  }
+  // Fallback escritorio / sin soporte de compartir-archivos.
+  const url = URL.createObjectURL(file);
+  const a = document.createElement('a');
+  a.href = url; a.download = file.name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+  const phone = (typeof normalizeArgPhone === 'function')
+    ? normalizeArgPhone((e.snapshot && e.snapshot.clientContact) || '') : '';
+  const base = phone ? `https://wa.me/${phone}` : 'https://wa.me/';
+  window.open(`${base}?text=${encodeURIComponent('Te paso el presupuesto ' + (e.quoteNumber || ''))}`, '_blank', 'noopener');
+  toast('📎 Archivo descargado. Adjuntalo en WhatsApp.', 'info', 6000);
+}
+
+// Compartir como PDF (A4). El PDF embebe el documento como imagen JPEG.
+async function sharePdfFromHistory(id) {
+  const e = getH().find(x => x.id === id);
+  if (!e || !e.snapshot) { toast('No se pudo abrir el presupuesto', 'err'); return; }
+  toast('⏳ Generando PDF para compartir…', 'info', 4000);
+  let h2p;
+  try { h2p = await ensureHtml2Pdf(); }
+  catch (err) { toast('⚠️ No se pudo cargar el generador de PDF. La primera vez necesita conexión.', 'err', 6000); return; }
+  const od = _offscreenDoc(e);
+  if (!od) { toast('No se pudo generar el documento', 'err'); return; }
   try {
     const blob = await h2p().set({
       margin: 0,
@@ -7024,42 +7057,42 @@ async function sharePdfFromHistory(id) {
       html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
       pagebreak: { mode: ['css', 'legacy'] },
-    }).from(inner).outputPdf('blob');
-
-    const file = new File([blob], fname, { type: 'application/pdf' });
-
-    // Web Share API con archivos (Android Chrome): abre la bandeja nativa con
-    // WhatsApp y el PDF adjunto. canShare({files}) confirma soporte real.
-    if (navigator.canShare && navigator.share && navigator.canShare({ files: [file] })) {
-      const empresa = (e.snapshot.coName || S.coName || '').trim();
-      const txt = `Presupuesto ${e.quoteNumber || ''}${empresa ? ' — ' + empresa : ''}`.trim();
-      try {
-        await navigator.share({ files: [file], title: fname, text: txt });
-      } catch (err) {
-        if (err && err.name !== 'AbortError') { // AbortError = el usuario canceló
-          console.error('navigator.share falló', err);
-          toast('No se pudo compartir el archivo', 'err');
-        }
-      }
-    } else {
-      // Fallback (escritorio o navegador sin compartir-archivos): descargar el
-      // PDF y abrir WhatsApp con texto, como en el flujo manual de siempre.
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = fname;
-      document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 10000);
-      const phone = (typeof normalizeArgPhone === 'function')
-        ? normalizeArgPhone((e.snapshot && e.snapshot.clientContact) || '') : '';
-      const base = phone ? `https://wa.me/${phone}` : 'https://wa.me/';
-      window.open(`${base}?text=${encodeURIComponent('Te paso el presupuesto ' + (e.quoteNumber || ''))}`, '_blank', 'noopener');
-      toast('📎 PDF descargado. Adjuntalo en WhatsApp.', 'info', 6000);
-    }
+    }).from(od.inner).outputPdf('blob');
+    await _shareFileOrFallback(new File([blob], _entryFileBase(e) + '.pdf', { type: 'application/pdf' }), e);
   } catch (err) {
     console.error('Error generando el PDF para compartir', err);
     toast('⚠️ No se pudo generar el PDF', 'err', 5000);
   } finally {
-    host.remove();
+    od.host.remove();
+  }
+}
+
+// Compartir como imagen PNG del presupuesto COMPLETO (una sola imagen larga).
+// Reutiliza el pipeline de html2pdf para obtener el canvas (html2canvas) y lo
+// exporta como PNG SIN PÉRDIDA — a diferencia del PDF, que embebe un JPEG —,
+// así que el texto queda más nítido. Pensado para colegas que prefieren mandar
+// una imagen en vez de un archivo PDF.
+async function sharePngFromHistory(id) {
+  const e = getH().find(x => x.id === id);
+  if (!e || !e.snapshot) { toast('No se pudo abrir el presupuesto', 'err'); return; }
+  toast('⏳ Generando imagen para compartir…', 'info', 4000);
+  let h2p;
+  try { h2p = await ensureHtml2Pdf(); }
+  catch (err) { toast('⚠️ No se pudo cargar el generador de imagen. La primera vez necesita conexión.', 'err', 6000); return; }
+  const od = _offscreenDoc(e);
+  if (!od) { toast('No se pudo generar el documento', 'err'); return; }
+  try {
+    const canvas = await h2p().set({
+      html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+    }).from(od.inner).toCanvas().get('canvas');
+    const blob = await new Promise((res) => canvas.toBlob(res, 'image/png'));
+    if (!blob) { toast('No se pudo generar la imagen', 'err'); return; }
+    await _shareFileOrFallback(new File([blob], _entryFileBase(e) + '.png', { type: 'image/png' }), e);
+  } catch (err) {
+    console.error('Error generando la imagen para compartir', err);
+    toast('⚠️ No se pudo generar la imagen', 'err', 5000);
+  } finally {
+    od.host.remove();
   }
 }
 
@@ -7572,7 +7605,8 @@ function renderHistory() {
       <div class="hacts">
         <select class="hestado-sel" onchange="setEstadoHistory(${e.id}, this.value)" title="Cambiar estado" aria-label="Cambiar estado">${estadoOpts}</select>
         <button class="btn btn-g btn-sm" onclick="previewFromHistory(${e.id})">👁 Ver</button>
-        <button class="btn btn-g btn-sm" onclick="sharePdfFromHistory(${e.id})" title="Generar el PDF y compartirlo (WhatsApp, etc.)">📲 PDF a WhatsApp</button>
+        <button class="btn btn-g btn-sm" onclick="sharePdfFromHistory(${e.id})" title="Generar el PDF y compartirlo (WhatsApp, etc.)">📄 PDF</button>
+        <button class="btn btn-g btn-sm" onclick="sharePngFromHistory(${e.id})" title="Generar una imagen PNG del presupuesto y compartirla (WhatsApp, etc.)">🖼️ Imagen</button>
         ${tieneDir ? `<button class="btn btn-g btn-sm" onclick="comoLlegar(${e.id})">📍 Cómo llegar</button>` : ''}
         <button class="btn btn-s btn-sm" onclick="loadFromHistory(${e.id})">Cargar</button>
         <button class="btn-icon-del" onclick="delFromHistory(${e.id})" title="Eliminar presupuesto" aria-label="Eliminar presupuesto">🗑</button>
