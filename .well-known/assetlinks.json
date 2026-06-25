@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "dev.workers.juliobarribolbo.presupuesto_ar.twa",
+      "sha256_cert_fingerprints": [
+        "11:05:96:57:C6:C7:B7:A2:4E:C6:9F:44:7B:4A:53:64:9D:1E:FC:B7:2A:C8:90:B8:51:31:CE:8A:C3:3F:5F:FE"
+      ]
+    }
+  }
+]

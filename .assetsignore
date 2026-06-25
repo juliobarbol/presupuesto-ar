@@ -1,0 +1,18 @@
+# Solo se publica el shell del PWA. Todo lo demás (código del Worker de push,
+# tests, docs, config, control de versiones) NO debe servirse públicamente.
+.git/
+.github/
+.claude/
+.wrangler/
+node_modules/
+push-worker/
+test/
+docs/
+*.md
+wrangler.jsonc
+.gitignore
+.assetsignore
+.dev.vars*
+.env*
+package.json
+package-lock.json
