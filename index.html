@@ -6928,16 +6928,17 @@ function closePreview() {
   if (content) { content.innerHTML = ''; content.style.transform = ''; }
 }
 
-// ─── COMPARTIR PDF POR WHATSAPP (Web Share API con archivo) ──────────────
-// Genera el PDF del presupuesto como archivo y lo entrega a la bandeja nativa
-// de Android (navigator.share), que ofrece WhatsApp con el PDF YA adjunto.
-// Es una opción ALTERNATIVA: NO toca el flujo de impresión (printDoc /
-// window.print), que sigue funcionando igual para quien lo prefiera.
+// ─── COMPARTIR IMAGEN (PNG) POR WHATSAPP (Web Share API con archivo) ─────
+// Genera una imagen PNG del presupuesto completo y la entrega a la bandeja
+// nativa del sistema (navigator.share), que ofrece WhatsApp con la imagen YA
+// adjunta. Es una opción ALTERNATIVA: NO toca el flujo de impresión (printDoc
+// / window.print), que sigue siendo el PDF vectorial de máxima calidad.
 //
-// La librería html2pdf (jsPDF + html2canvas, ~900 KB) se carga lazy la primera
-// vez — a propósito NO está en el APP_SHELL para no inflar la carga inicial de
-// la app en el campo. El Service Worker la cachea tras el primer uso, así que
-// los usos offline siguientes funcionan; SOLO la primera vez necesita conexión.
+// La librería html2pdf (trae html2canvas, que es lo que usamos para rasterizar
+// el documento a canvas) se carga lazy la primera vez — a propósito NO está en
+// el APP_SHELL para no inflar la carga inicial de la app en el campo. El
+// Service Worker la cachea tras el primer uso, así que los usos offline
+// siguientes funcionan; SOLO la primera vez necesita conexión.
 let _h2pLoading = null;
 function ensureHtml2Pdf() {
   if (window.html2pdf) return Promise.resolve(window.html2pdf);
@@ -7040,38 +7041,27 @@ async function _shareFileOrFallback(file, e) {
   toast('📎 Archivo descargado. Adjuntalo en WhatsApp.', 'info', 6000);
 }
 
-// Compartir como PDF (A4). El PDF embebe el documento como imagen JPEG.
-async function sharePdfFromHistory(id) {
-  const e = getH().find(x => x.id === id);
-  if (!e || !e.snapshot) { toast('No se pudo abrir el presupuesto', 'err'); return; }
-  toast('⏳ Generando PDF para compartir…', 'info', 4000);
-  let h2p;
-  try { h2p = await ensureHtml2Pdf(); }
-  catch (err) { toast('⚠️ No se pudo cargar el generador de PDF. La primera vez necesita conexión.', 'err', 6000); return; }
-  const od = _offscreenDoc(e);
-  if (!od) { toast('No se pudo generar el documento', 'err'); return; }
-  try {
-    const blob = await h2p().set({
-      margin: 0,
-      image: { type: 'jpeg', quality: 0.96 },
-      html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      pagebreak: { mode: ['css', 'legacy'] },
-    }).from(od.inner).outputPdf('blob');
-    await _shareFileOrFallback(new File([blob], _entryFileBase(e) + '.pdf', { type: 'application/pdf' }), e);
-  } catch (err) {
-    console.error('Error generando el PDF para compartir', err);
-    toast('⚠️ No se pudo generar el PDF', 'err', 5000);
-  } finally {
-    od.host.remove();
-  }
+// Calcula el factor de escala (≈ DPI) más alto posible para rasterizar el
+// documento, pero acotado para no reventar los límites de canvas de los
+// celulares (gama baja Android limita el ÁREA total y cada DIMENSIÓN). Un
+// presupuesto de 1–2 páginas sale a 3×; uno muy largo baja solo para no fallar.
+function _bestRasterScale(cssW, cssH) {
+  const MAX_SCALE = 3;     // tope: más que esto casi no se nota y pesa de más
+  const MAX_DIM   = 12000; // px por lado, conservador para Android gama baja
+  const MAX_AREA  = 30e6;  // ~30 MP de área total del canvas
+  if (!cssW || !cssH) return 2;
+  let s = MAX_SCALE;
+  s = Math.min(s, MAX_DIM / cssW, MAX_DIM / cssH);
+  s = Math.min(s, Math.sqrt(MAX_AREA / (cssW * cssH)));
+  return Math.max(1.5, Math.round(s * 100) / 100); // piso 1.5×
 }
 
 // Compartir como imagen PNG del presupuesto COMPLETO (una sola imagen larga).
-// Reutiliza el pipeline de html2pdf para obtener el canvas (html2canvas) y lo
-// exporta como PNG SIN PÉRDIDA — a diferencia del PDF, que embebe un JPEG —,
-// así que el texto queda más nítido. Pensado para colegas que prefieren mandar
-// una imagen en vez de un archivo PDF.
+// Usa html2canvas (vía html2pdf) para rasterizar el documento y lo exporta como
+// PNG SIN PÉRDIDA. Calidad máxima: esperamos a que las fuentes estén cargadas
+// (texto nítido, sin fallback) y rasterizamos al mayor DPI que el dispositivo
+// banque. Es la opción para quien prefiera mandar una imagen; el PDF vectorial
+// de máxima calidad sigue estando en el botón Imprimir/PDF de siempre.
 async function sharePngFromHistory(id) {
   const e = getH().find(x => x.id === id);
   if (!e || !e.snapshot) { toast('No se pudo abrir el presupuesto', 'err'); return; }
@@ -7079,12 +7069,26 @@ async function sharePngFromHistory(id) {
   let h2p;
   try { h2p = await ensureHtml2Pdf(); }
   catch (err) { toast('⚠️ No se pudo cargar el generador de imagen. La primera vez necesita conexión.', 'err', 6000); return; }
+  // Fuentes listas antes de rasterizar: si html2canvas captura mientras la
+  // tipografía de marca aún no cargó, el texto sale con la fuente de respaldo.
+  try { if (document.fonts && document.fonts.ready) await document.fonts.ready; } catch (_) {}
   const od = _offscreenDoc(e);
   if (!od) { toast('No se pudo generar el documento', 'err'); return; }
   try {
+    const cssW = od.inner.offsetWidth;
+    const cssH = od.inner.offsetHeight;
+    const scale = _bestRasterScale(cssW, cssH);
     const canvas = await h2p().set({
-      html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+      html2canvas: {
+        scale,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        imageTimeout: 0,      // sin timeout: esperar a que carguen logo/fotos
+        logging: false,
+        windowWidth: cssW,    // viewport estable = layout idéntico al de pantalla
+      },
     }).from(od.inner).toCanvas().get('canvas');
+    // toBlob('image/png') es sin pérdida; el 2º arg (calidad) no aplica a PNG.
     const blob = await new Promise((res) => canvas.toBlob(res, 'image/png'));
     if (!blob) { toast('No se pudo generar la imagen', 'err'); return; }
     await _shareFileOrFallback(new File([blob], _entryFileBase(e) + '.png', { type: 'image/png' }), e);
@@ -7605,8 +7609,7 @@ function renderHistory() {
       <div class="hacts">
         <select class="hestado-sel" onchange="setEstadoHistory(${e.id}, this.value)" title="Cambiar estado" aria-label="Cambiar estado">${estadoOpts}</select>
         <button class="btn btn-g btn-sm" onclick="previewFromHistory(${e.id})">👁 Ver</button>
-        <button class="btn btn-g btn-sm" onclick="sharePdfFromHistory(${e.id})" title="Generar el PDF y compartirlo (WhatsApp, etc.)">📄 PDF</button>
-        <button class="btn btn-g btn-sm" onclick="sharePngFromHistory(${e.id})" title="Generar una imagen PNG del presupuesto y compartirla (WhatsApp, etc.)">🖼️ Imagen</button>
+        <button class="btn btn-g btn-sm" onclick="sharePngFromHistory(${e.id})" title="Generar una imagen del presupuesto y compartirla (WhatsApp, etc.)">🖼️ Compartir imagen</button>
         ${tieneDir ? `<button class="btn btn-g btn-sm" onclick="comoLlegar(${e.id})">📍 Cómo llegar</button>` : ''}
         <button class="btn btn-s btn-sm" onclick="loadFromHistory(${e.id})">Cargar</button>
         <button class="btn-icon-del" onclick="delFromHistory(${e.id})" title="Eliminar presupuesto" aria-label="Eliminar presupuesto">🗑</button>
