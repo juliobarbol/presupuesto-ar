@@ -5892,6 +5892,10 @@ function toggleCollapsibleSection(id) {
 }
 
 function switchTab(name) {
+  // El puente presupuesto→factura solo aplica dentro de Facturación; al salir
+  // a otra pestaña descartamos el enlace pendiente para no atar la factura a
+  // un presupuesto que no corresponde.
+  if (name !== 'facturacion') _pendingFacturaQuote = null;
   const names = ['editor','empresa','estilo','historial','facturacion'];
   document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active', names[i]===name));
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
@@ -6808,6 +6812,53 @@ function setEstadoHistory(id, nuevoEstado) {
   setH(h);
   renderHistory();
   toast(`Estado: ${estadoLabel(nuevoEstado)}`, 'info', 1800);
+  // Al marcar "realizado", ofrecer registrar la factura del trabajo: conecta
+  // el pipeline comercial con la pestaña Facturación (control de tope), para
+  // no volver a tipear cliente + monto que ya están en el presupuesto.
+  if (nuevoEstado === 'realizado') _ofrecerRegistrarFactura(e);
+}
+
+// ─── PUENTE PRESUPUESTO → FACTURACIÓN ────────────────────────
+// Presupuesto del que se está por registrar factura (lo setea el puente al
+// llevar a la pestaña Facturación). Permite enlazar la factura con su
+// presupuesto y marcarlo como facturado al confirmar el registro.
+let _pendingFacturaQuote = null; // { id, quoteNumber } o null
+
+// Ofrece, con un toast accionable, registrar la factura de un presupuesto
+// recién marcado como "realizado". No molesta si ya se facturó o si no hay
+// monto que facturar.
+function _ofrecerRegistrarFactura(entry) {
+  if (!entry || entry.facturado || !(entry.total > 0)) return;
+  const c = document.getElementById('toast-container');
+  if (!c) return;
+  const el = document.createElement('div');
+  el.className = 'toast toast-info toast-action';
+  el.innerHTML = `<span>¿Registrar la factura de este trabajo?</span>
+    <button type="button" class="toast-btn">Registrar factura</button>`;
+  c.appendChild(el);
+  requestAnimationFrame(()=>{ requestAnimationFrame(()=>el.classList.add('show')); });
+  const close = () => { el.classList.remove('show'); setTimeout(()=>el.remove(), 300); };
+  el.querySelector('.toast-btn').onclick = () => { irARegistrarFactura(entry.id); close(); };
+  setTimeout(close, 9000);
+}
+
+// Lleva a la pestaña Facturación con el formulario precargado desde un
+// presupuesto. El usuario revisa el monto (puede diferir del presupuestado por
+// descuentos, anticipos, etc.) y confirma con "Registrar factura".
+function irARegistrarFactura(id) {
+  const e = getH().find(x => x.id === id);
+  if (!e) return;
+  switchTab('facturacion'); // dispara factInit() → setea la fecha de hoy
+  const setVal = (elId, v) => { const el = document.getElementById(elId); if (el) el.value = v; };
+  setVal('fact-monto',   e.total || '');
+  setVal('fact-cliente', e.clientName || '');
+  setVal('fact-desc',    'Presupuesto ' + (e.quoteNumber || ''));
+  _pendingFacturaQuote = { id: e.id, quoteNumber: e.quoteNumber || '' };
+  const form = document.querySelector('#panel-facturacion .fact-form');
+  if (form && form.scrollIntoView) form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  const mi = document.getElementById('fact-monto');
+  if (mi) { try { mi.focus(); mi.select(); } catch(_){} }
+  toast('Revisá el monto y tocá "Registrar factura"', 'info', 5000);
 }
 
 // Marca como "enviado" el presupuesto que corresponde al N° activo,
@@ -7602,7 +7653,7 @@ function renderHistory() {
     return `
     <div class="hitem" data-id="${e.id}">
       <div class="hinfo">
-        <div class="hnum">${esc(e.quoteNumber||'—')}${e.isEstimative?'<span class="hbadge-est">Estimativo</span>':''}<span class="hbadge-estado" style="color:${txtCol};background:${bgCol}">${estadoLabel(est)}</span>${followupBadgeFor(e)}${expiryBadgeFor(e)}</div>
+        <div class="hnum">${esc(e.quoteNumber||'—')}${e.isEstimative?'<span class="hbadge-est">Estimativo</span>':''}<span class="hbadge-estado" style="color:${txtCol};background:${bgCol}">${estadoLabel(est)}</span>${followupBadgeFor(e)}${expiryBadgeFor(e)}${e.facturado?'<span class="hbadge-estado" style="color:#065f46;background:#d1fae5">✓ Facturado</span>':''}</div>
         ${!groupedByClient?`<div class="hclient ${!e.clientName?'is-draft':''}">${esc(e.clientName||'(borrador sin nombre de cliente)')}</div>`:''}
         <div class="hmeta">${esc(e.currency||'')} ${fmtM(e.total||0,e.currency||'ARS')} · ${e.itemCount||0} ítem(s) · ${fmtD(((e.snapshot&&e.snapshot.dateIssue)||e.savedAt||'').slice(0,10))}</div>
       </div>
@@ -9410,7 +9461,19 @@ function factRegistrar() {
   if(monto<=0)  { toast('Ingresá un monto válido','err'); return; }
 
   const arr = getFacturas();
-  arr.push({ id: Date.now().toString(), fecha, monto, cliente, desc });
+  const factura = { id: Date.now().toString(), fecha, monto, cliente, desc };
+  // Si venimos del puente "presupuesto realizado → factura", enlazamos la
+  // factura con su presupuesto y lo marcamos como facturado (no re-ofrecer).
+  if (_pendingFacturaQuote) {
+    factura.quoteNumber = _pendingFacturaQuote.quoteNumber || '';
+    try {
+      const h = getH();
+      const e = h.find(x => x.id === _pendingFacturaQuote.id);
+      if (e) { e.facturado = true; setH(h); }
+    } catch(_) {}
+    _pendingFacturaQuote = null;
+  }
+  arr.push(factura);
   setFacturas(arr);
 
   // Limpiar form (excepto fecha)
