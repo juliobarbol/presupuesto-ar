@@ -3928,6 +3928,67 @@ function removeItemPhotoRef(item, pi){
   if ('photo' in item) delete item.photo;
 }
 
+// ─── UI COMPARTIDA DE FOTOS (normal / estimativo / riesgo) ─────────
+// HTML del botón "📷 Foto/s ✓ (N)" para la barra de acciones de un ítem.
+function photoBtnHTML(refs){
+  return `<button class="btn btn-g btn-sm ia-photo">${refs.length?`📷 Fotos ✓ (${refs.length})`:'📷 Foto'}</button>`;
+}
+// HTML de la galería de miniaturas (cada una con su botón de quitar). Las
+// fotos no disponibles localmente (ID sin caché) muestran un placeholder.
+function photoGalleryHTML(refs){
+  if (!refs.length) return '';
+  return `<div class="item-photos-gallery">${refs.map((ref, pi) => {
+    const src = safeImgSrc(getPhotoData(ref));
+    return src
+      ? `<div class="item-photo-preview"><img src="${src}" alt="Foto" title="Tocar para ampliar" data-pi="${pi}"><button type="button" class="item-photo-remove" data-pi="${pi}" title="Quitar foto">✕</button></div>`
+      : `<div class="item-photo-preview item-photo-missing">📷 Foto no disponible<br><span>Restaurá tu backup en este dispositivo</span><button type="button" class="item-photo-remove" data-pi="${pi}" title="Quitar foto">✕</button></div>`;
+  }).join('')}</div>`;
+}
+// Conecta los listeners de la galería de un card: quitar foto (por posición)
+// y tocar miniatura para abrir el visor. removeFn(pi) saca la foto pi del
+// ítem; reRender() re-dibuja la lista del modo correspondiente.
+function wireItemPhotoGallery(card, removeFn, reRender){
+  card.querySelectorAll('.item-photo-remove').forEach(btn => {
+    btn.addEventListener('click', () => {
+      removeFn(parseInt(btn.dataset.pi, 10));
+      sched();
+      reRender();
+    });
+  });
+  card.querySelectorAll('.item-photo-preview img').forEach(img => {
+    img.addEventListener('click', () => openPhotoViewer(img.src));
+  });
+}
+
+// Construye el bloque "Registro Fotográfico" del PDF a partir de un array de
+// ítems (recorre TODAS las fotos de cada uno). Cada foto se etiqueta con la
+// especie (árbol) o la descripción (trabajo/servicio). Las que no estén
+// disponibles localmente se omiten. Devuelve '' si no hay ninguna.
+function buildPhotoRegistroHTML(items){
+  const flat = [];
+  (items || []).forEach(it => {
+    if (!it) return;
+    const etiqueta = (it.type === 'tree')
+      ? (it.species || 'Árbol')
+      : (it.desc || (it.type === 'work' ? 'Trabajo' : 'Servicio'));
+    itemPhotoRefs(it).forEach(ref => {
+      const src = safeImgSrc(getPhotoData(ref));
+      if (src) flat.push({ src, etiqueta });
+    });
+  });
+  if (!flat.length) return '';
+  return `
+    <div class="pphotos">
+      <div class="pphotos-t">Registro Fotográfico</div>
+      <div class="pphotos-grid">
+        ${flat.map(({ src, etiqueta }) => `<figure class="pphoto">
+            <img src="${src}" alt="${esc(etiqueta)}">
+            <figcaption>${esc(etiqueta)}</figcaption>
+          </figure>`).join('')}
+      </div>
+    </div>`;
+}
+
 // Recolecta en `set` los IDs de foto referenciados por un estado/snapshot
 // (ítems normales, escenario B y estimativos). Lo usa el backup para incluir
 // solo las fotos que hagan falta.
@@ -5116,17 +5177,10 @@ function renderItems() {
       <button class="btn btn-g btn-sm ia-up" ${idx===0?'disabled':''} title="Subir">↑</button>
       <button class="btn btn-g btn-sm ia-down" ${idx===arr.length-1?'disabled':''} title="Bajar">↓</button>
       <button class="btn btn-g btn-sm ia-dup">⧉ Duplicar</button>
-      ${item.type!=='note' ? `<button class="btn btn-g btn-sm ia-photo">${photoRefs.length?`📷 Fotos ✓ (${photoRefs.length})`:'📷 Foto'}</button>` : ''}
+      ${item.type!=='note' ? photoBtnHTML(photoRefs) : ''}
       <button class="btn btn-d btn-sm ia-del">✕ Eliminar</button>
     </div>
-    ${photoRefs.length ? `<div class="item-photos-gallery">${
-      photoRefs.map((ref, pi) => {
-        const src = safeImgSrc(getPhotoData(ref));
-        return src
-          ? `<div class="item-photo-preview"><img src="${src}" alt="Foto" title="Tocar para ampliar" data-pi="${pi}"><button type="button" class="item-photo-remove" data-pi="${pi}" title="Quitar foto">✕</button></div>`
-          : `<div class="item-photo-preview item-photo-missing">📷 Foto no disponible<br><span>Restaurá tu backup en este dispositivo</span><button type="button" class="item-photo-remove" data-pi="${pi}" title="Quitar foto">✕</button></div>`;
-      }).join('')
-    }</div>` : ''}`;
+    ${photoGalleryHTML(photoRefs)}`;
     card.innerHTML = inner;
 
     const df = card.querySelector('.ds-f');
@@ -5184,20 +5238,7 @@ function renderItems() {
     // Foto del ítem (árbol/servicio): abrir selector de imagen y comprimir.
     const photoBtn = card.querySelector('.ia-photo');
     if (photoBtn) photoBtn.addEventListener('click', ()=>pickItemPhoto(idx));
-    // Cada miniatura tiene su propio botón de quitar (por posición).
-    card.querySelectorAll('.item-photo-remove').forEach(btn => {
-      btn.addEventListener('click', ()=>{
-        const pi = parseInt(btn.dataset.pi, 10);
-        const it = activeItemsArr()[idx];
-        removeItemPhotoRef(it, pi);
-        sched();
-        renderItems();
-      });
-    });
-    // Tocar una miniatura abre el visor a pantalla completa para revisar la foto.
-    card.querySelectorAll('.item-photo-preview img').forEach(img => {
-      img.addEventListener('click', ()=>openPhotoViewer(img.src));
-    });
+    wireItemPhotoGallery(card, pi => removeItemPhotoRef(activeItemsArr()[idx], pi), renderItems);
 
     card.addEventListener('dragstart', e=>{ dragSrc=idx; card.classList.add('dragging'); e.dataTransfer.effectAllowed='move'; });
     card.addEventListener('dragend',   ()=>{ card.classList.remove('dragging'); document.querySelectorAll('.icard').forEach(c=>c.classList.remove('drag-over')); });
@@ -5358,6 +5399,7 @@ function renderEstItems() {
   S.estItems.forEach((item, idx) => {
     const card = document.createElement('div');
     card.className = 'icard';
+    const photoRefs = itemPhotoRefs(item);
 
     if (item.type === 'work') {
       card.innerHTML = `
@@ -5377,8 +5419,10 @@ function renderEstItems() {
           <button class="btn btn-g btn-sm ia-up" ${idx===0?'disabled':''} title="Subir">↑</button>
           <button class="btn btn-g btn-sm ia-down" ${idx===S.estItems.length-1?'disabled':''} title="Bajar">↓</button>
           <button class="btn btn-g btn-sm ia-dup">⧉ Duplicar</button>
+          ${photoBtnHTML(photoRefs)}
           <button class="btn btn-d btn-sm ia-del">✕ Eliminar</button>
-        </div>`;
+        </div>
+        ${photoGalleryHTML(photoRefs)}`;
 
     } else if (item.type === 'service') {
       const qty      = parseInt(item.qty) || 1;
@@ -5423,8 +5467,10 @@ function renderEstItems() {
           <button class="btn btn-g btn-sm ia-up" ${idx===0?'disabled':''} title="Subir">↑</button>
           <button class="btn btn-g btn-sm ia-down" ${idx===S.estItems.length-1?'disabled':''} title="Bajar">↓</button>
           <button class="btn btn-g btn-sm ia-dup">⧉ Duplicar</button>
+          ${photoBtnHTML(photoRefs)}
           <button class="btn btn-d btn-sm ia-del">✕ Eliminar</button>
-        </div>`;
+        </div>
+        ${photoGalleryHTML(photoRefs)}`;
 
     } else {
       card.innerHTML = `
@@ -5477,6 +5523,10 @@ function renderEstItems() {
     if(dupBtn) dupBtn.addEventListener('click', ()=>dupEstItem(idx));
     if(delBtn) delBtn.addEventListener('click', ()=>removeEstItem(idx));
 
+    const photoBtn = card.querySelector('.ia-photo');
+    if (photoBtn) photoBtn.addEventListener('click', ()=>pickEstItemPhoto(idx));
+    wireItemPhotoGallery(card, pi => removeItemPhotoRef(S.estItems[idx], pi), renderEstItems);
+
     card.draggable = true;
     card.addEventListener('dragstart', e=>{ dragSrc=idx; card.classList.add('dragging'); e.dataTransfer.effectAllowed='move'; });
     card.addEventListener('dragend',   ()=>{ card.classList.remove('dragging'); document.querySelectorAll('.icard').forEach(c=>c.classList.remove('drag-over')); });
@@ -5515,7 +5565,11 @@ function _refreshEstQtyPreview(card, idx) {
 // 0.7) y la guarda en IndexedDB vía savePhoto(), dejando en item.photo solo
 // el ID (o el dataURL embebido si IDB no está disponible). La compresión
 // evita que el almacenamiento del navegador se llene con fotos de varios MB.
-function pickItemPhoto(idx) {
+// Núcleo: abre el selector múltiple de imágenes, comprime y guarda cada una
+// (savePhoto → ref) y por cada ref llama getItem() para obtener el ítem
+// destino y agregarle la foto. Al terminar, si agregó alguna, persiste y
+// re-renderiza vía after(). Lo comparten los 3 modos (normal/est/riesgo).
+function _pickItemPhotos(getItem, after) {
   const input = document.createElement('input');
   input.type = 'file';
   input.accept = 'image/*';
@@ -5528,19 +5582,29 @@ function pickItemPhoto(idx) {
       try {
         const dataUrl = await compressImage(file, 1000, 0.7);
         const ref = await savePhoto(dataUrl);
-        const it = activeItemsArr()[idx];
+        const it = getItem();
         if (it) { addItemPhotoRef(it, ref); added++; }
       } catch(err){ console.error('Error al procesar la foto:', err); }
     }
     if (added) {
       sched();
-      renderItems();
+      after();
       toast(`${added} foto${added>1?'s':''} agregada${added>1?'s':''} al ítem`, 'ok', 1800);
     } else {
       toast('No se pudo procesar la foto', 'err');
     }
   };
   input.click();
+}
+
+// Foto(s) para un ítem normal (S.items / escenario B).
+function pickItemPhoto(idx) {
+  _pickItemPhotos(() => activeItemsArr()[idx], renderItems);
+}
+
+// Foto(s) para un ítem estimativo (S.estItems).
+function pickEstItemPhoto(idx) {
+  _pickItemPhotos(() => S.estItems[idx], renderEstItems);
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -8791,27 +8855,7 @@ function buildDoc() {
   // Resolvemos cada foto a su dataURL (vía IndexedDB/caché o embebida). Las que
   // no estén disponibles localmente (ID de un equipo aún no restaurado) se
   // omiten: en un PDF para el cliente un placeholder roto quedaría peor.
-  const fotosFlat = [];
-  (S.items || []).forEach(it => {
-    if (!it) return;
-    const etiqueta = (it.type === 'tree')
-      ? (it.species || 'Árbol')
-      : (it.desc || 'Servicio');
-    itemPhotoRefs(it).forEach(ref => {
-      const src = safeImgSrc(getPhotoData(ref));
-      if (src) fotosFlat.push({ src, etiqueta });
-    });
-  });
-  const fotosH = fotosFlat.length ? `
-    <div class="pphotos">
-      <div class="pphotos-t">Registro Fotográfico</div>
-      <div class="pphotos-grid">
-        ${fotosFlat.map(({ src, etiqueta }) => `<figure class="pphoto">
-            <img src="${src}" alt="${esc(etiqueta)}">
-            <figcaption>${esc(etiqueta)}</figcaption>
-          </figure>`).join('')}
-      </div>
-    </div>` : '';
+  const fotosH = buildPhotoRegistroHTML(S.items);
 
   // La grilla se arma desde S.docCriteria (editable), no de texto fijo. Cada
   // línea puede ser "Subtítulo | descripción" o solo texto (ver parseCriteria).
@@ -9022,6 +9066,9 @@ function buildRiskDoc() {
   const tl = (S.coTechNotes||'').split('\n').filter(l=>l.trim());
   const techH = tl.map(l=>`<li>${esc(l.replace(/^[•\-–]\s*/,''))}</li>`).join('');
 
+  // Registro fotográfico (los ítems del modo riesgo son los normales, S.items).
+  const fotosH = buildPhotoRegistroHTML(S.items);
+
   const theme = S.pdfTheme || 'clasico';
   const doc = document.getElementById('doc-a4'); if (!doc) return;
   // Wrapper-table pattern (ver buildDoc): el <thead> con el header se repite
@@ -9175,6 +9222,8 @@ function buildRiskDoc() {
       <ul>${techH}</ul>
     </div>` : ''}
 
+    ${fotosH}
+
     ${sigH}
 
     ${S.showFooter ? `<div class="pfoot" style="border-color:${color}30">
@@ -9271,6 +9320,9 @@ function buildEstDoc() {
   const tl = (S.coTechNotes||'').split('\n').filter(l=>l.trim());
   const techH = tl.map(l=>`<li>${esc(l.replace(/^[•\-–]\s*/,''))}</li>`).join('');
 
+  // Registro fotográfico de los ítems estimativos (trabajos y servicios).
+  const fotosH = buildPhotoRegistroHTML(S.estItems);
+
   const theme = S.pdfTheme || 'clasico';
   const doc = document.getElementById('doc-a4'); if (!doc) return;
   // Wrapper-table pattern (ver buildDoc): el <thead> con el header se repite
@@ -9354,6 +9406,8 @@ function buildEstDoc() {
       <div class="pnotes-t" style="color:${color};border-color:${color}">Notas Adicionales</div>
       <ul>${techH}</ul>
     </div>`:''}
+
+    ${fotosH}
 
     <div class="pest-greeting">
       ${esc(S.docGreeting||'Saludos,')}
