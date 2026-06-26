@@ -1024,6 +1024,8 @@ input[type=file]{display:none}
 .st-with-action button{margin-left:auto;flex-shrink:0;text-transform:none;letter-spacing:0}
 
 /* Vista previa de foto en el ítem del editor */
+.item-photos-gallery{display:flex;flex-wrap:wrap;gap:12px;margin-top:8px}
+.item-photos-gallery .item-photo-preview{margin-top:0}
 .item-photo-preview{position:relative;margin-top:8px;display:inline-block}
 .item-photo-preview img{max-width:140px;max-height:140px;border-radius:var(--radius-box);border:1px solid var(--border);display:block;object-fit:cover;cursor:zoom-in}
 .item-photo-remove{position:absolute;top:-8px;right:-8px;width:24px;height:24px;border-radius:50%;background:var(--red);color:#fff;border:2px solid #fff;font-size:12px;font-weight:700;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,.2)}
@@ -3896,6 +3898,36 @@ function getPhotoData(ref){
 // placeholder "foto no disponible" en vez de una imagen rota.
 function photoMissing(ref){ return photoIsId(ref) && !photoCache.has(ref); }
 
+// ─── MÚLTIPLES FOTOS POR ÍTEM ─────────────────────────────────────
+// Un ítem puede tener varias fotos en `item.photos` (array de refs). El
+// formato legado guardaba una sola en `item.photo`; estos helpers normalizan
+// los dos para que el resto del código trate siempre con un array.
+//
+// Devuelve el array de refs de foto de un ítem (normaliza el formato legado).
+function itemPhotoRefs(item){
+  if (!item) return [];
+  if (Array.isArray(item.photos)) return item.photos.filter(Boolean);
+  if (item.photo) return [item.photo];
+  return [];
+}
+// Agrega una ref al ítem, migrando el formato legado (item.photo) a array.
+function addItemPhotoRef(item, ref){
+  if (!item || !ref) return;
+  const refs = itemPhotoRefs(item);
+  refs.push(ref);
+  item.photos = refs;
+  if ('photo' in item) delete item.photo;
+}
+// Quita la foto en la posición `pi` del ítem.
+function removeItemPhotoRef(item, pi){
+  if (!item) return;
+  const refs = itemPhotoRefs(item);
+  if (pi < 0 || pi >= refs.length) return;
+  refs.splice(pi, 1);
+  item.photos = refs;
+  if ('photo' in item) delete item.photo;
+}
+
 // Recolecta en `set` los IDs de foto referenciados por un estado/snapshot
 // (ítems normales, escenario B y estimativos). Lo usa el backup para incluir
 // solo las fotos que hagan falta.
@@ -3903,7 +3935,7 @@ function collectPhotoIds(obj, set){
   if (!obj) return;
   [obj.items, obj.itemsB, obj.estItems].forEach(arr => {
     if (!Array.isArray(arr)) return;
-    arr.forEach(it => { if (it && photoIsId(it.photo)) set.add(it.photo); });
+    arr.forEach(it => { itemPhotoRefs(it).forEach(ref => { if (photoIsId(ref)) set.add(ref); }); });
   });
 }
 
@@ -3930,12 +3962,20 @@ function migrateInlinePhotosToIDB(state){
   [state.items, state.itemsB, state.estItems].forEach(arr => {
     if (!Array.isArray(arr)) return;
     arr.forEach(it => {
-      if (it && typeof it.photo === 'string' && it.photo.indexOf('data:image/') === 0) {
-        const id = newPhotoId();
-        photoCache.set(id, it.photo);
-        toWrite.push([id, it.photo]);
-        it.photo = id;
-      }
+      if (!it) return;
+      const refs = itemPhotoRefs(it);
+      let changed = false;
+      const mapped = refs.map(ref => {
+        if (typeof ref === 'string' && ref.indexOf('data:image/') === 0) {
+          const id = newPhotoId();
+          photoCache.set(id, ref);
+          toWrite.push([id, ref]);
+          changed = true;
+          return id;
+        }
+        return ref;
+      });
+      if (changed) { it.photos = mapped; if ('photo' in it) delete it.photo; }
     });
   });
   if (toWrite.length) {
@@ -3949,7 +3989,13 @@ function migrateInlinePhotosToIDB(state){
       toWrite.forEach(([id, v]) => {
         photoCache.delete(id);
         [state.items, state.itemsB, state.estItems].forEach(arr => {
-          if (Array.isArray(arr)) arr.forEach(it => { if (it && it.photo === id) it.photo = v; });
+          if (!Array.isArray(arr)) return;
+          arr.forEach(it => {
+            if (it && Array.isArray(it.photos)) {
+              const pi = it.photos.indexOf(id);
+              if (pi >= 0) it.photos[pi] = v;
+            }
+          });
         });
       });
     });
@@ -4999,6 +5045,8 @@ function renderItems() {
     card.className = 'icard';
     card.draggable = true;
 
+    const photoRefs = itemPhotoRefs(item);
+
     let bc='ib-svc', bl='Servicio';
     if(item.type==='tree'){ bc='ib-tree'; bl='🌳 Árbol / Trabajo'; }
     else if(item.type==='note'){ bc='ib-note'; bl='Nota'; }
@@ -5068,14 +5116,17 @@ function renderItems() {
       <button class="btn btn-g btn-sm ia-up" ${idx===0?'disabled':''} title="Subir">↑</button>
       <button class="btn btn-g btn-sm ia-down" ${idx===arr.length-1?'disabled':''} title="Bajar">↓</button>
       <button class="btn btn-g btn-sm ia-dup">⧉ Duplicar</button>
-      ${item.type!=='note' ? `<button class="btn btn-g btn-sm ia-photo">${item.photo?'📷 Foto ✓':'📷 Foto'}</button>` : ''}
+      ${item.type!=='note' ? `<button class="btn btn-g btn-sm ia-photo">${photoRefs.length?`📷 Fotos ✓ (${photoRefs.length})`:'📷 Foto'}</button>` : ''}
       <button class="btn btn-d btn-sm ia-del">✕ Eliminar</button>
     </div>
-    ${item.photo ? (
-      safeImgSrc(getPhotoData(item.photo))
-        ? `<div class="item-photo-preview"><img src="${safeImgSrc(getPhotoData(item.photo))}" alt="Foto" title="Tocar para ampliar"><button type="button" class="item-photo-remove" title="Quitar foto">✕</button></div>`
-        : `<div class="item-photo-preview item-photo-missing">📷 Foto no disponible<br><span>Restaurá tu backup en este dispositivo</span><button type="button" class="item-photo-remove" title="Quitar foto">✕</button></div>`
-    ) : ''}`;
+    ${photoRefs.length ? `<div class="item-photos-gallery">${
+      photoRefs.map((ref, pi) => {
+        const src = safeImgSrc(getPhotoData(ref));
+        return src
+          ? `<div class="item-photo-preview"><img src="${src}" alt="Foto" title="Tocar para ampliar" data-pi="${pi}"><button type="button" class="item-photo-remove" data-pi="${pi}" title="Quitar foto">✕</button></div>`
+          : `<div class="item-photo-preview item-photo-missing">📷 Foto no disponible<br><span>Restaurá tu backup en este dispositivo</span><button type="button" class="item-photo-remove" data-pi="${pi}" title="Quitar foto">✕</button></div>`;
+      }).join('')
+    }</div>` : ''}`;
     card.innerHTML = inner;
 
     const df = card.querySelector('.ds-f');
@@ -5133,11 +5184,20 @@ function renderItems() {
     // Foto del ítem (árbol/servicio): abrir selector de imagen y comprimir.
     const photoBtn = card.querySelector('.ia-photo');
     if (photoBtn) photoBtn.addEventListener('click', ()=>pickItemPhoto(idx));
-    const photoRm = card.querySelector('.item-photo-remove');
-    if (photoRm) photoRm.addEventListener('click', ()=>{ setItemField(idx,'photo',null); renderItems(); });
-    // Tocar la miniatura abre el visor a pantalla completa para revisar la foto.
-    const photoImg = card.querySelector('.item-photo-preview img');
-    if (photoImg) photoImg.addEventListener('click', ()=>openPhotoViewer(photoImg.src));
+    // Cada miniatura tiene su propio botón de quitar (por posición).
+    card.querySelectorAll('.item-photo-remove').forEach(btn => {
+      btn.addEventListener('click', ()=>{
+        const pi = parseInt(btn.dataset.pi, 10);
+        const it = activeItemsArr()[idx];
+        removeItemPhotoRef(it, pi);
+        sched();
+        renderItems();
+      });
+    });
+    // Tocar una miniatura abre el visor a pantalla completa para revisar la foto.
+    card.querySelectorAll('.item-photo-preview img').forEach(img => {
+      img.addEventListener('click', ()=>openPhotoViewer(img.src));
+    });
 
     card.addEventListener('dragstart', e=>{ dragSrc=idx; card.classList.add('dragging'); e.dataTransfer.effectAllowed='move'; });
     card.addEventListener('dragend',   ()=>{ card.classList.remove('dragging'); document.querySelectorAll('.icard').forEach(c=>c.classList.remove('drag-over')); });
@@ -5459,19 +5519,26 @@ function pickItemPhoto(idx) {
   const input = document.createElement('input');
   input.type = 'file';
   input.accept = 'image/*';
-  input.onchange = () => {
-    const file = input.files && input.files[0];
-    if (!file) return;
-    compressImage(file, 1000, 0.7)
-      .then(dataUrl => savePhoto(dataUrl))
-      .then(ref => {
-        setItemField(idx, 'photo', ref);
-        renderItems();
-        toast('Foto agregada al ítem', 'ok', 1800);
-      }).catch(err => {
-      console.error('Error al procesar la foto:', err);
+  input.multiple = true;   // se pueden elegir varias fotos por ítem
+  input.onchange = async () => {
+    const files = Array.from(input.files || []);
+    if (!files.length) return;
+    let added = 0;
+    for (const file of files) {
+      try {
+        const dataUrl = await compressImage(file, 1000, 0.7);
+        const ref = await savePhoto(dataUrl);
+        const it = activeItemsArr()[idx];
+        if (it) { addItemPhotoRef(it, ref); added++; }
+      } catch(err){ console.error('Error al procesar la foto:', err); }
+    }
+    if (added) {
+      sched();
+      renderItems();
+      toast(`${added} foto${added>1?'s':''} agregada${added>1?'s':''} al ítem`, 'ok', 1800);
+    } else {
       toast('No se pudo procesar la foto', 'err');
-    });
+    }
   };
   input.click();
 }
@@ -5564,11 +5631,11 @@ function confirmShareTray(){
       const dest = sel.value;
       if (dest === 'skip') return;
       if (dest === 'new') {
-        arr.push({ id: Date.now() + idx, type: 'tree', species: '', desc: '', price: '', qty: 1, showQty: false, photo: ref });
+        arr.push({ id: Date.now() + idx, type: 'tree', species: '', desc: '', price: '', qty: 1, showQty: false, photos: [ref] });
         assigned++;
       } else {
         const di = parseInt(dest, 10);
-        if (arr[di]) { arr[di].photo = ref; assigned++; }
+        if (arr[di]) { addItemPhotoRef(arr[di], ref); assigned++; }
       }
     });
   }
@@ -5588,7 +5655,7 @@ function confirmShareTray(){
 function assignSharedToNewItems(refs){
   const arr = activeItemsArr();
   refs.forEach((ref, i) => {
-    arr.push({ id: Date.now() + i, type: 'tree', species: '', desc: '', price: '', qty: 1, showQty: false, photo: ref });
+    arr.push({ id: Date.now() + i, type: 'tree', species: '', desc: '', price: '', qty: 1, showQty: false, photos: [ref] });
   });
   setMode('normal');
   renderItems();
@@ -8724,22 +8791,25 @@ function buildDoc() {
   // Resolvemos cada foto a su dataURL (vía IndexedDB/caché o embebida). Las que
   // no estén disponibles localmente (ID de un equipo aún no restaurado) se
   // omiten: en un PDF para el cliente un placeholder roto quedaría peor.
-  const itemsConFoto = (S.items || [])
-    .map(it => it && it.photo ? { it, src: safeImgSrc(getPhotoData(it.photo)) } : null)
-    .filter(x => x && x.src);
-  const fotosH = itemsConFoto.length ? `
+  const fotosFlat = [];
+  (S.items || []).forEach(it => {
+    if (!it) return;
+    const etiqueta = (it.type === 'tree')
+      ? (it.species || 'Árbol')
+      : (it.desc || 'Servicio');
+    itemPhotoRefs(it).forEach(ref => {
+      const src = safeImgSrc(getPhotoData(ref));
+      if (src) fotosFlat.push({ src, etiqueta });
+    });
+  });
+  const fotosH = fotosFlat.length ? `
     <div class="pphotos">
       <div class="pphotos-t">Registro Fotográfico</div>
       <div class="pphotos-grid">
-        ${itemsConFoto.map(({ it, src }) => {
-          const etiqueta = (it.type === 'tree')
-            ? (it.species || 'Árbol')
-            : (it.desc || 'Servicio');
-          return `<figure class="pphoto">
+        ${fotosFlat.map(({ src, etiqueta }) => `<figure class="pphoto">
             <img src="${src}" alt="${esc(etiqueta)}">
             <figcaption>${esc(etiqueta)}</figcaption>
-          </figure>`;
-        }).join('')}
+          </figure>`).join('')}
       </div>
     </div>` : '';
 
