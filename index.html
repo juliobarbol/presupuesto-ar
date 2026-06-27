@@ -115,6 +115,22 @@ body{background-color:var(--bg)}
    a los emojis. .ic-fill rellena (ej: estrella de favorito activa). */
 .ic{width:1em;height:1em;display:inline-block;vertical-align:-0.14em;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;overflow:visible}
 .ic-fill{fill:currentColor;stroke:currentColor}
+/* Color semántico por familia de icono (paleta sobria). Cada clase fija el
+   `color`; como .ic usa stroke:currentColor, el trazo toma ese color. Ayuda a
+   ubicar secciones de un vistazo. Los iconos sobre fondos llenos (topbar, botón
+   primario/CTA, banner, modo activo estimativo) se eximen abajo y quedan blancos. */
+:root{--ic-green:#2b8a3e;--ic-teal:#0b7285;--ic-blue:#1971c2;--ic-indigo:#3b5bb5;--ic-violet:#6741d9;--ic-amber:#c77800;--ic-red:#c92a2a;--ic-slate:#5c6b7a}
+:root[data-theme="dark"]{--ic-green:#51cf66;--ic-teal:#3bc9db;--ic-blue:#4dabf7;--ic-indigo:#748ffc;--ic-violet:#9775fa;--ic-amber:#ffa94d;--ic-red:#ff8787;--ic-slate:#94a3b8}
+.ic-c-green{color:var(--ic-green)}
+.ic-c-teal{color:var(--ic-teal)}
+.ic-c-blue{color:var(--ic-blue)}
+.ic-c-indigo{color:var(--ic-indigo)}
+.ic-c-violet{color:var(--ic-violet)}
+.ic-c-amber{color:var(--ic-amber)}
+.ic-c-red{color:var(--ic-red)}
+.ic-c-slate{color:var(--ic-slate)}
+/* Exenciones: sobre fondos llenos el icono hereda el color del texto (blanco). */
+#topbar .ic,.btn-p .ic,.btn-cta .ic,#est-banner .ic,.mode-btn.active.est .ic{color:inherit}
 /* Círculo de nivel de riesgo (reemplaza 🔴🟠🟡🟢) — color semántico */
 .ic-dot{width:.85em;height:.85em;display:inline-block;vertical-align:-0.05em;border-radius:50%;flex-shrink:0}
 .ic-dot.lvl-extremo{background:#dc2626}
@@ -2037,7 +2053,7 @@ input[type=file]{display:none}
 <!-- ════════════════════ APP UI ════════════════════ -->
 <div id="app">
   <div id="topbar">
-    <div class="logo"><svg class="ic"><use href="#i-tree"></use></svg> Presupuestos</div>
+    <div class="logo"><svg class="ic ic-c-green"><use href="#i-tree"></use></svg> Presupuestos</div>
     <span id="save-status"></span>
     <!-- Menú colapsable: Exportar / Importar viven adentro. Libera
          espacio en el topbar — antes ocupaban ancho permanente para
@@ -2052,11 +2068,11 @@ input[type=file]{display:none}
   </div>
 
   <div id="tabs">
-    <button class="tab-btn active" onclick="switchTab('editor')"><svg class="ic"><use href="#i-pencil"></use></svg> Editor</button>
-    <button class="tab-btn" onclick="switchTab('empresa')"><svg class="ic"><use href="#i-building"></use></svg> Empresa</button>
-    <button class="tab-btn" onclick="switchTab('estilo')"><svg class="ic"><use href="#i-palette"></use></svg> Estilo</button>
-    <button class="tab-btn" onclick="switchTab('historial')"><svg class="ic"><use href="#i-book"></use></svg> Historial</button>
-    <button class="tab-btn" onclick="switchTab('facturacion')"><svg class="ic"><use href="#i-money"></use></svg> Facturación</button>
+    <button class="tab-btn active" onclick="switchTab('editor')"><svg class="ic ic-c-slate"><use href="#i-pencil"></use></svg> Editor</button>
+    <button class="tab-btn" onclick="switchTab('empresa')"><svg class="ic ic-c-blue"><use href="#i-building"></use></svg> Empresa</button>
+    <button class="tab-btn" onclick="switchTab('estilo')"><svg class="ic ic-c-violet"><use href="#i-palette"></use></svg> Estilo</button>
+    <button class="tab-btn" onclick="switchTab('historial')"><svg class="ic ic-c-teal"><use href="#i-book"></use></svg> Historial</button>
+    <button class="tab-btn" onclick="switchTab('facturacion')"><svg class="ic ic-c-amber"><use href="#i-money"></use></svg> Facturación</button>
   </div>
 
   <div id="main">
@@ -2067,21 +2083,21 @@ input[type=file]{display:none}
 
         <div class="mode-switch" id="mode-switch">
           <button class="mode-btn active" id="mode-btn-normal" onclick="setMode('normal')" title="Lo más común: ya viste el árbol y pones un precio cerrado por cada trabajo.">
-            <span class="mode-btn-title"><svg class="ic"><use href="#i-clipboard"></use></svg> Presupuesto Normal</span>
+            <span class="mode-btn-title"><svg class="ic ic-c-blue"><use href="#i-clipboard"></use></svg> Presupuesto Normal</span>
             <span class="mode-btn-sub">Precios cerrados por trabajo</span>
           </button>
           <button class="mode-btn est" id="mode-btn-est" onclick="setMode('estimativo')" title="Cuando el cliente te manda fotos o videos y todavía no fuiste al lugar. El PDF aclara que es un valor referencial, sujeto a inspección presencial.">
-            <span class="mode-btn-title"><svg class="ic"><use href="#i-camera"></use></svg> Presupuesto Estimativo</span>
+            <span class="mode-btn-title"><svg class="ic ic-c-indigo"><use href="#i-camera"></use></svg> Presupuesto Estimativo</span>
             <span class="mode-btn-sub">Basado en fotos · valor referencial</span>
           </button>
           <button class="mode-btn" id="mode-btn-riesgo" onclick="setMode('riesgo')" title="Para árboles peligrosos: suma un informe técnico de riesgo (método ISA) que justifica la extracción o intervención ante el cliente.">
-            <span class="mode-btn-title"><svg class="ic"><use href="#i-tree"></use></svg> Con Informe de Riesgo</span>
+            <span class="mode-btn-title"><svg class="ic ic-c-green"><use href="#i-tree"></use></svg> Con Informe de Riesgo</span>
             <span class="mode-btn-sub">Incluye evaluación técnica ISA</span>
           </button>
         </div>
 
         <div id="est-banner">
-          <div class="est-banner-icon"><svg class="ic"><use href="#i-camera"></use></svg></div>
+          <div class="est-banner-icon"><svg class="ic ic-c-indigo"><use href="#i-camera"></use></svg></div>
           <div class="est-banner-body">
             <div class="est-banner-title">Modo Estimativo activo</div>
             <div class="est-banner-desc">El documento generado indicará que el presupuesto se basa en fotos/videos y que el valor final puede ajustarse tras una inspección presencial.</div>
@@ -2112,7 +2128,7 @@ input[type=file]{display:none}
         </div>
 
         <div class="st st-with-action">Cliente y Lugar
-          <button type="button" id="btn-import-contact" class="btn btn-g btn-sm" onclick="importFromContacts()" style="display:none"><svg class="ic"><use href="#i-idcard"></use></svg> Importar</button>
+          <button type="button" id="btn-import-contact" class="btn btn-g btn-sm" onclick="importFromContacts()" style="display:none"><svg class="ic ic-c-violet"><use href="#i-idcard"></use></svg> Importar</button>
         </div>
         <div class="r3">
           <div class="fg"><label>Nombre / Cliente</label><input type="text" id="client-name" placeholder="Nombre del cliente"></div>
@@ -2128,7 +2144,7 @@ input[type=file]{display:none}
                indica si hay un % aplicado. Click expande los controles. -->
           <div class="surcharge-panel surcharge-collapsed" id="surcharge-panel">
             <button class="surcharge-header" type="button" onclick="toggleSurchargePanel()" aria-expanded="false">
-              <span class="sp-icon"><svg class="ic"><use href="#i-fuel"></use></svg></span>
+              <span class="sp-icon"><svg class="ic ic-c-amber"><use href="#i-fuel"></use></svg></span>
               <span class="sp-summary">
                 <span class="sp-label">Recargo interno (viáticos / combustible)</span>
                 <span class="sp-status" id="sp-status">0%</span>
@@ -2158,7 +2174,7 @@ input[type=file]{display:none}
                 <input type="checkbox" id="scenarios-toggle" onchange="toggleScenarios()">
                 <span class="tgl-sl"></span>
               </label>
-              <span class="scenarios-title" title="Ejemplo: Opción A = extraer el árbol, Opción B = podarlo. Las dos salen en el mismo PDF con su precio, para que el cliente elija."><svg class="ic"><use href="#i-clipboard"></use></svg> Dos opciones en un PDF</span>
+              <span class="scenarios-title" title="Ejemplo: Opción A = extraer el árbol, Opción B = podarlo. Las dos salen en el mismo PDF con su precio, para que el cliente elija."><svg class="ic ic-c-blue"><use href="#i-clipboard"></use></svg> Dos opciones en un PDF</span>
               <span class="scenarios-hint">Ej: extracción vs. poda</span>
             </div>
             <div id="scenarios-controls" class="scenarios-controls" style="display:none">
@@ -2188,7 +2204,7 @@ input[type=file]{display:none}
           <div id="quick-services" class="quick-services" style="display:none"></div>
 
           <div class="arow" style="margin-bottom:16px">
-            <button class="btn btn-p btn-sm" onclick="addItem('tree')"><svg class="ic"><use href="#i-tree"></use></svg> + Árbol / Trabajo</button>
+            <button class="btn btn-p btn-sm" onclick="addItem('tree')"><svg class="ic ic-c-green"><use href="#i-tree"></use></svg> + Árbol / Trabajo</button>
             <button class="btn btn-s btn-sm" onclick="addItem('service')">+ Servicio</button>
             <button class="btn btn-g btn-sm" onclick="addItem('note')">+ Nota</button>
           </div>
@@ -2199,7 +2215,7 @@ input[type=file]{display:none}
 
           <!-- Datos del árbol -->
           <div class="section-card">
-            <div class="section-title"><svg class="ic"><use href="#i-tree"></use></svg> Árbol Evaluado</div>
+            <div class="section-title"><svg class="ic ic-c-green"><use href="#i-tree"></use></svg> Árbol Evaluado</div>
             <div class="fg-grid">
               <div class="fg"><label>Especie</label><input id="risk-species" type="text" placeholder="Ej: Eucalyptus camaldulensis"></div>
               <div class="fg"><label>Altura estimada (m)</label><input id="risk-height" type="number" step="0.5" min="0" placeholder="Ej: 18" inputmode="decimal"></div>
@@ -2217,7 +2233,7 @@ input[type=file]{display:none}
 
           <!-- Factores ambientales -->
           <div class="section-card">
-            <div class="section-title"><svg class="ic"><use href="#i-wind"></use></svg> Factores Ambientales y del Sitio</div>
+            <div class="section-title"><svg class="ic ic-c-teal"><use href="#i-wind"></use></svg> Factores Ambientales y del Sitio</div>
             <div class="fg-grid">
               <div class="fg">
                 <label>Exposición al viento</label>
@@ -2257,7 +2273,7 @@ input[type=file]{display:none}
 
           <!-- Evaluación ISA Basic -->
           <div class="section-card">
-            <div class="section-title"><svg class="ic"><use href="#i-chart"></use></svg> Evaluación de Riesgo (Método ISA Basic)</div>
+            <div class="section-title"><svg class="ic ic-c-blue"><use href="#i-chart"></use></svg> Evaluación de Riesgo (Método ISA Basic)</div>
             <div class="fg-grid">
               <div class="fg">
                 <label>Probabilidad de falla</label>
@@ -2296,7 +2312,7 @@ input[type=file]{display:none}
 
           <!-- Mitigación y observaciones -->
           <div class="section-card">
-            <div class="section-title"><svg class="ic"><use href="#i-wrench"></use></svg> Objetivos de Mitigación</div>
+            <div class="section-title"><svg class="ic ic-c-slate"><use href="#i-wrench"></use></svg> Objetivos de Mitigación</div>
             <div class="fg">
               <label>¿Qué se propone hacer y por qué reduce el riesgo?</label>
               <textarea id="risk-mitigation" rows="4" placeholder="Ej: Se propone la extracción controlada del árbol mediante técnicas de rigging para neutralizar el riesgo de caída sobre la estructura edilicia. La poda de alivio no es viable dado el grado de deterioro estructural detectado."></textarea>
@@ -2309,7 +2325,7 @@ input[type=file]{display:none}
 
           <!-- Título del documento -->
           <div class="section-card">
-            <div class="section-title"><svg class="ic"><use href="#i-file"></use></svg> Título del Documento</div>
+            <div class="section-title"><svg class="ic ic-c-blue"><use href="#i-file"></use></svg> Título del Documento</div>
             <div class="fg">
               <input id="doc-title-risk-editor" type="text" placeholder="Informe Técnico de Riesgo Arbóreo y Propuesta de Trabajo">
             </div>
@@ -2317,7 +2333,7 @@ input[type=file]{display:none}
 
           <!-- Divisor visual antes de los ítems -->
           <div class="risk-items-divider">
-            <span><svg class="ic"><use href="#i-download"></use></svg> Ítems del presupuesto (se muestran debajo del informe en el PDF)</span>
+            <span><svg class="ic ic-c-blue"><use href="#i-download"></use></svg> Ítems del presupuesto (se muestran debajo del informe en el PDF)</span>
           </div>
 
         </div><!-- fin #section-risk-analysis -->
@@ -2327,8 +2343,8 @@ input[type=file]{display:none}
           <div class="st">Trabajos estimados <span id="est-items-count" class="nbadge" style="float:right">0</span></div>
           <div id="est-items-list"></div>
           <div class="arow" style="margin-bottom:16px">
-            <button class="btn btn-p btn-sm" onclick="addEstItem()"><svg class="ic"><use href="#i-tree"></use></svg> + Trabajo estimado</button>
-            <button class="btn btn-s btn-sm" onclick="addEstService()"><svg class="ic"><use href="#i-truck"></use></svg> + Servicio con costo fijo</button>
+            <button class="btn btn-p btn-sm" onclick="addEstItem()"><svg class="ic ic-c-green"><use href="#i-tree"></use></svg> + Trabajo estimado</button>
+            <button class="btn btn-s btn-sm" onclick="addEstService()"><svg class="ic ic-c-teal"><use href="#i-truck"></use></svg> + Servicio con costo fijo</button>
             <button class="btn btn-g btn-sm" onclick="addEstNote()">+ Nota</button>
           </div>
         </div>
@@ -2339,14 +2355,14 @@ input[type=file]{display:none}
             <div class="fg">
               <label class="label-with-action">
                 <span>Condiciones de pago</span>
-                <button type="button" class="phrase-btn" onclick="openPhrasesModal('pay','payment-conditions')" title="Insertar frase guardada"><svg class="ic"><use href="#i-pencil"></use></svg> Frases</button>
+                <button type="button" class="phrase-btn" onclick="openPhrasesModal('pay','payment-conditions')" title="Insertar frase guardada"><svg class="ic ic-c-slate"><use href="#i-pencil"></use></svg> Frases</button>
               </label>
               <textarea id="payment-conditions" rows="3" placeholder="Ej: 50% al inicio, 50% contra entrega..."></textarea>
             </div>
             <div class="fg">
               <label class="label-with-action">
                 <span>Observaciones</span>
-                <button type="button" class="phrase-btn" onclick="openPhrasesModal('obs','observations')" title="Insertar frase guardada"><svg class="ic"><use href="#i-pencil"></use></svg> Frases</button>
+                <button type="button" class="phrase-btn" onclick="openPhrasesModal('obs','observations')" title="Insertar frase guardada"><svg class="ic ic-c-slate"><use href="#i-pencil"></use></svg> Frases</button>
               </label>
               <textarea id="observations" rows="3" placeholder="Observaciones adicionales sobre el trabajo..."></textarea>
             </div>
@@ -2393,19 +2409,19 @@ input[type=file]{display:none}
         <!-- HINT antes de las acciones: el usuario lee la lógica
              ANTES de tomar la decisión, no después. -->
         <div class="alert alert-info" style="margin-bottom:10px">
-          <span class="alert-ico"><svg class="ic"><use href="#i-bulb"></use></svg></span>
+          <span class="alert-ico"><svg class="ic ic-c-amber"><use href="#i-bulb"></use></svg></span>
           <span>El presupuesto se guarda automáticamente al imprimir o al crear uno nuevo.</span>
         </div>
 
         <!-- ACCIÓN PRIMARIA: Imprimir es la acción típica de cierre.
              Acción única destacada — no compite con otras. -->
-        <button class="btn btn-p btn-cta" onclick="printDoc()"><svg class="ic"><use href="#i-printer"></use></svg> Imprimir / PDF</button>
+        <button class="btn btn-p btn-cta" onclick="printDoc()"><svg class="ic ic-c-slate"><use href="#i-printer"></use></svg> Imprimir / PDF</button>
 
         <!-- Antes de imprimir: ver cómo queda y/o avisar al cliente por
              WhatsApp (el PDF se adjunta a mano, ver el aviso al tocar). -->
         <div class="actions-secondary">
-          <button class="btn btn-g btn-sm" onclick="previewCurrent()"><svg class="ic"><use href="#i-eye"></use></svg> Vista previa</button>
-          <button class="btn btn-g btn-sm" onclick="sendCurrentWhatsapp()"><svg class="ic"><use href="#i-message"></use></svg> Enviar por WhatsApp</button>
+          <button class="btn btn-g btn-sm" onclick="previewCurrent()"><svg class="ic ic-c-blue"><use href="#i-eye"></use></svg> Vista previa</button>
+          <button class="btn btn-g btn-sm" onclick="sendCurrentWhatsapp()"><svg class="ic ic-c-green"><use href="#i-message"></use></svg> Enviar por WhatsApp</button>
         </div>
 
         <!-- ACCIONES SECUNDARIAS: más chicas, ancho compartido.
@@ -2413,7 +2429,7 @@ input[type=file]{display:none}
              historial y arranca uno nuevo en un solo toque; "Nuevo" hace
              lo mismo pero pidiendo confirmación. -->
         <div class="actions-secondary">
-          <button class="btn btn-g btn-sm" onclick="saveToHistory()"><svg class="ic"><use href="#i-save"></use></svg> Guardar como borrador</button>
+          <button class="btn btn-g btn-sm" onclick="saveToHistory()"><svg class="ic ic-c-green"><use href="#i-save"></use></svg> Guardar como borrador</button>
           <button class="btn btn-g btn-sm" onclick="newQuote()">+ Nuevo presupuesto</button>
         </div>
       </div><!-- /panel-editor -->
@@ -2426,9 +2442,9 @@ input[type=file]{display:none}
            - "Datos guardados": clientes, especies, servicios -->
       <div id="panel-empresa" class="tab-panel">
         <div class="subtabs">
-          <button class="subtab-btn active" onclick="switchSubtab('negocio')"><svg class="ic"><use href="#i-building"></use></svg> Mi negocio</button>
-          <button class="subtab-btn" onclick="switchSubtab('textos')"><svg class="ic"><use href="#i-pencil"></use></svg> Textos del PDF</button>
-          <button class="subtab-btn" onclick="switchSubtab('datos')"><svg class="ic"><use href="#i-idcard"></use></svg> Datos guardados</button>
+          <button class="subtab-btn active" onclick="switchSubtab('negocio')"><svg class="ic ic-c-blue"><use href="#i-building"></use></svg> Mi negocio</button>
+          <button class="subtab-btn" onclick="switchSubtab('textos')"><svg class="ic ic-c-slate"><use href="#i-pencil"></use></svg> Textos del PDF</button>
+          <button class="subtab-btn" onclick="switchSubtab('datos')"><svg class="ic ic-c-violet"><use href="#i-idcard"></use></svg> Datos guardados</button>
         </div>
 
         <!-- ── SUB-TAB MI NEGOCIO ── -->
@@ -2436,7 +2452,7 @@ input[type=file]{display:none}
           <div class="st">Logo</div>
           <div class="lu-area" onclick="document.getElementById('logo-input').click()">
             <img id="logo-preview-img" class="lu-img" style="display:none">
-            <div id="logo-ph"><div style="font-size:30px;margin-bottom:6px"><svg class="ic"><use href="#i-image"></use></svg></div><div style="font-size:12px;color:var(--muted)">Clic para subir logo<br><small>PNG, JPG, SVG</small></div></div>
+            <div id="logo-ph"><div style="font-size:30px;margin-bottom:6px"><svg class="ic ic-c-indigo"><use href="#i-image"></use></svg></div><div style="font-size:12px;color:var(--muted)">Clic para subir logo<br><small>PNG, JPG, SVG</small></div></div>
           </div>
           <input type="file" id="logo-input" accept="image/*" onchange="handleLogoUpload(event)">
           <button class="btn btn-g btn-sm" onclick="removeLogo()" style="margin-bottom:14px">✕ Quitar logo</button>
@@ -2457,7 +2473,7 @@ input[type=file]{display:none}
           <!-- ── SEGUIMIENTO COMERCIAL ── -->
           <div class="fu-config">
             <div class="fu-config-head">
-              <span class="st" style="margin:0;border:none;padding:0"><svg class="ic"><use href="#i-bell"></use></svg> Seguimiento de presupuestos</span>
+              <span class="st" style="margin:0;border:none;padding:0"><svg class="ic ic-c-amber"><use href="#i-bell"></use></svg> Seguimiento de presupuestos</span>
               <label class="fu-switch">
                 <input type="checkbox" id="fu-enabled" onchange="saveFollowupFromUI()">
                 <span class="fu-slider"></span>
@@ -2495,7 +2511,7 @@ input[type=file]{display:none}
           <!-- Oculta hasta que esté configurado el Worker (initPush). -->
           <div class="fu-config" id="push-section" style="display:none">
             <div class="fu-config-head">
-              <span class="st" style="margin:0;border:none;padding:0"><svg class="ic"><use href="#i-phone"></use></svg> Avisos con la app cerrada</span>
+              <span class="st" style="margin:0;border:none;padding:0"><svg class="ic ic-c-green"><use href="#i-phone"></use></svg> Avisos con la app cerrada</span>
               <label class="fu-switch">
                 <input type="checkbox" id="push-enabled" onchange="onPushToggle(this.checked)">
                 <span class="fu-slider"></span>
@@ -2507,7 +2523,7 @@ input[type=file]{display:none}
           <!-- ── MENSAJE DE ENVÍO POR WHATSAPP ── -->
           <div class="fu-config">
             <div class="fu-config-head">
-              <span class="st" style="margin:0;border:none;padding:0"><svg class="ic"><use href="#i-message"></use></svg> Mensaje al enviar por WhatsApp</span>
+              <span class="st" style="margin:0;border:none;padding:0"><svg class="ic ic-c-green"><use href="#i-message"></use></svg> Mensaje al enviar por WhatsApp</span>
             </div>
             <p class="fu-help">Es el texto que se arma al tocar “Enviar por WhatsApp” en el editor. Editalo a tu gusto.</p>
             <div class="fg">
@@ -2520,7 +2536,7 @@ input[type=file]{display:none}
           <!-- Oculta hasta que el dueño configure el Client ID (gdriveUpdateUI). -->
           <div class="fu-config" id="gdrive-section" style="display:none">
             <div class="fu-config-head">
-              <span class="st" style="margin:0;border:none;padding:0"><svg class="ic"><use href="#i-cloud"></use></svg> Copia de seguridad en Google Drive</span>
+              <span class="st" style="margin:0;border:none;padding:0"><svg class="ic ic-c-blue"><use href="#i-cloud"></use></svg> Copia de seguridad en Google Drive</span>
             </div>
             <p class="fu-help" id="gdrive-status">Guardá una copia automática de todos tus datos en tu Google Drive, para no perderlos si cambiás o perdés el teléfono.</p>
             <div class="arow" id="gdrive-actions">
@@ -2607,7 +2623,7 @@ input[type=file]{display:none}
 
           <div class="collapsible-section" id="cs-clients">
             <button type="button" class="collapsible-header" onclick="toggleCollapsibleSection('cs-clients')">
-              <span><svg class="ic"><use href="#i-users"></use></svg> Clientes guardados</span>
+              <span><svg class="ic ic-c-violet"><use href="#i-users"></use></svg> Clientes guardados</span>
               <span class="ch-count" id="cs-clients-count">0</span>
               <span class="ch-chevron">▾</span>
             </button>
@@ -2620,7 +2636,7 @@ input[type=file]{display:none}
 
           <div class="collapsible-section" id="cs-species">
             <button type="button" class="collapsible-header" onclick="toggleCollapsibleSection('cs-species')">
-              <span><svg class="ic"><use href="#i-tree"></use></svg> Especies guardadas</span>
+              <span><svg class="ic ic-c-green"><use href="#i-tree"></use></svg> Especies guardadas</span>
               <span class="ch-count" id="cs-species-count">0</span>
               <span class="ch-chevron">▾</span>
             </button>
@@ -2633,12 +2649,12 @@ input[type=file]{display:none}
 
           <div class="collapsible-section" id="cs-services">
             <button type="button" class="collapsible-header" onclick="toggleCollapsibleSection('cs-services')">
-              <span><svg class="ic"><use href="#i-truck"></use></svg> Servicios guardados</span>
+              <span><svg class="ic ic-c-teal"><use href="#i-truck"></use></svg> Servicios guardados</span>
               <span class="ch-count" id="cs-services-count">0</span>
               <span class="ch-chevron">▾</span>
             </button>
             <div class="collapsible-body">
-              <p class="hint" style="margin-bottom:10px">Se autocompletan al cargar un ítem tipo Servicio. Tocá la <strong><svg class="ic ic-fill"><use href="#i-star"></use></svg></strong> para que aparezcan como atajos rápidos arriba del botón "+ Servicio" en el editor.</p>
+              <p class="hint" style="margin-bottom:10px">Se autocompletan al cargar un ítem tipo Servicio. Tocá la <strong><svg class="ic ic-fill ic-c-amber"><use href="#i-star"></use></svg></strong> para que aparezcan como atajos rápidos arriba del botón "+ Servicio" en el editor.</p>
               <div id="services-manager-list"></div>
               <button class="btn btn-g btn-sm" style="margin-top:8px" onclick="renderServicesManager()">↺ Actualizar lista</button>
             </div>
@@ -2650,9 +2666,9 @@ input[type=file]{display:none}
       <div id="panel-estilo" class="tab-panel">
         <div class="st">Apariencia de la app</div>
         <div class="theme-mode" id="theme-mode" role="group" aria-label="Tema de la aplicación">
-          <button type="button" class="theme-mode-btn" data-mode="auto" onclick="setThemeMode('auto')"><svg class="ic"><use href="#i-theme"></use></svg> Auto</button>
-          <button type="button" class="theme-mode-btn" data-mode="light" onclick="setThemeMode('light')"><svg class="ic"><use href="#i-sun"></use></svg> Claro</button>
-          <button type="button" class="theme-mode-btn" data-mode="dark" onclick="setThemeMode('dark')"><svg class="ic"><use href="#i-moon"></use></svg> Oscuro</button>
+          <button type="button" class="theme-mode-btn" data-mode="auto" onclick="setThemeMode('auto')"><svg class="ic ic-c-slate"><use href="#i-theme"></use></svg> Auto</button>
+          <button type="button" class="theme-mode-btn" data-mode="light" onclick="setThemeMode('light')"><svg class="ic ic-c-amber"><use href="#i-sun"></use></svg> Claro</button>
+          <button type="button" class="theme-mode-btn" data-mode="dark" onclick="setThemeMode('dark')"><svg class="ic ic-c-slate"><use href="#i-moon"></use></svg> Oscuro</button>
         </div>
         <p class="hint" style="margin-bottom:16px">Cambia el tema de la pantalla. «Auto» sigue el modo del teléfono. No afecta al PDF, que siempre se imprime en claro.</p>
 
@@ -2772,7 +2788,7 @@ input[type=file]{display:none}
         <div id="expiry-banner" class="expiry-banner" style="display:none"></div>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
           <div class="st" style="margin:0;border:none;padding:0">Presupuestos guardados <span id="hist-count" class="nbadge" style="margin-left:6px">0</span></div>
-          <button class="btn btn-d btn-sm" onclick="clearHistory()"><svg class="ic"><use href="#i-trash"></use></svg> Limpiar todo</button>
+          <button class="btn btn-d btn-sm" onclick="clearHistory()"><svg class="ic ic-c-red"><use href="#i-trash"></use></svg> Limpiar todo</button>
         </div>
         <div class="r2" style="margin-bottom:4px">
           <input class="hsearch" id="hist-search" type="search" placeholder="Buscar por número, cliente o lugar..." oninput="renderHistory()" style="margin-bottom:0">
@@ -2842,16 +2858,16 @@ input[type=file]{display:none}
           </div>
           <div class="fg"><label>Cliente</label><input type="text" id="fact-cliente" placeholder="Nombre del cliente"></div>
           <div class="fg"><label>Descripción (opcional)</label><input type="text" id="fact-desc" placeholder="Poda en altura, extracción..."></div>
-          <button class="btn btn-p" onclick="factRegistrar()"><svg class="ic"><use href="#i-save"></use></svg> Registrar factura</button>
+          <button class="btn btn-p" onclick="factRegistrar()"><svg class="ic ic-c-green"><use href="#i-save"></use></svg> Registrar factura</button>
         </div>
 
         <div class="st">Facturas registradas <span id="fact-count" class="nbadge" style="margin-left:6px">0</span></div>
         <div id="fact-reg-list" class="fact-reg-list"></div>
-        <button class="btn btn-d btn-sm" onclick="factLimpiar()"><svg class="ic"><use href="#i-trash"></use></svg> Limpiar todas las facturas</button>
+        <button class="btn btn-d btn-sm" onclick="factLimpiar()"><svg class="ic ic-c-red"><use href="#i-trash"></use></svg> Limpiar todas las facturas</button>
 
         <!-- Configuración del tope: colapsada por defecto (se toca 2 veces al año) -->
         <details class="fact-config">
-          <summary><svg class="ic"><use href="#i-settings"></use></svg> Configuración del tope <span class="fact-config-chev">▾</span></summary>
+          <summary><svg class="ic ic-c-slate"><use href="#i-settings"></use></svg> Configuración del tope <span class="fact-config-chev">▾</span></summary>
           <div class="fact-config-body">
             <div class="st">Tope anual Monotributo Categoría B</div>
             <div class="fact-tope-row">
@@ -2863,7 +2879,7 @@ input[type=file]{display:none}
 
             <div class="fact-ai-box" id="fact-remind-box">
               <div class="fact-ai-header">
-                <div class="fact-ai-icon"><svg class="ic"><use href="#i-calendar"></use></svg></div>
+                <div class="fact-ai-icon"><svg class="ic ic-c-blue"><use href="#i-calendar"></use></svg></div>
                 <div>
                   <div class="fact-ai-title">Recordatorio de actualización</div>
                   <div class="fact-ai-sub" id="fact-remind-sub">El tope se actualiza en febrero y agosto de cada año</div>
@@ -2871,7 +2887,7 @@ input[type=file]{display:none}
               </div>
               <div id="fact-remind-msg" style="font-size:12px;color:var(--muted);margin:8px 0 10px;line-height:1.6"></div>
               <a id="fact-claude-link" href="https://claude.ai/new" target="_blank" class="btn btn-s btn-sm" style="text-decoration:none;display:inline-flex">
-                <svg class="ic"><use href="#i-bot"></use></svg> Consultar tope actualizado con Claude
+                <svg class="ic ic-c-slate"><use href="#i-bot"></use></svg> Consultar tope actualizado con Claude
               </a>
             </div>
           </div>
@@ -2930,7 +2946,7 @@ input[type=file]{display:none}
      La lógica vive en js/items.js (processSharedPhotos/openShareTray). -->
 <div id="share-overlay" role="presentation">
   <div id="share-box" role="dialog" aria-modal="true" aria-labelledby="share-title">
-    <h4 id="share-title"><svg class="ic"><use href="#i-camera"></use></svg> Fotos compartidas</h4>
+    <h4 id="share-title"><svg class="ic ic-c-indigo"><use href="#i-camera"></use></svg> Fotos compartidas</h4>
     <p>Recibiste <strong id="share-tray-count">0</strong> foto(s). Elegí el destino de cada una:</p>
     <div id="share-tray-list"></div>
     <div class="cbtns">
@@ -2957,7 +2973,7 @@ input[type=file]{display:none}
 <div id="phrases-overlay" role="presentation">
   <div id="phrases-box" role="dialog" aria-modal="true" aria-labelledby="phrases-modal-title">
     <div class="phrases-header">
-      <h4 id="phrases-modal-title"><svg class="ic"><use href="#i-pencil"></use></svg> Frases</h4>
+      <h4 id="phrases-modal-title"><svg class="ic ic-c-slate"><use href="#i-pencil"></use></svg> Frases</h4>
       <button class="phrases-close" onclick="closePhrasesModal()" aria-label="Cerrar">✕</button>
     </div>
     <div id="phrases-modal-list" class="phrases-list"></div>
@@ -2967,7 +2983,7 @@ input[type=file]{display:none}
         <button class="btn btn-p btn-sm" onclick="addPhraseFromInput()">+ Agregar</button>
       </div>
       <button class="btn btn-g btn-sm phrases-save-current" onclick="savePhraseFromTarget()" title="Guarda lo que escribiste en el campo como frase reutilizable">
-        <svg class="ic"><use href="#i-save"></use></svg> Guardar lo escrito como frase
+        <svg class="ic ic-c-green"><use href="#i-save"></use></svg> Guardar lo escrito como frase
       </button>
     </div>
   </div>
@@ -3210,11 +3226,24 @@ function sc(id,v){ const e=document.getElementById(id); if(e) e.checked=!!v; }
 function gv(id){ const e=document.getElementById(id); return e?e.value:''; }
 function gc(id){ const e=document.getElementById(id); return e?e.checked:false; }
 function esc(s){ if(s==null)return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+// Color semántico por icono (familia → token de color, ver CSS .ic-c-*).
+// Mantener en sync con las clases aplicadas al markup estático.
+const IC_COLOR = {
+  tree:'green', save:'green', check:'green', plus:'green', message:'green', phone:'green',
+  wind:'teal', truck:'teal', book:'teal',
+  file:'blue', clipboard:'blue', folder:'blue', calendar:'blue', download:'blue', chart:'blue', cloud:'blue', search:'blue', eye:'blue', building:'blue',
+  camera:'indigo', image:'indigo',
+  user:'violet', users:'violet', idcard:'violet', palette:'violet',
+  bell:'amber', bulb:'amber', zap:'amber', star:'amber', hand:'amber', sun:'amber', money:'amber', fuel:'amber',
+  trash:'red', x:'red', pin:'red',
+  pencil:'slate', settings:'slate', wrench:'slate', printer:'slate', bot:'slate', paperclip:'slate', refresh:'slate', moon:'slate', theme:'slate', hourglass:'slate', tag:'slate'
+};
 // Icono de línea (Lucide) embebido. Devuelve el SVG que referencia un <symbol>
 // del sprite (ver tope del <body>). Reemplaza a los emojis. `name` debe ser un
 // id sin el prefijo "i-" (p. ej. icon('trash')). `cls` agrega clases extra
-// (p. ej. 'ic-fill' para rellenar). Pensado para interpolar en innerHTML.
-function icon(name, cls){ return `<svg class="ic${cls?' '+cls:''}" aria-hidden="true"><use href="#i-${name}"></use></svg>`; }
+// (p. ej. 'ic-fill' para rellenar). El color semántico se agrega solo. Pensado
+// para interpolar en innerHTML.
+function icon(name, cls){ const col=IC_COLOR[name]; const c='ic'+(cls?' '+cls:'')+(col?' ic-c-'+col:''); return `<svg class="${c}" aria-hidden="true"><use href="#i-${name}"></use></svg>`; }
 // Devuelve el src SOLO si es un dataURL de imagen (data:image/...). Cualquier
 // otra cosa —p. ej. un valor manipulado en un backup importado de otro colega—
 // se descarta, evitando que un src="..." se rompa e inyecte HTML. Los logos y
@@ -6796,16 +6825,16 @@ function openModal(type) {
   if(type==='export'){
     ti.textContent='Exportar';
     bo.innerHTML=`<div class="msec"><h4>Opciones de exportación</h4>
-      <button class="btn btn-p btn-bl" onclick="expCurrent()"><svg class="ic"><use href="#i-file"></use></svg> Presupuesto actual (JSON)</button>
-      <button class="btn btn-s btn-bl" onclick="expHistory()"><svg class="ic"><use href="#i-book"></use></svg> Historial completo (JSON)</button>
-      <button class="btn btn-s btn-bl" onclick="expBackup()"><svg class="ic"><use href="#i-save"></use></svg> Backup total (JSON)</button>
+      <button class="btn btn-p btn-bl" onclick="expCurrent()"><svg class="ic ic-c-blue"><use href="#i-file"></use></svg> Presupuesto actual (JSON)</button>
+      <button class="btn btn-s btn-bl" onclick="expHistory()"><svg class="ic ic-c-teal"><use href="#i-book"></use></svg> Historial completo (JSON)</button>
+      <button class="btn btn-s btn-bl" onclick="expBackup()"><svg class="ic ic-c-green"><use href="#i-save"></use></svg> Backup total (JSON)</button>
     </div>`;
   } else if(type==='import'){
     ti.textContent='Importar';
     bo.innerHTML=`<div class="msec"><h4>Seleccionar archivo .json</h4>
       <p style="font-size:12px;color:var(--muted);margin-bottom:10px">Se detectará automáticamente el tipo de archivo.</p>
       <input type="file" id="imp-input" accept=".json" onchange="handleImport(event)">
-      <button class="btn btn-p btn-bl" onclick="document.getElementById('imp-input').click()"><svg class="ic"><use href="#i-folder"></use></svg> Elegir archivo JSON</button>
+      <button class="btn btn-p btn-bl" onclick="document.getElementById('imp-input').click()"><svg class="ic ic-c-blue"><use href="#i-folder"></use></svg> Elegir archivo JSON</button>
     </div><div id="imp-opts"></div>`;
   } else if(type==='welcome'){
     ti.innerHTML=icon('hand')+' ¡Bienvenido/a!';
@@ -6816,8 +6845,8 @@ function openModal(type) {
         <li><b>Creá tu presupuesto</b> — sumá los trabajos y sus precios.</li>
         <li><b>Compartilo</b> — descargá el PDF o enviálo por WhatsApp.</li>
       </ol>
-      <p style="font-size:12px;color:var(--muted);margin:0 0 14px"><svg class="ic"><use href="#i-save"></use></svg> Tus datos se guardan <b>solo en este dispositivo</b>. Hacé un backup cada tanto desde el menú (↑ Exportar → Backup total) para no perderlos.</p>
-      <button class="btn btn-p btn-bl" onclick="startOnboarding()"><svg class="ic"><use href="#i-building"></use></svg> Configurar mi negocio</button>
+      <p style="font-size:12px;color:var(--muted);margin:0 0 14px"><svg class="ic ic-c-green"><use href="#i-save"></use></svg> Tus datos se guardan <b>solo en este dispositivo</b>. Hacé un backup cada tanto desde el menú (↑ Exportar → Backup total) para no perderlos.</p>
+      <button class="btn btn-p btn-bl" onclick="startOnboarding()"><svg class="ic ic-c-blue"><use href="#i-building"></use></svg> Configurar mi negocio</button>
       <button class="btn btn-s btn-bl" onclick="closeModal()">Lo hago después</button>
     </div>`;
   }
@@ -7675,7 +7704,7 @@ function renderFollowupBanner() {
   el.style.display = 'block';
   el.innerHTML = `
     <div class="fub-head">
-      <span class="fub-icon"><svg class="ic"><use href="#i-bell"></use></svg></span>
+      <span class="fub-icon"><svg class="ic ic-c-amber"><use href="#i-bell"></use></svg></span>
       <span class="fub-title">${n} presupuesto${n>1?'s':''} para seguimiento</span>
     </div>
     <div class="fub-sub">Enviado${n>1?'s':''} hace más de ${getFollowupCfg().days} días sin respuesta. Buen momento para contactar al cliente.</div>
