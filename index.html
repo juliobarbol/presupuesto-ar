@@ -777,13 +777,15 @@ input[type=file]{display:none}
   .mode-btn-sub{font-size:11px}
   .trow{padding:13px 0}
   .tlabel{font-size:14px}
-  .hitem{flex-direction:column;align-items:flex-start;gap:8px}
-  .hacts{width:100%;gap:8px;flex-wrap:wrap}
-  /* El selector de estado ocupa toda la línea; los botones van debajo. */
-  .hacts .hestado-sel{flex-basis:100%;width:100%;font-size:16px;padding:9px 10px}
+  .hitem{flex-direction:column;align-items:stretch;gap:7px}
+  /* Estado (pill de color) + acciones en una sola fila compacta que envuelve
+     a lo sumo a dos líneas, en vez de apilar un select full-width + botones. */
+  .hacts{width:100%;gap:6px;flex-wrap:wrap;align-items:center}
+  .hacts .hestado-sel{flex:0 0 auto;width:auto;font-size:13px;font-weight:700;padding:6px 26px 6px 10px}
   /* Solo estirar botones de acción reales, NO el botón-ícono de borrar
      (que se mantiene chico en su esquina para evitar taps accidentales). */
-  .hacts .btn:not(.btn-icon-del){flex:1;justify-content:center}
+  .hacts .btn:not(.btn-icon-del){flex:1 1 auto;justify-content:center}
+  .hacts .btn-icon-del{margin-left:auto}
   .cpreset{width:38px;height:38px}
   .fg[style*="max-width"]{max-width:100%!important}
   .r4 .fg:nth-child(2),.r4 .fg:nth-child(3){grid-column:auto}
@@ -8039,15 +8041,15 @@ function renderHistory() {
     return `
     <div class="hitem" data-id="${e.id}">
       <div class="hinfo">
-        <div class="hnum">${esc(e.quoteNumber||'—')}${e.isEstimative?'<span class="hbadge-est">Estimativo</span>':''}<span class="hbadge-estado" style="color:${txtCol};background:${bgCol}">${estadoLabel(est)}</span>${followupBadgeFor(e)}${expiryBadgeFor(e)}${e.facturado?'<span class="hbadge-estado" style="color:#065f46;background:#d1fae5">✓ Facturado</span>':''}</div>
+        <div class="hnum">${esc(e.quoteNumber||'—')}${e.isEstimative?'<span class="hbadge-est">Estimativo</span>':''}${followupBadgeFor(e)}${expiryBadgeFor(e)}${e.facturado?'<span class="hbadge-estado" style="color:#065f46;background:#d1fae5">✓ Facturado</span>':''}</div>
         ${!groupedByClient?`<div class="hclient ${!e.clientName?'is-draft':''}">${esc(e.clientName||'(borrador sin nombre de cliente)')}</div>`:''}
         <div class="hmeta">${esc(e.currency||'')} ${fmtM(e.total||0,e.currency||'ARS')} · ${e.itemCount||0} ítem(s) · ${fmtD(((e.snapshot&&e.snapshot.dateIssue)||e.savedAt||'').slice(0,10))}</div>
       </div>
       <div class="hacts">
-        <select class="hestado-sel" onchange="setEstadoHistory(${e.id}, this.value)" title="Cambiar estado" aria-label="Cambiar estado">${estadoOpts}</select>
+        <select class="hestado-sel" style="color:${txtCol};background-color:${bgCol};border-color:${bgCol}" onchange="setEstadoHistory(${e.id}, this.value)" title="Cambiar estado" aria-label="Estado del presupuesto">${estadoOpts}</select>
         <button class="btn btn-g btn-sm" onclick="previewFromHistory(${e.id})">${icon('eye')} Ver</button>
-        <button class="btn btn-g btn-sm" onclick="sharePngFromHistory(${e.id})" title="Generar una imagen del presupuesto y compartirla (WhatsApp, etc.)">${icon('image')} Compartir imagen</button>
-        ${tieneDir ? `<button class="btn btn-g btn-sm" onclick="comoLlegar(${e.id})">${icon('pin')} Cómo llegar</button>` : ''}
+        <button class="btn btn-g btn-sm" onclick="sharePngFromHistory(${e.id})" title="Generar una imagen del presupuesto y compartirla (WhatsApp, etc.)">${icon('image')} Compartir</button>
+        ${tieneDir ? `<button class="btn btn-g btn-sm" onclick="comoLlegar(${e.id})" title="Cómo llegar a la dirección del trabajo" aria-label="Cómo llegar">${icon('pin')} Llegar</button>` : ''}
         <button class="btn btn-s btn-sm" onclick="loadFromHistory(${e.id})">Cargar</button>
         <button class="btn-icon-del" onclick="delFromHistory(${e.id})" title="Eliminar presupuesto" aria-label="Eliminar presupuesto">${icon('trash')}</button>
       </div>
