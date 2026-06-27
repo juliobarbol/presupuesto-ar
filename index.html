@@ -1479,8 +1479,9 @@ input[type=file]{display:none}
 .fact-alert.warn{background:#fef3c7;color:#92400e;border:1px solid #fcd34d}
 .fact-alert.danger{background:#fee2e2;color:#991b1b;border:1px solid #fca5a5}
 
-.fact-tope-row{display:flex;align-items:center;gap:10px;background:#f8faf9;border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:14px}
-.fact-tope-row input{flex:1;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:#fff;outline:none;-webkit-appearance:none;appearance:none}
+.fact-tope-row{display:flex;flex-wrap:wrap;align-items:center;gap:10px;background:#f8faf9;border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:14px}
+.fact-tope-row input{flex:1;min-width:130px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:#fff;outline:none;-webkit-appearance:none;appearance:none}
+.fact-tope-row .btn{flex-shrink:0}
 .fact-tope-row input:focus{border-color:var(--accent-fg);box-shadow:0 0 0 3px rgba(var(--accent-rgb),.1)}
 .fact-tope-row label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;white-space:nowrap}
 
@@ -1507,6 +1508,17 @@ input[type=file]{display:none}
 .fact-ai-loading.show{display:flex}
 .fact-spinner{width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--accent-fg);border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
+
+/* Configuración del tope: colapsable (se actualiza 2 veces al año, no es acción diaria) */
+.fact-config{border:1px solid var(--border);border-radius:10px;background:#fff;margin:24px 0 16px;overflow:hidden}
+.fact-config>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;padding:13px 16px;font-size:13px;font-weight:700;color:var(--text);user-select:none}
+.fact-config>summary::-webkit-details-marker{display:none}
+.fact-config>summary::marker{content:""}
+.fact-config-chev{margin-left:auto;color:var(--muted);font-size:11px;transition:transform .2s}
+.fact-config[open] .fact-config-chev{transform:rotate(180deg)}
+.fact-config-body{padding:2px 16px 14px}
+.fact-config-body .st{margin-top:8px}
+.fact-config-body>:last-child{margin-bottom:0}
 
 @media(max-width:600px){
   .fact-cards{grid-template-columns:1fr}
@@ -2754,28 +2766,7 @@ input[type=file]{display:none}
           </div>
         </div>
 
-        <div class="st">Tope anual Monotributo Categoría B</div>
-        <div class="fact-tope-row">
-          <label>Tope anual ($)</label>
-          <input type="number" id="fact-tope-input" placeholder="15058447.71" inputmode="decimal" oninput="factTopeChanged()">
-          <button class="btn btn-p btn-sm" onclick="factSaveTope()">Guardar</button>
-        </div>
-        <p class="hint" style="margin-bottom:16px">Actualizá este valor en febrero y agosto de cada año cuando ARCA publique los nuevos topes.</p>
-
-        <div class="fact-ai-box" id="fact-remind-box">
-          <div class="fact-ai-header">
-            <div class="fact-ai-icon">📅</div>
-            <div>
-              <div class="fact-ai-title">Recordatorio de actualización</div>
-              <div class="fact-ai-sub" id="fact-remind-sub">El tope se actualiza en febrero y agosto de cada año</div>
-            </div>
-          </div>
-          <div id="fact-remind-msg" style="font-size:12px;color:var(--muted);margin:8px 0 10px;line-height:1.6"></div>
-          <a id="fact-claude-link" href="https://claude.ai/new" target="_blank" class="btn btn-s btn-sm" style="text-decoration:none;display:inline-flex">
-            🤖 Consultar tope actualizado con Claude
-          </a>
-        </div>
-
+        <!-- Acción principal arriba: registrar factura sin tener que bajar -->
         <div class="fact-form">
           <div class="st">Registrar factura emitida</div>
           <div class="r2">
@@ -2790,6 +2781,34 @@ input[type=file]{display:none}
         <div class="st">Facturas registradas <span id="fact-count" class="nbadge" style="margin-left:6px">0</span></div>
         <div id="fact-reg-list" class="fact-reg-list"></div>
         <button class="btn btn-d btn-sm" onclick="factLimpiar()">🗑 Limpiar todas las facturas</button>
+
+        <!-- Configuración del tope: colapsada por defecto (se toca 2 veces al año) -->
+        <details class="fact-config">
+          <summary>⚙️ Configuración del tope <span class="fact-config-chev">▾</span></summary>
+          <div class="fact-config-body">
+            <div class="st">Tope anual Monotributo Categoría B</div>
+            <div class="fact-tope-row">
+              <label>Tope anual ($)</label>
+              <input type="number" id="fact-tope-input" placeholder="15058447.71" inputmode="decimal" oninput="factTopeChanged()">
+              <button class="btn btn-p btn-sm" onclick="factSaveTope()">Guardar</button>
+            </div>
+            <p class="hint" style="margin-bottom:16px">Actualizá este valor en febrero y agosto de cada año cuando ARCA publique los nuevos topes.</p>
+
+            <div class="fact-ai-box" id="fact-remind-box">
+              <div class="fact-ai-header">
+                <div class="fact-ai-icon">📅</div>
+                <div>
+                  <div class="fact-ai-title">Recordatorio de actualización</div>
+                  <div class="fact-ai-sub" id="fact-remind-sub">El tope se actualiza en febrero y agosto de cada año</div>
+                </div>
+              </div>
+              <div id="fact-remind-msg" style="font-size:12px;color:var(--muted);margin:8px 0 10px;line-height:1.6"></div>
+              <a id="fact-claude-link" href="https://claude.ai/new" target="_blank" class="btn btn-s btn-sm" style="text-decoration:none;display:inline-flex">
+                🤖 Consultar tope actualizado con Claude
+              </a>
+            </div>
+          </div>
+        </details>
 
       </div><!-- /panel-facturacion -->
 
