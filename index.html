@@ -287,6 +287,9 @@ body{background-color:var(--bg)}
 .cdate-lbl{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cdate-lbl.is-empty{color:var(--muted)}
 .cdate-ico{flex:none;color:var(--muted);display:inline-flex}
+/* Vencimiento: display de solo lectura (se calcula solo, no abre calendario). */
+.cdate-btn.cdate-ro{cursor:default;background-color:var(--surface-2)}
+.cdate-btn.cdate-ro .cdate-ico{opacity:.5}
 .cal-pop{position:fixed;z-index:1201;background:var(--card);border:1px solid var(--border);
   border-radius:var(--radius-box);box-shadow:0 12px 34px rgba(0,0,0,.20);
   padding:12px;width:300px;max-width:calc(100vw - 16px);max-height:calc(100vh - 16px);overflow:auto}
@@ -3466,23 +3469,27 @@ const CAL_WD = ['Lu','Ma','Mi','Ju','Vi','Sá','Do']; // la semana empieza el lu
 
 function enhanceDateInputs(root){
   (root || document).querySelectorAll('input[type="date"]:not([data-cdate])').forEach(inp => {
-    if (inp.readOnly || inp.disabled) return; // date-expiry es de solo lectura
+    // Los readonly (p. ej. el vencimiento, que se calcula solo) se muestran
+    // como display estático con el mismo look, pero sin abrir calendario.
+    const ro = inp.readOnly || inp.disabled;
     inp.setAttribute('data-cdate', '1');
     inp.classList.add('csel-native');
     const wrap = document.createElement('span');
     wrap.className = 'cdate';
     inp.parentNode.insertBefore(wrap, inp);
     wrap.appendChild(inp);
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'cdate-btn';
-    const al = inp.getAttribute('aria-label'); if (al) btn.setAttribute('aria-label', al);
-    btn.innerHTML = `<span class="cdate-lbl"></span><span class="cdate-ico">${icon('calendar')}</span>`;
-    wrap.appendChild(btn);
-    btn.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); _cdateToggle(inp, btn); });
-    inp.addEventListener('change', () => syncCdate(inp));
-    inp.addEventListener('input', () => syncCdate(inp));
-    inp._cdateBtn = btn;
+    const el = document.createElement(ro ? 'div' : 'button');
+    if (!ro) el.type = 'button';
+    el.className = 'cdate-btn' + (ro ? ' cdate-ro' : '');
+    const al = inp.getAttribute('aria-label'); if (al && !ro) el.setAttribute('aria-label', al);
+    el.innerHTML = `<span class="cdate-lbl"></span><span class="cdate-ico">${icon('calendar')}</span>`;
+    wrap.appendChild(el);
+    if (!ro){
+      el.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); _cdateToggle(inp, el); });
+      inp.addEventListener('change', () => syncCdate(inp));
+      inp.addEventListener('input', () => syncCdate(inp));
+    }
+    inp._cdateBtn = el;
     syncCdate(inp);
   });
 }
@@ -3491,7 +3498,7 @@ function syncCdate(inp){
   const btn = inp._cdateBtn; if (!btn) return;
   const lbl = btn.querySelector('.cdate-lbl');
   if (!lbl) return;
-  lbl.textContent = inp.value ? fmtD(inp.value) : 'Elegí una fecha';
+  lbl.textContent = inp.value ? fmtD(inp.value) : (inp.readOnly ? '—' : 'Elegí una fecha');
   lbl.classList.toggle('is-empty', !inp.value);
 }
 function refreshCustomDates(root){
@@ -6369,7 +6376,7 @@ function restoreUI() {
   const _fi = document.getElementById('date-expiry');
   const _se = S.showExpiry !== false;
   if (_fg) _fg.style.opacity = _se ? '1' : '0.4';
-  if (_fi) _fi.style.textDecoration = _se ? '' : 'line-through';
+  _applyExpiryStrike(!_se);
   // riskData
   const rd = S.riskData || {};
   sv('risk-species',       rd.species||'');
@@ -6775,6 +6782,15 @@ function calcExpiry() {
   d.setDate(d.getDate()+(S.validityDays||30));
   S.dateExpiry = toLocalISODate(d);
   sv('date-expiry', S.dateExpiry);
+  { const e = document.getElementById('date-expiry'); if (e && e._cdateBtn) syncCdate(e); }
+}
+
+// Aplica el tachado de "vencimiento oculto" al display propio (o al input
+// nativo de fallback si todavía no se enhanceó, p. ej. en el primer restoreUI).
+function _applyExpiryStrike(strike){
+  const fi = document.getElementById('date-expiry');
+  if (!fi) return;
+  (fi._cdateBtn || fi).style.textDecoration = strike ? 'line-through' : '';
 }
 
 function onDateChange() {
@@ -6794,7 +6810,7 @@ function onShowExpiryChange() {
   const fg = document.getElementById('expiry-fg');
   const fi = document.getElementById('date-expiry');
   if (fg) fg.style.opacity = S.showExpiry ? '1' : '0.4';
-  if (fi) fi.style.textDecoration = S.showExpiry ? '' : 'line-through';
+  _applyExpiryStrike(!S.showExpiry);
   sched();
 }
 
