@@ -6902,9 +6902,16 @@ function loadFromHistory(id) {
   // sobrescribir la versión actual.
   const savedNumNext = S.numNext;
   const savedLogo    = S.logo;
+  // El diseño del documento (tema + compacto) es global: cargar un
+  // presupuesto viejo NO debe revertir el diseño que el usuario eligió
+  // ahora (sino su elección se perdería al abrir cualquier entry viejo).
+  const savedTheme   = S.pdfTheme;
+  const savedCompact = S.pdfCompact;
   Object.assign(S, migrateState(e.snapshot));
   if (savedNumNext !== undefined) S.numNext = savedNumNext;
   if (savedLogo)                  S.logo    = savedLogo;
+  S.pdfTheme   = savedTheme;
+  S.pdfCompact = savedCompact;
   if (!S.estItems)       S.estItems = [];
   if (!S.estObservations) S.estObservations = '';
   if (S.surcharge === undefined) S.surcharge = 0;
@@ -7060,6 +7067,13 @@ function previewFromHistory(id) {
   const snap = migrateState(JSON.parse(JSON.stringify(e.snapshot)));
   Object.assign(S, snap);
   if (currentLogo && !S.logo) S.logo = currentLogo; // membrete
+  // El diseño del documento (tema + compacto) es una preferencia GLOBAL
+  // de la empresa, no un atributo de cada presupuesto. El snapshot lo trae
+  // congelado, pero para previsualizar el historial con el diseño elegido
+  // AHORA pisamos el del snapshot con el actual (_previewBackup.S es el S
+  // real respaldado en el paso 1).
+  S.pdfTheme   = _previewBackup.S.pdfTheme;
+  S.pdfCompact = _previewBackup.S.pdfCompact;
   if (!Array.isArray(S.itemsB)) S.itemsB = [];
   if (!S.estItems) S.estItems = [];
   normalizeRiskData();
@@ -7169,6 +7183,11 @@ function _buildDocHTMLForEntry(e) {
     const snap = migrateState(JSON.parse(JSON.stringify(e.snapshot)));
     Object.assign(S, snap);
     if (currentLogo && !S.logo) S.logo = currentLogo; // membrete (logo es global)
+    // El diseño del documento es global (ver previewFromHistory): la imagen
+    // que se comparte debe coincidir con la vista previa, así que usamos el
+    // tema/compacto actual, no el congelado en el snapshot.
+    S.pdfTheme   = backup.S.pdfTheme;
+    S.pdfCompact = backup.S.pdfCompact;
     if (!Array.isArray(S.itemsB)) S.itemsB = [];
     if (!S.estItems) S.estItems = [];
     normalizeRiskData();
