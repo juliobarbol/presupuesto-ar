@@ -276,6 +276,34 @@ body{background-color:var(--bg)}
 .csel-opt:hover,.csel-opt.is-active{background:var(--surface-2)}
 .csel-opt .csel-check{margin-left:auto;color:var(--accent-fg);opacity:0;flex:none}
 .csel-opt.is-active .csel-check{opacity:1}
+
+/* ── CALENDARIO PROPIO (reemplaza el picker nativo de <input type="date">) ── */
+.cdate{position:relative;display:block;width:100%}
+.cdate-btn{display:flex;align-items:center;gap:8px;width:100%;text-align:left;
+  padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-field);
+  background-color:var(--card);color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;
+  cursor:pointer;outline:none}
+.cdate-btn:focus,.cdate-btn.is-open{border-color:var(--accent-fg);box-shadow:0 0 0 3px rgba(var(--accent-rgb),.1)}
+.cdate-lbl{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cdate-lbl.is-empty{color:var(--muted)}
+.cdate-ico{flex:none;color:var(--muted);display:inline-flex}
+.cal-pop{position:fixed;z-index:1201;background:var(--card);border:1px solid var(--border);
+  border-radius:var(--radius-box);box-shadow:0 12px 34px rgba(0,0,0,.20);
+  padding:12px;width:300px;max-width:calc(100vw - 16px);max-height:calc(100vh - 16px);overflow:auto}
+.cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.cal-title{font-weight:700;font-size:14px;color:var(--text);text-transform:capitalize}
+.cal-nav{width:34px;height:34px;border:1px solid var(--border);border-radius:8px;background:var(--card);
+  color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;line-height:1}
+.cal-nav:hover{background:var(--surface-2)}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.cal-wd{text-align:center;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;padding:4px 0}
+.cal-day{aspect-ratio:1;display:flex;align-items:center;justify-content:center;border:none;background:transparent;
+  border-radius:8px;font-size:13px;color:var(--text);cursor:pointer;font-family:'DM Sans',sans-serif;padding:0}
+.cal-day:hover:not(.is-empty){background:var(--surface-2)}
+.cal-day.is-empty{visibility:hidden;cursor:default}
+.cal-day.is-today{box-shadow:inset 0 0 0 1.5px var(--accent-fg);font-weight:700}
+.cal-day.is-sel{background:var(--accent-fg);color:#fff;font-weight:700}
+.cal-foot{display:flex;justify-content:flex-end;margin-top:8px}
 /* Editor de listas "uno por ítem": cada punto en su propio casillero, con
    número y botón de borrar, para que se vea claramente la división de cada
    ítem (en vez de un bloque de texto donde las líneas largas se mezclan). */
@@ -3410,7 +3438,7 @@ function _cselPosition(pop, btn){
   let top = r.bottom + 4;
   if (top + ph > vh - 8 && r.top - ph - 4 > 8) top = r.top - ph - 4;
   pop.style.left = left + 'px';
-  pop.style.top = top + 'px';
+  pop.style.top = Math.max(8, top) + 'px';
 }
 
 function closeCsel(){
@@ -3424,6 +3452,127 @@ function closeCsel(){
   _cselOpen = null;
 }
 function _cselKey(e){ if (e.key === 'Escape') closeCsel(); }
+
+/* ===== js/datepicker.js =====
+   Calendario propio con el tema de la app para los <input type="date">
+   EDITABLES (fecha de emisión, fecha de factura). Mismo enfoque que los
+   dropdowns: el input nativo queda oculto como fuente de datos y solo
+   escribimos su .value y disparamos 'input'+'change' (los mismos eventos del
+   navegador), así onDateChange()/factura y syncFromUI() siguen igual.
+   FECHAS EN LOCAL: se parsea y construye con año/mes/día; nunca
+   new Date('YYYY-MM-DD') (sería UTC) ni toISOString(). */
+const CAL_MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const CAL_WD = ['Lu','Ma','Mi','Ju','Vi','Sá','Do']; // la semana empieza el lunes
+
+function enhanceDateInputs(root){
+  (root || document).querySelectorAll('input[type="date"]:not([data-cdate])').forEach(inp => {
+    if (inp.readOnly || inp.disabled) return; // date-expiry es de solo lectura
+    inp.setAttribute('data-cdate', '1');
+    inp.classList.add('csel-native');
+    const wrap = document.createElement('span');
+    wrap.className = 'cdate';
+    inp.parentNode.insertBefore(wrap, inp);
+    wrap.appendChild(inp);
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'cdate-btn';
+    const al = inp.getAttribute('aria-label'); if (al) btn.setAttribute('aria-label', al);
+    btn.innerHTML = `<span class="cdate-lbl"></span><span class="cdate-ico">${icon('calendar')}</span>`;
+    wrap.appendChild(btn);
+    btn.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); _cdateToggle(inp, btn); });
+    inp.addEventListener('change', () => syncCdate(inp));
+    inp.addEventListener('input', () => syncCdate(inp));
+    inp._cdateBtn = btn;
+    syncCdate(inp);
+  });
+}
+
+function syncCdate(inp){
+  const btn = inp._cdateBtn; if (!btn) return;
+  const lbl = btn.querySelector('.cdate-lbl');
+  if (!lbl) return;
+  lbl.textContent = inp.value ? fmtD(inp.value) : 'Elegí una fecha';
+  lbl.classList.toggle('is-empty', !inp.value);
+}
+function refreshCustomDates(root){
+  (root || document).querySelectorAll('input[type="date"][data-cdate]').forEach(syncCdate);
+}
+
+function _cdateToggle(inp, btn){
+  if (_cselOpen && _cselOpen.btn === btn) { closeCsel(); return; }
+  closeCsel();
+  _calOpen(inp, btn);
+}
+
+// YYYY-MM-DD → {y, m (0-11), d}, sin Date() para no correr el día por UTC.
+function _parseISODate(v){
+  const p = String(v || '').split('-');
+  if (p.length === 3 && p[0] && p[1] && p[2]) return { y:+p[0], m:+p[1]-1, d:+p[2] };
+  const t = today().split('-'); return { y:+t[0], m:+t[1]-1, d:+t[2] };
+}
+
+function _calOpen(inp, btn){
+  const start = _parseISODate(inp.value);
+  let viewY = start.y, viewM = start.m;
+  const tIso = today();
+  const pop = document.createElement('div');
+  pop.className = 'cal-pop';
+  pop.setAttribute('role', 'dialog');
+
+  const isoFor = (y,m,d) => `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+
+  function pick(iso){
+    if (inp.value !== iso){
+      inp.value = iso;
+      inp.dispatchEvent(new Event('input',  { bubbles: true }));
+      inp.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    closeCsel();
+  }
+
+  function render(){
+    const firstDow = new Date(viewY, viewM, 1).getDay();   // 0=Dom ... 6=Sáb (local)
+    const lead = (firstDow + 6) % 7;                        // semana empieza el lunes
+    const dim  = new Date(viewY, viewM + 1, 0).getDate();   // días del mes (local)
+    const selIso = inp.value;
+    let cells = '';
+    for (let i = 0; i < lead; i++) cells += `<button type="button" class="cal-day is-empty" tabindex="-1"></button>`;
+    for (let d = 1; d <= dim; d++){
+      const iso = isoFor(viewY, viewM, d);
+      const cls = 'cal-day' + (iso === selIso ? ' is-sel' : '') + (iso === tIso ? ' is-today' : '');
+      cells += `<button type="button" class="${cls}" data-iso="${iso}">${d}</button>`;
+    }
+    pop.innerHTML = `
+      <div class="cal-head">
+        <button type="button" class="cal-nav" data-nav="-1" aria-label="Mes anterior">‹</button>
+        <span class="cal-title">${CAL_MONTHS[viewM]} ${viewY}</span>
+        <button type="button" class="cal-nav" data-nav="1" aria-label="Mes siguiente">›</button>
+      </div>
+      <div class="cal-grid">${CAL_WD.map(w => `<span class="cal-wd">${w}</span>`).join('')}${cells}</div>
+      <div class="cal-foot"><button type="button" class="btn btn-g btn-sm" data-today="1">Hoy</button></div>`;
+    pop.querySelectorAll('[data-nav]').forEach(b => b.addEventListener('click', () => {
+      viewM += (+b.dataset.nav);
+      if (viewM < 0) { viewM = 11; viewY--; } else if (viewM > 11) { viewM = 0; viewY++; }
+      render(); _cselPosition(pop, btn);
+    }));
+    pop.querySelector('[data-today]').addEventListener('click', () => pick(tIso));
+    pop.querySelectorAll('.cal-day[data-iso]').forEach(b => b.addEventListener('click', () => pick(b.dataset.iso)));
+  }
+
+  render();
+  const backdrop = document.createElement('div');
+  backdrop.className = 'csel-backdrop';
+  backdrop.addEventListener('click', closeCsel);
+  document.body.appendChild(backdrop);
+  document.body.appendChild(pop);
+  btn.classList.add('is-open');
+  _cselOpen = { sel: null, btn, pop, backdrop };
+  _cselPosition(pop, btn);
+  _cselScrollHandler = (e) => { if (_cselOpen && _cselOpen.pop.contains(e.target)) return; closeCsel(); };
+  window.addEventListener('scroll', _cselScrollHandler, true);
+  window.addEventListener('resize', _cselScrollHandler);
+  document.addEventListener('keydown', _cselKey);
+}
 // Devuelve el src SOLO si es un dataURL de imagen (data:image/...). Cualquier
 // otra cosa —p. ej. un valor manipulado en un backup importado de otro colega—
 // se descarta, evitando que un src="..." se rompa e inyecte HTML. Los logos y
@@ -6242,8 +6391,9 @@ function restoreUI() {
   sv('scn-label-a', S.scenarioLabelA || '');
   sv('scn-label-b', S.scenarioLabelB || '');
   updateScenarioUI();
-  // Sincronizar los dropdowns propios con los valores recién cargados.
+  // Sincronizar los dropdowns y fechas propias con los valores recién cargados.
   refreshCustomSelects();
+  refreshCustomDates();
 }
 
 // ─── SYNC FROM UI TO STATE ───────────────────
@@ -9865,6 +10015,7 @@ function factInit() {
   // Fecha LOCAL, no UTC: toISOString() corre el día en Argentina (UTC-3)
   // después de las 21 hs y la factura quedaría fechada al día siguiente.
   if(fd && !fd.value) fd.value = today();
+  if(typeof refreshCustomDates === 'function') refreshCustomDates();
   factRenderReminder();
   factRender();
 }
@@ -10097,6 +10248,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   // Reemplazar los <select> nativos por el dropdown propio (con el tema de la
   // app). Después de restoreUI para que reflejen el valor ya cargado.
   enhanceSelects(document);
+  // Calendario propio para los <input type="date"> editables.
+  enhanceDateInputs(document);
 
   renderItems();
   renderEstItems();
