@@ -402,12 +402,18 @@ details.scol[open]>summary .scol-chev{transform:rotate(180deg)}
 .tpreset-label{font-size:11px;color:var(--text);font-weight:500;white-space:nowrap}
 
 /* HISTORY */
-.hitem{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-box);padding:10px 12px;margin-bottom:8px;display:flex;align-items:center;gap:10px}
+.hitem{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-box);padding:10px 12px;margin-bottom:8px;display:flex;flex-direction:column;align-items:stretch;gap:8px}
+/* Fila superior: datos del presupuesto + "Cargar" (la acción más usada)
+   anclada arriba a la derecha, fácil de ubicar y apretar sin perderse
+   entre el resto de los botones. */
+.htop{display:flex;align-items:flex-start;gap:10px}
 .hinfo{flex:1;min-width:0}
+.hcargar{flex:none;align-self:flex-start;white-space:nowrap}
 .hnum{font-size:12px;font-weight:700;color:var(--accent-fg)}
 .hclient{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hmeta{font-size:11px;color:var(--muted)}
-.hacts{display:flex;gap:4px;flex-shrink:0}
+.hacts{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.hacts .btn-icon-del{margin-left:auto}
 .empty-h{text-align:center;padding:40px;color:var(--muted);font-size:13px}
 /* Resaltado temporal de una tarjeta cuando se llega a ella desde un aviso
    (banner de vencidos/seguimiento). Parpadea/destella unas veces y se apaga. */
@@ -8040,17 +8046,19 @@ function renderHistory() {
     const tieneDir = !!((e.snapshot && e.snapshot.workAddress || '').trim());
     return `
     <div class="hitem" data-id="${e.id}">
-      <div class="hinfo">
-        <div class="hnum">${esc(e.quoteNumber||'—')}${e.isEstimative?'<span class="hbadge-est">Estimativo</span>':''}${followupBadgeFor(e)}${expiryBadgeFor(e)}${e.facturado?'<span class="hbadge-estado" style="color:#065f46;background:#d1fae5">✓ Facturado</span>':''}</div>
-        ${!groupedByClient?`<div class="hclient ${!e.clientName?'is-draft':''}">${esc(e.clientName||'(borrador sin nombre de cliente)')}</div>`:''}
-        <div class="hmeta">${esc(e.currency||'')} ${fmtM(e.total||0,e.currency||'ARS')} · ${e.itemCount||0} ítem(s) · ${fmtD(((e.snapshot&&e.snapshot.dateIssue)||e.savedAt||'').slice(0,10))}</div>
+      <div class="htop">
+        <div class="hinfo">
+          <div class="hnum">${esc(e.quoteNumber||'—')}${e.isEstimative?'<span class="hbadge-est">Estimativo</span>':''}${followupBadgeFor(e)}${expiryBadgeFor(e)}${e.facturado?'<span class="hbadge-estado" style="color:#065f46;background:#d1fae5">✓ Facturado</span>':''}</div>
+          ${!groupedByClient?`<div class="hclient ${!e.clientName?'is-draft':''}">${esc(e.clientName||'(borrador sin nombre de cliente)')}</div>`:''}
+          <div class="hmeta">${esc(e.currency||'')} ${fmtM(e.total||0,e.currency||'ARS')} · ${e.itemCount||0} ítem(s) · ${fmtD(((e.snapshot&&e.snapshot.dateIssue)||e.savedAt||'').slice(0,10))}</div>
+        </div>
+        <button class="btn btn-p btn-sm hcargar" onclick="loadFromHistory(${e.id})" title="Cargar este presupuesto en el editor">${icon('folder')} Cargar</button>
       </div>
       <div class="hacts">
         <select class="hestado-sel" style="color:${txtCol};background-color:${bgCol};border-color:${bgCol}" onchange="setEstadoHistory(${e.id}, this.value)" title="Cambiar estado" aria-label="Estado del presupuesto">${estadoOpts}</select>
         <button class="btn btn-g btn-sm" onclick="previewFromHistory(${e.id})">${icon('eye')} Ver</button>
         <button class="btn btn-g btn-sm" onclick="sharePngFromHistory(${e.id})" title="Generar una imagen del presupuesto y compartirla (WhatsApp, etc.)">${icon('image')} Compartir</button>
         ${tieneDir ? `<button class="btn btn-g btn-sm" onclick="comoLlegar(${e.id})" title="Cómo llegar a la dirección del trabajo" aria-label="Cómo llegar">${icon('pin')} Llegar</button>` : ''}
-        <button class="btn btn-s btn-sm" onclick="loadFromHistory(${e.id})">Cargar</button>
         <button class="btn-icon-del" onclick="delFromHistory(${e.id})" title="Eliminar presupuesto" aria-label="Eliminar presupuesto">${icon('trash')}</button>
       </div>
     </div>`;
