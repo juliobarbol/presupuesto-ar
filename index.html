@@ -7200,6 +7200,28 @@ function _entryFileBase(e) {
   return (cliente ? `${num}-${cliente}` : num).replace(/\s+/g, '_');
 }
 
+// Espera a que TODAS las <img> dentro de root terminen de cargar (o fallen),
+// con un tope de tiempo para no colgarse si una foto no resuelve. Es
+// IMPRESCINDIBLE antes de rasterizar con html2canvas: si la captura ocurre
+// mientras las fotos del Registro Fotográfico están a medio cargar, html2canvas
+// mide el documento "compacto" (las fotos colapsadas a 0) pero las dibuja a su
+// tamaño real, dejando bandas en blanco donde estarían (el "espacio grande
+// entre hojas"). Esperarlas hace que la imagen salga idéntica a la vista previa.
+function _awaitDocImages(root, timeoutMs = 8000) {
+  const imgs = [...root.querySelectorAll('img')];
+  const pending = imgs.map(img => {
+    if (img.complete && img.naturalWidth > 0) return Promise.resolve();
+    if (img.decode) return img.decode().catch(() => {});   // lo más fiable
+    return new Promise(res => { img.onload = img.onerror = res; });
+  });
+  // Tras cargar, un par de fotogramas para que el layout (alturas de las fotos
+  // clampeadas a max-height) se asiente antes de medir/rasterizar.
+  const settle = Promise.all(pending).then(() => new Promise(res =>
+    requestAnimationFrame(() => requestAnimationFrame(res))));
+  const guard = new Promise(res => setTimeout(res, timeoutMs));
+  return Promise.race([settle, guard]);
+}
+
 // Comparte un File por la bandeja nativa del sistema (navigator.share). Si el
 // dispositivo no soporta compartir archivos (típicamente escritorio), cae al
 // flujo manual: descarga el archivo y abre WhatsApp con texto.
@@ -7264,6 +7286,9 @@ async function sharePngFromHistory(id) {
   const od = _offscreenDoc(e);
   if (!od) { toast('No se pudo generar el documento', 'err'); return; }
   try {
+    // Esperar a que las fotos carguen ANTES de medir/rasterizar (ver
+    // _awaitDocImages): evita el espacio en blanco entre secciones.
+    await _awaitDocImages(od.inner);
     const cssW = od.inner.offsetWidth;
     const cssH = od.inner.offsetHeight;
     const scale = _bestRasterScale(cssW, cssH);
