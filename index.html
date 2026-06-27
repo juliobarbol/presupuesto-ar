@@ -291,6 +291,31 @@ body{background-color:var(--bg)}
 }
 .st:first-child{margin-top:0}
 
+/* SECCIÓN COLAPSABLE: el summary se ve igual que un header .st
+   (mayúsculas + barra verde) con un chevron a la derecha. Sirve para
+   secundarios "set-and-forget" (opciones del documento) sin perder el
+   ancla visual de sección. */
+details.scol{margin:20px 0 10px}
+details.scol>summary{
+  list-style:none;cursor:pointer;user-select:none;
+  display:flex;align-items:center;
+  font-size:11px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.8px;
+  color:var(--text-2,#334155);
+  margin:0;padding:0 0 6px 10px;
+  border-bottom:1px solid var(--border);position:relative;
+}
+details.scol>summary::-webkit-details-marker{display:none}
+details.scol>summary::marker{content:""}
+details.scol>summary::before{
+  content:'';position:absolute;left:0;top:1px;bottom:7px;
+  width:3px;border-radius:2px;background:var(--accent);opacity:.65;
+}
+.scol-hint{font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);margin-left:8px;font-size:11px}
+.scol-chev{margin-left:auto;color:var(--muted);font-size:11px;transition:transform .2s}
+details.scol[open]>summary .scol-chev{transform:rotate(180deg)}
+.scol-body{padding-top:10px}
+
 /* BUTTONS */
 .btn{display:inline-flex;align-items:center;gap:5px;padding:8px 14px;border-radius:var(--radius-field);border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;transition:.15s}
 .btn-p{background:var(--accent);color:#fff}.btn-p:hover{background:var(--accent-dark)}
@@ -2373,7 +2398,9 @@ input[type=file]{display:none}
           </div>
         </div>
 
-        <div class="st">Opciones del documento</div>
+        <details class="scol">
+          <summary>Opciones del documento <span class="scol-hint">plan · criterios · firmas</span><span class="scol-chev" aria-hidden="true">▾</span></summary>
+          <div class="scol-body">
         <div class="trow"><span class="tlabel">Mostrar plan de trabajo</span><label class="tgl"><input type="checkbox" id="show-work-plan" checked><span class="tgl-sl"></span></label></div>
         <div class="trow"><span class="tlabel">Plan de trabajo a medida <span style="font-weight:400;color:var(--muted)">(solo este presupuesto)</span></span><label class="tgl"><input type="checkbox" id="wp-override" onchange="toggleWorkPlanOverride()"><span class="tgl-sl"></span></label></div>
         <div id="wp-override-box" class="fg" style="display:none;margin:4px 0 6px">
@@ -2384,6 +2411,8 @@ input[type=file]{display:none}
         <div class="trow"><span class="tlabel">Mostrar criterios de costeo</span><label class="tgl"><input type="checkbox" id="show-criteria" checked><span class="tgl-sl"></span></label></div>
         <div class="trow"><span class="tlabel">Mostrar firma del titular</span><label class="tgl"><input type="checkbox" id="show-sig-owner" checked><span class="tgl-sl"></span></label></div>
         <div class="trow"><span class="tlabel">Mostrar firma del cliente</span><label class="tgl"><input type="checkbox" id="show-sig-client"><span class="tgl-sl"></span></label></div>
+          </div>
+        </details>
 
         <div class="divider"></div>
 
