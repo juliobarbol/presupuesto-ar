@@ -166,8 +166,8 @@ body{background-color:var(--bg)}
 
 /* TABS */
 #tabs{display:flex;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0}
-.tab-btn{flex:1;padding:10px 4px;border:none;background:transparent;cursor:pointer;font-size:12px;font-weight:500;color:var(--muted);font-family:'DM Sans',sans-serif;transition:.15s;border-bottom:2px solid transparent;white-space:nowrap;overflow:hidden}
-.tab-btn .ic{width:.9em;height:.9em;margin-right:1px}
+.tab-btn{flex:1;min-width:0;display:inline-flex;align-items:center;justify-content:center;gap:3px;padding:10px 3px;border:none;background:transparent;cursor:pointer;font-size:12px;font-weight:500;color:var(--muted);font-family:'DM Sans',sans-serif;transition:.15s;border-bottom:2px solid transparent;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tab-btn .ic{flex:none;width:.9em;height:.9em}
 .tab-btn.active{color:var(--accent-fg);border-bottom-color:var(--accent-fg);background:var(--card)}
 .tab-btn:hover:not(.active){background:rgba(0,0,0,.03)}
 
@@ -2136,7 +2136,7 @@ input[type=file]{display:none}
     <button class="tab-btn" onclick="switchTab('empresa')"><svg class="ic"><use href="#i-building"></use></svg> Empresa</button>
     <button class="tab-btn" onclick="switchTab('estilo')"><svg class="ic"><use href="#i-palette"></use></svg> Estilo</button>
     <button class="tab-btn" onclick="switchTab('historial')"><svg class="ic"><use href="#i-book"></use></svg> Historial</button>
-    <button class="tab-btn" onclick="switchTab('facturacion')"><svg class="ic ic-c-amber"><use href="#i-money"></use></svg> Facturación</button>
+    <button class="tab-btn" onclick="switchTab('facturacion')"><svg class="ic ic-c-amber"><use href="#i-money"></use></svg> Facturas</button>
   </div>
 
   <div id="main">
