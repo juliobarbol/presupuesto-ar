@@ -96,8 +96,14 @@ Requiere estado propio:
 
 ## Cosas que NO romper
 - El encabezado va en `<thead>` y el navegador lo **repite por página** nativamente.
-  Por eso **no es viable una banda lateral de página completa**: cualquier "sidebar"
-  vive dentro del `.ph` (alto del header), no de toda la hoja.
+  Un "sidebar" como elemento del `.ph` sólo llega al alto del header, NO de la hoja.
+  Para una **banda lateral full-height** (ej. tema `lateral`) la técnica que sí
+  funciona es pintarla como **fondo de la `<table class="pdoc">`** (gradiente lineal
+  con color de `--pdoc-accent`): el navegador repinta el fondo de la tabla en cada
+  página impresa, igual que repite el `<thead>`. Como los contenedores de sección no
+  tienen fondo propio (su inset izquierdo es transparente), la banda se ve a través
+  del margen; sólo hay que correr el `padding-left`/`margin-left` de cada sección.
+  Evitá `position:fixed` (falla en móvil).
 - El CSS del documento es **una sola fuente** (sirve impresión y vista previa). No
   dupliques bloques `@media print` vs pantalla.
 - El `accentColor` se inyecta inline desde JS; no lo hardcodees en el CSS del tema
