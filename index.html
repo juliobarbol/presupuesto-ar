@@ -248,6 +248,34 @@ body{background-color:var(--bg)}
    inputs de una sola línea que truncaban textos largos del PDF: ahora el
    valor completo se ve de un vistazo (se puede escanear sin tocar). */
 .fg textarea.ta-line{min-height:0;field-sizing:content;resize:none;overflow:hidden;line-height:1.4}
+
+/* ── DROPDOWN PROPIO (reemplaza el <select> nativo de Chrome) ──
+   El <select> real queda oculto como fuente de datos; este botón + popover
+   replican la selección con el tema de la app (no más diálogo oscuro del
+   navegador). Lógica en enhanceSelects(). */
+.csel{position:relative;display:block;width:100%}
+.csel-native{position:absolute!important;width:1px;height:1px;padding:0;margin:0;opacity:0;pointer-events:none;clip:rect(0 0 0 0);overflow:hidden}
+.csel-btn{display:flex;align-items:center;gap:8px;width:100%;text-align:left;
+  padding:8px 34px 8px 10px;border:1px solid var(--border);border-radius:var(--radius-field);
+  background-color:var(--card);color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;
+  cursor:pointer;outline:none;-webkit-appearance:none;appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2364748b' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 12px center}
+.csel-btn:focus,.csel-btn.is-open{border-color:var(--accent-fg);box-shadow:0 0 0 3px rgba(var(--accent-rgb),.1)}
+.csel-label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Pill de estado en las tarjetas del historial: compacto y con el color del estado. */
+.hacts .csel{width:auto;flex:0 0 auto}
+.hacts .csel-btn{font-weight:700;padding:6px 30px 6px 10px;border-radius:var(--radius-box);background-position:right 10px center}
+/* Popover de opciones */
+.csel-backdrop{position:fixed;inset:0;z-index:1200;background:transparent}
+.csel-pop{position:fixed;z-index:1201;background:var(--card);border:1px solid var(--border);
+  border-radius:var(--radius-box);box-shadow:0 12px 34px rgba(0,0,0,.20);
+  padding:5px;max-height:min(320px,60vh);overflow-y:auto;-webkit-overflow-scrolling:touch}
+.csel-opt{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:var(--radius-field);
+  font-size:14px;color:var(--text);cursor:pointer;white-space:nowrap}
+.csel-opt:hover,.csel-opt.is-active{background:var(--surface-2)}
+.csel-opt .csel-check{margin-left:auto;color:var(--accent-fg);opacity:0;flex:none}
+.csel-opt.is-active .csel-check{opacity:1}
 /* Editor de listas "uno por ítem": cada punto en su propio casillero, con
    número y botón de borrar, para que se vea claramente la división de cada
    ítem (en vez de un bloque de texto donde las líneas largas se mezclan). */
@@ -3282,6 +3310,120 @@ const IC_COLOR = {
 // (p. ej. 'ic-fill' para rellenar). El color semántico se agrega solo. Pensado
 // para interpolar en innerHTML.
 function icon(name, cls){ const col=IC_COLOR[name]; const c='ic'+(cls?' '+cls:'')+(col?' ic-c-'+col:''); return `<svg class="${c}" aria-hidden="true"><use href="#i-${name}"></use></svg>`; }
+
+/* ===== js/dropdown.js =====
+   Reemplaza el <select> nativo (diálogo oscuro de Chrome) por un dropdown con
+   el tema de la app. NO toca la lógica: el <select> real queda oculto como
+   fuente de datos y este componente solo escribe su valor y dispara un evento
+   'change' que burbujea — el mismo que dispararía el navegador —, así los
+   onchange inline y el listener global de syncFromUI() siguen funcionando. */
+let _cselOpen = null;        // {sel, btn, pop, backdrop} del dropdown abierto
+let _cselScrollHandler = null;
+
+function enhanceSelects(root){
+  (root || document).querySelectorAll('select:not([data-csel])').forEach(sel => {
+    if (sel.multiple) return;
+    sel.setAttribute('data-csel', '1');
+    sel.classList.add('csel-native');
+    const wrap = document.createElement('span');
+    wrap.className = 'csel';
+    sel.parentNode.insertBefore(wrap, sel);
+    wrap.appendChild(sel);
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'csel-btn';
+    btn.setAttribute('aria-haspopup', 'listbox');
+    const al = sel.getAttribute('aria-label'); if (al) btn.setAttribute('aria-label', al);
+    if (sel.title) btn.title = sel.title;
+    btn.innerHTML = '<span class="csel-label"></span>';
+    wrap.appendChild(btn);
+    btn.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); _cselToggle(sel, btn); });
+    sel.addEventListener('change', () => syncCsel(sel));
+    sel._cselBtn = btn;
+    syncCsel(sel);
+  });
+}
+
+// Refleja el valor (y los colores inline, p. ej. el pill de estado) del
+// <select> en su botón. Se llama tras cambios programáticos de .value.
+function syncCsel(sel){
+  const btn = sel._cselBtn; if (!btn) return;
+  const o = sel.options[sel.selectedIndex];
+  const lbl = btn.querySelector('.csel-label');
+  if (lbl) lbl.textContent = o ? o.textContent : '';
+  btn.style.color = sel.style.color || '';
+  btn.style.backgroundColor = sel.style.backgroundColor || '';
+  btn.style.borderColor = sel.style.borderColor || '';
+}
+function refreshCustomSelects(root){
+  (root || document).querySelectorAll('select[data-csel]').forEach(syncCsel);
+}
+
+function _cselToggle(sel, btn){
+  if (_cselOpen && _cselOpen.sel === sel) { closeCsel(); return; }
+  closeCsel();
+  _cselOpen_open(sel, btn);
+}
+
+function _cselOpen_open(sel, btn){
+  const backdrop = document.createElement('div');
+  backdrop.className = 'csel-backdrop';
+  backdrop.addEventListener('click', closeCsel);
+  const pop = document.createElement('div');
+  pop.className = 'csel-pop';
+  pop.setAttribute('role', 'listbox');
+  [...sel.options].forEach((o, i) => {
+    const row = document.createElement('div');
+    row.className = 'csel-opt' + (i === sel.selectedIndex ? ' is-active' : '');
+    row.setAttribute('role', 'option');
+    row.innerHTML = `<span>${esc(o.textContent)}</span><span class="csel-check">${icon('check')}</span>`;
+    row.addEventListener('click', () => {
+      if (sel.value !== o.value) {
+        sel.value = o.value;
+        sel.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+      closeCsel();
+    });
+    pop.appendChild(row);
+  });
+  document.body.appendChild(backdrop);
+  document.body.appendChild(pop);
+  btn.classList.add('is-open');
+  _cselOpen = { sel, btn, pop, backdrop };
+  _cselPosition(pop, btn);
+  _cselScrollHandler = (e) => { if (_cselOpen && _cselOpen.pop.contains(e.target)) return; closeCsel(); };
+  window.addEventListener('scroll', _cselScrollHandler, true);
+  window.addEventListener('resize', _cselScrollHandler);
+  document.addEventListener('keydown', _cselKey);
+  const act = pop.querySelector('.csel-opt.is-active');
+  if (act) act.scrollIntoView({ block: 'nearest' });
+}
+
+function _cselPosition(pop, btn){
+  const r = btn.getBoundingClientRect();
+  const vw = window.innerWidth, vh = window.innerHeight;
+  pop.style.minWidth = r.width + 'px';
+  pop.style.left = '0px'; pop.style.top = '0px';
+  const pw = pop.offsetWidth, ph = pop.offsetHeight;
+  let left = r.left;
+  if (left + pw > vw - 8) left = Math.max(8, vw - 8 - pw);
+  let top = r.bottom + 4;
+  if (top + ph > vh - 8 && r.top - ph - 4 > 8) top = r.top - ph - 4;
+  pop.style.left = left + 'px';
+  pop.style.top = top + 'px';
+}
+
+function closeCsel(){
+  if (!_cselOpen) return;
+  const { btn, pop, backdrop } = _cselOpen;
+  if (btn) btn.classList.remove('is-open');
+  pop.remove(); backdrop.remove();
+  window.removeEventListener('scroll', _cselScrollHandler, true);
+  window.removeEventListener('resize', _cselScrollHandler);
+  document.removeEventListener('keydown', _cselKey);
+  _cselOpen = null;
+}
+function _cselKey(e){ if (e.key === 'Escape') closeCsel(); }
 // Devuelve el src SOLO si es un dataURL de imagen (data:image/...). Cualquier
 // otra cosa —p. ej. un valor manipulado en un backup importado de otro colega—
 // se descarta, evitando que un src="..." se rompa e inyecte HTML. Los logos y
@@ -6100,6 +6242,8 @@ function restoreUI() {
   sv('scn-label-a', S.scenarioLabelA || '');
   sv('scn-label-b', S.scenarioLabelB || '');
   updateScenarioUI();
+  // Sincronizar los dropdowns propios con los valores recién cargados.
+  refreshCustomSelects();
 }
 
 // ─── SYNC FROM UI TO STATE ───────────────────
@@ -8068,6 +8212,8 @@ function renderHistory() {
   // por mes molestaría cuando el usuario está buscando algo específico.
   if (hasFilters) {
     list.innerHTML = summaryHtml + h.map(renderEntry).join('');
+    enhanceSelects(list);
+    refreshCustomSelects();
     return;
   }
 
@@ -8119,6 +8265,8 @@ function renderHistory() {
   });
 
   list.innerHTML = html;
+  enhanceSelects(list);
+  refreshCustomSelects();
 }
 
 // Lleva al usuario hasta un presupuesto puntual dentro del historial y lo
@@ -9945,6 +10093,10 @@ window.addEventListener('DOMContentLoaded', async () => {
   noSync = true;
   restoreUI();
   noSync = false;
+
+  // Reemplazar los <select> nativos por el dropdown propio (con el tema de la
+  // app). Después de restoreUI para que reflejen el valor ya cargado.
+  enhanceSelects(document);
 
   renderItems();
   renderEstItems();
