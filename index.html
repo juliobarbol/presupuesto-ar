@@ -2285,11 +2285,12 @@ input[type=file]{display:none}
           <button class="btn btn-g btn-sm" onclick="sendCurrentWhatsapp()">💬 Enviar por WhatsApp</button>
         </div>
 
-        <!-- ACCIONES SECUNDARIAS: más chicas, ancho compartido. Guardar
-             se usa cuando NO querés imprimir todavía; Nuevo se usa
-             después de imprimir para empezar otro. -->
+        <!-- ACCIONES SECUNDARIAS: más chicas, ancho compartido.
+             "Guardar como borrador" asienta el presupuesto actual en el
+             historial y arranca uno nuevo en un solo toque; "Nuevo" hace
+             lo mismo pero pidiendo confirmación. -->
         <div class="actions-secondary">
-          <button class="btn btn-g btn-sm" onclick="saveToHistory()">💾 Guardar</button>
+          <button class="btn btn-g btn-sm" onclick="saveToHistory()">💾 Guardar como borrador</button>
           <button class="btn btn-g btn-sm" onclick="newQuote()">+ Nuevo presupuesto</button>
         </div>
       </div><!-- /panel-editor -->
@@ -6852,9 +6853,18 @@ function autoSaveToHistory() {
 }
 
 // ─── SAVE (con toast) ────────────────────────
+// ─── SAVE (guardar como borrador + nuevo) ────
+// El estado se autoguarda en el historial a medida que se redacta, así
+// que un "Guardar" a secas era redundante. Este botón cierra el ciclo:
+// deja el presupuesto actual asentado en el historial (como borrador si
+// todavía no avanzó de estado) y arranca uno nuevo, listo para el
+// siguiente cliente. Equivale a "Nuevo presupuesto" pero sin pedir
+// confirmación, porque guardar es la acción explícita que pidió el usuario.
 function saveToHistory() {
+  const num = S.quoteNumber;
   autoSaveToHistory();
-  toast(`✓ Presupuesto ${S.quoteNumber} guardado en historial`, 'ok');
+  resetToNewQuote();
+  toast(`✓ Presupuesto ${num} guardado como borrador`, 'ok');
 }
 
 // ─── HELPER: siguiente N° disponible mirando el historial ───
@@ -7934,6 +7944,14 @@ async function newQuote() {
   const ok = await confirmDlg('Nuevo presupuesto', '¿Crear un nuevo presupuesto? El borrador actual se guardará automáticamente en el historial.', 'Crear nuevo', 'btn-p');
   if (!ok) return;
   autoSaveToHistory();
+  resetToNewQuote();
+  toast('Nuevo presupuesto creado', 'info');
+}
+
+// Reinicia el estado a un presupuesto en blanco con el siguiente N° libre.
+// NO guarda ni pide confirmación: eso lo decide quien la llama
+// (newQuote pregunta; saveToHistory guarda y sigue de largo).
+function resetToNewQuote() {
   // Calcular siguiente N° libre mirando el historial completo,
   // no solo S.numNext (que puede estar atrás si se cargaron viejos).
   S.numNext = calcNextNumFromHistory();
@@ -7960,7 +7978,6 @@ async function newQuote() {
   updateTotalsBar(); updateSurchargeUI();
   switchTab('editor');
   sched();
-  toast('Nuevo presupuesto creado', 'info');
 }
 
 // ===== js/exportimport.js =====
