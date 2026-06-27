@@ -110,6 +110,18 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;font-size:14px;background
 body{background-color:var(--bg)}
 #app{display:flex;flex-direction:column;height:100vh;height:-webkit-fill-available;overflow:hidden}
 
+/* ICONOS (Lucide inline). Tamaño = 1em → heredan el tamaño de fuente del
+   contenedor; color = currentColor → heredan el color del texto. Reemplazan
+   a los emojis. .ic-fill rellena (ej: estrella de favorito activa). */
+.ic{width:1em;height:1em;display:inline-block;vertical-align:-0.14em;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;overflow:visible}
+.ic-fill{fill:currentColor;stroke:currentColor}
+/* Círculo de nivel de riesgo (reemplaza 🔴🟠🟡🟢) — color semántico */
+.ic-dot{width:.85em;height:.85em;display:inline-block;vertical-align:-0.05em;border-radius:50%;flex-shrink:0}
+.ic-dot.lvl-extremo{background:#dc2626}
+.ic-dot.lvl-alto{background:#ea580c}
+.ic-dot.lvl-moderado{background:#ca8a04}
+.ic-dot.lvl-bajo{background:#16a34a}
+
 /* TOPBAR — compacto: una sola línea con logo + menú "⋯" para acciones
    secundarias (Exportar/Importar). Antes ocupaba dos líneas en móvil
    con botones permanentes — robaba ~12% del alto de pantalla. */
@@ -142,7 +154,8 @@ body{background-color:var(--bg)}
 
 /* TABS */
 #tabs{display:flex;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0}
-.tab-btn{flex:1;padding:10px 4px;border:none;background:transparent;cursor:pointer;font-size:12px;font-weight:500;color:var(--muted);font-family:'DM Sans',sans-serif;transition:.15s;border-bottom:2px solid transparent}
+.tab-btn{flex:1;padding:10px 4px;border:none;background:transparent;cursor:pointer;font-size:12px;font-weight:500;color:var(--muted);font-family:'DM Sans',sans-serif;transition:.15s;border-bottom:2px solid transparent;white-space:nowrap;overflow:hidden}
+.tab-btn .ic{width:.9em;height:.9em;margin-right:1px}
 .tab-btn.active{color:var(--accent-fg);border-bottom-color:var(--accent-fg);background:var(--card)}
 .tab-btn:hover:not(.active){background:rgba(0,0,0,.03)}
 
@@ -1967,10 +1980,64 @@ input[type=file]{display:none}
 </head>
 <body>
 
+<!-- ════════════════════ ICON SPRITE (Lucide, MIT/ISC) ════════════════════ -->
+<!-- Iconos de línea embebidos como <symbol>. Se usan con icon('nombre') o
+     <svg class="ic"><use href="#i-nombre"></use></svg>. Reemplazan a los emojis
+     para un look más limpio. Sin red en runtime (offline-first). -->
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true"><defs>
+<symbol id="i-tree" viewBox="0 0 24 24"><path d="M8 19a4 4 0 0 1-2.24-7.32A3.5 3.5 0 0 1 9 6.03V6a3 3 0 1 1 6 0v.04a3.5 3.5 0 0 1 3.24 5.65A4 4 0 0 1 16 19Z" /> <path d="M12 19v3" /></symbol>
+<symbol id="i-camera" viewBox="0 0 24 24"><path d="M13.997 4a2 2 0 0 1 1.76 1.05l.486.9A2 2 0 0 0 18.003 7H20a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1.997a2 2 0 0 0 1.759-1.048l.489-.904A2 2 0 0 1 10.004 4z" /> <circle cx="12" cy="13" r="3" /></symbol>
+<symbol id="i-trash" viewBox="0 0 24 24"><path d="M10 11v6" /> <path d="M14 11v6" /> <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" /> <path d="M3 6h18" /> <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></symbol>
+<symbol id="i-save" viewBox="0 0 24 24"><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" /> <path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7" /> <path d="M7 3v4a1 1 0 0 0 1 1h7" /></symbol>
+<symbol id="i-bell" viewBox="0 0 24 24"><path d="M10.268 21a2 2 0 0 0 3.464 0" /> <path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326" /></symbol>
+<symbol id="i-message" viewBox="0 0 24 24"><path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719" /></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /> <path d="m9 12 2 2 4-4" /></symbol>
+<symbol id="i-pin" viewBox="0 0 24 24"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0" /> <circle cx="12" cy="10" r="3" /></symbol>
+<symbol id="i-building" viewBox="0 0 24 24"><path d="M10 12h4" /> <path d="M10 8h4" /> <path d="M14 21v-3a2 2 0 0 0-4 0v3" /> <path d="M6 10H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2" /> <path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16" /></symbol>
+<symbol id="i-book" viewBox="0 0 24 24"><path d="M12 7v14" /> <path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z" /></symbol>
+<symbol id="i-clipboard" viewBox="0 0 24 24"><rect width="8" height="4" x="8" y="2" rx="1" ry="1" /> <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" /> <path d="M12 11h4" /> <path d="M12 16h4" /> <path d="M8 11h.01" /> <path d="M8 16h.01" /></symbol>
+<symbol id="i-truck" viewBox="0 0 24 24"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2" /> <path d="M15 18H9" /> <path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14" /> <circle cx="17" cy="18" r="2" /> <circle cx="7" cy="18" r="2" /></symbol>
+<symbol id="i-user" viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /> <circle cx="12" cy="7" r="4" /></symbol>
+<symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /> <path d="M16 3.128a4 4 0 0 1 0 7.744" /> <path d="M22 21v-2a4 4 0 0 0-3-3.87" /> <circle cx="9" cy="7" r="4" /></symbol>
+<symbol id="i-star" viewBox="0 0 24 24"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z" /></symbol>
+<symbol id="i-x" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /> <path d="m15 9-6 6" /> <path d="m9 9 6 6" /></symbol>
+<symbol id="i-phone" viewBox="0 0 24 24"><rect width="14" height="20" x="5" y="2" rx="2" ry="2" /> <path d="M12 18h.01" /></symbol>
+<symbol id="i-idcard" viewBox="0 0 24 24"><path d="M16 10h2" /> <path d="M16 14h2" /> <path d="M6.17 15a3 3 0 0 1 5.66 0" /> <circle cx="9" cy="11" r="2" /> <rect x="2" y="5" width="20" height="14" rx="2" /></symbol>
+<symbol id="i-fuel" viewBox="0 0 24 24"><path d="M14 13h2a2 2 0 0 1 2 2v2a2 2 0 0 0 4 0v-6.998a2 2 0 0 0-.59-1.42L18 5" /> <path d="M14 21V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v16" /> <path d="M2 21h13" /> <path d="M3 9h11" /></symbol>
+<symbol id="i-file" viewBox="0 0 24 24"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z" /> <path d="M14 2v5a1 1 0 0 0 1 1h5" /> <path d="M10 9H8" /> <path d="M16 13H8" /> <path d="M16 17H8" /></symbol>
+<symbol id="i-download" viewBox="0 0 24 24"><path d="M12 15V3" /> <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /> <path d="m7 10 5 5 5-5" /></symbol>
+<symbol id="i-hourglass" viewBox="0 0 24 24"><path d="M5 22h14" /> <path d="M5 2h14" /> <path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22" /> <path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2" /></symbol>
+<symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0" /> <circle cx="12" cy="12" r="3" /></symbol>
+<symbol id="i-image" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2" ry="2" /> <circle cx="9" cy="9" r="2" /> <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" /></symbol>
+<symbol id="i-calendar" viewBox="0 0 24 24"><path d="M8 2v4" /> <path d="M16 2v4" /> <rect width="18" height="18" x="3" y="4" rx="2" /> <path d="M3 10h18" /></symbol>
+<symbol id="i-zap" viewBox="0 0 24 24"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z" /></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14" /> <path d="M12 5v14" /></symbol>
+<symbol id="i-paperclip" viewBox="0 0 24 24"><path d="m16 6-8.414 8.586a2 2 0 0 0 2.829 2.829l8.414-8.586a4 4 0 1 0-5.657-5.657l-8.379 8.551a6 6 0 1 0 8.485 8.485l8.379-8.551" /></symbol>
+<symbol id="i-refresh" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" /> <path d="M21 3v5h-5" /> <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" /> <path d="M8 16H3v5" /></symbol>
+<symbol id="i-pencil" viewBox="0 0 24 24"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" /> <path d="m15 5 4 4" /></symbol>
+<symbol id="i-palette" viewBox="0 0 24 24"><path d="M12 22a1 1 0 0 1 0-20 10 9 0 0 1 10 9 5 5 0 0 1-5 5h-2.25a1.75 1.75 0 0 0-1.4 2.8l.3.4a1.75 1.75 0 0 1-1.4 2.8z" /> <circle cx="13.5" cy="6.5" r=".5" fill="currentColor" /> <circle cx="17.5" cy="10.5" r=".5" fill="currentColor" /> <circle cx="6.5" cy="12.5" r=".5" fill="currentColor" /> <circle cx="8.5" cy="7.5" r=".5" fill="currentColor" /></symbol>
+<symbol id="i-money" viewBox="0 0 24 24"><rect width="20" height="12" x="2" y="6" rx="2" /> <circle cx="12" cy="12" r="2" /> <path d="M6 12h.01M18 12h.01" /></symbol>
+<symbol id="i-wind" viewBox="0 0 24 24"><path d="M12.8 19.6A2 2 0 1 0 14 16H2" /> <path d="M17.5 8a2.5 2.5 0 1 1 2 4H2" /> <path d="M9.8 4.4A2 2 0 1 1 11 8H2" /></symbol>
+<symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v16a2 2 0 0 0 2 2h16" /> <path d="M18 17V9" /> <path d="M13 17V5" /> <path d="M8 17v-3" /></symbol>
+<symbol id="i-wrench" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.106-3.105c.32-.322.863-.22.983.218a6 6 0 0 1-8.259 7.057l-7.91 7.91a1 1 0 0 1-2.999-3l7.91-7.91a6 6 0 0 1 7.057-8.259c.438.12.54.662.219.984z" /></symbol>
+<symbol id="i-bulb" viewBox="0 0 24 24"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5" /> <path d="M9 18h6" /> <path d="M10 22h4" /></symbol>
+<symbol id="i-printer" viewBox="0 0 24 24"><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /> <path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6" /> <rect x="6" y="14" width="12" height="8" rx="1" /></symbol>
+<symbol id="i-cloud" viewBox="0 0 24 24"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z" /></symbol>
+<symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" /> <path d="M12 2v2" /> <path d="M12 20v2" /> <path d="m4.93 4.93 1.41 1.41" /> <path d="m17.66 17.66 1.41 1.41" /> <path d="M2 12h2" /> <path d="M20 12h2" /> <path d="m6.34 17.66-1.41 1.41" /> <path d="m19.07 4.93-1.41 1.41" /></symbol>
+<symbol id="i-moon" viewBox="0 0 24 24"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401" /></symbol>
+<symbol id="i-theme" viewBox="0 0 24 24"><path d="M12 2v2" /> <path d="M14.837 16.385a6 6 0 1 1-7.223-7.222c.624-.147.97.66.715 1.248a4 4 0 0 0 5.26 5.259c.589-.255 1.396.09 1.248.715" /> <path d="M16 12a4 4 0 0 0-4-4" /> <path d="m19 5-1.256 1.256" /> <path d="M20 12h2" /></symbol>
+<symbol id="i-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34" /> <circle cx="11" cy="11" r="8" /></symbol>
+<symbol id="i-tag" viewBox="0 0 24 24"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z" /> <circle cx="7.5" cy="7.5" r=".5" fill="currentColor" /></symbol>
+<symbol id="i-settings" viewBox="0 0 24 24"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915" /> <circle cx="12" cy="12" r="3" /></symbol>
+<symbol id="i-bot" viewBox="0 0 24 24"><path d="M12 8V4H8" /> <rect width="16" height="12" x="4" y="8" rx="2" /> <path d="M2 14h2" /> <path d="M20 14h2" /> <path d="M15 13v2" /> <path d="M9 13v2" /></symbol>
+<symbol id="i-folder" viewBox="0 0 24 24"><path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2" /></symbol>
+<symbol id="i-hand" viewBox="0 0 24 24"><path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2" /> <path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2" /> <path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8" /> <path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15" /></symbol>
+</defs></svg>
+
 <!-- ════════════════════ APP UI ════════════════════ -->
 <div id="app">
   <div id="topbar">
-    <div class="logo">🌳 Presupuestos</div>
+    <div class="logo"><svg class="ic"><use href="#i-tree"></use></svg> Presupuestos</div>
     <span id="save-status"></span>
     <!-- Menú colapsable: Exportar / Importar viven adentro. Libera
          espacio en el topbar — antes ocupaban ancho permanente para
@@ -1985,11 +2052,11 @@ input[type=file]{display:none}
   </div>
 
   <div id="tabs">
-    <button class="tab-btn active" onclick="switchTab('editor')">✏ Editor</button>
-    <button class="tab-btn" onclick="switchTab('empresa')">🏢 Empresa</button>
-    <button class="tab-btn" onclick="switchTab('estilo')">🎨 Estilo</button>
-    <button class="tab-btn" onclick="switchTab('historial')">📚 Historial</button>
-    <button class="tab-btn" onclick="switchTab('facturacion')">💰 Facturación</button>
+    <button class="tab-btn active" onclick="switchTab('editor')"><svg class="ic"><use href="#i-pencil"></use></svg> Editor</button>
+    <button class="tab-btn" onclick="switchTab('empresa')"><svg class="ic"><use href="#i-building"></use></svg> Empresa</button>
+    <button class="tab-btn" onclick="switchTab('estilo')"><svg class="ic"><use href="#i-palette"></use></svg> Estilo</button>
+    <button class="tab-btn" onclick="switchTab('historial')"><svg class="ic"><use href="#i-book"></use></svg> Historial</button>
+    <button class="tab-btn" onclick="switchTab('facturacion')"><svg class="ic"><use href="#i-money"></use></svg> Facturación</button>
   </div>
 
   <div id="main">
@@ -2000,21 +2067,21 @@ input[type=file]{display:none}
 
         <div class="mode-switch" id="mode-switch">
           <button class="mode-btn active" id="mode-btn-normal" onclick="setMode('normal')" title="Lo más común: ya viste el árbol y pones un precio cerrado por cada trabajo.">
-            <span class="mode-btn-title">📋 Presupuesto Normal</span>
+            <span class="mode-btn-title"><svg class="ic"><use href="#i-clipboard"></use></svg> Presupuesto Normal</span>
             <span class="mode-btn-sub">Precios cerrados por trabajo</span>
           </button>
           <button class="mode-btn est" id="mode-btn-est" onclick="setMode('estimativo')" title="Cuando el cliente te manda fotos o videos y todavía no fuiste al lugar. El PDF aclara que es un valor referencial, sujeto a inspección presencial.">
-            <span class="mode-btn-title">📷 Presupuesto Estimativo</span>
+            <span class="mode-btn-title"><svg class="ic"><use href="#i-camera"></use></svg> Presupuesto Estimativo</span>
             <span class="mode-btn-sub">Basado en fotos · valor referencial</span>
           </button>
           <button class="mode-btn" id="mode-btn-riesgo" onclick="setMode('riesgo')" title="Para árboles peligrosos: suma un informe técnico de riesgo (método ISA) que justifica la extracción o intervención ante el cliente.">
-            <span class="mode-btn-title">🌳 Con Informe de Riesgo</span>
+            <span class="mode-btn-title"><svg class="ic"><use href="#i-tree"></use></svg> Con Informe de Riesgo</span>
             <span class="mode-btn-sub">Incluye evaluación técnica ISA</span>
           </button>
         </div>
 
         <div id="est-banner">
-          <div class="est-banner-icon">📷</div>
+          <div class="est-banner-icon"><svg class="ic"><use href="#i-camera"></use></svg></div>
           <div class="est-banner-body">
             <div class="est-banner-title">Modo Estimativo activo</div>
             <div class="est-banner-desc">El documento generado indicará que el presupuesto se basa en fotos/videos y que el valor final puede ajustarse tras una inspección presencial.</div>
@@ -2045,7 +2112,7 @@ input[type=file]{display:none}
         </div>
 
         <div class="st st-with-action">Cliente y Lugar
-          <button type="button" id="btn-import-contact" class="btn btn-g btn-sm" onclick="importFromContacts()" style="display:none">📇 Importar</button>
+          <button type="button" id="btn-import-contact" class="btn btn-g btn-sm" onclick="importFromContacts()" style="display:none"><svg class="ic"><use href="#i-idcard"></use></svg> Importar</button>
         </div>
         <div class="r3">
           <div class="fg"><label>Nombre / Cliente</label><input type="text" id="client-name" placeholder="Nombre del cliente"></div>
@@ -2061,7 +2128,7 @@ input[type=file]{display:none}
                indica si hay un % aplicado. Click expande los controles. -->
           <div class="surcharge-panel surcharge-collapsed" id="surcharge-panel">
             <button class="surcharge-header" type="button" onclick="toggleSurchargePanel()" aria-expanded="false">
-              <span class="sp-icon">⛽</span>
+              <span class="sp-icon"><svg class="ic"><use href="#i-fuel"></use></svg></span>
               <span class="sp-summary">
                 <span class="sp-label">Recargo interno (viáticos / combustible)</span>
                 <span class="sp-status" id="sp-status">0%</span>
@@ -2091,7 +2158,7 @@ input[type=file]{display:none}
                 <input type="checkbox" id="scenarios-toggle" onchange="toggleScenarios()">
                 <span class="tgl-sl"></span>
               </label>
-              <span class="scenarios-title" title="Ejemplo: Opción A = extraer el árbol, Opción B = podarlo. Las dos salen en el mismo PDF con su precio, para que el cliente elija.">📋 Dos opciones en un PDF</span>
+              <span class="scenarios-title" title="Ejemplo: Opción A = extraer el árbol, Opción B = podarlo. Las dos salen en el mismo PDF con su precio, para que el cliente elija."><svg class="ic"><use href="#i-clipboard"></use></svg> Dos opciones en un PDF</span>
               <span class="scenarios-hint">Ej: extracción vs. poda</span>
             </div>
             <div id="scenarios-controls" class="scenarios-controls" style="display:none">
@@ -2121,7 +2188,7 @@ input[type=file]{display:none}
           <div id="quick-services" class="quick-services" style="display:none"></div>
 
           <div class="arow" style="margin-bottom:16px">
-            <button class="btn btn-p btn-sm" onclick="addItem('tree')">🌳 + Árbol / Trabajo</button>
+            <button class="btn btn-p btn-sm" onclick="addItem('tree')"><svg class="ic"><use href="#i-tree"></use></svg> + Árbol / Trabajo</button>
             <button class="btn btn-s btn-sm" onclick="addItem('service')">+ Servicio</button>
             <button class="btn btn-g btn-sm" onclick="addItem('note')">+ Nota</button>
           </div>
@@ -2132,7 +2199,7 @@ input[type=file]{display:none}
 
           <!-- Datos del árbol -->
           <div class="section-card">
-            <div class="section-title">🌳 Árbol Evaluado</div>
+            <div class="section-title"><svg class="ic"><use href="#i-tree"></use></svg> Árbol Evaluado</div>
             <div class="fg-grid">
               <div class="fg"><label>Especie</label><input id="risk-species" type="text" placeholder="Ej: Eucalyptus camaldulensis"></div>
               <div class="fg"><label>Altura estimada (m)</label><input id="risk-height" type="number" step="0.5" min="0" placeholder="Ej: 18" inputmode="decimal"></div>
@@ -2150,7 +2217,7 @@ input[type=file]{display:none}
 
           <!-- Factores ambientales -->
           <div class="section-card">
-            <div class="section-title">🌬️ Factores Ambientales y del Sitio</div>
+            <div class="section-title"><svg class="ic"><use href="#i-wind"></use></svg> Factores Ambientales y del Sitio</div>
             <div class="fg-grid">
               <div class="fg">
                 <label>Exposición al viento</label>
@@ -2190,7 +2257,7 @@ input[type=file]{display:none}
 
           <!-- Evaluación ISA Basic -->
           <div class="section-card">
-            <div class="section-title">📊 Evaluación de Riesgo (Método ISA Basic)</div>
+            <div class="section-title"><svg class="ic"><use href="#i-chart"></use></svg> Evaluación de Riesgo (Método ISA Basic)</div>
             <div class="fg-grid">
               <div class="fg">
                 <label>Probabilidad de falla</label>
@@ -2229,7 +2296,7 @@ input[type=file]{display:none}
 
           <!-- Mitigación y observaciones -->
           <div class="section-card">
-            <div class="section-title">🛠️ Objetivos de Mitigación</div>
+            <div class="section-title"><svg class="ic"><use href="#i-wrench"></use></svg> Objetivos de Mitigación</div>
             <div class="fg">
               <label>¿Qué se propone hacer y por qué reduce el riesgo?</label>
               <textarea id="risk-mitigation" rows="4" placeholder="Ej: Se propone la extracción controlada del árbol mediante técnicas de rigging para neutralizar el riesgo de caída sobre la estructura edilicia. La poda de alivio no es viable dado el grado de deterioro estructural detectado."></textarea>
@@ -2242,7 +2309,7 @@ input[type=file]{display:none}
 
           <!-- Título del documento -->
           <div class="section-card">
-            <div class="section-title">📄 Título del Documento</div>
+            <div class="section-title"><svg class="ic"><use href="#i-file"></use></svg> Título del Documento</div>
             <div class="fg">
               <input id="doc-title-risk-editor" type="text" placeholder="Informe Técnico de Riesgo Arbóreo y Propuesta de Trabajo">
             </div>
@@ -2250,7 +2317,7 @@ input[type=file]{display:none}
 
           <!-- Divisor visual antes de los ítems -->
           <div class="risk-items-divider">
-            <span>⬇ Ítems del presupuesto (se muestran debajo del informe en el PDF)</span>
+            <span><svg class="ic"><use href="#i-download"></use></svg> Ítems del presupuesto (se muestran debajo del informe en el PDF)</span>
           </div>
 
         </div><!-- fin #section-risk-analysis -->
@@ -2260,8 +2327,8 @@ input[type=file]{display:none}
           <div class="st">Trabajos estimados <span id="est-items-count" class="nbadge" style="float:right">0</span></div>
           <div id="est-items-list"></div>
           <div class="arow" style="margin-bottom:16px">
-            <button class="btn btn-p btn-sm" onclick="addEstItem()">🌳 + Trabajo estimado</button>
-            <button class="btn btn-s btn-sm" onclick="addEstService()">🚛 + Servicio con costo fijo</button>
+            <button class="btn btn-p btn-sm" onclick="addEstItem()"><svg class="ic"><use href="#i-tree"></use></svg> + Trabajo estimado</button>
+            <button class="btn btn-s btn-sm" onclick="addEstService()"><svg class="ic"><use href="#i-truck"></use></svg> + Servicio con costo fijo</button>
             <button class="btn btn-g btn-sm" onclick="addEstNote()">+ Nota</button>
           </div>
         </div>
@@ -2272,14 +2339,14 @@ input[type=file]{display:none}
             <div class="fg">
               <label class="label-with-action">
                 <span>Condiciones de pago</span>
-                <button type="button" class="phrase-btn" onclick="openPhrasesModal('pay','payment-conditions')" title="Insertar frase guardada">📝 Frases</button>
+                <button type="button" class="phrase-btn" onclick="openPhrasesModal('pay','payment-conditions')" title="Insertar frase guardada"><svg class="ic"><use href="#i-pencil"></use></svg> Frases</button>
               </label>
               <textarea id="payment-conditions" rows="3" placeholder="Ej: 50% al inicio, 50% contra entrega..."></textarea>
             </div>
             <div class="fg">
               <label class="label-with-action">
                 <span>Observaciones</span>
-                <button type="button" class="phrase-btn" onclick="openPhrasesModal('obs','observations')" title="Insertar frase guardada">📝 Frases</button>
+                <button type="button" class="phrase-btn" onclick="openPhrasesModal('obs','observations')" title="Insertar frase guardada"><svg class="ic"><use href="#i-pencil"></use></svg> Frases</button>
               </label>
               <textarea id="observations" rows="3" placeholder="Observaciones adicionales sobre el trabajo..."></textarea>
             </div>
@@ -2326,19 +2393,19 @@ input[type=file]{display:none}
         <!-- HINT antes de las acciones: el usuario lee la lógica
              ANTES de tomar la decisión, no después. -->
         <div class="alert alert-info" style="margin-bottom:10px">
-          <span class="alert-ico">💡</span>
+          <span class="alert-ico"><svg class="ic"><use href="#i-bulb"></use></svg></span>
           <span>El presupuesto se guarda automáticamente al imprimir o al crear uno nuevo.</span>
         </div>
 
         <!-- ACCIÓN PRIMARIA: Imprimir es la acción típica de cierre.
              Acción única destacada — no compite con otras. -->
-        <button class="btn btn-p btn-cta" onclick="printDoc()">🖨 Imprimir / PDF</button>
+        <button class="btn btn-p btn-cta" onclick="printDoc()"><svg class="ic"><use href="#i-printer"></use></svg> Imprimir / PDF</button>
 
         <!-- Antes de imprimir: ver cómo queda y/o avisar al cliente por
              WhatsApp (el PDF se adjunta a mano, ver el aviso al tocar). -->
         <div class="actions-secondary">
-          <button class="btn btn-g btn-sm" onclick="previewCurrent()">👁 Vista previa</button>
-          <button class="btn btn-g btn-sm" onclick="sendCurrentWhatsapp()">💬 Enviar por WhatsApp</button>
+          <button class="btn btn-g btn-sm" onclick="previewCurrent()"><svg class="ic"><use href="#i-eye"></use></svg> Vista previa</button>
+          <button class="btn btn-g btn-sm" onclick="sendCurrentWhatsapp()"><svg class="ic"><use href="#i-message"></use></svg> Enviar por WhatsApp</button>
         </div>
 
         <!-- ACCIONES SECUNDARIAS: más chicas, ancho compartido.
@@ -2346,7 +2413,7 @@ input[type=file]{display:none}
              historial y arranca uno nuevo en un solo toque; "Nuevo" hace
              lo mismo pero pidiendo confirmación. -->
         <div class="actions-secondary">
-          <button class="btn btn-g btn-sm" onclick="saveToHistory()">💾 Guardar como borrador</button>
+          <button class="btn btn-g btn-sm" onclick="saveToHistory()"><svg class="ic"><use href="#i-save"></use></svg> Guardar como borrador</button>
           <button class="btn btn-g btn-sm" onclick="newQuote()">+ Nuevo presupuesto</button>
         </div>
       </div><!-- /panel-editor -->
@@ -2359,9 +2426,9 @@ input[type=file]{display:none}
            - "Datos guardados": clientes, especies, servicios -->
       <div id="panel-empresa" class="tab-panel">
         <div class="subtabs">
-          <button class="subtab-btn active" onclick="switchSubtab('negocio')">🏢 Mi negocio</button>
-          <button class="subtab-btn" onclick="switchSubtab('textos')">📝 Textos del PDF</button>
-          <button class="subtab-btn" onclick="switchSubtab('datos')">📇 Datos guardados</button>
+          <button class="subtab-btn active" onclick="switchSubtab('negocio')"><svg class="ic"><use href="#i-building"></use></svg> Mi negocio</button>
+          <button class="subtab-btn" onclick="switchSubtab('textos')"><svg class="ic"><use href="#i-pencil"></use></svg> Textos del PDF</button>
+          <button class="subtab-btn" onclick="switchSubtab('datos')"><svg class="ic"><use href="#i-idcard"></use></svg> Datos guardados</button>
         </div>
 
         <!-- ── SUB-TAB MI NEGOCIO ── -->
@@ -2369,7 +2436,7 @@ input[type=file]{display:none}
           <div class="st">Logo</div>
           <div class="lu-area" onclick="document.getElementById('logo-input').click()">
             <img id="logo-preview-img" class="lu-img" style="display:none">
-            <div id="logo-ph"><div style="font-size:30px;margin-bottom:6px">🖼</div><div style="font-size:12px;color:var(--muted)">Clic para subir logo<br><small>PNG, JPG, SVG</small></div></div>
+            <div id="logo-ph"><div style="font-size:30px;margin-bottom:6px"><svg class="ic"><use href="#i-image"></use></svg></div><div style="font-size:12px;color:var(--muted)">Clic para subir logo<br><small>PNG, JPG, SVG</small></div></div>
           </div>
           <input type="file" id="logo-input" accept="image/*" onchange="handleLogoUpload(event)">
           <button class="btn btn-g btn-sm" onclick="removeLogo()" style="margin-bottom:14px">✕ Quitar logo</button>
@@ -2390,7 +2457,7 @@ input[type=file]{display:none}
           <!-- ── SEGUIMIENTO COMERCIAL ── -->
           <div class="fu-config">
             <div class="fu-config-head">
-              <span class="st" style="margin:0;border:none;padding:0">🔔 Seguimiento de presupuestos</span>
+              <span class="st" style="margin:0;border:none;padding:0"><svg class="ic"><use href="#i-bell"></use></svg> Seguimiento de presupuestos</span>
               <label class="fu-switch">
                 <input type="checkbox" id="fu-enabled" onchange="saveFollowupFromUI()">
                 <span class="fu-slider"></span>
@@ -2428,7 +2495,7 @@ input[type=file]{display:none}
           <!-- Oculta hasta que esté configurado el Worker (initPush). -->
           <div class="fu-config" id="push-section" style="display:none">
             <div class="fu-config-head">
-              <span class="st" style="margin:0;border:none;padding:0">📲 Avisos con la app cerrada</span>
+              <span class="st" style="margin:0;border:none;padding:0"><svg class="ic"><use href="#i-phone"></use></svg> Avisos con la app cerrada</span>
               <label class="fu-switch">
                 <input type="checkbox" id="push-enabled" onchange="onPushToggle(this.checked)">
                 <span class="fu-slider"></span>
@@ -2440,7 +2507,7 @@ input[type=file]{display:none}
           <!-- ── MENSAJE DE ENVÍO POR WHATSAPP ── -->
           <div class="fu-config">
             <div class="fu-config-head">
-              <span class="st" style="margin:0;border:none;padding:0">💬 Mensaje al enviar por WhatsApp</span>
+              <span class="st" style="margin:0;border:none;padding:0"><svg class="ic"><use href="#i-message"></use></svg> Mensaje al enviar por WhatsApp</span>
             </div>
             <p class="fu-help">Es el texto que se arma al tocar “Enviar por WhatsApp” en el editor. Editalo a tu gusto.</p>
             <div class="fg">
@@ -2453,7 +2520,7 @@ input[type=file]{display:none}
           <!-- Oculta hasta que el dueño configure el Client ID (gdriveUpdateUI). -->
           <div class="fu-config" id="gdrive-section" style="display:none">
             <div class="fu-config-head">
-              <span class="st" style="margin:0;border:none;padding:0">☁️ Copia de seguridad en Google Drive</span>
+              <span class="st" style="margin:0;border:none;padding:0"><svg class="ic"><use href="#i-cloud"></use></svg> Copia de seguridad en Google Drive</span>
             </div>
             <p class="fu-help" id="gdrive-status">Guardá una copia automática de todos tus datos en tu Google Drive, para no perderlos si cambiás o perdés el teléfono.</p>
             <div class="arow" id="gdrive-actions">
@@ -2540,7 +2607,7 @@ input[type=file]{display:none}
 
           <div class="collapsible-section" id="cs-clients">
             <button type="button" class="collapsible-header" onclick="toggleCollapsibleSection('cs-clients')">
-              <span>👤 Clientes guardados</span>
+              <span><svg class="ic"><use href="#i-users"></use></svg> Clientes guardados</span>
               <span class="ch-count" id="cs-clients-count">0</span>
               <span class="ch-chevron">▾</span>
             </button>
@@ -2553,7 +2620,7 @@ input[type=file]{display:none}
 
           <div class="collapsible-section" id="cs-species">
             <button type="button" class="collapsible-header" onclick="toggleCollapsibleSection('cs-species')">
-              <span>🌳 Especies guardadas</span>
+              <span><svg class="ic"><use href="#i-tree"></use></svg> Especies guardadas</span>
               <span class="ch-count" id="cs-species-count">0</span>
               <span class="ch-chevron">▾</span>
             </button>
@@ -2566,12 +2633,12 @@ input[type=file]{display:none}
 
           <div class="collapsible-section" id="cs-services">
             <button type="button" class="collapsible-header" onclick="toggleCollapsibleSection('cs-services')">
-              <span>🚛 Servicios guardados</span>
+              <span><svg class="ic"><use href="#i-truck"></use></svg> Servicios guardados</span>
               <span class="ch-count" id="cs-services-count">0</span>
               <span class="ch-chevron">▾</span>
             </button>
             <div class="collapsible-body">
-              <p class="hint" style="margin-bottom:10px">Se autocompletan al cargar un ítem tipo Servicio. Tocá la <strong>⭐</strong> para que aparezcan como atajos rápidos arriba del botón "+ Servicio" en el editor.</p>
+              <p class="hint" style="margin-bottom:10px">Se autocompletan al cargar un ítem tipo Servicio. Tocá la <strong><svg class="ic ic-fill"><use href="#i-star"></use></svg></strong> para que aparezcan como atajos rápidos arriba del botón "+ Servicio" en el editor.</p>
               <div id="services-manager-list"></div>
               <button class="btn btn-g btn-sm" style="margin-top:8px" onclick="renderServicesManager()">↺ Actualizar lista</button>
             </div>
@@ -2583,9 +2650,9 @@ input[type=file]{display:none}
       <div id="panel-estilo" class="tab-panel">
         <div class="st">Apariencia de la app</div>
         <div class="theme-mode" id="theme-mode" role="group" aria-label="Tema de la aplicación">
-          <button type="button" class="theme-mode-btn" data-mode="auto" onclick="setThemeMode('auto')">🌗 Auto</button>
-          <button type="button" class="theme-mode-btn" data-mode="light" onclick="setThemeMode('light')">☀️ Claro</button>
-          <button type="button" class="theme-mode-btn" data-mode="dark" onclick="setThemeMode('dark')">🌙 Oscuro</button>
+          <button type="button" class="theme-mode-btn" data-mode="auto" onclick="setThemeMode('auto')"><svg class="ic"><use href="#i-theme"></use></svg> Auto</button>
+          <button type="button" class="theme-mode-btn" data-mode="light" onclick="setThemeMode('light')"><svg class="ic"><use href="#i-sun"></use></svg> Claro</button>
+          <button type="button" class="theme-mode-btn" data-mode="dark" onclick="setThemeMode('dark')"><svg class="ic"><use href="#i-moon"></use></svg> Oscuro</button>
         </div>
         <p class="hint" style="margin-bottom:16px">Cambia el tema de la pantalla. «Auto» sigue el modo del teléfono. No afecta al PDF, que siempre se imprime en claro.</p>
 
@@ -2705,17 +2772,17 @@ input[type=file]{display:none}
         <div id="expiry-banner" class="expiry-banner" style="display:none"></div>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
           <div class="st" style="margin:0;border:none;padding:0">Presupuestos guardados <span id="hist-count" class="nbadge" style="margin-left:6px">0</span></div>
-          <button class="btn btn-d btn-sm" onclick="clearHistory()">🗑 Limpiar todo</button>
+          <button class="btn btn-d btn-sm" onclick="clearHistory()"><svg class="ic"><use href="#i-trash"></use></svg> Limpiar todo</button>
         </div>
         <div class="r2" style="margin-bottom:4px">
-          <input class="hsearch" id="hist-search" type="search" placeholder="🔍 Buscar por número, cliente o lugar..." oninput="renderHistory()" style="margin-bottom:0">
+          <input class="hsearch" id="hist-search" type="search" placeholder="Buscar por número, cliente o lugar..." oninput="renderHistory()" style="margin-bottom:0">
           <select class="hsearch" id="hist-client-filter" onchange="renderHistory()" style="margin-bottom:0">
-            <option value="">👤 Todos los clientes</option>
+            <option value="">Todos los clientes</option>
           </select>
         </div>
         <div style="margin-bottom:4px">
           <select class="hsearch" id="hist-estado-filter" onchange="renderHistory()" style="margin-bottom:0">
-            <option value="">🏷️ Todos los estados</option>
+            <option value="">Todos los estados</option>
             <option value="borrador">Borrador</option>
             <option value="enviado">Enviado</option>
             <option value="aceptado">Aceptado</option>
@@ -2775,16 +2842,16 @@ input[type=file]{display:none}
           </div>
           <div class="fg"><label>Cliente</label><input type="text" id="fact-cliente" placeholder="Nombre del cliente"></div>
           <div class="fg"><label>Descripción (opcional)</label><input type="text" id="fact-desc" placeholder="Poda en altura, extracción..."></div>
-          <button class="btn btn-p" onclick="factRegistrar()">💾 Registrar factura</button>
+          <button class="btn btn-p" onclick="factRegistrar()"><svg class="ic"><use href="#i-save"></use></svg> Registrar factura</button>
         </div>
 
         <div class="st">Facturas registradas <span id="fact-count" class="nbadge" style="margin-left:6px">0</span></div>
         <div id="fact-reg-list" class="fact-reg-list"></div>
-        <button class="btn btn-d btn-sm" onclick="factLimpiar()">🗑 Limpiar todas las facturas</button>
+        <button class="btn btn-d btn-sm" onclick="factLimpiar()"><svg class="ic"><use href="#i-trash"></use></svg> Limpiar todas las facturas</button>
 
         <!-- Configuración del tope: colapsada por defecto (se toca 2 veces al año) -->
         <details class="fact-config">
-          <summary>⚙️ Configuración del tope <span class="fact-config-chev">▾</span></summary>
+          <summary><svg class="ic"><use href="#i-settings"></use></svg> Configuración del tope <span class="fact-config-chev">▾</span></summary>
           <div class="fact-config-body">
             <div class="st">Tope anual Monotributo Categoría B</div>
             <div class="fact-tope-row">
@@ -2796,7 +2863,7 @@ input[type=file]{display:none}
 
             <div class="fact-ai-box" id="fact-remind-box">
               <div class="fact-ai-header">
-                <div class="fact-ai-icon">📅</div>
+                <div class="fact-ai-icon"><svg class="ic"><use href="#i-calendar"></use></svg></div>
                 <div>
                   <div class="fact-ai-title">Recordatorio de actualización</div>
                   <div class="fact-ai-sub" id="fact-remind-sub">El tope se actualiza en febrero y agosto de cada año</div>
@@ -2804,7 +2871,7 @@ input[type=file]{display:none}
               </div>
               <div id="fact-remind-msg" style="font-size:12px;color:var(--muted);margin:8px 0 10px;line-height:1.6"></div>
               <a id="fact-claude-link" href="https://claude.ai/new" target="_blank" class="btn btn-s btn-sm" style="text-decoration:none;display:inline-flex">
-                🤖 Consultar tope actualizado con Claude
+                <svg class="ic"><use href="#i-bot"></use></svg> Consultar tope actualizado con Claude
               </a>
             </div>
           </div>
@@ -2863,7 +2930,7 @@ input[type=file]{display:none}
      La lógica vive en js/items.js (processSharedPhotos/openShareTray). -->
 <div id="share-overlay" role="presentation">
   <div id="share-box" role="dialog" aria-modal="true" aria-labelledby="share-title">
-    <h4 id="share-title">📷 Fotos compartidas</h4>
+    <h4 id="share-title"><svg class="ic"><use href="#i-camera"></use></svg> Fotos compartidas</h4>
     <p>Recibiste <strong id="share-tray-count">0</strong> foto(s). Elegí el destino de cada una:</p>
     <div id="share-tray-list"></div>
     <div class="cbtns">
@@ -2890,7 +2957,7 @@ input[type=file]{display:none}
 <div id="phrases-overlay" role="presentation">
   <div id="phrases-box" role="dialog" aria-modal="true" aria-labelledby="phrases-modal-title">
     <div class="phrases-header">
-      <h4 id="phrases-modal-title">📝 Frases</h4>
+      <h4 id="phrases-modal-title"><svg class="ic"><use href="#i-pencil"></use></svg> Frases</h4>
       <button class="phrases-close" onclick="closePhrasesModal()" aria-label="Cerrar">✕</button>
     </div>
     <div id="phrases-modal-list" class="phrases-list"></div>
@@ -2900,7 +2967,7 @@ input[type=file]{display:none}
         <button class="btn btn-p btn-sm" onclick="addPhraseFromInput()">+ Agregar</button>
       </div>
       <button class="btn btn-g btn-sm phrases-save-current" onclick="savePhraseFromTarget()" title="Guarda lo que escribiste en el campo como frase reutilizable">
-        💾 Guardar lo escrito como frase
+        <svg class="ic"><use href="#i-save"></use></svg> Guardar lo escrito como frase
       </button>
     </div>
   </div>
@@ -3143,6 +3210,11 @@ function sc(id,v){ const e=document.getElementById(id); if(e) e.checked=!!v; }
 function gv(id){ const e=document.getElementById(id); return e?e.value:''; }
 function gc(id){ const e=document.getElementById(id); return e?e.checked:false; }
 function esc(s){ if(s==null)return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+// Icono de línea (Lucide) embebido. Devuelve el SVG que referencia un <symbol>
+// del sprite (ver tope del <body>). Reemplaza a los emojis. `name` debe ser un
+// id sin el prefijo "i-" (p. ej. icon('trash')). `cls` agrega clases extra
+// (p. ej. 'ic-fill' para rellenar). Pensado para interpolar en innerHTML.
+function icon(name, cls){ return `<svg class="ic${cls?' '+cls:''}" aria-hidden="true"><use href="#i-${name}"></use></svg>`; }
 // Devuelve el src SOLO si es un dataURL de imagen (data:image/...). Cualquier
 // otra cosa —p. ej. un valor manipulado en un backup importado de otro colega—
 // se descarta, evitando que un src="..." se rompa e inyecte HTML. Los logos y
@@ -3995,7 +4067,7 @@ function removeItemPhotoRef(item, pi){
 // ─── UI COMPARTIDA DE FOTOS (normal / estimativo / riesgo) ─────────
 // HTML del botón "📷 Foto/s ✓ (N)" para la barra de acciones de un ítem.
 function photoBtnHTML(refs){
-  return `<button class="btn btn-g btn-sm ia-photo">${refs.length?`📷 Fotos ✓ (${refs.length})`:'📷 Foto'}</button>`;
+  return `<button class="btn btn-g btn-sm ia-photo">${refs.length?`${icon('camera')} Fotos ✓ (${refs.length})`:`${icon('camera')} Foto`}</button>`;
 }
 // HTML de la galería de miniaturas (cada una con su botón de quitar). Las
 // fotos no disponibles localmente (ID sin caché) muestran un placeholder.
@@ -4005,7 +4077,7 @@ function photoGalleryHTML(refs){
     const src = safeImgSrc(getPhotoData(ref));
     return src
       ? `<div class="item-photo-preview"><img src="${src}" alt="Foto" title="Tocar para ampliar" data-pi="${pi}"><button type="button" class="item-photo-remove" data-pi="${pi}" title="Quitar foto">✕</button></div>`
-      : `<div class="item-photo-preview item-photo-missing">📷 Foto no disponible<br><span>Restaurá tu backup en este dispositivo</span><button type="button" class="item-photo-remove" data-pi="${pi}" title="Quitar foto">✕</button></div>`;
+      : `<div class="item-photo-preview item-photo-missing">${icon('camera')} Foto no disponible<br><span>Restaurá tu backup en este dispositivo</span><button type="button" class="item-photo-remove" data-pi="${pi}" title="Quitar foto">✕</button></div>`;
   }).join('')}</div>`;
 }
 // Conecta los listeners de la galería de un card: quitar foto (por posición)
@@ -4470,7 +4542,7 @@ function renderServicesManager() {
 
   el.innerHTML = `
     <div class="svc-pinned-header">
-      <span class="svc-pinned-info">⚡ <strong>${pinnedCount}</strong> ${pinnedCount === 1 ? 'servicio fijado' : 'servicios fijados'} como rápido</span>
+      <span class="svc-pinned-info">${icon('zap')} <strong>${pinnedCount}</strong> ${pinnedCount === 1 ? 'servicio fijado' : 'servicios fijados'} como rápido</span>
       <span class="svc-pinned-limit">Máx. ${MAX_PINNED_SERVICES}</span>
     </div>
     <div class="svc-list">` +
@@ -4479,10 +4551,10 @@ function renderServicesManager() {
       return `
       <div class="svc-row ${isPinned ? 'is-pinned' : ''}">
         <button class="svc-pin-btn ${isPinned ? 'active' : ''}" data-name="${esc(sv)}" title="${isPinned ? 'Quitar de servicios rápidos' : 'Fijar como servicio rápido'}" aria-label="Pin">
-          ${isPinned ? '⭐' : '☆'}
+          ${isPinned ? icon('star','ic-fill') : icon('star')}
         </button>
         <span class="svc-name">${esc(sv)}</span>
-        <button class="btn-icon-del chip-del-service" data-name="${esc(sv)}" title="Eliminar servicio" aria-label="Eliminar">🗑</button>
+        <button class="btn-icon-del chip-del-service" data-name="${esc(sv)}" title="Eliminar servicio" aria-label="Eliminar">${icon('trash')}</button>
       </div>`;
     }).join('') +
     `</div>`;
@@ -4650,11 +4722,11 @@ function renderClientManager() {
     const quickActions = [];
     if (isPhone) quickActions.push(
       `<a class="client-qa" href="${waUrl}" target="_blank" rel="noopener" title="Abrir WhatsApp"
-          onclick="event.stopPropagation()">📱 <span>WhatsApp</span></a>`
+          onclick="event.stopPropagation()">${icon('message')} <span>WhatsApp</span></a>`
     );
     if (addr) quickActions.push(
       `<a class="client-qa" href="${mapsUrl}" target="_blank" rel="noopener" title="Ver en Maps"
-          onclick="event.stopPropagation()">📍 <span>Maps</span></a>`
+          onclick="event.stopPropagation()">${icon('pin')} <span>Maps</span></a>`
     );
 
     return `
@@ -4665,7 +4737,7 @@ function renderClientManager() {
         ${quickActions.length ? `<div class="client-qa-row">${quickActions.join('')}</div>` : ''}
       </div>
       <div class="hacts">
-        <button class="btn-icon-del client-del-btn" data-name="${esc(e.name)}" title="Eliminar cliente" aria-label="Eliminar cliente">🗑</button>
+        <button class="btn-icon-del client-del-btn" data-name="${esc(e.name)}" title="Eliminar cliente" aria-label="Eliminar cliente">${icon('trash')}</button>
       </div>
     </div>`;
   }).join('');
@@ -4912,7 +4984,7 @@ function renderPhrasesModal(cat) {
   if (!cat) return;
   const titleEl = document.getElementById('phrases-modal-title');
   const listEl  = document.getElementById('phrases-modal-list');
-  if (titleEl) titleEl.textContent = '📝 ' + PHRASE_LABELS[cat];
+  if (titleEl) titleEl.innerHTML = icon('pencil') + ' ' + esc(PHRASE_LABELS[cat]);
   if (!listEl) return;
   const db = getPhrasesDB(cat);
   if (!db.length) {
@@ -4932,7 +5004,7 @@ function renderPhrasesModal(cat) {
         <button class="phrase-move-btn phrase-down-btn" data-idx="${idx}" ${isLast ? 'disabled' : ''} title="Bajar" aria-label="Bajar">▼</button>
       </div>
       <button class="phrase-text" data-text="${esc(p)}" title="Insertar esta frase">${esc(p)}</button>
-      <button class="btn-icon-del phrase-del-btn" data-text="${esc(p)}" data-idx="${idx}" title="Eliminar frase">🗑</button>
+      <button class="btn-icon-del phrase-del-btn" data-text="${esc(p)}" data-idx="${idx}" title="Eliminar frase">${icon('trash')}</button>
     </div>`;
   }).join('');
   // Listener delegado para insertar, borrar y reordenar
@@ -5122,7 +5194,7 @@ function renderQuickServices() {
   const top = pinned.length ? pinned : allServices.slice(0, 4);
   if (!top.length) { wrap.style.display = 'none'; return; }
   wrap.innerHTML =
-    `<div class="quick-services-label">⚡ Servicios rápidos</div>` +
+    `<div class="quick-services-label">${icon('zap')} Servicios rápidos</div>` +
     top.map(sv => `<button class="qs-chip" data-name="${esc(sv)}"><span class="qs-chip-plus">+</span>${esc(sv)}</button>`).join('');
   wrap.style.display = 'flex';
   // Listener delegado: un solo handler en el contenedor lee data-name
@@ -5173,7 +5245,7 @@ function renderItems() {
     const photoRefs = itemPhotoRefs(item);
 
     let bc='ib-svc', bl='Servicio';
-    if(item.type==='tree'){ bc='ib-tree'; bl='🌳 Árbol / Trabajo'; }
+    if(item.type==='tree'){ bc='ib-tree'; bl=icon('tree')+' Árbol / Trabajo'; }
     else if(item.type==='note'){ bc='ib-note'; bl='Nota'; }
 
     let inner = `<span class="drag-h" title="Arrastrar para ordenar">⠿</span><span class="ibadge ${bc}">${bl}</span>`;
@@ -5182,7 +5254,7 @@ function renderItems() {
       const basePrice    = item._basePrice !== undefined ? item._basePrice : '';
       const hasSurcharge = S.surcharge > 0 && item._basePrice !== undefined;
       const adjBadge = hasSurcharge
-        ? `<div class="adj-badge">⛽ +${S.surcharge}% aplicado <span class="adj-orig">(base: ${fmtM(basePrice, S.currency||'ARS')})</span></div>`
+        ? `<div class="adj-badge">${icon('fuel')} +${S.surcharge}% aplicado <span class="adj-orig">(base: ${fmtM(basePrice, S.currency||'ARS')})</span></div>`
         : '';
       inner += `
         <div class="item-grid-2 mb8" style="margin-bottom:${hasSurcharge?'4px':'8px'}">
@@ -5194,7 +5266,7 @@ function renderItems() {
         ${adjBadge}
         <div class="isub mb-row" style="margin-top:${hasSurcharge?'8px':'0'}">
           <span>Trabajo a realizar</span>
-          <button type="button" class="phrase-btn phrase-btn-mini" onclick="openPhrasesModal('desc','desc-${item.id}')" title="Insertar frase guardada">📝</button>
+          <button type="button" class="phrase-btn phrase-btn-mini" onclick="openPhrasesModal('desc','desc-${item.id}')" title="Insertar frase guardada">${icon('pencil')}</button>
         </div>
         <textarea id="desc-${item.id}" class="ita ds-f" placeholder="Poda de altura, extracción, despeje de ramas...">${esc(item.desc||'')}</textarea>`;
 
@@ -5468,7 +5540,7 @@ function renderEstItems() {
     if (item.type === 'work') {
       card.innerHTML = `
         <span class="drag-h" title="Arrastrar">⠿</span>
-        <span class="ibadge ib-tree">🌳 Trabajo estimado</span>
+        <span class="ibadge ib-tree">${icon('tree')} Trabajo estimado</span>
         <div class="item-grid-2" style="margin-bottom:8px">
           <div>
             <div class="isub">Descripción del trabajo</div>
@@ -5515,7 +5587,7 @@ function renderEstItems() {
 
       card.innerHTML = `
         <span class="drag-h" title="Arrastrar">⠿</span>
-        <span class="ibadge ib-fixed">🚛 Servicio / Costo fijo</span>
+        <span class="ibadge ib-fixed">${icon('truck')} Servicio / Costo fijo</span>
         <div class="item-grid-2" style="margin-bottom:8px">
           <div>
             <div class="isub">Descripción del servicio</div>
@@ -5730,9 +5802,9 @@ function openShareTray(refs){
     const src = safeImgSrc(getPhotoData(ref));
     return `
       <div class="share-row">
-        <div class="share-thumb">${src ? `<img src="${src}" alt="Foto compartida">` : '📷'}</div>
+        <div class="share-thumb">${src ? `<img src="${src}" alt="Foto compartida">` : icon('camera')}</div>
         <select class="ii share-dest" data-idx="${idx}">
-          <option value="new" selected>➕ Crear árbol nuevo</option>
+          <option value="new" selected>+ Crear árbol nuevo</option>
           ${existingOpts}
           <option value="skip">✕ Descartar</option>
         </select>
@@ -6330,7 +6402,7 @@ function updateRiskLevelDisplay() {
   const color = RISK_COLORS[level] || '#374151';
   el.innerHTML = `
     <div class="risk-level-badge" style="background:${color}20;border:2px solid ${color};color:${color}">
-      <span class="risk-level-icon">${level==='extremo'?'🔴':level==='alto'?'🟠':level==='moderado'?'🟡':'🟢'}</span>
+      <span class="risk-level-icon"><span class="ic-dot lvl-${level==='extremo'||level==='alto'||level==='moderado'?level:'bajo'}"></span></span>
       <span class="risk-level-text">Nivel de Riesgo: <strong>${label}</strong></span>
     </div>`;
 }
@@ -6494,7 +6566,7 @@ function addCurrentColor() {
   S.customColors = (S.customColors || []).concat([c]);
   renderCustomColors();
   saveLS();   // acción deliberada: persistir ya (sin esperar el debounce)
-  toast('⭐ Color agregado a la selección rápida.', 'ok');
+  toast('Color agregado a la selección rápida.', 'ok');
 }
 function removeCustomColor(c) {
   S.customColors = (S.customColors || []).filter(x => String(x).toLowerCase() !== String(c).toLowerCase());
@@ -6724,19 +6796,19 @@ function openModal(type) {
   if(type==='export'){
     ti.textContent='Exportar';
     bo.innerHTML=`<div class="msec"><h4>Opciones de exportación</h4>
-      <button class="btn btn-p btn-bl" onclick="expCurrent()">📄 Presupuesto actual (JSON)</button>
-      <button class="btn btn-s btn-bl" onclick="expHistory()">📚 Historial completo (JSON)</button>
-      <button class="btn btn-s btn-bl" onclick="expBackup()">💾 Backup total (JSON)</button>
+      <button class="btn btn-p btn-bl" onclick="expCurrent()"><svg class="ic"><use href="#i-file"></use></svg> Presupuesto actual (JSON)</button>
+      <button class="btn btn-s btn-bl" onclick="expHistory()"><svg class="ic"><use href="#i-book"></use></svg> Historial completo (JSON)</button>
+      <button class="btn btn-s btn-bl" onclick="expBackup()"><svg class="ic"><use href="#i-save"></use></svg> Backup total (JSON)</button>
     </div>`;
   } else if(type==='import'){
     ti.textContent='Importar';
     bo.innerHTML=`<div class="msec"><h4>Seleccionar archivo .json</h4>
       <p style="font-size:12px;color:var(--muted);margin-bottom:10px">Se detectará automáticamente el tipo de archivo.</p>
       <input type="file" id="imp-input" accept=".json" onchange="handleImport(event)">
-      <button class="btn btn-p btn-bl" onclick="document.getElementById('imp-input').click()">📂 Elegir archivo JSON</button>
+      <button class="btn btn-p btn-bl" onclick="document.getElementById('imp-input').click()"><svg class="ic"><use href="#i-folder"></use></svg> Elegir archivo JSON</button>
     </div><div id="imp-opts"></div>`;
   } else if(type==='welcome'){
-    ti.textContent='👋 ¡Bienvenido/a!';
+    ti.innerHTML=icon('hand')+' ¡Bienvenido/a!';
     bo.innerHTML=`<div class="msec">
       <p style="margin:0 0 12px">Con esta app creás presupuestos de poda y los compartís por WhatsApp o PDF en minutos. Antes de empezar, cargá los datos de tu negocio para que tus presupuestos salgan con <b>tu</b> nombre, logo y contacto.</p>
       <ol style="margin:0 0 12px;padding-left:20px;line-height:1.7">
@@ -6744,8 +6816,8 @@ function openModal(type) {
         <li><b>Creá tu presupuesto</b> — sumá los trabajos y sus precios.</li>
         <li><b>Compartilo</b> — descargá el PDF o enviálo por WhatsApp.</li>
       </ol>
-      <p style="font-size:12px;color:var(--muted);margin:0 0 14px">💾 Tus datos se guardan <b>solo en este dispositivo</b>. Hacé un backup cada tanto desde el menú (↑ Exportar → Backup total) para no perderlos.</p>
-      <button class="btn btn-p btn-bl" onclick="startOnboarding()">🏢 Configurar mi negocio</button>
+      <p style="font-size:12px;color:var(--muted);margin:0 0 14px"><svg class="ic"><use href="#i-save"></use></svg> Tus datos se guardan <b>solo en este dispositivo</b>. Hacé un backup cada tanto desde el menú (↑ Exportar → Backup total) para no perderlos.</p>
+      <button class="btn btn-p btn-bl" onclick="startOnboarding()"><svg class="ic"><use href="#i-building"></use></svg> Configurar mi negocio</button>
       <button class="btn btn-s btn-bl" onclick="closeModal()">Lo hago después</button>
     </div>`;
   }
@@ -6827,7 +6899,7 @@ function checkBackupReminder() {
     : Infinity;
   if (daysSince < 14) return;
   setTimeout(()=>{
-    toast('💾 Hace rato que no hacés un backup. Exportalo desde ↑ Exportar → Backup total para no perder tus presupuestos.', 'info', 8000);
+    toast('Hace rato que no hacés un backup. Exportalo desde ↑ Exportar → Backup total para no perder tus presupuestos.', 'info', 8000);
   }, 2500);
 }
 
@@ -7341,7 +7413,7 @@ async function _shareFileOrFallback(file, e) {
     ? normalizeArgPhone((e.snapshot && e.snapshot.clientContact) || '') : '';
   const base = phone ? `https://wa.me/${phone}` : 'https://wa.me/';
   window.open(`${base}?text=${encodeURIComponent('Te paso el presupuesto ' + (e.quoteNumber || ''))}`, '_blank', 'noopener');
-  toast('📎 Archivo descargado. Adjuntalo en WhatsApp.', 'info', 6000);
+  toast('Archivo descargado. Adjuntalo en WhatsApp.', 'info', 6000);
 }
 
 // Calcula el factor de escala (≈ DPI) más alto posible para rasterizar el
@@ -7368,7 +7440,7 @@ function _bestRasterScale(cssW, cssH) {
 async function sharePngFromHistory(id) {
   const e = getH().find(x => x.id === id);
   if (!e || !e.snapshot) { toast('No se pudo abrir el presupuesto', 'err'); return; }
-  toast('⏳ Generando imagen para compartir…', 'info', 4000);
+  toast('Generando imagen para compartir…', 'info', 4000);
   let h2p;
   try { h2p = await ensureHtml2Pdf(); }
   catch (err) { toast('⚠️ No se pudo cargar el generador de imagen. La primera vez necesita conexión.', 'err', 6000); return; }
@@ -7579,7 +7651,7 @@ function sendCurrentWhatsapp() {
   if (typeof autoSaveToHistory === 'function') autoSaveToHistory();
   const base = phone ? `https://wa.me/${phone}` : 'https://wa.me/';
   window.open(`${base}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
-  toast('📎 Se abrió WhatsApp. Acordate de adjuntar el PDF que descargaste.', 'info', 6000);
+  toast('Se abrió WhatsApp. Acordate de adjuntar el PDF que descargaste.', 'info', 6000);
 }
 
 // Reescalar si rota el celular o cambia el tamaño
@@ -7603,7 +7675,7 @@ function renderFollowupBanner() {
   el.style.display = 'block';
   el.innerHTML = `
     <div class="fub-head">
-      <span class="fub-icon">🔔</span>
+      <span class="fub-icon"><svg class="ic"><use href="#i-bell"></use></svg></span>
       <span class="fub-title">${n} presupuesto${n>1?'s':''} para seguimiento</span>
     </div>
     <div class="fub-sub">Enviado${n>1?'s':''} hace más de ${getFollowupCfg().days} días sin respuesta. Buen momento para contactar al cliente.</div>
@@ -7618,7 +7690,7 @@ function renderFollowupBanner() {
             <span class="fub-item-days">hace ${p.dias} días</span>
           </div>
           <div class="fub-item-acts">
-            <a class="fub-wa" href="${wa}" target="_blank" rel="noopener" onclick="_afterWhatsapp(${e.id})">💬 WhatsApp</a>
+            <a class="fub-wa" href="${wa}" target="_blank" rel="noopener" onclick="_afterWhatsapp(${e.id})">${icon('message')} WhatsApp</a>
             <button class="fub-done" onclick="marcarSeguimientoHecho(${e.id})" title="Ya hice el seguimiento">✓</button>
           </div>
         </div>`;
@@ -7654,7 +7726,7 @@ function renderExpiryBanner() {
             <span class="fub-item-days">venció hace ${p.dias} día${p.dias>1?'s':''}</span>
           </div>
           <div class="fub-item-acts">
-            <a class="fub-wa" href="${wa}" target="_blank" rel="noopener">💬 WhatsApp</a>
+            <a class="fub-wa" href="${wa}" target="_blank" rel="noopener">${icon('message')} WhatsApp</a>
             <button class="fub-done" onclick="marcarVencimientoVisto(${e.id})" title="No avisarme más de este">✓</button>
           </div>
         </div>`;
@@ -7694,7 +7766,7 @@ function followupBadgeFor(e) {
   const d = daysSince(e.enviadoEn);
   if (d === null || d < cfg.days) return '';
   if (e.seguimientoHechoEn && new Date(e.seguimientoHechoEn) >= new Date(e.enviadoEn)) return '';
-  return `<span class="hbadge-followup" title="Pendiente de seguimiento">🔔 ${d}d</span>`;
+  return `<span class="hbadge-followup" title="Pendiente de seguimiento">${icon('bell')} ${d}d</span>`;
 }
 
 // Devuelve el HTML del indicador ⌛ "vencido" para una tarjeta, o '' si ese
@@ -7843,7 +7915,7 @@ function renderHistory() {
   if (filterEl) {
     const selected = filterEl.value;
     const clients = [...new Set(h.map(e=>e.clientName||'').filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
-    filterEl.innerHTML = '<option value="">👤 Todos los clientes</option>'
+    filterEl.innerHTML = '<option value="">Todos los clientes</option>'
       + clients.map(c=>`<option value="${esc(c)}"${c===selected?' selected':''}>${esc(c)}</option>`).join('');
   }
 
@@ -7914,11 +7986,11 @@ function renderHistory() {
       </div>
       <div class="hacts">
         <select class="hestado-sel" onchange="setEstadoHistory(${e.id}, this.value)" title="Cambiar estado" aria-label="Cambiar estado">${estadoOpts}</select>
-        <button class="btn btn-g btn-sm" onclick="previewFromHistory(${e.id})">👁 Ver</button>
-        <button class="btn btn-g btn-sm" onclick="sharePngFromHistory(${e.id})" title="Generar una imagen del presupuesto y compartirla (WhatsApp, etc.)">🖼️ Compartir imagen</button>
-        ${tieneDir ? `<button class="btn btn-g btn-sm" onclick="comoLlegar(${e.id})">📍 Cómo llegar</button>` : ''}
+        <button class="btn btn-g btn-sm" onclick="previewFromHistory(${e.id})">${icon('eye')} Ver</button>
+        <button class="btn btn-g btn-sm" onclick="sharePngFromHistory(${e.id})" title="Generar una imagen del presupuesto y compartirla (WhatsApp, etc.)">${icon('image')} Compartir imagen</button>
+        ${tieneDir ? `<button class="btn btn-g btn-sm" onclick="comoLlegar(${e.id})">${icon('pin')} Cómo llegar</button>` : ''}
         <button class="btn btn-s btn-sm" onclick="loadFromHistory(${e.id})">Cargar</button>
-        <button class="btn-icon-del" onclick="delFromHistory(${e.id})" title="Eliminar presupuesto" aria-label="Eliminar presupuesto">🗑</button>
+        <button class="btn-icon-del" onclick="delFromHistory(${e.id})" title="Eliminar presupuesto" aria-label="Eliminar presupuesto">${icon('trash')}</button>
       </div>
     </div>`;
   };
@@ -7966,7 +8038,7 @@ function renderHistory() {
     html += `
       <div class="hmonth ${isOpen?'is-open':''}" data-month="${key}">
         <button type="button" class="hmonth-header" onclick="toggleHistoryMonth('${key}')">
-          <span class="hmonth-title">📅 ${_monthLabel(key)}</span>
+          <span class="hmonth-title">${icon('calendar')} ${_monthLabel(key)}</span>
           <span class="hmonth-count">${entries.length}</span>
           <span class="hmonth-total">${fmtM(monthTotal, cur)}</span>
           <span class="hmonth-chevron">▾</span>
@@ -8163,9 +8235,9 @@ function handleImport(e) {
   r.onload = ev => {
     let data;
     try { data = JSON.parse(ev.target.result); }
-    catch(err) { toast('❌ El archivo no es un JSON válido.', 'err', 5000); return; }
+    catch(err) { toast('El archivo no es un JSON válido.', 'err', 5000); return; }
     if (!data || typeof data !== 'object') {
-      toast('❌ El archivo no tiene un formato reconocible.', 'err', 5000); return;
+      toast('El archivo no tiene un formato reconocible.', 'err', 5000); return;
     }
     showImpOpts(data);
   };
@@ -8187,15 +8259,15 @@ function showImpOpts(data) {
 
   if(type==='presupuesto_individual'){
     h += `<p style="font-size:12px;color:var(--muted);margin-bottom:10px">#${esc(data.quoteNumber||'?')} — ${esc(data.clientName||'?')}</p>`;
-    h += `<button class="btn btn-p btn-bl" onclick="impIndividual()">📋 Cargar en el editor</button>`;
-    h += `<button class="btn btn-s btn-bl" onclick="impToHistory()">📚 Agregar al historial</button>`;
+    h += `<button class="btn btn-p btn-bl" onclick="impIndividual()">${icon('clipboard')} Cargar en el editor</button>`;
+    h += `<button class="btn btn-s btn-bl" onclick="impToHistory()">${icon('book')} Agregar al historial</button>`;
   } else if(type==='historial_presupuestos'){
     h += `<p style="font-size:12px;color:var(--muted);margin-bottom:10px">${(data.history||[]).length} presupuestos.</p>`;
-    h += `<button class="btn btn-p btn-bl" onclick="impHistCombine()">➕ Combinar con historial actual</button>`;
-    h += `<button class="btn btn-s btn-bl" onclick="impHistReplace()">🔄 Reemplazar historial actual</button>`;
+    h += `<button class="btn btn-p btn-bl" onclick="impHistCombine()">${icon('plus')} Combinar con historial actual</button>`;
+    h += `<button class="btn btn-s btn-bl" onclick="impHistReplace()">${icon('refresh')} Reemplazar historial actual</button>`;
   } else if(type==='backup_completo'){
     h += `<p style="font-size:12px;color:var(--muted);margin-bottom:10px">Backup del ${esc((data.exportedAt||'').slice(0,10))}.</p>`;
-    h += `<button class="btn btn-p btn-bl" onclick="impBackup()">🔄 Restaurar backup completo</button>`;
+    h += `<button class="btn btn-p btn-bl" onclick="impBackup()">${icon('refresh')} Restaurar backup completo</button>`;
   } else {
     h += `<p style="font-size:12px;color:var(--red)">Tipo no reconocido.</p>`;
   }
@@ -8373,7 +8445,7 @@ function applyBackupObject(d) {
 
 async function impBackup() {
   const d = _pendingImport;
-  if(!d) { toast('❌ El backup está dañado o incompleto.', 'err', 5000); return; }
+  if(!d) { toast('El backup está dañado o incompleto.', 'err', 5000); return; }
   const ok = await confirmDlg('Restaurar backup', '¿Restaurar el backup completo? Esto reemplazará el estado actual, historial, clientes, especies, servicios y frases.', 'Restaurar', 'btn-d');
   if(!ok) return;
   if (applyBackupObject(d)) { toast('Backup restaurado correctamente', 'ok'); closeModal(); }
@@ -8538,10 +8610,10 @@ async function gdriveConnect(){
     try { remote = await gdriveDownload(); } catch(_){}
     if (remote && remote.history && remote.history.length && localEmpty) {
       const ok = await confirmDlg('Recuperar datos', 'Hay una copia en tu Google Drive. ¿Querés recuperarla en este dispositivo?', 'Recuperar', 'btn-p');
-      if (ok) { applyBackupObject(remote); toast('✅ Datos recuperados desde Drive.', 'ok', 4000); gdriveUpdateUI(); return; }
+      if (ok) { applyBackupObject(remote); toast('Datos recuperados desde Drive.', 'ok', 4000); gdriveUpdateUI(); return; }
     }
     await gdriveUpload();
-    toast('✅ Conectado. Tus datos se copian automáticamente en tu Drive.', 'ok', 4000);
+    toast('Conectado. Tus datos se copian automáticamente en tu Drive.', 'ok', 4000);
   } catch(e){
     console.error('gdriveConnect', e);
     try { localStorage.removeItem(LS.GDRIVE_ON); } catch(_){}
@@ -8569,7 +8641,7 @@ async function gdriveRestore(){
     await gdriveRememberEmail(token);
     const d = await gdriveDownload();
     if (!d) { toast('Todavía no hay ninguna copia en tu Drive.', 'info', 5000); return; }
-    if (applyBackupObject(d)) toast('✅ Datos restaurados desde Google Drive.', 'ok', 4000);
+    if (applyBackupObject(d)) toast('Datos restaurados desde Google Drive.', 'ok', 4000);
     else toast('La copia de Drive no tiene un formato válido.', 'err', 5000);
   } catch(e){ console.error('gdriveRestore', e); toast('No se pudo restaurar desde Drive.', 'err', 5000); }
   gdriveUpdateUI();
@@ -8644,7 +8716,7 @@ function gdriveInitOnLoad(){
       const d = await gdriveDownload();
       if (d && d.history && d.history.length) {
         const ok = await confirmDlg('Recuperar datos', 'Encontramos una copia en tu Google Drive. ¿Querés recuperar tus presupuestos en este dispositivo?', 'Recuperar', 'btn-p');
-        if (ok && applyBackupObject(d)) toast('✅ Datos recuperados desde Drive.', 'ok', 4000);
+        if (ok && applyBackupObject(d)) toast('Datos recuperados desde Drive.', 'ok', 4000);
       }
     } catch(_){}
   }).catch(() => { /* no se pudo renovar callado: la UI ofrece reconectar */ });
@@ -8668,7 +8740,7 @@ const PDF_ICONS = {
 function pdfIcon(name) { return PDF_ICONS[name] || ''; }
 
 function printDoc() {
-  toast('⏳ Generando presupuesto…', 'info', 1500);
+  toast('Generando presupuesto…', 'info', 1500);
   syncFromUI();
   autoSaveToHistory();
   buildDoc();
@@ -9665,10 +9737,10 @@ function factRender() {
       alertBox.textContent='⚠️ Superaste el tope anual. Consultá con tu contador sobre recategorización.';
     } else if(pct>=90){
       alertBox.className='fact-alert danger'; alertBox.style.display='flex';
-      alertBox.textContent='🔴 Estás al '+pct.toFixed(0)+'% del tope. Cuidado con los próximos trabajos.';
+      alertBox.textContent='Estás al '+pct.toFixed(0)+'% del tope. Cuidado con los próximos trabajos.';
     } else if(pct>=70){
       alertBox.className='fact-alert warn'; alertBox.style.display='flex';
-      alertBox.textContent='🟡 Llegaste al '+pct.toFixed(0)+'% del tope anual. Empezá a monitorear de cerca.';
+      alertBox.textContent='Llegaste al '+pct.toFixed(0)+'% del tope anual. Empezá a monitorear de cerca.';
     } else {
       alertBox.style.display='none';
     }
@@ -9949,7 +10021,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     btn.type = 'button';
     btn.title = 'Instalar como app';
     btn.setAttribute('aria-label', 'Instalar app');
-    btn.innerHTML = '⬇️ Instalar';
+    btn.innerHTML = icon('download') + ' Instalar';
     btn.style.cssText = 'margin-right:6px;white-space:nowrap;';
     btn.addEventListener('click', async () => {
       if (!deferredPrompt) return;
