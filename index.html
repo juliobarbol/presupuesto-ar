@@ -784,6 +784,19 @@ input[type=file]{display:none}
 /* HISTORY SEARCH */
 .hsearch{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-field);font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--card);outline:none;transition:.15s;margin-bottom:12px;-webkit-appearance:none;appearance:none}
 .hsearch:focus{border-color:var(--accent-fg);box-shadow:0 0 0 3px rgba(var(--accent-rgb),.1)}
+/* Ocultar la ✕/decoración nativa del type=search (usamos icono + botón propios)
+   y los spinners del type=number, para que ningún control se vea "de navegador". */
+input[type=search]::-webkit-search-cancel-button,
+input[type=search]::-webkit-search-decoration{-webkit-appearance:none;appearance:none}
+input[type=number]::-webkit-outer-spin-button,
+input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+input[type=number]{-moz-appearance:textfield}
+.hsearch-wrap{position:relative;display:block}
+.hsearch-wrap .hsearch{padding-left:34px;padding-right:34px;margin-bottom:0}
+.hsearch-ico{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none;display:inline-flex}
+.hsearch-clear{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:26px;height:26px;border:none;background:transparent;color:var(--muted);cursor:pointer;border-radius:6px;display:none;align-items:center;justify-content:center;-webkit-appearance:none;appearance:none}
+.hsearch-clear:hover,.hsearch-clear:active{background:var(--surface-2);color:var(--text)}
+.hsearch-wrap.has-value .hsearch-clear{display:inline-flex}
 
 /* MODE SWITCH */
 .mode-switch{display:flex;align-items:stretch;gap:0;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-box);padding:3px;margin-bottom:18px}
@@ -2890,7 +2903,11 @@ input[type=file]{display:none}
           <button class="btn btn-d btn-sm" onclick="clearHistory()"><svg class="ic ic-c-red"><use href="#i-trash"></use></svg> Limpiar todo</button>
         </div>
         <div class="r2" style="margin-bottom:4px">
-          <input class="hsearch" id="hist-search" type="search" placeholder="Buscar por número, cliente o lugar..." oninput="renderHistory()" style="margin-bottom:0">
+          <span class="hsearch-wrap">
+            <span class="hsearch-ico"><svg class="ic" aria-hidden="true"><use href="#i-search"></use></svg></span>
+            <input class="hsearch" id="hist-search" type="search" placeholder="Buscar por número, cliente o lugar..." oninput="_histSearchSync(this); renderHistory()" style="margin-bottom:0">
+            <button type="button" class="hsearch-clear" onclick="clearHistSearch()" aria-label="Limpiar búsqueda"><svg class="ic" aria-hidden="true"><use href="#i-x"></use></svg></button>
+          </span>
           <select class="hsearch" id="hist-client-filter" onchange="renderHistory()" style="margin-bottom:0">
             <option value="">Todos los clientes</option>
           </select>
@@ -8276,6 +8293,21 @@ function _monthLabel(key) {
   return `${months[m-1]} ${year}`;
 }
 
+// Búsqueda del historial: muestra/oculta el botón "limpiar" propio (la ✕
+// nativa del type=search está oculta por CSS).
+function _histSearchSync(inp){
+  const w = inp.closest('.hsearch-wrap');
+  if (w) w.classList.toggle('has-value', !!inp.value);
+}
+function clearHistSearch(){
+  const inp = document.getElementById('hist-search');
+  if (!inp) return;
+  inp.value = '';
+  _histSearchSync(inp);
+  renderHistory();
+  inp.focus();
+}
+
 function renderHistory() {
   const list     = document.getElementById('history-list');     if(!list) return;
   const searchEl = document.getElementById('hist-search');
@@ -10288,7 +10320,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   // iOS: el botón ✕ del type="search" dispara 'search', no 'input'
   const hs = document.getElementById('hist-search');
-  if (hs) hs.addEventListener('search', () => renderHistory());
+  if (hs) hs.addEventListener('search', () => { _histSearchSync(hs); renderHistory(); });
 
   // Seguimiento comercial: mostrar el banner de pendientes desde el
   // arranque (aunque el usuario aún no entre al Historial).
