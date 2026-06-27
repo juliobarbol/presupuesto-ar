@@ -244,13 +244,20 @@ body{background-color:var(--bg)}
    listas largas en el celular). field-sizing:content auto-ajusta la altura;
    rows + resize:vertical son el fallback en navegadores sin soporte. */
 .fg textarea.ta-grow{field-sizing:content;min-height:96px;max-height:50vh;resize:vertical}
+/* Campo que arranca en una línea y crece con el contenido. Reemplaza
+   inputs de una sola línea que truncaban textos largos del PDF: ahora el
+   valor completo se ve de un vistazo (se puede escanear sin tocar). */
+.fg textarea.ta-line{min-height:0;field-sizing:content;resize:none;overflow:hidden;line-height:1.4}
 /* Editor de listas "uno por ítem": cada punto en su propio casillero, con
    número y botón de borrar, para que se vea claramente la división de cada
    ítem (en vez de un bloque de texto donde las líneas largas se mezclan). */
 .linelist{display:flex;flex-direction:column;gap:6px}
-.llrow{display:flex;align-items:center;gap:8px}
-.llnum{flex:none;width:20px;height:20px;border-radius:50%;background:var(--accent-fg);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center}
-.llinput{flex:1;min-width:0;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-field);font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--card);outline:none;-webkit-appearance:none;appearance:none}
+.llrow{display:flex;align-items:flex-start;gap:8px}
+.llnum{flex:none;width:20px;height:20px;margin-top:7px;border-radius:50%;background:var(--accent-fg);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center}
+/* textarea (no input) para que los criterios/plan largos envuelvan y se
+   vean completos. El Enter sigue creando un ítem nuevo (ver onLineListKey),
+   así que nunca se inserta un salto de línea dentro del campo. */
+.llinput{flex:1;min-width:0;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-field);font-family:'DM Sans',sans-serif;font-size:13px;line-height:1.4;color:var(--text);background:var(--card);outline:none;-webkit-appearance:none;appearance:none;field-sizing:content;resize:none;overflow:hidden;min-height:0}
 .llinput:focus{border-color:var(--accent-fg);box-shadow:0 0 0 3px rgba(var(--accent-rgb),.1)}
 .lldel{flex:none;width:30px;height:30px;border:1px solid var(--border);border-radius:var(--radius-field);background:var(--bg);color:var(--muted);font-size:18px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;-webkit-appearance:none;appearance:none}
 .lldel:active{background:var(--red,#dc2626);color:#fff;border-color:var(--red,#dc2626)}
@@ -2348,7 +2355,7 @@ input[type=file]{display:none}
           <div class="section-card">
             <div class="section-title"><svg class="ic"><use href="#i-file"></use></svg> Título del Documento</div>
             <div class="fg">
-              <input id="doc-title-risk-editor" type="text" placeholder="Informe Técnico de Riesgo Arbóreo y Propuesta de Trabajo">
+              <textarea class="ta-line" rows="1" id="doc-title-risk-editor" placeholder="Informe Técnico de Riesgo Arbóreo y Propuesta de Trabajo"></textarea>
             </div>
           </div>
 
@@ -2589,16 +2596,16 @@ input[type=file]{display:none}
           <p class="hint" style="margin-bottom:14px">Estos textos aparecen impresos en el PDF. Podés editarlos y quedan guardados para todos los presupuestos futuros.</p>
 
           <div class="fg"><label>Título — Presupuesto normal</label>
-            <input type="text" id="doc-title" placeholder="Presupuesto de Servicio de Poda..."></div>
+            <textarea class="ta-line" rows="1" id="doc-title" placeholder="Presupuesto de Servicio de Poda..."></textarea></div>
 
           <div class="fg"><label>Título — Presupuesto estimativo</label>
-            <input type="text" id="doc-title-est" placeholder="Presupuesto Estimativo de Servicio..."></div>
+            <textarea class="ta-line" rows="1" id="doc-title-est" placeholder="Presupuesto Estimativo de Servicio..."></textarea></div>
 
           <div class="fg"><label>Título — Informe de Riesgo</label>
-            <input type="text" id="doc-title-risk" placeholder="Informe Técnico de Riesgo Arbóreo y Propuesta de Trabajo"></div>
+            <textarea class="ta-line" rows="1" id="doc-title-risk" placeholder="Informe Técnico de Riesgo Arbóreo y Propuesta de Trabajo"></textarea></div>
 
           <div class="fg"><label>Banner estimativo (subtítulo en el encabezado)</label>
-            <input type="text" id="doc-est-banner" placeholder="Presupuesto Estimativo — Basado en fotos y/o videos"></div>
+            <textarea class="ta-line" rows="1" id="doc-est-banner" placeholder="Presupuesto Estimativo — Basado en fotos y/o videos"></textarea></div>
 
           <div class="fg"><label>Disclaimer estimativo (texto de aviso principal)</label>
             <textarea id="doc-disclaimer" rows="3"></textarea></div>
@@ -2622,18 +2629,18 @@ input[type=file]{display:none}
             <input type="text" id="doc-criteria-title" placeholder="Cómo Trabajamos"></div>
 
           <div class="fg"><label>Introducción — texto antes de la lista</label>
-            <input type="text" id="doc-criteria-intro" placeholder="Cada trabajo es evaluado en función de sus condiciones reales..."></div>
+            <textarea class="ta-line" rows="1" id="doc-criteria-intro" placeholder="Cada trabajo es evaluado en función de sus condiciones reales..."></textarea></div>
 
           <div class="fg"><label>Criterios — uno por ítem</label>
             <div id="doc-criteria-list" class="linelist"></div>
             <div class="hint">Opcional: poné un subtítulo con <code>Subtítulo | descripción</code> (ej. <em>Altura y Acceso | Evaluamos el ingreso…</em>). Sin la barra, el ítem va como texto simple.</div></div>
 
           <div class="fg"><label>Etiqueta del descuento en el PDF</label>
-            <input type="text" id="doc-discount-label" placeholder="Bonificación por trabajos combinados">
+            <textarea class="ta-line" rows="1" id="doc-discount-label" placeholder="Bonificación por trabajos combinados"></textarea>
             <div class="hint">Reemplaza la palabra "Descuento" en el resumen de totales.</div></div>
 
           <div class="fg"><label>Nota explicativa del descuento (opcional)</label>
-            <input type="text" id="doc-discount-note" placeholder="Al realizar los trabajos en la misma jornada se optimizan los tiempos...">
+            <textarea class="ta-line" rows="1" id="doc-discount-note" placeholder="Al realizar los trabajos en la misma jornada se optimizan los tiempos..."></textarea>
             <div class="hint">Aparece debajo del descuento en letra pequeña. Dejalo vacío para ocultarla.</div></div>
 
           <div class="fg"><label>Texto de saludo final</label>
@@ -7644,8 +7651,8 @@ function renderLineList(hostId, rows) {
   host.innerHTML = rows.map((l, i) => `
     <div class="llrow">
       <span class="llnum">${i + 1}</span>
-      <input type="text" class="llinput" value="${esc(l)}" placeholder="${esc(cfg.ph || '')}"
-             oninput="onLineListInput('${hostId}')" onkeydown="onLineListKey(event,'${hostId}',${i})">
+      <textarea class="llinput" rows="1" placeholder="${esc(cfg.ph || '')}"
+             oninput="onLineListInput('${hostId}')" onkeydown="onLineListKey(event,'${hostId}',${i})">${esc(l)}</textarea>
       <button type="button" class="lldel" onclick="removeLineListRow('${hostId}',${i})" aria-label="Quitar ítem">×</button>
     </div>`).join('') +
     `<button type="button" class="lladd" onclick="addLineListRow('${hostId}')">+ Agregar ítem</button>`;
@@ -7655,7 +7662,7 @@ function renderLineList(hostId, rows) {
 // cursor mientras se edita). El valor que se guarda filtra las vacías.
 function _lineListRows(hostId) {
   const host = document.getElementById(hostId);
-  return host ? [...host.querySelectorAll('.llinput')].map(i => i.value) : [];
+  return host ? [...host.querySelectorAll('.llinput')].map(i => i.value.replace(/\s*\n\s*/g, ' ')) : [];
 }
 function _commitLineList(hostId) {
   const cfg = LINELISTS[hostId]; if (!cfg) return;
