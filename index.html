@@ -1801,27 +1801,46 @@ input[type=file]{display:none}
 .pdoc.pdoc-theme-minimalista .ph-name,
 .pdoc.pdoc-theme-minimalista .ph-badge-num { font-family: system-ui,-apple-system,Arial,sans-serif; }
 
-/* Tema: Lateral — banda de color a la izquierda del encabezado (look de       */
-/* estudio/consultora). El header repetido por página mantiene la banda.       */
+/* Tema: Lateral — banda de color VERTICAL full-height a la izquierda (look de  */
+/* estudio/consultora).                                                         */
+/* CLAVE: la banda se pinta como FONDO de la <table class="pdoc">, no como un   */
+/* elemento del header. El navegador repinta el fondo de la tabla en cada       */
+/* página impresa (igual que repite el <thead>), así que la banda llega de      */
+/* arriba a abajo en TODAS las hojas — algo que position:fixed no logra de      */
+/* forma confiable en móvil. Los contenedores de sección no tienen fondo        */
+/* propio (su inset izquierdo es transparente), así que la banda se ve a        */
+/* través del margen; sólo hay que correr el contenido para despejarla.         */
+/* El color sale de --pdoc-accent (inyectado inline desde JS en la <table>).    */
 .pdoc.pdoc-theme-lateral {
   --c-bg-soft:      #f5f7fa;
   --c-zebra:        #fafbfc;
   --c-divider-soft: #dde3ea;
+  --band-w:   56px;          /* ancho de la banda */
+  --lat-inset: 76px;         /* inicio del contenido = banda + aire */
+  background: linear-gradient(
+    to right,
+    var(--pdoc-accent, #1f6feb) 0,
+    var(--pdoc-accent, #1f6feb) var(--band-w),
+    transparent var(--band-w)
+  ) no-repeat;
 }
+/* Header transparente: deja ver la banda de fondo detrás del logo/inicial.
+   El logo/inicial vive en .ph-band (centrado sobre la banda) y el resto
+   del header arranca a la derecha de la banda. */
 .pdoc.pdoc-theme-lateral .ph {
+  background: transparent;
   align-items: stretch;
   gap: 0;
-  padding-left: 0;
-  padding-top: 0;
-  padding-bottom: 0;
+  padding: 0 var(--page-x) 0 0;
 }
 .pdoc.pdoc-theme-lateral .ph-band {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 70px;
-  padding: 14px 12px;
-  margin-right: 16px;
+  width: var(--band-w);
+  min-width: var(--band-w);
+  padding: 16px 8px;
+  margin-right: 20px;
 }
 .pdoc.pdoc-theme-lateral .ph-band-initial {
   font-family: 'DM Serif Display', serif;
@@ -1831,13 +1850,38 @@ input[type=file]{display:none}
 }
 .pdoc.pdoc-theme-lateral .ph-band-logo {
   max-height: 46px;
-  max-width: 64px;
+  max-width: 46px;
   object-fit: contain;
   background: #fff;
   padding: 4px;
   border-radius: 4px;
 }
 .pdoc.pdoc-theme-lateral .ph-co { padding: 16px 0; }
+/* Correr el inicio izquierdo de cada sección del cuerpo para que el texto
+   no quede encima de la banda full-height. Sólo se toca el padding/margin
+   IZQUIERDO; el derecho y el resto los conserva la regla base (mayor
+   especificidad: .pdoc.pdoc-theme-lateral .x vence a .x). */
+.pdoc.pdoc-theme-lateral .ptitle-bar,
+.pdoc.pdoc-theme-lateral .psec,
+.pdoc.pdoc-theme-lateral .ptotals,
+.pdoc.pdoc-theme-lateral .pobs,
+.pdoc.pdoc-theme-lateral .pcond,
+.pdoc.pdoc-theme-lateral .pnotes,
+.pdoc.pdoc-theme-lateral .pcrit,
+.pdoc.pdoc-theme-lateral .pplan,
+.pdoc.pdoc-theme-lateral .psigs,
+.pdoc.pdoc-theme-lateral .pfoot,
+.pdoc.pdoc-theme-lateral .pphotos,
+.pdoc.pdoc-theme-lateral .pest-services-section,
+.pdoc.pdoc-theme-lateral .pest-factors,
+.pdoc.pdoc-theme-lateral .pest-greeting {
+  padding-left: var(--lat-inset);
+}
+.pdoc.pdoc-theme-lateral .pvalid,
+.pdoc.pdoc-theme-lateral .pest-header-bar,
+.pdoc.pdoc-theme-lateral .pest-disclaimer {
+  margin-left: var(--lat-inset);
+}
 
 /* Tema: Técnico — austero tipo informe de ingeniería. Sin serif, números      */
 /* tabulares, reglas marcadas, esquinas rectas, títulos en versalitas.         */
@@ -8981,7 +9025,7 @@ function buildDoc() {
   // position:fixed, que no se renderiza correctamente en muchos navegadores
   // móviles). El <tbody> tiene el resto del contenido del presupuesto.
   doc.innerHTML = `
-    <table class="pdoc pdoc-theme-${theme}${S.pdfCompact ? ' pdoc-compact' : ''}">
+    <table class="pdoc pdoc-theme-${theme}${S.pdfCompact ? ' pdoc-compact' : ''}" style="--pdoc-accent:${color}">
       <thead>
         <tr><td>
           ${_buildDocHeader(theme, S, color, contacts, 'Presupuesto N°', null, false)}
@@ -9135,7 +9179,7 @@ function buildRiskDoc() {
   // Wrapper-table pattern (ver buildDoc): el <thead> con el header se repite
   // nativamente en cada página impresa. <tbody> tiene el resto del informe.
   doc.innerHTML = `
-    <table class="pdoc pdoc-theme-${theme}${S.pdfCompact ? ' pdoc-compact' : ''}">
+    <table class="pdoc pdoc-theme-${theme}${S.pdfCompact ? ' pdoc-compact' : ''}" style="--pdoc-accent:${color}">
       <thead>
         <tr><td>
           <!-- ══ ENCABEZADO ══ -->
@@ -9389,7 +9433,7 @@ function buildEstDoc() {
   // Wrapper-table pattern (ver buildDoc): el <thead> con el header se repite
   // nativamente en cada página impresa. <tbody> tiene el resto del documento.
   doc.innerHTML = `
-    <table class="pdoc pdoc-theme-${theme}${S.pdfCompact ? ' pdoc-compact' : ''}">
+    <table class="pdoc pdoc-theme-${theme}${S.pdfCompact ? ' pdoc-compact' : ''}" style="--pdoc-accent:${color}">
       <thead>
         <tr><td>
           ${_buildDocHeader(theme, S, color, contacts, 'Presupuesto Estimativo N°', `Fecha: ${fmtD(S.dateIssue)}`, true)}
