@@ -411,7 +411,7 @@ details.scol[open]>summary .scol-chev{transform:rotate(180deg)}
 .hcargar{flex:none;align-self:flex-start;white-space:nowrap}
 .hnum{font-size:12px;font-weight:700;color:var(--accent-fg)}
 .hclient{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.hmeta{font-size:11px;color:var(--muted)}
+.hmeta{font-size:11px;color:var(--muted);margin-top:-4px}
 .hacts{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
 .hacts .btn-icon-del{margin-left:auto}
 .empty-h{text-align:center;padding:40px;color:var(--muted);font-size:13px}
@@ -2670,7 +2670,7 @@ input[type=file]{display:none}
             <div class="collapsible-body">
               <p class="hint" style="margin-bottom:10px">Se guardan automáticamente al completar un presupuesto. Al escribir el nombre del cliente en el Editor, se autocompletan el teléfono y la dirección.</p>
               <div id="client-manager-list"></div>
-              <button class="btn btn-g btn-sm" style="margin-top:8px" onclick="renderClientManager()">↺ Actualizar lista</button>
+              <button class="btn btn-g btn-sm" style="margin-top:8px" onclick="renderClientManager()"><svg class="ic" aria-hidden="true"><use href="#i-refresh"></use></svg> Actualizar lista</button>
             </div>
           </div>
 
@@ -2683,7 +2683,7 @@ input[type=file]{display:none}
             <div class="collapsible-body">
               <p class="hint" style="margin-bottom:10px">Se guardan automáticamente al cargar árboles. Se usan para autocompletar en el campo Especie/s del Editor.</p>
               <div id="species-manager-list"></div>
-              <button class="btn btn-g btn-sm" style="margin-top:8px" onclick="renderSpeciesManager()">↺ Actualizar lista</button>
+              <button class="btn btn-g btn-sm" style="margin-top:8px" onclick="renderSpeciesManager()"><svg class="ic" aria-hidden="true"><use href="#i-refresh"></use></svg> Actualizar lista</button>
             </div>
           </div>
 
@@ -2696,7 +2696,7 @@ input[type=file]{display:none}
             <div class="collapsible-body">
               <p class="hint" style="margin-bottom:10px">Se autocompletan al cargar un ítem tipo Servicio. Tocá la <strong><svg class="ic ic-fill ic-c-amber"><use href="#i-star"></use></svg></strong> para que aparezcan como atajos rápidos arriba del botón "+ Servicio" en el editor.</p>
               <div id="services-manager-list"></div>
-              <button class="btn btn-g btn-sm" style="margin-top:8px" onclick="renderServicesManager()">↺ Actualizar lista</button>
+              <button class="btn btn-g btn-sm" style="margin-top:8px" onclick="renderServicesManager()"><svg class="ic" aria-hidden="true"><use href="#i-refresh"></use></svg> Actualizar lista</button>
             </div>
           </div>
         </div>
@@ -7778,7 +7778,7 @@ function renderExpiryBanner() {
   el.style.display = 'block';
   el.innerHTML = `
     <div class="fub-head">
-      <span class="fub-icon">⌛</span>
+      <span class="fub-icon">${icon('hourglass','ic-c-red')}</span>
       <span class="fub-title">${n} presupuesto${n>1?'s':''} vencido${n>1?'s':''}</span>
     </div>
     <div class="fub-sub">Pasó su fecha de vigencia sin cerrarse. Conviene avisarle al cliente o pasarle un presupuesto actualizado.</div>
@@ -7849,7 +7849,7 @@ function expiryBadgeFor(e) {
   if (!exp) return '';
   const d = daysSinceDate(exp);
   if (d === null || d < 1) return '';
-  return `<span class="hbadge-expired" title="Presupuesto vencido">⌛ vencido</span>`;
+  return `<span class="hbadge-expired" title="Presupuesto vencido">${icon('hourglass')} vencido</span>`;
 }
 
 // ─── SEGUIMIENTO: configuración (UI) ─────────
@@ -8050,10 +8050,10 @@ function renderHistory() {
         <div class="hinfo">
           <div class="hnum">${esc(e.quoteNumber||'—')}${e.isEstimative?'<span class="hbadge-est">Estimativo</span>':''}${followupBadgeFor(e)}${expiryBadgeFor(e)}${e.facturado?'<span class="hbadge-estado" style="color:#065f46;background:#d1fae5">✓ Facturado</span>':''}</div>
           ${!groupedByClient?`<div class="hclient ${!e.clientName?'is-draft':''}">${esc(e.clientName||'(borrador sin nombre de cliente)')}</div>`:''}
-          <div class="hmeta">${esc(e.currency||'')} ${fmtM(e.total||0,e.currency||'ARS')} · ${e.itemCount||0} ítem(s) · ${fmtD(((e.snapshot&&e.snapshot.dateIssue)||e.savedAt||'').slice(0,10))}</div>
         </div>
         <button class="btn btn-p btn-sm hcargar" onclick="loadFromHistory(${e.id})" title="Cargar este presupuesto en el editor">${icon('folder')} Cargar</button>
       </div>
+      <div class="hmeta">${esc(e.currency||'')} ${fmtM(e.total||0,e.currency||'ARS')} · ${e.itemCount||0} ítem(s) · ${fmtD(((e.snapshot&&e.snapshot.dateIssue)||e.savedAt||'').slice(0,10))}</div>
       <div class="hacts">
         <select class="hestado-sel" style="color:${txtCol};background-color:${bgCol};border-color:${bgCol}" onchange="setEstadoHistory(${e.id}, this.value)" title="Cambiar estado" aria-label="Estado del presupuesto">${estadoOpts}</select>
         <button class="btn btn-g btn-sm" onclick="previewFromHistory(${e.id})">${icon('eye')} Ver</button>
