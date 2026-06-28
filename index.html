@@ -459,6 +459,14 @@ details.scol[open]>summary .scol-chev{transform:rotate(180deg)}
 .tpreset:hover:not(.active){border-color:var(--muted)}
 .tpreset-swatch{width:56px;height:36px;border-radius:3px;overflow:hidden;position:relative;background:var(--card);border:1px solid var(--border)}
 .tpreset-label{font-size:11px;color:var(--text);font-weight:500;white-space:nowrap}
+/* Selector de tipografía del documento (mismo patrón que .tpreset). El preview
+   muestra "Ag" en la fuente de títulos del set, para verla de un vistazo. */
+.font-presets{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px}
+.fpreset{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:4px;background:var(--card);border:2px solid var(--border);border-radius:var(--radius-box);padding:6px 11px;cursor:pointer;transition:border-color .15s;min-width:60px}
+.fpreset.active{border-color:var(--accent-fg)}
+.fpreset:hover:not(.active){border-color:var(--muted)}
+.fpreset-prev{font-size:21px;line-height:1.1;color:var(--text)}
+.fpreset-label{font-size:11px;color:var(--muted);font-weight:500;white-space:nowrap}
 
 /* HISTORY */
 .hitem{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-box);padding:10px 12px;margin-bottom:8px;display:flex;flex-direction:column;align-items:stretch;gap:8px}
@@ -2080,6 +2088,56 @@ input[type=number]{-moz-appearance:textfield}
 .pdoc.pdoc-theme-elegante .ph-contact { font-family: Georgia, 'Times New Roman', serif; font-style: italic; }
 .pdoc.pdoc-theme-elegante .ph-badge-num { font-size: calc(var(--fs-h2) + 4pt); }
 
+/* ──────────────────────────────────────────────────────────────────────────
+   SELECTOR DE TIPOGRAFÍA (S.pdfFont) — ORTOGONAL al tema.
+   Se aplica como clase extra pdoc-font-X sobre <table class="pdoc">. Define la
+   familia del cuerpo (base) y la de los títulos. Va DESPUÉS de los temas a
+   propósito: misma especificidad (.pdoc.X .sel) → gana por orden de fuente, así
+   la tipografía elegida pisa la que algunos temas fijan (Georgia, etc).
+   'auto' = sin clase = la tipografía la decide el diseño (comportamiento previo).
+   Las @font-face viven en fonts.css (auto-hospedadas, offline).
+   ────────────────────────────────────────────────────────────────────────── */
+
+/* Clásico — DM Sans (cuerpo) + DM Serif Display (títulos) */
+.pdoc.pdoc-font-dm { font-family: 'DM Sans', sans-serif; }
+.pdoc.pdoc-font-dm .ph-name,
+.pdoc.pdoc-font-dm .ph-badge-num,
+.pdoc.pdoc-font-dm .ptitle,
+.pdoc.pdoc-font-dm .ptotal-amt { font-family: 'DM Serif Display', Georgia, serif; }
+.pdoc.pdoc-font-dm .psec-t,
+.pdoc.pdoc-font-dm .ph-sub,
+.pdoc.pdoc-font-dm .ph-contact { font-family: 'DM Sans', sans-serif; }
+
+/* IBM Plex — IBM Plex Sans (cuerpo) + IBM Plex Serif (títulos). Look técnico. */
+.pdoc.pdoc-font-plex { font-family: 'IBM Plex Sans', system-ui, Arial, sans-serif; }
+.pdoc.pdoc-font-plex .ph-name,
+.pdoc.pdoc-font-plex .ph-badge-num,
+.pdoc.pdoc-font-plex .ptitle,
+.pdoc.pdoc-font-plex .ptotal-amt { font-family: 'IBM Plex Serif', Georgia, serif; font-weight: 600; }
+.pdoc.pdoc-font-plex .psec-t,
+.pdoc.pdoc-font-plex .ph-sub,
+.pdoc.pdoc-font-plex .ph-contact { font-family: 'IBM Plex Sans', system-ui, Arial, sans-serif; }
+
+/* Lora + Inter — Inter (cuerpo) + Lora (títulos). Cálido pero serio. */
+.pdoc.pdoc-font-lora-inter { font-family: 'Inter', system-ui, Arial, sans-serif; }
+.pdoc.pdoc-font-lora-inter .ph-name,
+.pdoc.pdoc-font-lora-inter .ph-badge-num,
+.pdoc.pdoc-font-lora-inter .ptitle,
+.pdoc.pdoc-font-lora-inter .ptotal-amt { font-family: 'Lora', Georgia, serif; font-weight: 600; }
+.pdoc.pdoc-font-lora-inter .psec-t,
+.pdoc.pdoc-font-lora-inter .ph-sub,
+.pdoc.pdoc-font-lora-inter .ph-contact { font-family: 'Inter', system-ui, Arial, sans-serif; }
+
+/* Inter — todo Inter (sans). Moderno y minimalista. */
+.pdoc.pdoc-font-inter { font-family: 'Inter', system-ui, Arial, sans-serif; }
+.pdoc.pdoc-font-inter .ph-name,
+.pdoc.pdoc-font-inter .ph-badge-num,
+.pdoc.pdoc-font-inter .ptitle,
+.pdoc.pdoc-font-inter .ptotal-amt { font-family: 'Inter', system-ui, Arial, sans-serif; font-weight: 700; }
+.pdoc.pdoc-font-inter .psec-t,
+.pdoc.pdoc-font-inter .ph-sub,
+.pdoc.pdoc-font-inter .ph-contact { font-family: 'Inter', system-ui, Arial, sans-serif; }
+
 /* Modificador: Compacto — ORTOGONAL al tema. Densifica fuentes y paddings para */
 /* que los presupuestos con muchos ítems entren en menos páginas. Se combina    */
 /* con cualquier diseño (clase extra pdoc-compact sobre la misma tabla).        */
@@ -2878,6 +2936,31 @@ input[type=number]{-moz-appearance:textfield}
         <div class="trow"><span class="tlabel">Modo compacto <span style="color:var(--muted);font-weight:400">· densifica para aprovechar el papel (muchos ítems)</span></span><label class="tgl"><input type="checkbox" id="pdf-compact" onchange="applyPdfCompact(this.checked)"><span class="tgl-sl"></span></label></div>
         <p class="hint" style="margin-bottom:16px">Se puede combinar con cualquier diseño.</p>
 
+        <div class="st">Tipografía del documento</div>
+        <div class="font-presets" id="font-presets">
+          <button class="fpreset active" data-font="auto" onclick="applyPdfFont('auto')">
+            <span class="fpreset-prev">Aa</span>
+            <span class="fpreset-label">Según diseño</span>
+          </button>
+          <button class="fpreset" data-font="dm" onclick="applyPdfFont('dm')">
+            <span class="fpreset-prev" style="font-family:'DM Serif Display',serif">Ag</span>
+            <span class="fpreset-label">Clásico</span>
+          </button>
+          <button class="fpreset" data-font="plex" onclick="applyPdfFont('plex')">
+            <span class="fpreset-prev" style="font-family:'IBM Plex Serif',serif;font-weight:600">Ag</span>
+            <span class="fpreset-label">IBM Plex</span>
+          </button>
+          <button class="fpreset" data-font="lora-inter" onclick="applyPdfFont('lora-inter')">
+            <span class="fpreset-prev" style="font-family:'Lora',serif;font-weight:600">Ag</span>
+            <span class="fpreset-label">Lora + Inter</span>
+          </button>
+          <button class="fpreset" data-font="inter" onclick="applyPdfFont('inter')">
+            <span class="fpreset-prev" style="font-family:'Inter',sans-serif;font-weight:700">Ag</span>
+            <span class="fpreset-label">Inter</span>
+          </button>
+        </div>
+        <p class="hint" style="margin-bottom:16px">Cambia las fuentes del presupuesto. «Según diseño» usa la tipografía propia de cada diseño.</p>
+
         <div class="st">Numeración</div>
         <div class="r2">
           <div class="fg"><label>Prefijo</label><input type="text" id="num-prefix" value="2026-" oninput="updateNumPreview()"></div>
@@ -3191,7 +3274,7 @@ const DEF = {
   coCuit:'', coWhatsapp:'', coCity:'', coEmail:'',
   coTechNotes:'', coFooter:'',
   showTechNotes:true, showFooter:true,
-  accentColor:'#064e3b', pdfTheme:'clasico', pdfCompact:false, customColors:[], pushEnabled:false, validityDays:30, showExpiry:true,
+  accentColor:'#064e3b', pdfTheme:'clasico', pdfCompact:false, pdfFont:'auto', customColors:[], pushEnabled:false, validityDays:30, showExpiry:true,
   numPrefix:'2026-', numNext:1,
   // Estimative mode
   isEstimative: false,
@@ -6386,6 +6469,9 @@ function restoreUI() {
   const _thm = S.pdfTheme || 'clasico';
   document.querySelectorAll('.tpreset').forEach(el=>el.classList.toggle('active', el.dataset.theme===_thm));
   const _cmp = document.getElementById('pdf-compact'); if(_cmp) _cmp.checked = !!S.pdfCompact;
+  // pdf font
+  const _fnt = S.pdfFont || 'auto';
+  document.querySelectorAll('.fpreset').forEach(el=>el.classList.toggle('active', el.dataset.font===_fnt));
   // logo
   if(S.logo) showLogo(S.logo);
   // expiry visibility
@@ -7102,6 +7188,15 @@ function applyPdfCompact(on) {
   sched();
 }
 
+// Selector de tipografía del documento. ORTOGONAL al tema: se aplica como clase
+// extra (pdoc-font-X) y se combina con cualquier diseño. 'auto' = la tipografía
+// la decide el diseño (sin clase). Ver fonts.css + .pdoc.pdoc-font-X en el CSS.
+function applyPdfFont(font) {
+  S.pdfFont = font;
+  document.querySelectorAll('.fpreset').forEach(el => el.classList.toggle('active', el.dataset.font === font));
+  sched();
+}
+
 // ─── LOGO ────────────────────────────────────
 function handleLogoUpload(e) {
   const f = e.target.files[0]; if(!f) return;
@@ -7436,11 +7531,13 @@ function loadFromHistory(id) {
   // ahora (sino su elección se perdería al abrir cualquier entry viejo).
   const savedTheme   = S.pdfTheme;
   const savedCompact = S.pdfCompact;
+  const savedFont    = S.pdfFont;
   Object.assign(S, migrateState(e.snapshot));
   if (savedNumNext !== undefined) S.numNext = savedNumNext;
   if (savedLogo)                  S.logo    = savedLogo;
   S.pdfTheme   = savedTheme;
   S.pdfCompact = savedCompact;
+  S.pdfFont    = savedFont;
   if (!S.estItems)       S.estItems = [];
   if (!S.estObservations) S.estObservations = '';
   if (S.surcharge === undefined) S.surcharge = 0;
@@ -7603,6 +7700,7 @@ function previewFromHistory(id) {
   // real respaldado en el paso 1).
   S.pdfTheme   = _previewBackup.S.pdfTheme;
   S.pdfCompact = _previewBackup.S.pdfCompact;
+  S.pdfFont    = _previewBackup.S.pdfFont;
   if (!Array.isArray(S.itemsB)) S.itemsB = [];
   if (!S.estItems) S.estItems = [];
   normalizeRiskData();
@@ -7717,6 +7815,7 @@ function _buildDocHTMLForEntry(e) {
     // tema/compacto actual, no el congelado en el snapshot.
     S.pdfTheme   = backup.S.pdfTheme;
     S.pdfCompact = backup.S.pdfCompact;
+    S.pdfFont    = backup.S.pdfFont;
     if (!Array.isArray(S.itemsB)) S.itemsB = [];
     if (!S.estItems) S.estItems = [];
     normalizeRiskData();
@@ -9330,13 +9429,13 @@ function _buildDocHeader(theme, S, color, contacts, badgeLabel, badgeDate, showP
     <div class="ph" style="border-bottom:1pt solid #d1d5db">
       ${logoHTML}
       <div class="ph-co">
-        <div class="ph-name" style="color:${color};font-family:system-ui,-apple-system,Arial,sans-serif">${nameStr}</div>
+        <div class="ph-name" style="color:${color}">${nameStr}</div>
         <div class="ph-sub">${subStr}</div>
         <div class="ph-contacts">${contactsHTML}</div>
       </div>
       <div class="ph-badge" style="border-left:2pt solid ${color};padding-left:10pt">
         <div class="ph-badge-lbl">${esc(badgeLabel)}</div>
-        <div class="ph-badge-num" style="color:${color};font-family:system-ui,-apple-system,Arial,sans-serif">${numStr}</div>
+        <div class="ph-badge-num" style="color:${color}">${numStr}</div>
         ${dateHTML}
       </div>
     </div>`;
@@ -9531,7 +9630,7 @@ function buildDoc() {
   // position:fixed, que no se renderiza correctamente en muchos navegadores
   // móviles). El <tbody> tiene el resto del contenido del presupuesto.
   doc.innerHTML = `
-    <table class="pdoc pdoc-theme-${theme}${S.pdfCompact ? ' pdoc-compact' : ''}" style="--pdoc-accent:${color}">
+    <table class="pdoc pdoc-theme-${theme}${S.pdfCompact ? ' pdoc-compact' : ''}${S.pdfFont && S.pdfFont!=='auto' ? ' pdoc-font-'+S.pdfFont : ''}" style="--pdoc-accent:${color}">
       <thead>
         <tr><td>
           ${_buildDocHeader(theme, S, color, contacts, 'Presupuesto N°', null, false)}
@@ -9685,7 +9784,7 @@ function buildRiskDoc() {
   // Wrapper-table pattern (ver buildDoc): el <thead> con el header se repite
   // nativamente en cada página impresa. <tbody> tiene el resto del informe.
   doc.innerHTML = `
-    <table class="pdoc pdoc-theme-${theme}${S.pdfCompact ? ' pdoc-compact' : ''}" style="--pdoc-accent:${color}">
+    <table class="pdoc pdoc-theme-${theme}${S.pdfCompact ? ' pdoc-compact' : ''}${S.pdfFont && S.pdfFont!=='auto' ? ' pdoc-font-'+S.pdfFont : ''}" style="--pdoc-accent:${color}">
       <thead>
         <tr><td>
           <!-- ══ ENCABEZADO ══ -->
@@ -9939,7 +10038,7 @@ function buildEstDoc() {
   // Wrapper-table pattern (ver buildDoc): el <thead> con el header se repite
   // nativamente en cada página impresa. <tbody> tiene el resto del documento.
   doc.innerHTML = `
-    <table class="pdoc pdoc-theme-${theme}${S.pdfCompact ? ' pdoc-compact' : ''}" style="--pdoc-accent:${color}">
+    <table class="pdoc pdoc-theme-${theme}${S.pdfCompact ? ' pdoc-compact' : ''}${S.pdfFont && S.pdfFont!=='auto' ? ' pdoc-font-'+S.pdfFont : ''}" style="--pdoc-accent:${color}">
       <thead>
         <tr><td>
           ${_buildDocHeader(theme, S, color, contacts, 'Presupuesto Estimativo N°', `Fecha: ${fmtD(S.dateIssue)}`, true)}
