@@ -3355,13 +3355,14 @@ const DEF = {
   // Empresa → Textos del PDF). El encabezado/cliente quedan arriba y las
   // fotos/firmas/pie quedan al final; solo estas secciones intermedias se
   // reordenan. Ver DOC_SECTIONS / sanitizeSectionOrder / buildDoc.
-  docSectionOrder: ['details','total','plan','criteria','observations','payment','validity','notes'],
+  docSectionOrder: ['duration','details','total','plan','criteria','observations','payment','validity','notes'],
 };
 
 // Secciones reordenables del cuerpo del presupuesto normal. El orden lo define
 // S.docSectionOrder; este array es la lista canónica (ids + etiqueta para la UI)
 // y el orden "de fábrica" si falta la preferencia del usuario.
 const DOC_SECTIONS = [
+  { id:'duration',     label:'Tiempo estimado de trabajo' },
   { id:'details',      label:'Detalles del trabajo (tabla)' },
   { id:'total',        label:'Total del trabajo' },
   { id:'plan',         label:'Plan de trabajo (lo que incluye)' },
@@ -3386,11 +3387,22 @@ function sanitizeSectionOrder(order){
   });
   DOC_SECTIONS.forEach((sec, idx) => {
     if (seen.has(sec.id)) return;
-    let insertAt = out.length;
+    let insertAt = -1;
+    // Vecino canónico ANTERIOR ya colocado → insertar justo después.
     for (let k = idx - 1; k >= 0; k--) {
       const p = out.indexOf(DOC_SECTIONS[k].id);
       if (p >= 0) { insertAt = p + 1; break; }
     }
+    // Si no hay anterior (ej. una sección nueva que va primera), buscar el
+    // SIGUIENTE vecino canónico ya colocado e insertar justo antes; si tampoco
+    // hay, recién entonces al final.
+    if (insertAt < 0) {
+      for (let k = idx + 1; k < DOC_SECTIONS.length; k++) {
+        const p = out.indexOf(DOC_SECTIONS[k].id);
+        if (p >= 0) { insertAt = p; break; }
+      }
+    }
+    if (insertAt < 0) insertAt = out.length;
     out.splice(insertAt, 0, sec.id);
     seen.add(sec.id);
   });
@@ -9646,6 +9658,7 @@ function buildDoc() {
   // Textos del PDF → "Orden de las secciones"). El encabezado/cliente van
   // arriba y fotos/firmas/pie quedan fijos al final.
   const _sectionMap = {
+    duration:     _buildDurationHTML(),
     details:      detailsH,
     total:        totalH,
     plan:         _buildWorkPlanHTML(color),
@@ -9691,8 +9704,6 @@ function buildDoc() {
         </div>
       </div>
     </div>
-
-    ${_buildDurationHTML()}
 
     ${bodyOrderedH}
 
