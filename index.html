@@ -1408,7 +1408,7 @@ input[type=number]{-moz-appearance:textfield}
      a la siguiente completa. La tabla principal (.psec) SÍ puede partirse
      a lo largo de varias páginas — pero cada fila individual y el thead
      quedan intactos (ver reglas debajo). */
-  .ptitle-bar,.ptotals,.pobs,.pcond,.pvalid,
+  .ptitle-bar,.ptotals,.pobs,.pcond,.pvalid,.pdur,
   .pcrit,.pnotes,.psigs,.pfoot,
   .pest-header-bar,.pest-disclaimer,.pest-factors,.pest-greeting,
   .pest-item{
@@ -1508,6 +1508,12 @@ input[type=number]{-moz-appearance:textfield}
      ────────────────────────────────────────────────────────────── */
   .pvalid{margin:6px var(--page-x) 14px;background:#fef3c7!important;color:#92400e!important;padding:9px 14px;border-radius:var(--r-sm);font-size:var(--fs-small);font-weight:500;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;border-left:3pt solid #d97706}
   .pvalid-date{font-weight:700;color:#78350f}
+  /* Franja "Tiempo estimado de trabajo" — info neutra y destacada (no es un
+     aviso como vigencia, por eso usa gris/slate y no el ámbar). Color neutro
+     a propósito para no gastar el accent de marca (reservado a 3 lugares). */
+  .pdur{margin:0 var(--page-x) 14px;background:#f1f5f9;color:#334155;padding:9px 14px;border-radius:var(--r-sm);font-size:var(--fs-small);font-weight:600;text-transform:uppercase;letter-spacing:var(--ls-label);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;border-left:3pt solid #64748b}
+  .pdur > span:first-child{display:inline-flex;align-items:center;gap:6px}
+  .pdur-val{font-weight:700;color:#0f172a;text-transform:none;letter-spacing:0;font-size:var(--fs-body)}
 
   /* ──────────────────────────────────────────────────────────────
      CÓMO TRABAJAMOS — antes 4 ítems en columna vertical ocupando
@@ -2035,6 +2041,7 @@ input[type=number]{-moz-appearance:textfield}
   padding-left: var(--lat-inset);
 }
 .pdoc.pdoc-theme-lateral .pvalid,
+.pdoc.pdoc-theme-lateral .pdur,
 .pdoc.pdoc-theme-lateral .pest-header-bar,
 .pdoc.pdoc-theme-lateral .pest-disclaimer {
   margin-left: var(--lat-inset);
@@ -2302,6 +2309,18 @@ input[type=number]{-moz-appearance:textfield}
           <div class="fg" id="discount-row"><label>Descuento (%)</label><input type="number" id="discount" min="0" max="100" value="0" inputmode="decimal"></div>
         </div>
         <div class="fg"><label>Dirección / Lugar del trabajo</label><input type="text" id="work-address" placeholder="Calle, número, barrio, localidad..."></div>
+        <div class="fg"><label>Tiempo estimado de trabajo <span style="color:var(--muted);font-weight:400">· opcional, si se deja vacío no aparece en el PDF</span></label>
+          <input type="text" id="work-duration" list="work-duration-opts" placeholder="Ej.: 2 días" autocomplete="off">
+          <datalist id="work-duration-opts">
+            <option value="Medio día"></option>
+            <option value="1 día"></option>
+            <option value="2 días"></option>
+            <option value="3 días"></option>
+            <option value="4 días"></option>
+            <option value="5 días"></option>
+            <option value="1 semana"></option>
+          </datalist>
+        </div>
 
         <!-- SECCIÓN ÍTEMS — MODO NORMAL -->
         <div id="section-normal-items">
@@ -3253,7 +3272,7 @@ const PUSH_VAPID_KEY  = 'BBlrB43TWc5wHAHPhY0kcMwt4g9f1tBejOZ5W5zWc6OU273X9DCvunk
 const DEF = {
   _schemaVersion: APP_SCHEMA_VERSION,
   quoteNumber:'', dateIssue:'', dateExpiry:'',
-  clientName:'', clientContact:'', workAddress:'',
+  clientName:'', clientContact:'', workAddress:'', workDuration:'',
   currency:'ARS', discount:0, surcharge:0, items:[],
   paymentConditions:'', observations:'',
   // Scenarios A/B mode — permite presupuestar dos alternativas paralelas
@@ -3782,6 +3801,9 @@ function migrateState(raw) {
   // personalizó, se respeta tal cual (parseCriteria maneja líneas sin "|").
   const OLD_CRITERIA_DEFAULT = 'La altura del árbol y el acceso al sitio.\nEl volumen de material a extraer: ramas, troncos y restos vegetales.\nLa proximidad a estructuras sensibles: edificaciones, tendido eléctrico u otras instalaciones.\nLa especie, el estado fitosanitario y la complejidad estructural del árbol.';
   if (next.docCriteria === OLD_CRITERIA_DEFAULT) next.docCriteria = DEF.docCriteria;
+  // Campo por presupuesto agregado después: si el snapshot es anterior, lo
+  // dejamos vacío (no debe heredar la duración del presupuesto abierto antes).
+  if (typeof next.workDuration !== 'string') next.workDuration = '';
   next._schemaVersion = APP_SCHEMA_VERSION;
   return next;
 }
@@ -6412,6 +6434,7 @@ function restoreUI() {
   sv('client-name', S.clientName);
   sv('client-contact', S.clientContact);
   sv('work-address', S.workAddress);
+  sv('work-duration', S.workDuration);
   sv('currency', S.currency);
   sv('discount', S.discount);
   sv('surcharge-pct', S.surcharge||0);
@@ -6512,6 +6535,7 @@ function syncFromUI() {
   S.clientName        = gv('client-name');
   S.clientContact     = gv('client-contact');
   S.workAddress       = gv('work-address');
+  S.workDuration      = gv('work-duration');
   S.currency          = gv('currency');
   S.discount          = parseFloat(gv('discount')) || 0;
   S.paymentConditions = gv('payment-conditions');
@@ -8623,7 +8647,7 @@ function resetToNewQuote() {
   // Calcular siguiente N° libre mirando el historial completo,
   // no solo S.numNext (que puede estar atrás si se cargaron viejos).
   S.numNext = calcNextNumFromHistory();
-  S.items=[]; S.estItems=[]; S.itemsB=[]; S.clientName=''; S.clientContact=''; S.workAddress='';
+  S.items=[]; S.estItems=[]; S.itemsB=[]; S.clientName=''; S.clientContact=''; S.workAddress=''; S.workDuration='';
   S.discount=0; S.surcharge=0; S.paymentConditions=''; S.observations=''; S.estObservations='';
   // El plan de trabajo a medida es excepcional por presupuesto: se descarta al
   // crear uno nuevo para volver a usar el default global.
@@ -9250,6 +9274,7 @@ const PDF_ICONS = {
   location: '<svg class="pdf-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg>',
   warning: '<svg class="pdf-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
   camera: '<svg class="pdf-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>',
+  clock: '<svg class="pdf-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
 };
 function pdfIcon(name) { return PDF_ICONS[name] || ''; }
 
@@ -9490,6 +9515,18 @@ function _buildDocHeader(theme, S, color, contacts, badgeLabel, badgeDate, showP
 // un gasto. Bullets desde S.workPlan (uno por línea), o desde el override por
 // presupuesto (S.workPlanCustom) si está activado. Devuelve '' si está
 // desactivada (S.showWorkPlan === false) o si no hay líneas.
+// Franja "Tiempo estimado de trabajo". Bloque opcional: si S.workDuration está
+// vacío, devuelve '' y no se renderiza nada. Misma en los 3 modos (normal,
+// estimativo, riesgo). Color neutro (no es un aviso como vigencia).
+function _buildDurationHTML(){
+  const d = (S.workDuration || '').trim();
+  if (!d) return '';
+  return `<div class="pdur">
+      <span>${pdfIcon('clock')} TIEMPO ESTIMADO DE TRABAJO</span>
+      <span class="pdur-val">${esc(d)}</span>
+    </div>`;
+}
+
 function _buildWorkPlanHTML(color){
   if (S.showWorkPlan === false) return '';
   const useCustom = !!S.workPlanOverride;
@@ -9655,6 +9692,8 @@ function buildDoc() {
       </div>
     </div>
 
+    ${_buildDurationHTML()}
+
     ${bodyOrderedH}
 
     ${fotosH}
@@ -9810,6 +9849,8 @@ function buildRiskDoc() {
         </div>
       </div>
     </div>
+
+    ${_buildDurationHTML()}
 
     <!-- ══ SECCIÓN 1: DATOS DEL ÁRBOL ══ -->
     <div class="psec">
@@ -10070,6 +10111,8 @@ function buildEstDoc() {
         </div>
       </div>
     </div>
+
+    ${_buildDurationHTML()}
 
     ${(workItems.length > 0 || noteItems.length > 0) ? `
     <div class="psec">
