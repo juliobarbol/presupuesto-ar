@@ -13,7 +13,7 @@
 //
 //  Para forzar actualizacion tras un deploy: subir el CACHE_VERSION.
 
-const CACHE_VERSION = 'presupuesto-v85';
+const CACHE_VERSION = 'presupuesto-v86';
 const APP_SHELL = [
   './',
   './index.html',
@@ -30,6 +30,15 @@ const APP_SHELL = [
   './fonts/dm-sans-italic-latin.woff2',
   './fonts/dm-serif-display-latin.woff2',
   './fonts/dm-serif-display-italic-latin.woff2',
+  // Fuentes extra del selector de tipografía del PDF (S.pdfFont).
+  './fonts/inter-latin.woff2',
+  './fonts/inter-italic-latin.woff2',
+  './fonts/lora-latin.woff2',
+  './fonts/lora-italic-latin.woff2',
+  './fonts/ibm-plex-sans-latin.woff2',
+  './fonts/ibm-plex-sans-italic-latin.woff2',
+  './fonts/ibm-plex-serif-400-latin.woff2',
+  './fonts/ibm-plex-serif-600-latin.woff2',
 ];
 
 // -- Install: precachear el app shell (resiliente) ------------
