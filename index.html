@@ -1508,12 +1508,10 @@ input[type=number]{-moz-appearance:textfield}
      ────────────────────────────────────────────────────────────── */
   .pvalid{margin:6px var(--page-x) 14px;background:#fef3c7!important;color:#92400e!important;padding:9px 14px;border-radius:var(--r-sm);font-size:var(--fs-small);font-weight:500;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;border-left:3pt solid #d97706}
   .pvalid-date{font-weight:700;color:#78350f}
-  /* Franja "Tiempo estimado de trabajo" — info neutra y destacada (no es un
-     aviso como vigencia, por eso usa gris/slate y no el ámbar). Color neutro
-     a propósito para no gastar el accent de marca (reservado a 3 lugares). */
-  .pdur{margin:0 var(--page-x) 14px;background:#f1f5f9;color:#334155;padding:9px 14px;border-radius:var(--r-sm);font-size:var(--fs-small);font-weight:600;text-transform:uppercase;letter-spacing:var(--ls-label);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;border-left:3pt solid #64748b}
-  .pdur > span:first-child{display:inline-flex;align-items:center;gap:6px}
-  .pdur-val{font-weight:700;color:#0f172a;text-transform:none;letter-spacing:0;font-size:var(--fs-body)}
+  /* "Tiempo estimado de trabajo" — dato menor: una sola línea discreta, sin
+     recuadro ni color. Simplemente está; no debe competir con el resto. */
+  .pdur{margin:0 var(--page-x) 12px;color:var(--c-muted);font-size:var(--fs-small)}
+  .pdur-val{font-weight:600;color:var(--c-text-2)}
 
   /* ──────────────────────────────────────────────────────────────
      CÓMO TRABAJAMOS — antes 4 ítems en columna vertical ocupando
@@ -9286,7 +9284,6 @@ const PDF_ICONS = {
   location: '<svg class="pdf-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg>',
   warning: '<svg class="pdf-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
   camera: '<svg class="pdf-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>',
-  clock: '<svg class="pdf-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
 };
 function pdfIcon(name) { return PDF_ICONS[name] || ''; }
 
@@ -9533,10 +9530,7 @@ function _buildDocHeader(theme, S, color, contacts, badgeLabel, badgeDate, showP
 function _buildDurationHTML(){
   const d = (S.workDuration || '').trim();
   if (!d) return '';
-  return `<div class="pdur">
-      <span>${pdfIcon('clock')} TIEMPO ESTIMADO DE TRABAJO</span>
-      <span class="pdur-val">${esc(d)}</span>
-    </div>`;
+  return `<div class="pdur">Tiempo estimado de trabajo: <span class="pdur-val">${esc(d)}</span></div>`;
 }
 
 function _buildWorkPlanHTML(color){
