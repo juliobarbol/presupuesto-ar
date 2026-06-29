@@ -9486,7 +9486,7 @@ function _buildItemsRowsHTML(arr, color, cur) {
 function _buildSceneTableHTML(arr, label, color, cur) {
   const rows = _buildItemsRowsHTML(arr, color, cur);
   const sectionTitle = label
-    ? `<span style="font-size:9pt;font-weight:600;color:#64748b;display:block;margin-bottom:3px">${esc(label)}</span>Detalles del Trabajo`
+    ? `<span style="display:block;font-size:13pt;font-weight:700;color:var(--c-text);line-height:1.2;margin-bottom:2px">${esc(label)}</span><span style="display:block;font-size:8.5pt;font-weight:600;color:var(--c-muted);text-transform:uppercase;letter-spacing:.04em">Detalles del Trabajo</span>`
     : 'Detalles del Trabajo';
   return `
     <div class="psec">
