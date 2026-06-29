@@ -2307,13 +2307,16 @@ input[type=number]{-moz-appearance:textfield}
           <div class="fg" id="discount-row"><label>Descuento (%)</label><input type="number" id="discount" min="0" max="100" value="0" inputmode="decimal"></div>
         </div>
         <div class="fg"><label>Dirección / Lugar del trabajo</label><input type="text" id="work-address" placeholder="Calle, número, barrio, localidad..."></div>
-        <div class="fg"><label>Ubicación exacta (Maps) <span style="color:var(--muted);font-weight:400">· privado, NO aparece en el PDF</span></label>
-          <div style="display:flex;gap:6px">
-            <input type="text" id="work-maplink" placeholder="Plus Code, coordenadas o link de Maps" autocomplete="off" style="flex:1">
-            <button type="button" class="btn btn-g btn-sm" onclick="probarUbicacion()" title="Abrir esta ubicación en Maps para verificar"><svg class="ic"><use href="#i-pin"></use></svg> Probar</button>
+        <details class="scol" id="maplink-details" style="margin:6px 0 10px">
+          <summary>Ubicación exacta <span class="scol-hint">Plus Code de Maps o coordenadas · no aparece en el PDF</span><span class="scol-chev" aria-hidden="true">▾</span></summary>
+          <div class="scol-body">
+            <div style="display:flex;gap:6px">
+              <input type="text" id="work-maplink" placeholder="Plus Code, coordenadas o link de Maps" autocomplete="off" style="flex:1">
+              <button type="button" class="btn btn-g btn-sm" onclick="probarUbicacion()" title="Abrir esta ubicación en Maps para verificar"><svg class="ic"><use href="#i-pin"></use></svg> Probar</button>
+            </div>
+            <p class="hint" style="margin-top:4px">Si la dirección es aproximada, pegá acá el Plus Code (ej. <code>8FW4V75V+8Q</code>), las coordenadas o un link de Google Maps. El botón <b>Llegar</b> del historial te lleva a este punto exacto.</p>
           </div>
-          <p class="hint" style="margin-top:4px">Si la dirección es aproximada, pegá acá el Plus Code (ej. <code>8FW4V75V+8Q</code>), las coordenadas o un link de Google Maps. El botón <b>Llegar</b> del historial te lleva a este punto exacto.</p>
-        </div>
+        </details>
         <div class="fg"><label>Tiempo estimado de trabajo <span style="color:var(--muted);font-weight:400">· opcional, si se deja vacío no aparece en el PDF</span></label>
           <input type="text" id="work-duration" list="work-duration-opts" placeholder="Ej.: 2 días" autocomplete="off">
           <datalist id="work-duration-opts">
@@ -5169,7 +5172,11 @@ function attachClientAutocomplete() {
         nameInput.value = rec.name;
         if (contactInput && rec.contact) contactInput.value = rec.contact;
         if (addressInput && rec.address) addressInput.value = rec.address;
-        if (mapInput && rec.maplink) mapInput.value = rec.maplink;
+        if (mapInput && rec.maplink) {
+          mapInput.value = rec.maplink;
+          const det = document.getElementById('maplink-details');
+          if (det) det.open = true;
+        }
         S.clientName    = rec.name;
         S.clientContact = rec.contact || S.clientContact;
         S.workAddress   = rec.address || S.workAddress;
@@ -6462,6 +6469,10 @@ function restoreUI() {
   sv('client-contact', S.clientContact);
   sv('work-address', S.workAddress);
   sv('work-maplink', S.workMapLink);
+  // Abrir el desplegable de ubicación si hay un dato cargado (sino, colapsado
+  // para no ocupar espacio).
+  const _mapDet = document.getElementById('maplink-details');
+  if (_mapDet) _mapDet.open = !!(S.workMapLink || '').trim();
   sv('work-duration', S.workDuration);
   sv('currency', S.currency);
   sv('discount', S.discount);
