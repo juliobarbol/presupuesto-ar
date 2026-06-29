@@ -2307,6 +2307,13 @@ input[type=number]{-moz-appearance:textfield}
           <div class="fg" id="discount-row"><label>Descuento (%)</label><input type="number" id="discount" min="0" max="100" value="0" inputmode="decimal"></div>
         </div>
         <div class="fg"><label>Dirección / Lugar del trabajo</label><input type="text" id="work-address" placeholder="Calle, número, barrio, localidad..."></div>
+        <div class="fg"><label>Ubicación exacta (Maps) <span style="color:var(--muted);font-weight:400">· privado, NO aparece en el PDF</span></label>
+          <div style="display:flex;gap:6px">
+            <input type="text" id="work-maplink" placeholder="Plus Code, coordenadas o link de Maps" autocomplete="off" style="flex:1">
+            <button type="button" class="btn btn-g btn-sm" onclick="probarUbicacion()" title="Abrir esta ubicación en Maps para verificar"><svg class="ic"><use href="#i-pin"></use></svg> Probar</button>
+          </div>
+          <p class="hint" style="margin-top:4px">Si la dirección es aproximada, pegá acá el Plus Code (ej. <code>8FW4V75V+8Q</code>), las coordenadas o un link de Google Maps. El botón <b>Llegar</b> del historial te lleva a este punto exacto.</p>
+        </div>
         <div class="fg"><label>Tiempo estimado de trabajo <span style="color:var(--muted);font-weight:400">· opcional, si se deja vacío no aparece en el PDF</span></label>
           <input type="text" id="work-duration" list="work-duration-opts" placeholder="Ej.: 2 días" autocomplete="off">
           <datalist id="work-duration-opts">
@@ -3270,7 +3277,7 @@ const PUSH_VAPID_KEY  = 'BBlrB43TWc5wHAHPhY0kcMwt4g9f1tBejOZ5W5zWc6OU273X9DCvunk
 const DEF = {
   _schemaVersion: APP_SCHEMA_VERSION,
   quoteNumber:'', dateIssue:'', dateExpiry:'',
-  clientName:'', clientContact:'', workAddress:'', workDuration:'',
+  clientName:'', clientContact:'', workAddress:'', workMapLink:'', workDuration:'',
   currency:'ARS', discount:0, surcharge:0, items:[],
   paymentConditions:'', observations:'',
   // Scenarios A/B mode — permite presupuestar dos alternativas paralelas
@@ -5082,23 +5089,25 @@ const CLIENT_KEY = 'pq_clients';
 function getClientDB() {
   try {
     const raw = JSON.parse(localStorage.getItem(CLIENT_KEY)||'[]');
-    return raw.map(e => typeof e === 'string' ? {name:e,contact:'',address:''} : e);
+    return raw.map(e => typeof e === 'string' ? {name:e,contact:'',address:'',maplink:''} : e);
   } catch(e){ return []; }
 }
 
-function saveClientToDB(name, contact, address) {
+function saveClientToDB(name, contact, address, mapLink) {
   name = (name||'').trim();
   if (name.length < 2) return;
   contact = (contact||'').trim();
   address = (address||'').trim();
+  mapLink = (mapLink||'').trim();
   const db = getClientDB();
   const key = name.toLowerCase();
   const idx = db.findIndex(e=>e.name.toLowerCase()===key);
   if (idx >= 0) {
     if (contact) db[idx].contact = contact;
     if (address) db[idx].address = address;
+    if (mapLink) db[idx].maplink = mapLink;
   } else {
-    db.push({name, contact, address});
+    db.push({name, contact, address, maplink: mapLink});
     db.sort((a,b)=>a.name.localeCompare(b.name,'es'));
   }
   safeSetLS(CLIENT_KEY, JSON.stringify(db));
@@ -5126,6 +5135,7 @@ function attachClientAutocomplete() {
   const nameInput    = document.getElementById('client-name');
   const contactInput = document.getElementById('client-contact');
   const addressInput = document.getElementById('work-address');
+  const mapInput     = document.getElementById('work-maplink');
   if (!nameInput) return;
 
   let dropdown = document.getElementById('client-dropdown');
@@ -5159,9 +5169,11 @@ function attachClientAutocomplete() {
         nameInput.value = rec.name;
         if (contactInput && rec.contact) contactInput.value = rec.contact;
         if (addressInput && rec.address) addressInput.value = rec.address;
+        if (mapInput && rec.maplink) mapInput.value = rec.maplink;
         S.clientName    = rec.name;
         S.clientContact = rec.contact || S.clientContact;
         S.workAddress   = rec.address || S.workAddress;
+        S.workMapLink   = rec.maplink || S.workMapLink;
         dropdown.style.display = 'none';
         sched();
       };
@@ -5184,15 +5196,19 @@ function attachClientAutocomplete() {
   nameInput.addEventListener('blur', ()=>{
     setTimeout(()=>{ dropdown.style.display='none'; }, 180);
     const n = nameInput.value.trim();
-    if (n) saveClientToDB(n, contactInput?contactInput.value:'', addressInput?addressInput.value:'');
+    if (n) saveClientToDB(n, contactInput?contactInput.value:'', addressInput?addressInput.value:'', mapInput?mapInput.value:'');
   });
   if(contactInput) contactInput.addEventListener('blur', ()=>{
     const n = nameInput.value.trim();
-    if(n) saveClientToDB(n, contactInput.value, addressInput?addressInput.value:'');
+    if(n) saveClientToDB(n, contactInput.value, addressInput?addressInput.value:'', mapInput?mapInput.value:'');
   });
   if(addressInput) addressInput.addEventListener('blur', ()=>{
     const n = nameInput.value.trim();
-    if(n) saveClientToDB(n, contactInput?contactInput.value:'', addressInput.value);
+    if(n) saveClientToDB(n, contactInput?contactInput.value:'', addressInput.value, mapInput?mapInput.value:'');
+  });
+  if(mapInput) mapInput.addEventListener('blur', ()=>{
+    const n = nameInput.value.trim();
+    if(n) saveClientToDB(n, contactInput?contactInput.value:'', addressInput?addressInput.value:'', mapInput.value);
   });
 }
 
@@ -5214,14 +5230,15 @@ function renderClientManager() {
     const isPhone = digits.length >= 6;
     const waNum = isPhone ? digits.replace(/^0+/,'') : '';
     const waUrl = waNum ? `https://wa.me/${waNum}` : '';
-    const mapsUrl = addr ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addr)}` : '';
+    const mapLink = (e.maplink||'').trim();
+    const mapsUrl = mapsUrlFor(mapLink, addr);
 
     const quickActions = [];
     if (isPhone) quickActions.push(
       `<a class="client-qa" href="${waUrl}" target="_blank" rel="noopener" title="Abrir WhatsApp"
           onclick="event.stopPropagation()">${icon('message')} <span>WhatsApp</span></a>`
     );
-    if (addr) quickActions.push(
+    if (mapsUrl) quickActions.push(
       `<a class="client-qa" href="${mapsUrl}" target="_blank" rel="noopener" title="Ver en Maps"
           onclick="event.stopPropagation()">${icon('pin')} <span>Maps</span></a>`
     );
@@ -6444,6 +6461,7 @@ function restoreUI() {
   sv('client-name', S.clientName);
   sv('client-contact', S.clientContact);
   sv('work-address', S.workAddress);
+  sv('work-maplink', S.workMapLink);
   sv('work-duration', S.workDuration);
   sv('currency', S.currency);
   sv('discount', S.discount);
@@ -6545,6 +6563,7 @@ function syncFromUI() {
   S.clientName        = gv('client-name');
   S.clientContact     = gv('client-contact');
   S.workAddress       = gv('work-address');
+  S.workMapLink       = gv('work-maplink');
   S.workDuration      = gv('work-duration');
   S.currency          = gv('currency');
   S.discount          = parseFloat(gv('discount')) || 0;
@@ -7445,7 +7464,7 @@ function setH(h) { safeSetLS(LS.HISTORY, JSON.stringify(h)); }
 function autoSaveToHistory() {
   if (!S.quoteNumber) return;
   syncFromUI();
-  if (S.clientName) saveClientToDB(S.clientName, S.clientContact, S.workAddress);
+  if (S.clientName) saveClientToDB(S.clientName, S.clientContact, S.workAddress, S.workMapLink);
   S.items.forEach(it=>{ if(it.type==='tree'&&it.species) saveSpeciesToDB(it.species); });
 
   const itemCount = S.isEstimative
@@ -8378,17 +8397,50 @@ function saveSendTemplate() {
 }
 
 // ─── CÓMO LLEGAR (navegación GPS) ────────────
-// Abre Google Maps con la dirección del trabajo del presupuesto.
-// La dirección vive en el snapshot (workAddress).
+// Arma la URL de Google Maps a partir de una "ubicación exacta" (Plus Code,
+// coordenadas o link de Maps) y, si no hay, de la dirección de texto.
+// La ubicación exacta tiene PRIORIDAD: la dirección de texto suele ser
+// aproximada (calle/barrio sin numerar), mientras que el Plus Code/las
+// coordenadas apuntan al lugar real del trabajo. Este dato es privado:
+// nunca se renderiza en el PDF, solo se usa para navegar.
+function mapsUrlFor(mapLink, addr) {
+  const link = (mapLink || '').trim();
+  const dir  = (addr || '').trim();
+  // Un link completo de Maps (maps.app.goo.gl, google.com/maps, etc.) se abre
+  // tal cual. Un Plus Code o coordenadas se pasan como búsqueda.
+  if (link) {
+    return /^https?:\/\//i.test(link)
+      ? link
+      : 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(link);
+  }
+  if (dir) return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(dir);
+  return '';
+}
+
+// Abre Google Maps con la ubicación del trabajo del presupuesto.
+// Los datos viven en el snapshot (workMapLink / workAddress).
 function comoLlegar(id) {
   const e = getH().find(x => x.id === id);
-  const addr = ((e && e.snapshot && e.snapshot.workAddress) || '').trim();
-  if (!addr) {
-    toast('Este presupuesto no tiene dirección cargada', 'info', 3000);
+  const snap = (e && e.snapshot) || {};
+  const url = mapsUrlFor(snap.workMapLink, snap.workAddress);
+  if (!url) {
+    toast('Este presupuesto no tiene dirección ni ubicación cargada', 'info', 3000);
     return;
   }
-  // Google Maps abre la búsqueda/ruta con la dirección codificada.
-  const url = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(addr);
+  window.open(url, '_blank', 'noopener');
+}
+
+// Botón "Probar" del editor: abre en Maps lo que el usuario está cargando
+// ahora mismo (sin pasar por el historial), para verificar que el Plus Code /
+// link apunta al lugar correcto antes de guardar.
+function probarUbicacion() {
+  const link = (document.getElementById('work-maplink') || {}).value || '';
+  const addr = (document.getElementById('work-address') || {}).value || '';
+  const url = mapsUrlFor(link, addr);
+  if (!url) {
+    toast('Cargá una ubicación o dirección para probar', 'info', 3000);
+    return;
+  }
   window.open(url, '_blank', 'noopener');
 }
 
@@ -8518,7 +8570,7 @@ function renderHistory() {
     const estadoOpts = ESTADOS.map(s =>
       `<option value="${s}"${s===est?' selected':''}>${estadoLabel(s)}</option>`
     ).join('');
-    const tieneDir = !!((e.snapshot && e.snapshot.workAddress || '').trim());
+    const tieneDir = !!((e.snapshot && (e.snapshot.workMapLink || e.snapshot.workAddress) || '').trim());
     return `
     <div class="hitem" data-id="${e.id}">
       <div class="htop">
@@ -8657,7 +8709,7 @@ function resetToNewQuote() {
   // Calcular siguiente N° libre mirando el historial completo,
   // no solo S.numNext (que puede estar atrás si se cargaron viejos).
   S.numNext = calcNextNumFromHistory();
-  S.items=[]; S.estItems=[]; S.itemsB=[]; S.clientName=''; S.clientContact=''; S.workAddress=''; S.workDuration='';
+  S.items=[]; S.estItems=[]; S.itemsB=[]; S.clientName=''; S.clientContact=''; S.workAddress=''; S.workMapLink=''; S.workDuration='';
   S.discount=0; S.surcharge=0; S.paymentConditions=''; S.observations=''; S.estObservations='';
   // El plan de trabajo a medida es excepcional por presupuesto: se descarta al
   // crear uno nuevo para volver a usar el default global.
@@ -9566,7 +9618,7 @@ function parseCriteria(text){
 function buildDoc() {
   if (S.isRisk)       { buildRiskDoc(); return; }
   if (S.isEstimative) { buildEstDoc(); return; }
-  if (S.clientName) saveClientToDB(S.clientName, S.clientContact, S.workAddress);
+  if (S.clientName) saveClientToDB(S.clientName, S.clientContact, S.workAddress, S.workMapLink);
   // Guardar especies vistas en ambos escenarios
   (S.items||[]).forEach(it=>{ if(it.type==='tree'&&it.species) saveSpeciesToDB(it.species); });
   if (S.scenariosEnabled) {
@@ -9716,7 +9768,7 @@ function buildDoc() {
 
 // ─── BUILD RISK DOC ──────────────────────────────────────────────────────────
 function buildRiskDoc() {
-  if (S.clientName) saveClientToDB(S.clientName, S.clientContact, S.workAddress);
+  if (S.clientName) saveClientToDB(S.clientName, S.clientContact, S.workAddress, S.workMapLink);
   S.items.forEach(it=>{ if(it.type==='tree'&&it.species) saveSpeciesToDB(it.species); });
 
   const color  = safeColor(S.accentColor);
@@ -9994,7 +10046,7 @@ function buildRiskDoc() {
 
 // ─── BUILD EST DOC ────────────────────────────────────────────────────────────
 function buildEstDoc() {
-  if (S.clientName) saveClientToDB(S.clientName, S.clientContact, S.workAddress);
+  if (S.clientName) saveClientToDB(S.clientName, S.clientContact, S.workAddress, S.workMapLink);
 
   const color = safeColor(S.accentColor);
   const cur   = S.currency;
