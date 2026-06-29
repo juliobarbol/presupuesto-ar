@@ -2301,10 +2301,9 @@ input[type=number]{-moz-appearance:textfield}
         <div class="st st-with-action">Cliente y Lugar
           <button type="button" id="btn-import-contact" class="btn btn-g btn-sm" onclick="importFromContacts()" style="display:none"><svg class="ic"><use href="#i-idcard"></use></svg> Importar</button>
         </div>
-        <div class="r3">
+        <div class="r2">
           <div class="fg"><label>Nombre / Cliente</label><input type="text" id="client-name" placeholder="Nombre del cliente"></div>
           <div class="fg"><label>Contacto / Teléfono</label><input type="text" id="client-contact" placeholder="Teléfono o email"></div>
-          <div class="fg" id="discount-row"><label>Descuento (%)</label><input type="number" id="discount" min="0" max="100" value="0" inputmode="decimal"></div>
         </div>
         <div class="fg"><label>Dirección / Lugar del trabajo</label><input type="text" id="work-address" placeholder="Calle, número, barrio, localidad..."></div>
         <details class="scol" id="maplink-details" style="margin:6px 0 10px">
@@ -2333,29 +2332,6 @@ input[type=number]{-moz-appearance:textfield}
 
         <!-- SECCIÓN ÍTEMS — MODO NORMAL -->
         <div id="section-normal-items">
-          <!-- ══ AJUSTE VIÁTICOS ══
-               Colapsable: por defecto se muestra como pill compacta que
-               indica si hay un % aplicado. Click expande los controles. -->
-          <div class="surcharge-panel surcharge-collapsed" id="surcharge-panel">
-            <button class="surcharge-header" type="button" onclick="toggleSurchargePanel()" aria-expanded="false">
-              <span class="sp-icon"><svg class="ic ic-c-amber"><use href="#i-fuel"></use></svg></span>
-              <span class="sp-summary">
-                <span class="sp-label">Recargo interno (viáticos / combustible)</span>
-                <span class="sp-status" id="sp-status">0%</span>
-              </span>
-              <span class="sp-chevron" aria-hidden="true">▾</span>
-            </button>
-            <div class="surcharge-body" id="surcharge-body" style="display:none">
-              <div class="sp-desc" id="sp-desc-text">Suma un % extra a los trabajos de árbol para cubrir viáticos/combustible. Es un cálculo tuyo: el cliente solo ve el precio final, no este recargo.</div>
-              <div class="sp-controls">
-                <input type="number" class="surcharge-input" id="surcharge-pct" min="0" max="200" step="1" value="0" placeholder="0" inputmode="numeric">
-                <span class="surcharge-pct">%</span>
-                <button class="sp-apply-btn" onclick="applySurcharge()">Aplicar</button>
-                <button class="sp-clear-btn" id="sp-clear-btn" onclick="clearSurcharge()" style="display:none">✕ Quitar</button>
-              </div>
-            </div>
-          </div>
-
           <!-- ══ ESCENARIOS A/B ══
                Cuando está apagado, ocupa una sola línea compacta.
                Cuando se activa, expande controles A/B + etiquetas.
@@ -2561,6 +2537,34 @@ input[type=number]{-moz-appearance:textfield}
               <textarea id="observations" rows="3" placeholder="Observaciones adicionales sobre el trabajo..."></textarea>
             </div>
           </div>
+        </div>
+
+        <!-- ══ AJUSTES DE PRECIO ══
+             Recargo interno (arriba) + Descuento (abajo). Se ubican al final
+             del flujo, después de Observaciones, porque suelen decidirse al
+             cerrar el presupuesto. Solo en modo normal/riesgo (no estimativo). -->
+        <div id="section-adjustments">
+          <div class="st">Ajustes de precio</div>
+          <div class="surcharge-panel surcharge-collapsed" id="surcharge-panel">
+            <button class="surcharge-header" type="button" onclick="toggleSurchargePanel()" aria-expanded="false">
+              <span class="sp-icon"><svg class="ic ic-c-amber"><use href="#i-fuel"></use></svg></span>
+              <span class="sp-summary">
+                <span class="sp-label">Recargo interno (viáticos / combustible)</span>
+                <span class="sp-status" id="sp-status">0%</span>
+              </span>
+              <span class="sp-chevron" aria-hidden="true">▾</span>
+            </button>
+            <div class="surcharge-body" id="surcharge-body" style="display:none">
+              <div class="sp-desc" id="sp-desc-text">Suma un % extra a los trabajos de árbol para cubrir viáticos/combustible. Es un cálculo tuyo: el cliente solo ve el precio final, no este recargo.</div>
+              <div class="sp-controls">
+                <input type="number" class="surcharge-input" id="surcharge-pct" min="0" max="200" step="1" value="0" placeholder="0" inputmode="numeric">
+                <span class="surcharge-pct">%</span>
+                <button class="sp-apply-btn" onclick="applySurcharge()">Aplicar</button>
+                <button class="sp-clear-btn" id="sp-clear-btn" onclick="clearSurcharge()" style="display:none">✕ Quitar</button>
+              </div>
+            </div>
+          </div>
+          <div class="fg" id="discount-row" style="margin-top:10px"><label>Descuento (%)</label><input type="number" id="discount" min="0" max="100" value="0" inputmode="decimal"></div>
         </div>
 
         <div id="section-est-observations" style="display:none">
@@ -6839,8 +6843,10 @@ function applyMode(mode) {
   if (tbNormal) tbNormal.style.display = (isNorm || isRisk) ? 'flex' : 'none';
   if (tbEst)    tbEst.style.display    = isEst ? 'flex' : 'none';
 
-  const discRow = document.getElementById('discount-row');
-  if (discRow) discRow.style.display = isEst ? 'none' : '';
+  // Sección "Ajustes de precio" (recargo interno + descuento): visible en
+  // modo normal/riesgo, oculta en estimativo.
+  const adjSec = document.getElementById('section-adjustments');
+  if (adjSec) adjSec.style.display = isEst ? 'none' : '';
 
   // Panel de escenarios A/B: solo en modo normal (no en riesgo ni estimativo)
   const scnPanel = document.getElementById('scenarios-panel');
