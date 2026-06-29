@@ -10557,14 +10557,29 @@ window.addEventListener('DOMContentLoaded', async () => {
   if (typeof initPush === 'function') initPush();
   // Al pasar la app a segundo plano, subir cambios pendientes de inmediato
   // (solo si hay señal; sin conexión queda pendiente para el evento 'online').
+  // Flush inmediato del estado activo al pasar a segundo plano / cerrar.
+  // El guardado normal está "debounced" (700 ms en sched()); si la app se
+  // cierra o se manda a segundo plano antes de que el timer dispare, ese
+  // guardado pendiente puede no ejecutarse nunca (iOS suele congelar/matar
+  // los timers al suspender la PWA). Persistimos YA para garantizar que, al
+  // reabrir, el editor tenga exactamente lo último que se estaba editando.
+  function flushActiveState() {
+    try { if (typeof syncFromUI === 'function') syncFromUI(); } catch (_) {}
+    try { clearTimeout(saveTimer); if (typeof saveLS === 'function') saveLS(); } catch (_) {}
+  }
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden' && typeof GDRIVE !== 'undefined' &&
+    if (document.visibilityState !== 'hidden') return;
+    flushActiveState();
+    if (typeof GDRIVE !== 'undefined' &&
         GDRIVE._dirty && navigator.onLine !== false &&
         gdriveConfigured() && gdriveConnected()) {
       clearTimeout(GDRIVE._timer);
       gdriveUpload().catch(() => {});
     }
   });
+  // pagehide cubre el cierre real de la pestaña/app (y el bfcache), donde
+  // visibilitychange a veces no llega a tiempo.
+  window.addEventListener('pagehide', flushActiveState);
   // Al volver la conexión, subir lo que haya quedado pendiente mientras
   // trabajabas sin señal (modo offline).
   window.addEventListener('online', () => {
