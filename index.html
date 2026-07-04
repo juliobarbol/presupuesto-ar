@@ -194,6 +194,18 @@ body{background-color:var(--bg)}
 #confirm-box h4{font-family:'DM Serif Display',serif;font-size:17px;margin-bottom:10px;color:var(--text)}
 #confirm-box p{font-size:13px;color:var(--muted);margin-bottom:20px;line-height:1.5}
 #confirm-box .cbtns{display:flex;gap:8px;justify-content:flex-end}
+
+/* Diálogo de agenda (fecha del trabajo de un presupuesto aceptado).
+   z-index MENOR que .csel-backdrop/.cal-pop (1200/1201) a propósito:
+   el calendario del datepicker se abre POR ENCIMA de este modal. */
+#agenda-overlay{display:none;position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(0,0,0,.45);z-index:1100;align-items:center;justify-content:center}
+#agenda-overlay.open{display:flex}
+#agenda-box{background:var(--card);border-radius:var(--radius-box);padding:24px;width:400px;max-width:92vw;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+#agenda-box h4{font-family:'DM Serif Display',serif;font-size:17px;margin-bottom:6px;color:var(--text)}
+#agenda-box .agenda-sub{font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.5}
+.agenda-warn{font-size:12px;font-weight:600;color:#92400e;background:#fef3c7;border-radius:var(--radius-field);padding:8px 12px;margin-top:10px;line-height:1.45}
+.agenda-btns{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:18px}
+.agenda-btns .agenda-spacer{flex:1}
 /* ── Bandeja de fotos compartidas (Web Share Target) ── */
 #share-overlay{display:none;position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(0,0,0,.45);z-index:2000;align-items:center;justify-content:center}
 #share-overlay.open{display:flex}
@@ -830,6 +842,14 @@ input[type=number]{-moz-appearance:textfield}
 /* Selector de estado en la tarjeta del historial */
 .hestado-sel{font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;color:var(--text);background:var(--card);border:1px solid var(--border);border-radius:var(--radius-field);padding:5px 8px;outline:none;-webkit-appearance:none;appearance:none;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2364748b' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;padding-right:26px}
 .hestado-sel:focus{border-color:var(--accent-fg);box-shadow:0 0 0 3px rgba(var(--accent-rgb),.1)}
+/* Chip de agenda en la tarjeta del historial: muestra la fecha del trabajo
+   y abre el diálogo para cargarla/cambiarla. Colores por proximidad. */
+.hagenda-chip{display:inline-flex;align-items:center;gap:5px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;border:1px solid transparent;border-radius:var(--radius-field);padding:5px 10px;cursor:pointer;background:#ede9fe;color:#5b21b6}
+.hagenda-chip .ic{width:13px;height:13px}
+.hagenda-chip.is-none{background:var(--card);color:var(--muted);border-color:var(--border);font-weight:600}
+.hagenda-chip.is-soon{background:#fef3c7;color:#92400e}   /* hoy o mañana */
+.hagenda-chip.is-past{background:#dbeafe;color:#1e40af}   /* comenzó y sigue abierto: "en curso", sin alarma */
+.hagenda-chip.is-done{background:var(--surface-2);color:var(--muted);border-color:var(--border)} /* registro histórico */
 /* Toast con botón de acción (ej: "¿Marcar como enviado?") */
 .toast-action{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:12px;white-space:normal;pointer-events:auto}
 .toast-action .toast-btn{font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;color:#fff;background:var(--accent);border:none;border-radius:var(--radius-field);padding:6px 12px;cursor:pointer;white-space:nowrap}
@@ -1239,6 +1259,14 @@ input[type=number]{-moz-appearance:textfield}
 :root[data-theme="dark"] .expiry-banner .fub-item{background:#1f0c0c;border-color:#5c1c1c}
 :root[data-theme="dark"] .hbadge-expired{background:rgba(239,68,68,.18);color:#fca5a5}
 
+/* Chip de agenda (fecha del trabajo) */
+:root[data-theme="dark"] .hagenda-chip{background:rgba(139,92,246,.2);color:#c4b5fd}
+:root[data-theme="dark"] .hagenda-chip.is-none{background:var(--card);color:var(--muted);border-color:var(--border)}
+:root[data-theme="dark"] .hagenda-chip.is-soon{background:#4a3a12;color:#fde68a}
+:root[data-theme="dark"] .hagenda-chip.is-past{background:rgba(59,130,246,.18);color:#93c5fd}
+:root[data-theme="dark"] .hagenda-chip.is-done{background:var(--surface-2);color:var(--muted);border-color:var(--border)}
+:root[data-theme="dark"] .agenda-warn{background:#4a3a12;color:#fde68a}
+
 /* Badges y chips claros → tintes oscuros translúcidos */
 :root[data-theme="dark"] .ib-tree{background:rgba(34,197,94,.18);color:#86efac}
 :root[data-theme="dark"] .ib-svc{background:rgba(59,130,246,.18);color:#93c5fd}
@@ -1287,6 +1315,7 @@ input[type=number]{-moz-appearance:textfield}
   #app,
   #moverlay,
   #confirm-overlay,
+  #agenda-overlay,
   #share-overlay,
   #photo-viewer-overlay,
   #phrases-overlay,
@@ -3167,6 +3196,30 @@ input[type=number]{-moz-appearance:textfield}
     <div class="cbtns">
       <button class="btn btn-s" id="confirm-cancel">Cancelar</button>
       <button class="btn btn-d" id="confirm-ok">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════ AGENDA: FECHA DEL TRABAJO ════════════════════
+     Se abre al marcar un presupuesto como "Aceptado" (salteable) o al tocar
+     el chip de agenda en la tarjeta del historial. La fecha vive a nivel del
+     entry del historial (e.fechaTrabajo), como el estado comercial.
+     La lógica vive en js/history.js (openAgendaDlg y compañía). -->
+<div id="agenda-overlay" role="presentation" onclick="if(event.target===this)closeAgendaDlg()">
+  <div id="agenda-box" role="dialog" aria-modal="true" aria-labelledby="agenda-title">
+    <h4 id="agenda-title">Fecha del trabajo</h4>
+    <p class="agenda-sub" id="agenda-sub"></p>
+    <div class="fg">
+      <label for="agenda-fecha">Día de comienzo del trabajo</label>
+      <input type="date" id="agenda-fecha" aria-label="Fecha del trabajo" oninput="agendaOnDateChange()">
+    </div>
+    <p class="agenda-warn" id="agenda-warn" hidden></p>
+    <div class="cbtns agenda-btns">
+      <button type="button" class="btn btn-g btn-sm" id="agenda-gcal" onclick="agendaGcal()" title="Crear el evento en tu Google Calendar (con dirección y datos del cliente)"><svg class="ic" aria-hidden="true"><use href="#i-calendar"></use></svg> Google Calendar</button>
+      <button type="button" class="btn btn-g btn-sm" id="agenda-clear" onclick="agendaClear()" hidden>Quitar fecha</button>
+      <span class="agenda-spacer"></span>
+      <button type="button" class="btn btn-s" id="agenda-cancel" onclick="closeAgendaDlg()">Cancelar</button>
+      <button type="button" class="btn btn-p" id="agenda-ok" onclick="agendaSave()">Guardar</button>
     </div>
   </div>
 </div>
@@ -7532,12 +7585,16 @@ function autoSaveToHistory() {
   const h = getH();
   const idx = h.findIndex(e=>e.quoteNumber===S.quoteNumber);
 
-  // Preservar el estado comercial al re-guardar. Un auto-save NO debe
-  // pisar el estado que el usuario ya marcó (ej: si está "aceptado" y
-  // se reabre/edita, sigue "aceptado"). Solo los nuevos arrancan en
-  // 'borrador'.
+  // Preservar los datos del ciclo comercial al re-guardar. Un auto-save
+  // NO debe pisar lo que el usuario ya marcó sobre el entry (estado,
+  // fecha de envío/seguimiento, fecha del trabajo, facturado…): son datos
+  // del ciclo de vida, no del contenido del presupuesto. Solo los nuevos
+  // arrancan en 'borrador'.
   if (idx >= 0) {
-    entry.estado = h[idx].estado || 'borrador';
+    const prev = h[idx];
+    entry.estado = prev.estado || 'borrador';
+    ['enviadoEn', 'seguimientoHechoEn', 'vencimientoVistoEn', 'fechaTrabajo', 'facturado']
+      .forEach(k => { if (prev[k] !== undefined) entry[k] = prev[k]; });
   } else {
     entry.estado = 'borrador';
   }
@@ -7664,10 +7721,159 @@ function setEstadoHistory(id, nuevoEstado) {
   setH(h);
   renderHistory();
   toast(`Estado: ${estadoLabel(nuevoEstado)}`, 'info', 1800);
+  // Al marcar "aceptado", ofrecer agendar la fecha del trabajo (salteable
+  // con "Todavía no sé"): es el momento natural, recién se cerró con el
+  // cliente. Si ya tiene fecha (reaceptado), no molestar.
+  if (nuevoEstado === 'aceptado' && !e.fechaTrabajo) openAgendaDlg(id, { fromAccept: true });
   // Al marcar "realizado", ofrecer registrar la factura del trabajo: conecta
   // el pipeline comercial con la pestaña Facturación (control de tope), para
   // no volver a tipear cliente + monto que ya están en el presupuesto.
   if (nuevoEstado === 'realizado') _ofrecerRegistrarFactura(e);
+}
+
+// ─── AGENDA: FECHA DEL TRABAJO ───────────────────────────────
+// La fecha en que se va a realizar el trabajo de un presupuesto aceptado.
+// Vive a nivel del entry del historial (e.fechaTrabajo, formato YYYY-MM-DD
+// LOCAL — nunca UTC), como `estado` y `enviadoEn`. Es la fecha de COMIENZO:
+// un trabajo puede durar varios días o continuarse después de una pausa,
+// así que una fecha pasada con estado "aceptado" se muestra como "En curso"
+// (neutro), sin alarmas ni insistencia para cerrarlo.
+
+const AGENDA_WD = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+
+// "Sáb 12/07" — etiqueta corta con día de semana. Construye el Date con
+// año/mes/día locales (nunca new Date('YYYY-MM-DD'), que sería UTC).
+function fmtDiaCorto(iso) {
+  const p = String(iso || '').split('-');
+  if (p.length !== 3 || !p[0] || !p[1] || !p[2]) return fmtD(iso);
+  const dt = new Date(+p[0], +p[1] - 1, +p[2]);
+  return `${AGENDA_WD[dt.getDay()]} ${p[2]}/${p[1]}`;
+}
+
+// Chip de agenda para una tarjeta del historial. Aceptado sin fecha →
+// "Programar"; con fecha → la fecha coloreada por proximidad. En otros
+// estados solo se muestra si hay fecha (registro histórico, editable).
+function agendaChipFor(e) {
+  const est = e.estado || 'borrador';
+  const f = e.fechaTrabajo;
+  if (!f && est !== 'aceptado') return '';
+  if (!f) return `<button type="button" class="hagenda-chip is-none" onclick="openAgendaDlg(${e.id})" title="Agendar la fecha del trabajo">${icon('calendar')} Programar</button>`;
+  const d = daysSinceDate(f); // >0 pasado · 0 hoy · <0 futuro
+  let cls = '', lbl = fmtDiaCorto(f);
+  if (d === 0)       { cls = ' is-soon'; lbl = 'Hoy'; }
+  else if (d === -1) { cls = ' is-soon'; lbl = 'Mañana'; }
+  else if (d > 0 && est === 'aceptado') { cls = ' is-past'; lbl = `En curso · ${lbl}`; }
+  else if (d > 0)    { cls = ' is-done'; }
+  return `<button type="button" class="hagenda-chip${cls}" onclick="openAgendaDlg(${e.id})" title="Fecha del trabajo: ${fmtD(f)} — tocá para cambiarla">${icon('calendar')} ${lbl}</button>`;
+}
+
+// Entry cuyo diálogo de agenda está abierto (null si está cerrado).
+let _agendaId = null;
+
+function openAgendaDlg(id, opts) {
+  const e = getH().find(x => x.id === id);
+  const ov = document.getElementById('agenda-overlay');
+  if (!e || !ov) return;
+  _agendaId = id;
+  const fromAccept = !!(opts && opts.fromAccept);
+  const ti = document.getElementById('agenda-title');
+  if (ti) ti.textContent = fromAccept ? '¡Aceptado! ¿Cuándo se hace el trabajo?' : 'Fecha del trabajo';
+  const sub = document.getElementById('agenda-sub');
+  if (sub) sub.textContent = `${e.quoteNumber || ''} · ${e.clientName || 'Sin cliente'}`;
+  const inp = document.getElementById('agenda-fecha');
+  if (inp) { inp.value = e.fechaTrabajo || ''; if (typeof syncCdate === 'function') syncCdate(inp); }
+  const ca = document.getElementById('agenda-cancel');
+  if (ca) ca.textContent = fromAccept ? 'Todavía no sé' : 'Cancelar';
+  const cl = document.getElementById('agenda-clear');
+  if (cl) cl.hidden = !e.fechaTrabajo;
+  agendaOnDateChange();
+  ov.classList.add('open');
+}
+
+function closeAgendaDlg() {
+  const ov = document.getElementById('agenda-overlay');
+  if (ov) ov.classList.remove('open');
+  _agendaId = null;
+}
+
+// Reacción al cambio de fecha en el diálogo: aviso de superposición si ya
+// hay otro trabajo aceptado agendado ese mismo día (avisa, no bloquea:
+// hacer dos trabajos en un día es válido).
+function agendaOnDateChange() {
+  const warn = document.getElementById('agenda-warn');
+  const f = (document.getElementById('agenda-fecha') || {}).value || '';
+  if (!warn) return;
+  const otros = f
+    ? getH().filter(x => x.id !== _agendaId && x.fechaTrabajo === f && (x.estado || '') === 'aceptado')
+    : [];
+  if (otros.length) {
+    const nombres = otros.map(x => x.clientName || x.quoteNumber || 'otro presupuesto');
+    warn.textContent = `⚠ Ese día ya tenés agendado: ${nombres.join(', ')}. Podés mantenerlo igual si vas a hacer los dos.`;
+    warn.hidden = false;
+  } else {
+    warn.hidden = true;
+  }
+}
+
+// Persiste la fecha elegida en el entry (o la quita si el campo quedó
+// vacío). Devuelve el entry actualizado, o null si ya no existe.
+function _agendaPersist() {
+  const h = getH();
+  const e = h.find(x => x.id === _agendaId);
+  if (!e) return null;
+  const f = (document.getElementById('agenda-fecha') || {}).value || '';
+  if (f) e.fechaTrabajo = f; else delete e.fechaTrabajo;
+  setH(h);
+  return e;
+}
+
+function agendaSave() {
+  const e = _agendaPersist();
+  closeAgendaDlg();
+  renderHistory();
+  if (e) toast(e.fechaTrabajo ? `Trabajo agendado: ${fmtDiaCorto(e.fechaTrabajo)}` : 'Fecha del trabajo quitada', 'ok');
+}
+
+// "Quitar fecha": vacía el campo y guarda (el trabajo vuelve a "Programar").
+function agendaClear() {
+  const inp = document.getElementById('agenda-fecha');
+  if (inp) { inp.value = ''; if (typeof syncCdate === 'function') syncCdate(inp); }
+  agendaSave();
+}
+
+// URL del template público "crear evento" de Google Calendar (evento de día
+// completo, sin API ni backend). En el celular la abre la app de Calendar,
+// que es donde el usuario tiene sus recordatorios reales con alarma.
+function agendaGcalUrl(e, iso) {
+  const p = iso.split('-');
+  const d0 = p.join('');
+  const sig = new Date(+p[0], +p[1] - 1, +p[2] + 1); // día siguiente, LOCAL
+  const d1 = toLocalISODate(sig).replace(/-/g, '');
+  const snap = e.snapshot || {};
+  const title = `Trabajo: ${e.clientName || 'cliente'}${e.quoteNumber ? ` (${e.quoteNumber})` : ''}`;
+  const det = [];
+  if (e.total > 0) det.push(`Presupuesto ${e.quoteNumber || ''}: ${fmtM(e.total, e.currency || 'ARS')}`);
+  if (snap.clientContact) det.push(`Contacto: ${snap.clientContact}`);
+  if (snap.workMapLink) det.push(`Ubicación: ${snap.workMapLink}`);
+  const loc = (snap.workAddress || snap.workMapLink || '').trim();
+  return 'https://calendar.google.com/calendar/render?action=TEMPLATE'
+    + '&text=' + encodeURIComponent(title)
+    + '&dates=' + d0 + '/' + d1
+    + (det.length ? '&details=' + encodeURIComponent(det.join('\n')) : '')
+    + (loc ? '&location=' + encodeURIComponent(loc) : '');
+}
+
+// Botón "Google Calendar" del diálogo: guarda la fecha (para no perderla
+// al saltar de app) y abre el evento precargado en el calendario.
+function agendaGcal() {
+  const f = (document.getElementById('agenda-fecha') || {}).value || '';
+  if (!f) { toast('Elegí primero la fecha del trabajo', 'info', 2500); return; }
+  const e = _agendaPersist();
+  if (!e) { closeAgendaDlg(); return; }
+  window.open(agendaGcalUrl(e, f), '_blank', 'noopener');
+  closeAgendaDlg();
+  renderHistory();
+  toast(`Trabajo agendado: ${fmtDiaCorto(f)}`, 'ok');
 }
 
 // ─── PUENTE PRESUPUESTO → FACTURACIÓN ────────────────────────
@@ -8597,6 +8803,18 @@ function renderHistory() {
   const estadoFilt = (estadoEl?.value || '').trim();
   if (estadoFilt) h = h.filter(e => (e.estado || 'borrador') === estadoFilt);
 
+  // Agenda: al filtrar por "aceptado" el listado se ordena por fecha del
+  // trabajo ascendente (el más próximo primero, los sin fecha al final) —
+  // así el filtro funciona como agenda de trabajos pendientes.
+  if (estadoFilt === 'aceptado') {
+    h = [...h].sort((a, b) => {
+      if (!a.fechaTrabajo && !b.fechaTrabajo) return 0;
+      if (!a.fechaTrabajo) return 1;
+      if (!b.fechaTrabajo) return -1;
+      return a.fechaTrabajo.localeCompare(b.fechaTrabajo);
+    });
+  }
+
   const hasFilters = !!(q || clientFilt || estadoFilt);
   const groupedByClient = clientFilt && h.length > 0;
 
@@ -8642,6 +8860,7 @@ function renderHistory() {
       <div class="hmeta">${esc(e.currency||'')} ${fmtM(e.total||0,e.currency||'ARS')} · ${e.itemCount||0} ítem(s) · ${fmtD(((e.snapshot&&e.snapshot.dateIssue)||e.savedAt||'').slice(0,10))}</div>
       <div class="hacts">
         <select class="hestado-sel" style="color:${txtCol};background-color:${bgCol};border-color:${bgCol}" onchange="setEstadoHistory(${e.id}, this.value)" title="Cambiar estado" aria-label="Estado del presupuesto">${estadoOpts}</select>
+        ${agendaChipFor(e)}
         <button class="btn btn-g btn-sm" onclick="previewFromHistory(${e.id})">${icon('eye')} Ver</button>
         <button class="btn btn-g btn-sm" onclick="sharePngFromHistory(${e.id})" title="Generar una imagen del presupuesto y compartirla (WhatsApp, etc.)">${icon('image')} Compartir</button>
         ${tieneDir ? `<button class="btn btn-g btn-sm" onclick="comoLlegar(${e.id})" title="Cómo llegar a la dirección del trabajo" aria-label="Cómo llegar">${icon('pin')} Llegar</button>` : ''}
