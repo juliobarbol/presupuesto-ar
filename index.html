@@ -206,6 +206,11 @@ body{background-color:var(--bg)}
 .agenda-warn{font-size:12px;font-weight:600;color:#92400e;background:#fef3c7;border-radius:var(--radius-field);padding:8px 12px;margin-top:10px;line-height:1.45}
 .agenda-btns{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:18px}
 .agenda-btns .agenda-spacer{flex:1}
+/* Selector de modo del diálogo (fecha del trabajo / recontacto) */
+.agenda-modes{display:flex;gap:6px;margin-bottom:12px}
+.agenda-mode{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:8px 6px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;color:var(--muted);background:var(--card);border:1px solid var(--border);border-radius:var(--radius-field);cursor:pointer}
+.agenda-mode.active{color:var(--accent-fg);border-color:var(--accent-fg);background:var(--accent-light)}
+.agenda-help{font-size:12px;color:var(--muted);line-height:1.45;margin-bottom:12px}
 /* ── Bandeja de fotos compartidas (Web Share Target) ── */
 #share-overlay{display:none;position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(0,0,0,.45);z-index:2000;align-items:center;justify-content:center}
 #share-overlay.open{display:flex}
@@ -857,6 +862,8 @@ input[type=number]{-moz-appearance:textfield}
 .hagenda-chip.is-soon{background:#fef3c7;color:#92400e}   /* hoy o mañana */
 .hagenda-chip.is-past{background:#dbeafe;color:#1e40af}   /* comenzó y sigue abierto: "en curso", sin alarma */
 .hagenda-chip.is-done{background:var(--surface-2);color:var(--muted);border-color:var(--border)} /* registro histórico */
+.hagenda-chip.is-call{background:#cffafe;color:#155e75}     /* recontacto a futuro */
+.hagenda-chip.is-call-due{background:#fef3c7;color:#92400e} /* llamar hoy / atrasado */
 /* Toast con botón de acción (ej: "¿Marcar como enviado?") */
 .toast-action{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:12px;white-space:normal;pointer-events:auto}
 .toast-action .toast-btn{font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;color:#fff;background:var(--accent);border:none;border-radius:var(--radius-field);padding:6px 12px;cursor:pointer;white-space:nowrap}
@@ -1163,6 +1170,17 @@ input[type=number]{-moz-appearance:textfield}
 /* Badge ⌛ de presupuesto vencido en la tarjeta del historial */
 .hbadge-expired{display:inline-block;font-size:10px;font-weight:700;padding:1px 8px;border-radius:var(--radius-box);margin-left:6px;vertical-align:middle;background:#fee2e2;color:#991b1b}
 /* Banner de presupuestos vencidos (reusa la estructura .fub-*, en rojo) */
+/* Banner de recontactos (celeste): clientes que aceptaron y hay que volver
+   a llamar para coordinar la fecha del trabajo. Reusa las clases fub-*. */
+.recontacto-banner{background:linear-gradient(135deg,#ecfeff,#cffafe);border:1px solid #67e8f9;border-radius:var(--radius-box);padding:14px 16px;margin-bottom:14px}
+.recontacto-banner .fub-title{color:#155e75}
+.recontacto-banner .fub-sub{color:#0e7490}
+.recontacto-banner .fub-item{border-color:#a5f3fc}
+.fub-item-nota{display:block;width:100%;font-size:11.5px;color:var(--muted);font-style:italic;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* Globito de recontactos pendientes sobre la pestaña Historial: visible
+   desde cualquier parte de la app (las pestañas siempre están a la vista). */
+.tab-btn{position:relative}
+.tab-dot{position:absolute;top:3px;right:4px;min-width:15px;height:15px;line-height:15px;border-radius:8px;background:#0891b2;color:#fff;font-size:9.5px;font-weight:700;text-align:center;padding:0 4px}
 .expiry-banner{background:linear-gradient(135deg,#fef2f2,#fee2e2);border:1px solid #fca5a5;border-radius:var(--radius-box);padding:14px 16px;margin-bottom:14px}
 .expiry-banner .fub-title{color:#991b1b}
 .expiry-banner .fub-sub,.expiry-banner .fub-item-days,.expiry-banner .fub-more{color:#b91c1c}
@@ -1247,6 +1265,14 @@ input[type=number]{-moz-appearance:textfield}
 :root[data-theme="dark"] .sp-clear-btn{border-color:#5c4a1c}
 :root[data-theme="dark"] .sp-clear-btn:hover{background:#3a3012}
 :root[data-theme="dark"] .adj-badge{background:#332b12;border-color:#5c4a1c;color:#fcd34d}
+
+/* Banner de recontactos (celeste) */
+:root[data-theme="dark"] .recontacto-banner{background:linear-gradient(135deg,#0c2226,#0e2a30);border-color:#155e75}
+:root[data-theme="dark"] .recontacto-banner .fub-title,
+:root[data-theme="dark"] .recontacto-banner .fub-sub{color:#67e8f9}
+:root[data-theme="dark"] .recontacto-banner .fub-item{background:#0a1c20;border-color:#155e75}
+:root[data-theme="dark"] .hagenda-chip.is-call{background:rgba(8,145,178,.22);color:#67e8f9}
+:root[data-theme="dark"] .hagenda-chip.is-call-due{background:#4a3a12;color:#fde68a}
 
 /* Banner y filas de seguimiento (ámbar) */
 :root[data-theme="dark"] .followup-banner{background:linear-gradient(135deg,#2a2410,#332b12);border-color:#5c4a1c}
@@ -2278,7 +2304,7 @@ input[type=number]{-moz-appearance:textfield}
     <button class="tab-btn active" onclick="switchTab('editor')"><svg class="ic"><use href="#i-pencil"></use></svg> Editor</button>
     <button class="tab-btn" onclick="switchTab('empresa')"><svg class="ic"><use href="#i-building"></use></svg> Empresa</button>
     <button class="tab-btn" onclick="switchTab('estilo')"><svg class="ic"><use href="#i-palette"></use></svg> Estilo</button>
-    <button class="tab-btn" onclick="switchTab('historial')"><svg class="ic"><use href="#i-book"></use></svg> Historial</button>
+    <button class="tab-btn" onclick="switchTab('historial')"><svg class="ic"><use href="#i-book"></use></svg> Historial<span class="tab-dot" id="tab-hist-dot" hidden></span></button>
     <button class="tab-btn" onclick="switchTab('facturacion')"><svg class="ic ic-c-amber"><use href="#i-money"></use></svg> Facturas</button>
   </div>
 
@@ -2770,6 +2796,18 @@ input[type=number]{-moz-appearance:textfield}
             </div>
           </div>
 
+          <!-- ── MENSAJE DE RECONTACTO (coordinar fecha) ── -->
+          <div class="fu-config">
+            <div class="fu-config-head">
+              <span class="st" style="margin:0;border:none;padding:0"><svg class="ic ic-c-green"><use href="#i-phone"></use></svg> Mensaje de recontacto</span>
+            </div>
+            <p class="fu-help">Se usa en el botón de WhatsApp del aviso de recontacto: cuando un cliente aceptó el presupuesto pero quedaron en coordinar la fecha del trabajo más adelante.</p>
+            <div class="fg">
+              <textarea id="wa-recontacto-template" rows="4" onchange="saveRecontactoTemplate()" oninput="saveRecontactoTemplate()"></textarea>
+              <span class="fu-vars">Variables: <code>{cliente}</code> <code>{numero}</code> <code>{empresa}</code></span>
+            </div>
+          </div>
+
           <!-- ── COPIA DE SEGURIDAD EN GOOGLE DRIVE ── -->
           <!-- Oculta hasta que el dueño configure el Client ID (gdriveUpdateUI). -->
           <div class="fu-config" id="gdrive-section" style="display:none">
@@ -3047,6 +3085,7 @@ input[type=number]{-moz-appearance:textfield}
 
       <!-- ══ TAB HISTORIAL ══ -->
       <div id="panel-historial" class="tab-panel">
+        <div id="recontacto-banner" class="recontacto-banner" style="display:none"></div>
         <div id="followup-banner" class="followup-banner" style="display:none"></div>
         <div id="expiry-banner" class="expiry-banner" style="display:none"></div>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
@@ -3216,18 +3255,30 @@ input[type=number]{-moz-appearance:textfield}
   </div>
 </div>
 
-<!-- ════════════════════ AGENDA: FECHA DEL TRABAJO ════════════════════
+<!-- ════════════════════ AGENDA: FECHA DEL TRABAJO / RECONTACTO ════════════
      Se abre al marcar un presupuesto como "Aceptado" (salteable) o al tocar
-     el chip de agenda en la tarjeta del historial. La fecha vive a nivel del
-     entry del historial (e.fechaTrabajo), como el estado comercial.
+     un chip de agenda en la tarjeta del historial. Dos modos:
+       · trabajo    → e.fechaTrabajo (día de comienzo del trabajo)
+       · recontacto → e.recontactoEn + e.recontactoNota (día en que hay que
+         volver a hablar con el cliente para coordinar la fecha)
+     Ambos viven a nivel del entry del historial, como el estado comercial.
      La lógica vive en js/history.js (openAgendaDlg y compañía). -->
 <div id="agenda-overlay" role="presentation" onclick="if(event.target===this)closeAgendaDlg()">
   <div id="agenda-box" role="dialog" aria-modal="true" aria-labelledby="agenda-title">
     <h4 id="agenda-title">Fecha del trabajo</h4>
     <p class="agenda-sub" id="agenda-sub"></p>
+    <div class="agenda-modes">
+      <button type="button" class="agenda-mode active" id="agenda-mode-trabajo" onclick="setAgendaMode('trabajo')"><svg class="ic" aria-hidden="true"><use href="#i-calendar"></use></svg> Fecha del trabajo</button>
+      <button type="button" class="agenda-mode" id="agenda-mode-recontacto" onclick="setAgendaMode('recontacto')"><svg class="ic" aria-hidden="true"><use href="#i-phone"></use></svg> Recontactar</button>
+    </div>
+    <p class="agenda-help" id="agenda-help" hidden>¿Aceptó pero todavía no puede fijar fecha? Agendá qué día volver a contactarlo para coordinar.</p>
     <div class="fg">
-      <label for="agenda-fecha">Día de comienzo del trabajo</label>
-      <input type="date" id="agenda-fecha" aria-label="Fecha del trabajo" oninput="agendaOnDateChange()">
+      <label for="agenda-fecha" id="agenda-fecha-label">Día de comienzo del trabajo</label>
+      <input type="date" id="agenda-fecha" aria-label="Fecha" oninput="agendaOnDateChange()">
+    </div>
+    <div class="fg" id="agenda-nota-wrap" hidden>
+      <label for="agenda-nota">Nota (opcional)</label>
+      <input type="text" id="agenda-nota" placeholder="ej: puede a partir de mediados de agosto" maxlength="120">
     </div>
     <p class="agenda-warn" id="agenda-warn" hidden></p>
     <div class="cbtns agenda-btns">
@@ -4167,6 +4218,9 @@ const FOLLOWUP_DEF = {
   waTemplate: 'Hola {cliente}, ¿cómo andás? Te escribo por el presupuesto que te pasé. No es para apurarte, sino para saber si te quedó alguna duda o si querés que repasemos algo del trabajo.',
   // Plantilla del mensaje de ENVÍO (botón "Enviar por WhatsApp"). Mismas variables.
   waSendTemplate: 'Hola {cliente}, ¿cómo estás? Te paso el presupuesto N° {numero}. Cualquier duda quedo a disposición.\n\nSaludos,\n{empresa}',
+  // Plantilla del mensaje de RECONTACTO: el cliente aceptó pero quedaron en
+  // coordinar la fecha del trabajo más adelante. Mismas variables.
+  waRecontactoTemplate: 'Hola {cliente}! ¿Cómo andás? Te escribo para coordinar la fecha del trabajo que habíamos hablado. ¿Cómo venís de tiempos?',
 };
 
 function getFollowupCfg() {
@@ -4295,12 +4349,13 @@ function marcarVencimientoVisto(id) {
 
 // Construye el enlace wa.me con el mensaje predeterminado para un entry.
 // Reemplaza las variables de la plantilla con los datos del presupuesto.
-function buildWhatsappLink(entry) {
+// `tpl` (opcional) permite usar otra plantilla (ej: la de recontacto).
+function buildWhatsappLink(entry, tpl) {
   const cfg = getFollowupCfg();
   const cliente = (entry.clientName || '').trim() || 'cliente';
   const numero  = entry.quoteNumber || '';
   const empresa = (S.coName || 'Poda en Altura AR').trim();
-  let msg = cfg.waTemplate
+  let msg = (tpl || cfg.waTemplate)
     .replace(/\{cliente\}/g, cliente)
     .replace(/\{numero\}/g, numero)
     .replace(/\{empresa\}/g, empresa);
@@ -7609,7 +7664,8 @@ function autoSaveToHistory() {
   if (idx >= 0) {
     const prev = h[idx];
     entry.estado = prev.estado || 'borrador';
-    ['enviadoEn', 'seguimientoHechoEn', 'vencimientoVistoEn', 'fechaTrabajo', 'facturado']
+    ['enviadoEn', 'seguimientoHechoEn', 'vencimientoVistoEn', 'fechaTrabajo',
+     'recontactoEn', 'recontactoNota', 'facturado']
       .forEach(k => { if (prev[k] !== undefined) entry[k] = prev[k]; });
   } else {
     entry.estado = 'borrador';
@@ -7737,10 +7793,10 @@ function setEstadoHistory(id, nuevoEstado) {
   setH(h);
   renderHistory();
   toast(`Estado: ${estadoLabel(nuevoEstado)}`, 'info', 1800);
-  // Al marcar "aceptado", ofrecer agendar la fecha del trabajo (salteable
-  // con "Todavía no sé"): es el momento natural, recién se cerró con el
-  // cliente. Si ya tiene fecha (reaceptado), no molestar.
-  if (nuevoEstado === 'aceptado' && !e.fechaTrabajo) openAgendaDlg(id, { fromAccept: true });
+  // Al marcar "aceptado", ofrecer agendar la fecha del trabajo o un
+  // recontacto (salteable con "Todavía no sé"): es el momento natural,
+  // recién se cerró con el cliente. Si ya tiene algo agendado, no molestar.
+  if (nuevoEstado === 'aceptado' && !e.fechaTrabajo && !e.recontactoEn) openAgendaDlg(id, { fromAccept: true });
   // Al marcar "realizado", ofrecer registrar la factura del trabajo: conecta
   // el pipeline comercial con la pestaña Facturación (control de tope), para
   // no volver a tipear cliente + monto que ya están en el presupuesto.
@@ -7780,44 +7836,88 @@ function fmtDiaCorto(iso) {
   return `${AGENDA_WD[dt.getDay()]} ${p[2]}/${p[1]}`;
 }
 
-// Chip de agenda para una tarjeta del historial. Aceptado sin fecha →
-// "Programar"; con fecha → la fecha coloreada por proximidad. En otros
-// estados solo se muestra si hay fecha (registro histórico, editable).
+// Chips de agenda para una tarjeta del historial. Aceptado sin nada →
+// "Programar"; con fecha de trabajo → la fecha coloreada por proximidad;
+// con recontacto pendiente → chip celeste 📱 (ámbar cuando llegó el día).
+// En otros estados la fecha de trabajo se muestra solo como registro.
 function agendaChipFor(e) {
   const est = e.estado || 'borrador';
-  const f = e.fechaTrabajo;
-  if (!f && est !== 'aceptado') return '';
-  if (!f) return `<button type="button" class="hagenda-chip is-none" onclick="openAgendaDlg(${e.id})" title="Agendar la fecha del trabajo">${icon('calendar')} Programar</button>`;
-  const d = daysSinceDate(f); // >0 pasado · 0 hoy · <0 futuro
-  let cls = '', lbl = fmtDiaCorto(f);
-  if (d === 0)       { cls = ' is-soon'; lbl = 'Hoy'; }
-  else if (d === -1) { cls = ' is-soon'; lbl = 'Mañana'; }
-  else if (d > 0 && est === 'aceptado') { cls = ' is-past'; lbl = `En curso · ${lbl}`; }
-  else if (d > 0)    { cls = ' is-done'; }
-  return `<button type="button" class="hagenda-chip${cls}" onclick="openAgendaDlg(${e.id})" title="Fecha del trabajo: ${fmtD(f)} — tocá para cambiarla">${icon('calendar')} ${lbl}</button>`;
+  let out = '';
+  if (e.fechaTrabajo) {
+    const f = e.fechaTrabajo;
+    const d = daysSinceDate(f); // >0 pasado · 0 hoy · <0 futuro
+    let cls = '', lbl = fmtDiaCorto(f);
+    if (d === 0)       { cls = ' is-soon'; lbl = 'Hoy'; }
+    else if (d === -1) { cls = ' is-soon'; lbl = 'Mañana'; }
+    else if (d > 0 && est === 'aceptado') { cls = ' is-past'; lbl = `En curso · ${lbl}`; }
+    else if (d > 0)    { cls = ' is-done'; }
+    out += `<button type="button" class="hagenda-chip${cls}" onclick="openAgendaDlg(${e.id})" title="Fecha del trabajo: ${fmtD(f)} — tocá para cambiarla">${icon('calendar')} ${lbl}</button>`;
+  } else if (est === 'aceptado' && !e.recontactoEn) {
+    out += `<button type="button" class="hagenda-chip is-none" onclick="openAgendaDlg(${e.id})" title="Agendar la fecha del trabajo o un recontacto con el cliente">${icon('calendar')} Programar</button>`;
+  }
+  // Recontacto: solo tiene sentido mientras el presupuesto siga aceptado.
+  if (e.recontactoEn && est === 'aceptado') {
+    const d = daysSinceDate(e.recontactoEn);
+    let cls = ' is-call', lbl = fmtDiaCorto(e.recontactoEn);
+    if (d === 0)    { cls = ' is-call-due'; lbl = 'Llamar hoy'; }
+    else if (d > 0) { cls = ' is-call-due'; lbl = `Llamar · hace ${d}d`; }
+    const tit = 'Recontactar al cliente para coordinar la fecha'
+      + (e.recontactoNota ? ` — ${e.recontactoNota}` : '');
+    out += `<button type="button" class="hagenda-chip${cls}" onclick="openAgendaDlg(${e.id},{mode:'recontacto'})" title="${esc(tit)}">${icon('phone')} ${lbl}</button>`;
+  }
+  return out;
 }
 
-// Entry cuyo diálogo de agenda está abierto (null si está cerrado).
+// Entry cuyo diálogo de agenda está abierto (null si está cerrado), modo
+// activo ('trabajo' | 'recontacto') y valor de fecha editado por modo (se
+// conserva al alternar de pestaña dentro del diálogo sin guardar).
 let _agendaId = null;
+let _agendaMode = 'trabajo';
+let _agendaFromAccept = false;
+let _agendaVals = { trabajo: '', recontacto: '' };
 
 function openAgendaDlg(id, opts) {
   const e = getH().find(x => x.id === id);
   const ov = document.getElementById('agenda-overlay');
   if (!e || !ov) return;
   _agendaId = id;
-  const fromAccept = !!(opts && opts.fromAccept);
-  const ti = document.getElementById('agenda-title');
-  if (ti) ti.textContent = fromAccept ? '¡Aceptado! ¿Cuándo se hace el trabajo?' : 'Fecha del trabajo';
+  _agendaFromAccept = !!(opts && opts.fromAccept);
+  _agendaVals = { trabajo: e.fechaTrabajo || '', recontacto: e.recontactoEn || '' };
   const sub = document.getElementById('agenda-sub');
   if (sub) sub.textContent = `${e.quoteNumber || ''} · ${e.clientName || 'Sin cliente'}`;
-  const inp = document.getElementById('agenda-fecha');
-  if (inp) { inp.value = e.fechaTrabajo || ''; if (typeof syncCdate === 'function') syncCdate(inp); }
+  const nota = document.getElementById('agenda-nota');
+  if (nota) nota.value = e.recontactoNota || '';
   const ca = document.getElementById('agenda-cancel');
-  if (ca) ca.textContent = fromAccept ? 'Todavía no sé' : 'Cancelar';
-  const cl = document.getElementById('agenda-clear');
-  if (cl) cl.hidden = !e.fechaTrabajo;
-  agendaOnDateChange();
+  if (ca) ca.textContent = _agendaFromAccept ? 'Todavía no sé' : 'Cancelar';
+  setAgendaMode((opts && opts.mode) || 'trabajo');
   ov.classList.add('open');
+}
+
+// Alterna entre "Fecha del trabajo" y "Recontactar" dentro del diálogo:
+// actualiza título, etiquetas, visibilidad de la nota y el valor del campo
+// de fecha (cada modo conserva el suyo mientras el diálogo esté abierto).
+function setAgendaMode(m) {
+  _agendaMode = (m === 'recontacto') ? 'recontacto' : 'trabajo';
+  const rec = _agendaMode === 'recontacto';
+  const e = getH().find(x => x.id === _agendaId) || {};
+  const bt = document.getElementById('agenda-mode-trabajo');
+  const br = document.getElementById('agenda-mode-recontacto');
+  if (bt) bt.classList.toggle('active', !rec);
+  if (br) br.classList.toggle('active', rec);
+  const ti = document.getElementById('agenda-title');
+  if (ti) ti.textContent = rec ? 'Recontactar al cliente'
+    : (_agendaFromAccept ? '¡Aceptado! ¿Cuándo se hace el trabajo?' : 'Fecha del trabajo');
+  const lbl = document.getElementById('agenda-fecha-label');
+  if (lbl) lbl.textContent = rec ? '¿Qué día lo volvés a contactar?' : 'Día de comienzo del trabajo';
+  const help = document.getElementById('agenda-help');
+  if (help) help.hidden = !rec;
+  const notaWrap = document.getElementById('agenda-nota-wrap');
+  if (notaWrap) notaWrap.hidden = !rec;
+  const inp = document.getElementById('agenda-fecha');
+  if (inp) { inp.value = _agendaVals[_agendaMode] || ''; if (typeof syncCdate === 'function') syncCdate(inp); }
+  const cl = document.getElementById('agenda-clear');
+  if (cl) cl.hidden = rec ? !e.recontactoEn : !e.fechaTrabajo;
+  agendaOnDateChange();
 }
 
 function closeAgendaDlg() {
@@ -7826,14 +7926,16 @@ function closeAgendaDlg() {
   _agendaId = null;
 }
 
-// Reacción al cambio de fecha en el diálogo: aviso de superposición si ya
-// hay otro trabajo aceptado agendado ese mismo día (avisa, no bloquea:
-// hacer dos trabajos en un día es válido).
+// Reacción al cambio de fecha en el diálogo: guarda el valor del modo
+// activo y muestra el aviso de superposición si ya hay otro trabajo
+// aceptado agendado ese mismo día (avisa, no bloquea: hacer dos trabajos
+// en un día es válido). La superposición solo aplica a fechas de trabajo.
 function agendaOnDateChange() {
   const warn = document.getElementById('agenda-warn');
   const f = (document.getElementById('agenda-fecha') || {}).value || '';
+  _agendaVals[_agendaMode] = f;
   if (!warn) return;
-  const otros = f
+  const otros = (f && _agendaMode === 'trabajo')
     ? getH().filter(x => x.id !== _agendaId && x.fechaTrabajo === f && (x.estado || '') === 'aceptado')
     : [];
   if (otros.length) {
@@ -7845,27 +7947,43 @@ function agendaOnDateChange() {
   }
 }
 
-// Persiste la fecha elegida en el entry (o la quita si el campo quedó
-// vacío). Devuelve el entry actualizado, o null si ya no existe.
+// Persiste la fecha del modo activo en el entry (o la quita si el campo
+// quedó vacío). Devuelve el entry actualizado, o null si ya no existe.
+// Cargar una fecha de trabajo borra el recontacto pendiente: si ya
+// coordinaron el día, la llamada pendiente cumplió su función.
 function _agendaPersist() {
   const h = getH();
   const e = h.find(x => x.id === _agendaId);
   if (!e) return null;
-  const f = (document.getElementById('agenda-fecha') || {}).value || '';
-  if (f) e.fechaTrabajo = f; else delete e.fechaTrabajo;
+  const f = _agendaVals[_agendaMode] || '';
+  if (_agendaMode === 'recontacto') {
+    const nota = ((document.getElementById('agenda-nota') || {}).value || '').trim();
+    if (f) e.recontactoEn = f; else delete e.recontactoEn;
+    if (f && nota) e.recontactoNota = nota; else delete e.recontactoNota;
+  } else if (f) {
+    e.fechaTrabajo = f;
+    delete e.recontactoEn;
+    delete e.recontactoNota;
+  } else {
+    delete e.fechaTrabajo;
+  }
   setH(h);
   return e;
 }
 
 function agendaSave() {
+  const rec = _agendaMode === 'recontacto';
   const e = _agendaPersist();
   closeAgendaDlg();
   renderHistory();
-  if (e) toast(e.fechaTrabajo ? `Trabajo agendado: ${fmtDiaCorto(e.fechaTrabajo)}` : 'Fecha del trabajo quitada', 'ok');
+  if (!e) return;
+  if (rec) toast(e.recontactoEn ? `Recontacto agendado: ${fmtDiaCorto(e.recontactoEn)}` : 'Recontacto quitado', 'ok');
+  else     toast(e.fechaTrabajo ? `Trabajo agendado: ${fmtDiaCorto(e.fechaTrabajo)}`   : 'Fecha del trabajo quitada', 'ok');
 }
 
-// "Quitar fecha": vacía el campo y guarda (el trabajo vuelve a "Programar").
+// "Quitar fecha": vacía el campo del modo activo y guarda.
 function agendaClear() {
+  _agendaVals[_agendaMode] = '';
   const inp = document.getElementById('agenda-fecha');
   if (inp) { inp.value = ''; if (typeof syncCdate === 'function') syncCdate(inp); }
   agendaSave();
@@ -7874,18 +7992,24 @@ function agendaClear() {
 // URL del template público "crear evento" de Google Calendar (evento de día
 // completo, sin API ni backend). En el celular la abre la app de Calendar,
 // que es donde el usuario tiene sus recordatorios reales con alarma.
-function agendaGcalUrl(e, iso) {
+// `modo`: 'trabajo' (evento del trabajo, con ubicación) o 'recontacto'
+// (recordatorio de llamar al cliente, con la nota).
+function agendaGcalUrl(e, iso, modo) {
   const p = iso.split('-');
   const d0 = p.join('');
   const sig = new Date(+p[0], +p[1] - 1, +p[2] + 1); // día siguiente, LOCAL
   const d1 = toLocalISODate(sig).replace(/-/g, '');
   const snap = e.snapshot || {};
-  const title = `Trabajo: ${e.clientName || 'cliente'}${e.quoteNumber ? ` (${e.quoteNumber})` : ''}`;
+  const rec = modo === 'recontacto';
+  const quien = e.clientName || 'cliente';
+  const num = e.quoteNumber ? ` (${e.quoteNumber})` : '';
+  const title = rec ? `Llamar a ${quien} — coordinar trabajo${num}` : `Trabajo: ${quien}${num}`;
   const det = [];
+  if (rec && e.recontactoNota) det.push(`Nota: ${e.recontactoNota}`);
   if (e.total > 0) det.push(`Presupuesto ${e.quoteNumber || ''}: ${fmtM(e.total, e.currency || 'ARS')}`);
   if (snap.clientContact) det.push(`Contacto: ${snap.clientContact}`);
-  if (snap.workMapLink) det.push(`Ubicación: ${snap.workMapLink}`);
-  const loc = (snap.workAddress || snap.workMapLink || '').trim();
+  if (!rec && snap.workMapLink) det.push(`Ubicación: ${snap.workMapLink}`);
+  const loc = rec ? '' : (snap.workAddress || snap.workMapLink || '').trim();
   return 'https://calendar.google.com/calendar/render?action=TEMPLATE'
     + '&text=' + encodeURIComponent(title)
     + '&dates=' + d0 + '/' + d1
@@ -7896,14 +8020,15 @@ function agendaGcalUrl(e, iso) {
 // Botón "Google Calendar" del diálogo: guarda la fecha (para no perderla
 // al saltar de app) y abre el evento precargado en el calendario.
 function agendaGcal() {
-  const f = (document.getElementById('agenda-fecha') || {}).value || '';
-  if (!f) { toast('Elegí primero la fecha del trabajo', 'info', 2500); return; }
+  const rec = _agendaMode === 'recontacto';
+  const f = _agendaVals[_agendaMode] || '';
+  if (!f) { toast(rec ? 'Elegí primero el día del recontacto' : 'Elegí primero la fecha del trabajo', 'info', 2500); return; }
   const e = _agendaPersist();
   if (!e) { closeAgendaDlg(); return; }
-  window.open(agendaGcalUrl(e, f), '_blank', 'noopener');
+  window.open(agendaGcalUrl(e, f, _agendaMode), '_blank', 'noopener');
   closeAgendaDlg();
   renderHistory();
-  toast(`Trabajo agendado: ${fmtDiaCorto(f)}`, 'ok');
+  toast(`${rec ? 'Recontacto' : 'Trabajo'} agendado: ${fmtDiaCorto(f)}`, 'ok');
 }
 
 // ─── PUENTE PRESUPUESTO → FACTURACIÓN ────────────────────────
@@ -8464,8 +8589,9 @@ window.addEventListener('resize', () => {
 // Renderiza el banner de seguimientos pendientes arriba del historial.
 // Se llama al arrancar la app y al entrar a la pestaña Historial.
 function renderFollowupBanner() {
-  // Los dos banners (seguimiento y vencidos) se refrescan juntos.
+  // Los tres banners (seguimiento, vencidos y recontactos) se refrescan juntos.
   if (typeof renderExpiryBanner === 'function') renderExpiryBanner();
+  if (typeof renderRecontactoBanner === 'function') renderRecontactoBanner();
   const el = document.getElementById('followup-banner');
   if (!el) return;
   const pend = (typeof getPendingFollowups === 'function') ? getPendingFollowups() : [];
@@ -8535,6 +8661,123 @@ function renderExpiryBanner() {
     </div>`;
 }
 
+// ─── RECONTACTOS: banner + aviso global ──────────────────────
+// Presupuestos aceptados cuyo día de recontacto ya llegó (hoy o antes),
+// el más atrasado primero. Los de fecha futura no molestan.
+function getRecontactosPendientes() {
+  const out = [];
+  getH().forEach(e => {
+    if ((e.estado || '') !== 'aceptado' || !e.recontactoEn) return;
+    const d = daysSinceDate(e.recontactoEn);
+    if (d === null || d < 0) return;
+    out.push({ entry: e, dias: d });
+  });
+  out.sort((a, b) => b.dias - a.dias);
+  return out;
+}
+
+// Link de WhatsApp con la plantilla de RECONTACTO (coordinar la fecha).
+function buildRecontactoWhatsappLink(e) {
+  return buildWhatsappLink(e, getFollowupCfg().waRecontactoTemplate || FOLLOWUP_DEF.waRecontactoTemplate);
+}
+
+// Banner celeste arriba del historial + globito en la pestaña Historial
+// (el globito es el aviso global: las pestañas se ven desde toda la app).
+function renderRecontactoBanner() {
+  const pend = getRecontactosPendientes();
+  const dot = document.getElementById('tab-hist-dot');
+  if (dot) { dot.textContent = pend.length; dot.hidden = !pend.length; }
+  const el = document.getElementById('recontacto-banner');
+  if (!el) return;
+  if (!pend.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
+
+  const n = pend.length;
+  el.style.display = 'block';
+  el.innerHTML = `
+    <div class="fub-head">
+      <span class="fub-icon">${icon('phone')}</span>
+      <span class="fub-title">${n} cliente${n>1?'s':''} para recontactar</span>
+    </div>
+    <div class="fub-sub">Aceptaron el presupuesto y quedaron en coordinar la fecha del trabajo. Hoy es el día de retomar la charla.</div>
+    <div class="fub-list">
+      ${pend.slice(0,5).map(p => {
+        const e = p.entry;
+        const wa = buildRecontactoWhatsappLink(e);
+        const cuando = p.dias === 0 ? 'hoy' : `hace ${p.dias} día${p.dias>1?'s':''}`;
+        return `<div class="fub-item">
+          <div class="fub-item-info" onclick="goToHistoryEntry(${e.id})" role="button" tabindex="0" title="Ver este presupuesto en el historial">
+            <span class="fub-item-num">${esc(e.quoteNumber||'—')}</span>
+            <span class="fub-item-client">${esc(e.clientName||'(sin nombre)')}</span>
+            <span class="fub-item-days">${cuando}</span>
+            ${e.recontactoNota ? `<span class="fub-item-nota">${esc(e.recontactoNota)}</span>` : ''}
+          </div>
+          <div class="fub-item-acts">
+            <a class="fub-wa" href="${wa}" target="_blank" rel="noopener" onclick="_afterRecontactoWhatsapp(${e.id})">${icon('message')} WhatsApp</a>
+            <button class="fub-done" onclick="marcarRecontactoHecho(${e.id})" title="Ya lo contacté">✓</button>
+          </div>
+        </div>`;
+      }).join('')}
+      ${n>5 ? `<div class="fub-more">y ${n-5} más…</div>` : ''}
+    </div>`;
+}
+
+// "Ya lo contacté" (✓ del banner): borra el recontacto pendiente. Si de la
+// charla salió una fecha, se agenda desde el chip o el toast post-WhatsApp.
+function marcarRecontactoHecho(id) {
+  const h = getH();
+  const e = h.find(x => x.id === id);
+  if (!e) return;
+  delete e.recontactoEn;
+  delete e.recontactoNota;
+  setH(h);
+  renderHistory();
+  toast('✓ Recontacto hecho', 'ok');
+}
+
+// Tras abrir WhatsApp para un recontacto, ofrecer cerrar el ciclo: si
+// coordinaron, agendar la fecha del trabajo ahí mismo (lo que además
+// borra el recontacto pendiente al guardar).
+function _afterRecontactoWhatsapp(id) {
+  setTimeout(() => {
+    const c = document.getElementById('toast-container');
+    if (!c) return;
+    const el = document.createElement('div');
+    el.className = 'toast toast-info toast-action';
+    el.innerHTML = `<span>¿Coordinaron? Agendá la fecha del trabajo</span>
+      <button type="button" class="toast-btn">Agendar</button>`;
+    c.appendChild(el);
+    requestAnimationFrame(()=>{ requestAnimationFrame(()=>el.classList.add('show')); });
+    const close = () => { el.classList.remove('show'); setTimeout(()=>el.remove(),300); };
+    el.querySelector('.toast-btn').onclick = () => { openAgendaDlg(id); close(); };
+    setTimeout(close, 12000);
+  }, 600);
+}
+
+// Aviso global al abrir la app: un recontacto vencido no puede depender de
+// que el usuario entre al Historial. Toast accionable → lleva al lugar.
+function toastRecontactosPendientes() {
+  const pend = getRecontactosPendientes();
+  if (!pend.length) return;
+  const c = document.getElementById('toast-container');
+  if (!c) return;
+  const first = pend[0].entry;
+  const txt = pend.length === 1
+    ? `Recontactar a ${first.clientName || 'un cliente'} para coordinar la fecha del trabajo`
+    : `Tenés ${pend.length} clientes para recontactar y coordinar fechas`;
+  const el = document.createElement('div');
+  el.className = 'toast toast-info toast-action';
+  el.innerHTML = `<span>📞 ${esc(txt)}</span><button type="button" class="toast-btn">Ver</button>`;
+  c.appendChild(el);
+  requestAnimationFrame(()=>{ requestAnimationFrame(()=>el.classList.add('show')); });
+  const close = () => { el.classList.remove('show'); setTimeout(()=>el.remove(),300); };
+  el.querySelector('.toast-btn').onclick = () => {
+    close();
+    if (pend.length === 1) goToHistoryEntry(first.id);
+    else switchTab('historial');
+  };
+  setTimeout(close, 12000);
+}
+
 // Tras abrir WhatsApp, ofrecemos (sin forzar) marcar el seguimiento como
 // hecho. No lo marcamos automático porque el usuario podría no enviar el
 // mensaje; le damos el control con un toast accionable.
@@ -8600,6 +8843,8 @@ function loadFollowupUI() {
   if (tpl) tpl.value = cfg.waTemplate;
   const sendTpl = document.getElementById('wa-send-template');
   if (sendTpl) sendTpl.value = cfg.waSendTemplate || FOLLOWUP_DEF.waSendTemplate;
+  const recTpl = document.getElementById('wa-recontacto-template');
+  if (recTpl) recTpl.value = cfg.waRecontactoTemplate || FOLLOWUP_DEF.waRecontactoTemplate;
   document.querySelectorAll('.fu-estados input[type=checkbox]').forEach(chk => {
     chk.checked = cfg.estados.includes(chk.value);
   });
@@ -8626,8 +8871,10 @@ function saveFollowupFromUI() {
     expiryEnabled: exp ? !!exp.checked : true,
     estados: estados.length ? estados : ['enviado'],
     waTemplate: (tpl && tpl.value.trim()) ? tpl.value : FOLLOWUP_DEF.waTemplate,
-    // Preservar la plantilla de envío (se edita en su propio campo).
+    // Preservar las plantillas de envío y recontacto (cada una se edita
+    // en su propio campo).
     waSendTemplate: getFollowupCfg().waSendTemplate,
+    waRecontactoTemplate: getFollowupCfg().waRecontactoTemplate,
   });
   // Atenuar opciones si está apagado
   const opts = document.getElementById('fu-options');
@@ -8647,6 +8894,14 @@ function saveSendTemplate() {
   const t = document.getElementById('wa-send-template');
   const cfg = getFollowupCfg();
   cfg.waSendTemplate = (t && t.value.trim()) ? t.value : FOLLOWUP_DEF.waSendTemplate;
+  setFollowupCfg(cfg);
+}
+
+// Guarda la plantilla del mensaje de RECONTACTO (campo propio, ídem).
+function saveRecontactoTemplate() {
+  const t = document.getElementById('wa-recontacto-template');
+  const cfg = getFollowupCfg();
+  cfg.waRecontactoTemplate = (t && t.value.trim()) ? t.value : FOLLOWUP_DEF.waRecontactoTemplate;
   setFollowupCfg(cfg);
 }
 
@@ -8849,15 +9104,20 @@ function renderHistory() {
   const estadoFilt = (estadoEl?.value || '').trim();
   if (estadoFilt) h = h.filter(e => (e.estado || 'borrador') === estadoFilt);
 
-  // Agenda: al filtrar por "aceptado" el listado se ordena por fecha del
-  // trabajo ascendente (el más próximo primero, los sin fecha al final) —
-  // así el filtro funciona como agenda de trabajos pendientes.
+  // Agenda: al filtrar por "aceptado" el listado se ordena cronológicamente
+  // por la fecha más próxima entre trabajo agendado y recontacto (los sin
+  // nada al final) — así el filtro funciona como agenda de pendientes,
+  // mezclando días de trabajo y días de llamar a coordinar.
   if (estadoFilt === 'aceptado') {
+    const agKey = e => (e.fechaTrabajo && e.recontactoEn)
+      ? (e.fechaTrabajo < e.recontactoEn ? e.fechaTrabajo : e.recontactoEn)
+      : (e.fechaTrabajo || e.recontactoEn || '');
     h = [...h].sort((a, b) => {
-      if (!a.fechaTrabajo && !b.fechaTrabajo) return 0;
-      if (!a.fechaTrabajo) return 1;
-      if (!b.fechaTrabajo) return -1;
-      return a.fechaTrabajo.localeCompare(b.fechaTrabajo);
+      const ka = agKey(a), kb = agKey(b);
+      if (!ka && !kb) return 0;
+      if (!ka) return 1;
+      if (!kb) return -1;
+      return ka.localeCompare(kb);
     });
   }
 
@@ -10848,6 +11108,10 @@ window.addEventListener('DOMContentLoaded', async () => {
   // Seguimiento comercial: mostrar el banner de pendientes desde el
   // arranque (aunque el usuario aún no entre al Historial).
   if (typeof renderFollowupBanner === 'function') renderFollowupBanner();
+
+  // Recontactos: aviso global al abrir la app (toast accionable), por si
+  // el usuario usa la app sin pasar por la pestaña Historial.
+  if (typeof toastRecontactosPendientes === 'function') toastRecontactosPendientes();
 
   // Importar de contactos: mostrar el botón solo si el dispositivo soporta
   // la Contact Picker API (Chrome Android sobre HTTPS).
