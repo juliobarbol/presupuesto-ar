@@ -15,8 +15,9 @@
 
 ## Estructura de archivos
 - `index.html` — **toda la app** (markup + `<style>` + `<script>`).
-- `sw.js` — Service Worker (offline + actualizaciones). **`CACHE_VERSION` actual: `presupuesto-v33`**.
+- `sw.js` — Service Worker (offline + actualizaciones). **`CACHE_VERSION` actual: `presupuesto-v97`**.
 - `manifest.webmanifest`, `*.png` — PWA (instalación, iconos).
+- `push-worker/` — Cloudflare Worker **opcional** para notificaciones push de seguimiento (avisos con la app cerrada). No es parte del PWA shell; se despliega aparte. Ver `docs/push-setup.md`. La app es inerte a esto hasta rellenar `PUSH_WORKER_URL` / `PUSH_VAPID_KEY` en `index.html`.
 
 ## Mapa del código dentro de `index.html`
 El JS está organizado por secciones marcadas con comentarios `// ===== js/<nombre>.js =====`.
@@ -51,19 +52,37 @@ El CSS vive en el `<style>` (líneas ~16–1711). Hay dos bloques de estilos del
 - **Fotos en IndexedDB, no en localStorage:** `item.photo` guarda un ID `p_...`; el dataURL vive en IDB (`pq_photos`). Para mostrar una foto resolvé con `getPhotoData(item.photo)` y validá con `safeImgSrc()`. Para guardar una foto nueva usá `savePhoto(dataUrl)` (devuelve el ID, o el dataURL embebido si IDB falla). El caché en memoria se hidrata al iniciar con `hydratePhotoCache()` (antes del primer render). Las fotos viejas embebidas (`data:image/...`) siguen funcionando y se migran a IDB con `migrateInlinePhotosToIDB()` al cargar. El backup completo incluye las fotos referenciadas (`photos`) para sobrevivir un cambio de dispositivo.
 - **XSS:** escapar SIEMPRE los datos del usuario con `esc()` antes de meterlos en `innerHTML`.
 - **3 modos de presupuesto:** Normal, Estimativo (fotos) y Riesgo (informe ISA). `buildDoc()` deriva a `buildEstDoc()`/`buildRiskDoc()` según `S.isEstimative`/`S.isRisk`.
+- **Temas del PDF (`S.pdfTheme`):** `clasico`, `profesional`, `calido`, `minimalista`, `lateral`, `tecnico`, `elegante` (clase `pdoc-theme-X` sobre `<table class="pdoc">`). `S.pdfCompact` es un modificador ortogonal de densidad (clase `pdoc-compact`). Para agregar uno nuevo está la skill **`nuevo-tema-pdf`** (`.claude/skills/`), que documenta la receta exacta (CSS, encabezado, UI, verificación, despliegue).
 
 ## Módulo GDRIVE (detalles que no romper)
-- `gdriveGetToken({ interactive? })`: por defecto silencioso (usa `hint` con el email guardado para renovar sin selector). `{ interactive: true }` solo desde botones que el usuario toca (primera conexión / restaurar).
+- `gdriveGetToken({ interactive? })`: por defecto silencioso. Usa **`login_hint`** (NO `hint`, que GIS ignora) con el email guardado para que, aun con varias cuentas abiertas en el navegador, Google renueve sin mostrar el selector. Las llamadas de fondo usan `prompt: 'none'` (nunca abren UI). `{ interactive: true }` solo desde botones que el usuario toca (primera conexión / restaurar): si todavía no hay email recordado pide consentimiento/selector (única vez).
 - `gdriveRememberEmail(token)`: llama a `drive/v3/about` y guarda el email en `LS.GDRIVE_EMAIL` (`pq_gdrive_email`). Se llama después de `gdriveConnect` y `gdriveRestore`.
 - `scheduleGdriveBackup` y el handler de `visibilitychange` verifican `navigator.onLine` antes de intentar nada — no tocar sin señal.
 - El listener `window.addEventListener('online', …)` sube lo pendiente al volver la conexión.
 - Al desconectar (`gdriveDisconnect`) se borra también `LS.GDRIVE_EMAIL`.
 
 ## Flujo de despliegue (SEGUIR SIEMPRE)
+
+> **Para desplegar cualquier cambio a producción: mergear la rama de trabajo a
+> `main`. Cloudflare detecta el push y despliega automáticamente — no hay
+> ningún paso manual extra.** Los usuarios con la app instalada reciben la
+> versión nueva la próxima vez que abran la app con conexión.
+
 1. Desarrollar en la rama de trabajo (`claude/...`), no en `main`.
-2. **Subir `CACHE_VERSION` en `sw.js`** en cada cambio que se despliegue (si no, los dispositivos siguen con la versión vieja en caché). Formato: `presupuesto-vNN`. **Versión actual: v33**.
+2. **Subir `CACHE_VERSION` en `sw.js`** en cada cambio que se despliegue (si no, los dispositivos siguen con la versión vieja en caché). Formato: `presupuesto-vNN`. **Versión actual: v97**.
 3. Si agregás un archivo nuevo (ej. otro `.js` o `.css`), **agregarlo a `APP_SHELL` en `sw.js`** o se rompe el offline.
-4. Mergear a `main` → Cloudflare despliega solo.
+4. **Mergear a `main`** → Cloudflare despliega solo.
+
+> **Instrucción de flujo de trabajo:** Al terminar cada función o cambio,
+> **mergear inmediatamente a `main`** sin esperar que el usuario lo pida.
+> El usuario prueba la app directamente en producción después de cada merge.
+
+> **AUTORIZACIÓN PERMANENTE (deploy):** El usuario (juliobarribolbo@gmail.com,
+> dueño del repo) autoriza de forma permanente y explícita **mergear la rama de
+> trabajo (`claude/...`) a `main` y pushear `main`** automáticamente al terminar
+> cada cambio ya verificado (sintaxis JS + `test/pwa.test.cjs` OK), **sin volver
+> a preguntar**. Esto cubre el deploy a producción vía Cloudflare. (No incluye
+> crear Pull Requests: eso sigue requiriendo pedido explícito.)
 
 ## Cómo verificar cambios (sin romper)
 **Sintaxis JS** — aislar el `<script>` inline y verificar con node:
