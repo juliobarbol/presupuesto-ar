@@ -8975,6 +8975,34 @@ function comoLlegar(id) {
   window.open(url, '_blank', 'noopener');
 }
 
+// Teléfono del cliente de un entry del historial. Primero el contacto del
+// snapshot; si no parece un teléfono (o está vacío), se busca el cliente por
+// nombre en la DB de clientes (los presupuestos viejos pueden no tener el
+// contacto guardado, pero el cliente sí). Devuelve '' si no hay nada usable.
+function histClientPhone(e) {
+  const looksPhone = v => ((v || '') + '').replace(/\D/g, '').length >= 6;
+  const snap = (e.snapshot && e.snapshot.clientContact) || '';
+  if (looksPhone(snap)) return snap;
+  const name = (e.clientName || '').trim().toLowerCase();
+  if (!name) return '';
+  const c = getClientDB().find(x => ((x.name || '') + '').trim().toLowerCase() === name);
+  return (c && looksPhone(c.contact)) ? c.contact : '';
+}
+
+// Botón "Chat" del historial: abre el chat de WhatsApp con el cliente, sin
+// mensaje prearmado (es para hablar con él — coordinar un trabajo agendado,
+// avisar que estás yendo — no para reenviar el presupuesto).
+function chatWhatsappHistory(id) {
+  const e = getH().find(x => x.id === id);
+  if (!e) return;
+  const phone = normalizeArgPhone(histClientPhone(e));
+  if (!phone) {
+    toast('Este cliente no tiene teléfono cargado', 'info', 3000);
+    return;
+  }
+  window.open(`https://wa.me/${phone}`, '_blank', 'noopener');
+}
+
 // Botón "Probar" del editor: abre en Maps lo que el usuario está cargando
 // ahora mismo (sin pasar por el historial), para verificar que el Plus Code /
 // link apunta al lugar correcto antes de guardar.
@@ -9190,6 +9218,7 @@ function renderHistory() {
       `<option value="${s}"${s===est?' selected':''}>${estadoLabel(s)}</option>`
     ).join('');
     const tieneDir = !!((e.snapshot && (e.snapshot.workMapLink || e.snapshot.workAddress) || '').trim());
+    const tieneTel = !!histClientPhone(e);
     return `
     <div class="hitem" data-id="${e.id}">
       <div class="htop">
@@ -9205,6 +9234,7 @@ function renderHistory() {
         ${agendaChipFor(e)}
         <button class="btn btn-g btn-sm" onclick="previewFromHistory(${e.id})">${icon('eye')} Ver</button>
         <button class="btn btn-g btn-sm" onclick="sharePngFromHistory(${e.id})" title="Generar una imagen del presupuesto y compartirla (WhatsApp, etc.)">${icon('image')} Compartir</button>
+        ${tieneTel ? `<button class="btn btn-g btn-sm" onclick="chatWhatsappHistory(${e.id})" title="Abrir el chat de WhatsApp con el cliente" aria-label="Chat de WhatsApp con el cliente">${icon('message')} Chat</button>` : ''}
         ${tieneDir ? `<button class="btn btn-g btn-sm" onclick="comoLlegar(${e.id})" title="Cómo llegar a la dirección del trabajo" aria-label="Cómo llegar">${icon('pin')} Llegar</button>` : ''}
         <button class="btn-icon-del" onclick="delFromHistory(${e.id})" title="Eliminar presupuesto" aria-label="Eliminar presupuesto">${icon('trash')}</button>
       </div>
