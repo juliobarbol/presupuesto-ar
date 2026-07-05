@@ -1618,6 +1618,9 @@ input[type=number]{-moz-appearance:textfield}
   .pfoot-l{font-size:var(--fs-small);font-weight:600}
   .pfoot-r{font-size:var(--fs-micro);color:var(--c-muted-2)}
 
+  /* ── RECIBO DE PAGO — leyenda "no fiscal" al pie (pestaña Facturación) ── */
+  .precibo-legal{padding:14px var(--page-x) 6px;font-size:var(--fs-micro);color:var(--c-muted-2);text-transform:uppercase;letter-spacing:var(--ls-label);text-align:center}
+
   /* ──────────────────────────────────────────────────────────────
      ANTI-HUÉRFANOS: títulos de sección NO pueden quedar solos al
      final de una página. break-after:avoid los pega al contenido.
@@ -9429,6 +9432,7 @@ function buildBackupObject() {
     phrases: phrases,
     facturas: facturas,
     tope: tope,
+    reciboSeq: (function(){ try { return localStorage.getItem(RECIBO_SEQ_KEY); } catch(_) { return null; } })(),
     photos: photos
   };
 }
@@ -9638,6 +9642,13 @@ function applyBackupObject(d) {
     }
     if (d.tope != null && typeof TOPE_KEY !== 'undefined') {
       safeSetLS(TOPE_KEY, String(d.tope));
+    }
+    // Contador de recibos: restaurarlo evita repetir números en otro equipo.
+    // Nunca lo bajamos (el máximo manda si acá ya se emitieron recibos).
+    if (d.reciboSeq != null && typeof RECIBO_SEQ_KEY !== 'undefined') {
+      const cur = parseInt(localStorage.getItem(RECIBO_SEQ_KEY)||'0',10) || 0;
+      const inc = parseInt(d.reciboSeq,10) || 0;
+      if (inc > cur) safeSetLS(RECIBO_SEQ_KEY, String(inc));
     }
     if (!Array.isArray(S.itemsB)) S.itemsB = [];
     normalizeRiskData();
@@ -10852,6 +10863,89 @@ function buildEstDoc() {
     </table>`;
 }
 
+// ─── RECIBO DE PAGO (desde la pestaña Facturación) ───────────────────────────
+// Comprobante NO fiscal del pago recibido: la factura oficial se emite por
+// ARCA; esto es la constancia que se le entrega al cliente. Usa la misma
+// maquinaria visual del presupuesto (tema pdoc, header repetible, caja de
+// total), así el recibo sale con el mismo membrete y diseño elegido.
+// r = { fecha, monto, cliente, concepto, trabajos[], quoteNumber }
+// El número de recibo se muestra vía S.quoteNumber (el llamador lo setea
+// temporalmente antes de llamar, con backup/restore de S — ver factRecibo).
+function buildReciboDoc(r) {
+  const color = safeColor(S.accentColor);
+  const contacts = [];
+  if(S.coWhatsapp) contacts.push(`${pdfIcon('phone')} ${esc(S.coWhatsapp)}`);
+  if(S.coEmail)    contacts.push(`${pdfIcon('email')} ${esc(S.coEmail)}`);
+  if(S.coCity)     contacts.push(`${pdfIcon('location')} ${esc(S.coCity)}`);
+  if(S.coCuit)     contacts.push(`CUIT: ${esc(S.coCuit)}`);
+
+  // Monto: con centavos solo si los hay (los recibos suelen ser redondos)
+  const tieneCentavos = moneyToCents(r.monto) % 100 !== 0;
+  const montoStr = tieneCentavos ? fmtARSd(r.monto) : fmtARS(r.monto);
+  const letras = (typeof montoEnLetras === 'function') ? montoEnLetras(r.monto) : '';
+
+  const trabajosH = (r.trabajos && r.trabajos.length) ? `
+    <div class="pnotes">
+      <div class="pnotes-t">Detalle del trabajo realizado</div>
+      <ul>${r.trabajos.map(t=>`<li>${esc(t)}</li>`).join('')}</ul>
+    </div>` : '';
+
+  const theme = S.pdfTheme || 'clasico';
+  const doc = document.getElementById('doc-a4'); if(!doc) return;
+  doc.innerHTML = `
+    <table class="pdoc pdoc-theme-${theme}${S.pdfCompact ? ' pdoc-compact' : ''}${S.pdfFont && S.pdfFont!=='auto' ? ' pdoc-font-'+S.pdfFont : ''}" style="--pdoc-accent:${color}">
+      <thead>
+        <tr><td>
+          ${_buildDocHeader(theme, S, color, contacts, 'Recibo N°', null, false)}
+        </td></tr>
+      </thead>
+      <tbody>
+        <tr><td>
+
+    <div class="ptitle-bar">
+      <div class="ptitle" style="color:${color};border-color:${color}">Recibo de Pago</div>
+      <div class="pgrid">
+        <div>
+          <div class="pgrid-lbl">Recibí de</div>
+          <div class="pgrid-val">${esc(r.cliente||'—')}</div>
+          ${r.quoteNumber?`<div class="pgrid-sub">Presupuesto ${esc(r.quoteNumber)}</div>`:''}
+        </div>
+        <div class="pgrid-r">
+          <div class="pgrid-lbl">Lugar y fecha</div>
+          <div class="pgrid-val">${esc(S.coCity||'')}${S.coCity?', ':''}${fmtD(r.fecha)}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pobs">
+      <div class="pobs-t">Concepto</div>
+      <div class="pobs-txt">Recibí de <strong>${esc(r.cliente||'—')}</strong> la suma de ${letras?`pesos <strong>${esc(letras)}</strong> `:''}(<strong>${montoStr}</strong>) en concepto de: ${esc(r.concepto||'—')}.</div>
+    </div>
+
+    ${trabajosH}
+
+    <div class="ptotals">
+      <div class="ptotal-box" style="color:${color};border-color:${color};background:${color}12">
+        <div class="ptotal-lbl" style="color:${color}">Total recibido</div>
+        <div class="ptotal-amt" style="color:${color}">${montoStr}</div>
+      </div>
+    </div>
+
+    <div class="psigs">
+      <div class="psig-box" style="max-width:45%"><div class="psig-lbl">Firma y aclaración</div><div class="psig-name">${esc(S.coOwner||S.coName||'')}</div></div>
+    </div>
+
+    <div class="precibo-legal">Documento no fiscal — comprobante de pago. No reemplaza a la factura.</div>
+
+    ${S.showFooter?`<div class="pfoot">
+      <span class="pfoot-l">${esc(S.coFooter)}</span>
+    </div>`:''}
+
+        </td></tr>
+      </tbody>
+    </table>`;
+}
+
 // ===== js/facturacion.js =====
 // ═══════════════════════════════════════
 // FACTURACION.JS — Tab de facturación / control de tope Monotributo
@@ -10859,6 +10953,7 @@ function buildEstDoc() {
 
 const FACT_KEY = 'pq_facturas';
 const TOPE_KEY = 'pq_tope_anual';
+const RECIBO_SEQ_KEY = 'pq_recibo_seq'; // último número de recibo emitido (correlativo propio, sin validez fiscal)
 const TOPE_DEF = 15058447.71; // vigente desde febrero 2026
 const TOPE_DEF_VIGENTE_DESDE = '2026-02-01';
 
@@ -11005,8 +11100,10 @@ function factRender() {
         <div class="fact-reg-date">${f.fecha}</div>
         <div class="fact-reg-client">${esc(f.cliente||'—')}</div>
         ${f.desc?`<div class="fact-reg-meta">${esc(f.desc)}</div>`:''}
+        ${f.reciboNum?`<div class="fact-reg-meta">🧾 Recibo ${esc(f.reciboNum)}</div>`:''}
       </div>
       <div class="fact-reg-amt">${fmtARS(f.monto)}</div>
+      <button class="btn btn-s btn-sm" onclick="factRecibo('${f.id}')" title="Generar recibo de pago (PDF)">🧾</button>
       <button class="btn btn-d btn-sm" onclick="factEliminar('${f.id}')">✕</button>
     </div>`).join('');
 }
@@ -11049,6 +11146,126 @@ function factEliminar(id) {
   setFacturas(getFacturas().filter(f=>f.id!==id));
   factRender();
   toast('Factura eliminada','info');
+}
+
+// ─── RECIBO DE PAGO ──────────────────────────
+// Genera el PDF del recibo de una factura registrada. El número de recibo es
+// correlativo propio (R-0001, R-0002…): se asigna la primera vez y queda
+// guardado en la factura, así reimprimir NO consume un número nuevo.
+
+function _nextReciboNum() {
+  const seq = (parseInt(localStorage.getItem(RECIBO_SEQ_KEY)||'0', 10) || 0) + 1;
+  safeSetLS(RECIBO_SEQ_KEY, String(seq));
+  return 'R-' + String(seq).padStart(4, '0');
+}
+
+// Monto en pesos a letras, estilo recibo tradicional ("pesos ciento cincuenta
+// mil"). Hasta 999.999.999; centavos como "con 50/100". Fuera de rango → ''.
+function montoEnLetras(monto) {
+  const cents  = moneyToCents(monto);
+  const entero = Math.floor(cents/100), cent = cents%100;
+  if (entero < 0 || entero > 999999999) return '';
+  const U=['','uno','dos','tres','cuatro','cinco','seis','siete','ocho','nueve','diez','once','doce','trece','catorce','quince','dieciséis','diecisiete','dieciocho','diecinueve','veinte','veintiuno','veintidós','veintitrés','veinticuatro','veinticinco','veintiséis','veintisiete','veintiocho','veintinueve'];
+  const D=['','','','treinta','cuarenta','cincuenta','sesenta','setenta','ochenta','noventa'];
+  const C=['','ciento','doscientos','trescientos','cuatrocientos','quinientos','seiscientos','setecientos','ochocientos','novecientos'];
+  const centena = n => { // 0..999
+    if (n === 0)   return '';
+    if (n === 100) return 'cien';
+    const c = Math.floor(n/100), r = n%100;
+    let s = C[c];
+    if (r) {
+      if (s) s += ' ';
+      if (r < 30) s += U[r];
+      else { s += D[Math.floor(r/10)]; if (r%10) s += ' y ' + U[r%10]; }
+    }
+    return s;
+  };
+  // "uno" → "un" cuando precede a mil/millón ("veintiún mil", "treinta y un millones")
+  const apoc = s => s.replace(/veintiuno$/,'veintiún').replace(/ uno$/,' un').replace(/^uno$/,'un');
+  const miles = n => { // 0..999999
+    const m = Math.floor(n/1000), r = n%1000;
+    let s = '';
+    if (m === 1) s = 'mil';
+    else if (m > 1) s = apoc(centena(m)) + ' mil';
+    if (r) s += (s?' ':'') + centena(r);
+    return s;
+  };
+  let s = '';
+  const mill = Math.floor(entero/1000000), resto = entero%1000000;
+  if (mill === 1) s = 'un millón';
+  else if (mill > 1) s = apoc(miles(mill)) + ' millones';
+  if (resto) s += (s?' ':'') + miles(resto);
+  if (!s) s = 'cero';
+  if (cent) s += ' con ' + String(cent).padStart(2,'0') + '/100';
+  return s;
+}
+
+// Imprime el recibo de la factura `id`. Mismo patrón swap que la vista previa
+// del historial: backup de S y #doc-a4 → construir el recibo → window.print()
+// → restaurar. Lo que el usuario está editando no se toca.
+function factRecibo(id) {
+  const arr = getFacturas();
+  const f = arr.find(x => x.id === id);
+  if (!f) return;
+
+  if (!f.reciboNum) {
+    f.reciboNum = _nextReciboNum();
+    setFacturas(arr);
+    factRender(); // mostrar el número asignado en la lista
+  }
+
+  // Detalle del trabajo desde el presupuesto enlazado (si vino por el puente
+  // "realizado → factura"). Con escenarios A/B no sabemos cuál se aceptó,
+  // así que en ese caso no listamos ítems (el concepto ya identifica el
+  // presupuesto).
+  const trabajos = [];
+  if (f.quoteNumber) {
+    try {
+      const e = getH().find(x => x.quoteNumber === f.quoteNumber);
+      const snap = e && e.snapshot;
+      if (snap && Array.isArray(snap.items) && !snap.scenariosEnabled) {
+        snap.items.forEach(it => {
+          if (it.type === 'tree')         trabajos.push((it.species ? it.species + ': ' : '') + (it.desc || 'trabajo sobre árbol'));
+          else if (it.type === 'service') trabajos.push(it.desc || 'servicio');
+        });
+      }
+    } catch(_) {}
+  }
+
+  const concepto = f.desc
+    || (f.quoteNumber ? 'Trabajo según presupuesto ' + f.quoteNumber : 'Trabajos de poda y/o extracción de árboles');
+
+  const docEl = document.getElementById('doc-a4');
+  if (!docEl) return;
+  const backup = {
+    S: JSON.parse(JSON.stringify(S)),
+    docHTML: docEl.innerHTML,
+    title: document.title,
+  };
+  const restore = () => {
+    Object.assign(S, backup.S);
+    docEl.innerHTML = backup.docHTML;
+    document.title = backup.title;
+  };
+  try {
+    toast('Generando recibo…', 'info', 1500);
+    S.quoteNumber = f.reciboNum; // el header del documento muestra este número
+    buildReciboDoc({
+      fecha: f.fecha, monto: f.monto, cliente: f.cliente,
+      concepto, trabajos, quoteNumber: f.quoteNumber || '',
+    });
+    document.title = f.reciboNum + (f.cliente ? ' - ' + f.cliente : '');
+    setTimeout(() => {
+      window.print();
+      // window.print() bloquea hasta cerrar el diálogo en los navegadores
+      // que nos importan; el delay extra imita el restore de printDoc.
+      setTimeout(restore, 1500);
+    }, 150);
+  } catch (err) {
+    console.error('Error al generar el recibo', err);
+    restore();
+    toast('No se pudo generar el recibo', 'err');
+  }
 }
 
 async function factLimpiar() {
