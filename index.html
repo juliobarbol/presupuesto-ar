@@ -9978,11 +9978,41 @@ function printDoc() {
   document.title = num ? `${num} - ${client}` : client;
   setTimeout(()=>{
     window.print();
-    setTimeout(()=>{ document.title = S.coName ? ('Presupuestos — ' + S.coName) : 'Presupuestos'; }, 1500);
+    _restoreDocTitleWhenBack(S.coName ? ('Presupuestos — ' + S.coName) : 'Presupuestos');
     // Opción B: ofrecer marcar como enviado tras generar el PDF, pero
     // solo si el presupuesto sigue en borrador. Un toque y listo.
     _ofrecerMarcarEnviado(num);
   }, 150);
+}
+
+// Restaura el título del documento (= nombre de archivo del PDF) recién
+// cuando el usuario VUELVE del diálogo de impresión. En Android
+// window.print() no bloquea y Chrome toma el nombre del archivo al momento
+// de GUARDAR: un restore con timer corto hacía que el PDF se guardara como
+// "Presupuestos" en vez del nombre armado. La vuelta del diálogo se detecta
+// con visibilitychange (el diálogo de impresión es otra pantalla del
+// sistema); fallback de 5 min para desktop, donde print() sí bloquea y la
+// página puede no ocultarse nunca.
+let _titleRestorePending = null;
+function _restoreDocTitleWhenBack(title) {
+  if (_titleRestorePending) { _titleRestorePending.title = title; return; }
+  const p = { title };
+  _titleRestorePending = p;
+  let t = null;
+  const done = () => {
+    if (_titleRestorePending !== p) return;
+    _titleRestorePending = null;
+    document.removeEventListener('visibilitychange', onVis);
+    if (t) clearTimeout(t);
+    document.title = p.title;
+  };
+  const onVis = () => {
+    // Al volver del diálogo, un respiro extra por si el sistema todavía
+    // está terminando de generar/guardar el PDF.
+    if (document.visibilityState === 'visible') setTimeout(done, 1000);
+  };
+  document.addEventListener('visibilitychange', onVis);
+  t = setTimeout(done, 300000);
 }
 
 // Muestra un toast accionable "¿Marcar como enviado?" si el presupuesto
@@ -11249,7 +11279,8 @@ function factRecibo(id) {
       fecha: f.fecha, monto: f.monto, cliente: f.cliente,
       concepto, trabajos, quoteNumber: f.quoteNumber || '',
     });
-    document.title = f.reciboNum + (f.cliente ? ' - ' + f.cliente : '');
+    // El título es el nombre de archivo del PDF: "Recibo R-0001 - Cliente.pdf"
+    document.title = 'Recibo ' + f.reciboNum + (f.cliente ? ' - ' + f.cliente : '');
     setTimeout(() => {
       window.print();
       // En Android window.print() NO bloquea: vuelve al instante con el
@@ -11259,7 +11290,7 @@ function factRecibo(id) {
       // en el DOM: está oculto fuera de impresión y todos los flujos lo
       // reconstruyen antes de usarlo (printDoc tampoco restaura).
       Object.assign(S, backup.S); // el estado sí se restaura ya mismo
-      setTimeout(() => { document.title = backup.title; }, 1500);
+      _restoreDocTitleWhenBack(backup.title); // recién al volver del diálogo
     }, 150);
   } catch (err) {
     console.error('Error al generar el recibo', err);
