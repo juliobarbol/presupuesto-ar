@@ -1705,6 +1705,8 @@ input[type=number]{-moz-appearance:textfield}
 .fact-reg-date{font-size:11px;font-weight:700;color:var(--accent-fg)}
 .fact-reg-client{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fact-reg-meta{font-size:11px;color:var(--muted)}
+.fact-reg-info.is-linked{cursor:pointer}
+.fact-reg-link{color:var(--accent-fg);font-weight:600}
 .fact-reg-amt{font-size:14px;font-weight:700;color:var(--text);white-space:nowrap}
 .fact-empty{text-align:center;padding:30px;color:var(--muted);font-size:13px}
 
@@ -11127,10 +11129,11 @@ function factRender() {
   const sorted = [...facturas].sort((a,b)=>b.fecha.localeCompare(a.fecha));
   list.innerHTML = sorted.map(f=>`
     <div class="fact-reg-item">
-      <div class="fact-reg-info">
+      <div class="fact-reg-info${f.quoteNumber?' is-linked':''}" onclick="factIrAlPresupuesto('${f.id}')" title="${f.quoteNumber?'Ver el presupuesto en el historial':''}">
         <div class="fact-reg-date">${f.fecha}</div>
         <div class="fact-reg-client">${esc(f.cliente||'—')}</div>
-        ${f.desc?`<div class="fact-reg-meta">${esc(f.desc)}</div>`:''}
+        ${f.desc && f.desc !== 'Presupuesto ' + (f.quoteNumber||'') ? `<div class="fact-reg-meta">${esc(f.desc)}</div>` : ''}
+        ${f.quoteNumber?`<div class="fact-reg-meta fact-reg-link">→ Presupuesto ${esc(f.quoteNumber)}</div>`:''}
         ${f.reciboNum?`<div class="fact-reg-meta">🧾 Recibo ${esc(f.reciboNum)}</div>`:''}
       </div>
       <div class="fact-reg-amt">${fmtARS(f.monto)}</div>
@@ -11177,6 +11180,19 @@ function factEliminar(id) {
   setFacturas(getFacturas().filter(f=>f.id!==id));
   factRender();
   toast('Factura eliminada','info');
+}
+
+// Al tocar una factura, saltar al presupuesto del que se generó (reusa
+// goToHistoryEntry: limpia filtros, despliega el mes, centra y resalta).
+// Solo las facturas que vinieron por el puente "realizado → factura"
+// tienen quoteNumber; las cargadas a mano no se pueden enlazar con certeza.
+function factIrAlPresupuesto(id) {
+  const f = getFacturas().find(x => x.id === id);
+  if (!f) return;
+  if (!f.quoteNumber) { toast('Esta factura no está enlazada a un presupuesto', 'info'); return; }
+  const e = getH().find(x => x.quoteNumber === f.quoteNumber);
+  if (!e) { toast('No se encontró el presupuesto ' + f.quoteNumber + ' en el historial', 'err'); return; }
+  goToHistoryEntry(e.id);
 }
 
 // ─── RECIBO DE PAGO ──────────────────────────
