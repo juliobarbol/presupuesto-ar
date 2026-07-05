@@ -4395,10 +4395,16 @@ function buildWhatsappLink(entry, tpl) {
 //   "3543 68-0871"        → "5493543680871"
 //   "0351 650-7699"       → "5493516507699"
 //   "11 1234-5678"        → "5491112345678"
-// Si ya viene con código de país, lo respeta. Si no reconoce el formato,
-// devuelve los dígitos tal cual (mejor intentar que no hacer nada).
+// Si ya viene con código de país, lo respeta. Un número con prefijo
+// internacional explícito de OTRO país ("+34 647 83 83 08", "0034...")
+// se devuelve tal cual, sin tocar: anteponerle 549 lo rompería.
+// Si no reconoce el formato, devuelve los dígitos tal cual (mejor
+// intentar que no hacer nada).
 function normalizeArgPhone(raw) {
-  let d = (raw + '').replace(/[^\d]/g, '');
+  raw = (raw + '').trim();
+  // "+..." o "00...": el usuario ya escribió el código de país.
+  const intl = /^(\+|00)/.test(raw);
+  let d = raw.replace(/[^\d]/g, '');
   if (!d) return '';
   // Quitar 00 inicial (prefijo internacional alternativo)
   if (d.startsWith('00')) d = d.slice(2);
@@ -4409,6 +4415,8 @@ function normalizeArgPhone(raw) {
     if (!rest.startsWith('9')) rest = '9' + rest;
     return '54' + rest;
   }
+  // Código de país extranjero explícito: respetarlo sin heurísticas argentinas
+  if (intl) return d;
   // Número local: quitar 0 inicial (larga distancia) y 15 de celular
   if (d.startsWith('0')) d = d.slice(1);
   // Si quedó un "15" después del área es difícil de detectar sin el área;
