@@ -1,11 +1,15 @@
 {
+  "id": "presupuesto-ar",
   "name": "Presupuestos — Poda en Altura AR",
   "short_name": "Presupuestos",
   "description": "Generador de presupuestos para servicios de arboricultura.",
   "lang": "es-AR",
+  "dir": "ltr",
+  "categories": ["business", "productivity"],
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
+  "display_override": ["standalone"],
   "orientation": "portrait",
   "background_color": "#f0f4f3",
   "theme_color": "#064e3b",
@@ -28,5 +32,31 @@
       "type": "image/png",
       "purpose": "maskable"
     }
-  ]
+  ],
+  "shortcuts": [
+    {
+      "name": "Nuevo presupuesto",
+      "short_name": "Nuevo",
+      "description": "Crear un presupuesto nuevo",
+      "url": "./index.html?go=nuevo",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Historial",
+      "short_name": "Historial",
+      "description": "Ver presupuestos anteriores",
+      "url": "./index.html?go=historial",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    }
+  ],
+  "share_target": {
+    "action": "./share-target",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "files": [
+        { "name": "photos", "accept": ["image/*"] }
+      ]
+    }
+  }
 }
