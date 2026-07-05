@@ -11242,11 +11242,6 @@ function factRecibo(id) {
     docHTML: docEl.innerHTML,
     title: document.title,
   };
-  const restore = () => {
-    Object.assign(S, backup.S);
-    docEl.innerHTML = backup.docHTML;
-    document.title = backup.title;
-  };
   try {
     toast('Generando recibo…', 'info', 1500);
     S.quoteNumber = f.reciboNum; // el header del documento muestra este número
@@ -11257,13 +11252,20 @@ function factRecibo(id) {
     document.title = f.reciboNum + (f.cliente ? ' - ' + f.cliente : '');
     setTimeout(() => {
       window.print();
-      // window.print() bloquea hasta cerrar el diálogo en los navegadores
-      // que nos importan; el delay extra imita el restore de printDoc.
-      setTimeout(restore, 1500);
+      // En Android window.print() NO bloquea: vuelve al instante con el
+      // diálogo aún abierto, y Chrome RE-renderiza el DOM vivo si el
+      // usuario cambia el tamaño de papel (Carta→A4). Por eso NO se
+      // restaura #doc-a4 acá — quedaría el PDF en blanco. El recibo queda
+      // en el DOM: está oculto fuera de impresión y todos los flujos lo
+      // reconstruyen antes de usarlo (printDoc tampoco restaura).
+      Object.assign(S, backup.S); // el estado sí se restaura ya mismo
+      setTimeout(() => { document.title = backup.title; }, 1500);
     }, 150);
   } catch (err) {
     console.error('Error al generar el recibo', err);
-    restore();
+    Object.assign(S, backup.S);
+    docEl.innerHTML = backup.docHTML;
+    document.title = backup.title;
     toast('No se pudo generar el recibo', 'err');
   }
 }
