@@ -3946,9 +3946,24 @@ function migrateState(raw) {
   // personalizó, se respeta tal cual (parseCriteria maneja líneas sin "|").
   const OLD_CRITERIA_DEFAULT = 'La altura del árbol y el acceso al sitio.\nEl volumen de material a extraer: ramas, troncos y restos vegetales.\nLa proximidad a estructuras sensibles: edificaciones, tendido eléctrico u otras instalaciones.\nLa especie, el estado fitosanitario y la complejidad estructural del árbol.';
   if (next.docCriteria === OLD_CRITERIA_DEFAULT) next.docCriteria = DEF.docCriteria;
-  // Campo por presupuesto agregado después: si el snapshot es anterior, lo
-  // dejamos vacío (no debe heredar la duración del presupuesto abierto antes).
+  // Campos POR PRESUPUESTO agregados después del lanzamiento: si el snapshot
+  // es anterior a que existieran, van al default. Sin esto, Object.assign(S,
+  // snapshot) deja el valor del presupuesto abierto antes (p.ej. la ubicación
+  // exacta "persistía" y el próximo autoguardado la asentaba en el
+  // presupuesto equivocado).
   if (typeof next.workDuration !== 'string') next.workDuration = '';
+  if (typeof next.workMapLink  !== 'string') next.workMapLink  = '';
+  if (typeof next.workPlanOverride    !== 'boolean') next.workPlanOverride = false;
+  if (typeof next.workPlanCustom      !== 'string')  next.workPlanCustom = '';
+  if (typeof next.workPlanCustomTitle !== 'string')  next.workPlanCustomTitle = '';
+  if (typeof next.scenariosEnabled !== 'boolean') next.scenariosEnabled = false;
+  if (typeof next.scenarioLabelA   !== 'string')  next.scenarioLabelA = DEF.scenarioLabelA;
+  if (typeof next.scenarioLabelB   !== 'string')  next.scenarioLabelB = DEF.scenarioLabelB;
+  if (typeof next.isEstimative !== 'boolean') next.isEstimative = false;
+  if (typeof next.isRisk       !== 'boolean') next.isRisk = false;
+  if (!next.riskData || typeof next.riskData !== 'object') {
+    next.riskData = JSON.parse(JSON.stringify(DEF.riskData));
+  }
   next._schemaVersion = APP_SCHEMA_VERSION;
   return next;
 }
@@ -7603,8 +7618,10 @@ function getH() {
 function setH(h) { safeSetLS(LS.HISTORY, JSON.stringify(h)); }
 
 // ─── AUTO-SAVE (silencioso) ───────────────────
+// Devuelve true si asentó el presupuesto en el historial, false si no
+// había nada que guardar (sin N° o borrador vacío).
 function autoSaveToHistory() {
-  if (!S.quoteNumber) return;
+  if (!S.quoteNumber) return false;
   syncFromUI();
   if (S.clientName) saveClientToDB(S.clientName, S.clientContact, S.workAddress, S.workMapLink);
   S.items.forEach(it=>{ if(it.type==='tree'&&it.species) saveSpeciesToDB(it.species); });
@@ -7630,7 +7647,7 @@ function autoSaveToHistory() {
                     && !S.observations?.trim()
                     && !S.paymentConditions?.trim()
                     && !(S.isRisk && S.riskData?.species);
-  if (isEmptyDraft) return;
+  if (isEmptyDraft) return false;
 
   // Snapshot del estado, pero SIN el logo. El logo es config global de
   // empresa (vive en S.logo y se exporta a nivel raíz del backup). No
@@ -7674,6 +7691,7 @@ function autoSaveToHistory() {
   if(idx>=0) h.splice(idx,1,entry); else h.unshift(entry);
   setH(h);
   renderHistory();
+  return true;
 }
 
 // ─── SAVE (con toast) ────────────────────────
@@ -7719,6 +7737,17 @@ function calcNextNumFromHistory() {
 // ─── LOAD ────────────────────────────────────
 function loadFromHistory(id) {
   const e = getH().find(e=>e.id===id); if(!e) return;
+  // Antes de pisar el editor, dejar guardado lo que se estaba editando
+  // (mismo autoguardado silencioso que usa "Nuevo presupuesto"): cargar
+  // otro presupuesto NO debe descartar el borrador en curso. Si se está
+  // recargando el MISMO presupuesto (mismo N°) no se autoguarda, porque
+  // ahí la intención es volver a la versión asentada en el historial.
+  // OJO: autoSaveToHistory reemplaza el entry con un id nuevo, por eso
+  // `e` se busca ANTES (getH() devuelve copias; `e` sigue siendo válido).
+  let prevNum = '';
+  if (S.quoteNumber && S.quoteNumber !== e.quoteNumber && autoSaveToHistory()) {
+    prevNum = S.quoteNumber;
+  }
   // Preservar numNext y logo del state actual — el snapshot tiene
   // numNext viejo que NO debe pisar al actual (sino al hacer "Nuevo"
   // después se generan duplicados). El logo es config global de
@@ -7752,7 +7781,9 @@ function loadFromHistory(id) {
   calcExpiry(); renderItems(); renderEstItems(); renderRiskDefects();
   applyMode(currentMode());
   updateTotalsBar(); updateSurchargeUI(); switchTab('editor');
-  toast('Presupuesto cargado', 'ok');
+  toast(prevNum
+    ? `Presupuesto cargado · el ${prevNum} quedó guardado en el historial`
+    : 'Presupuesto cargado', 'ok');
 }
 
 // ─── DELETE ──────────────────────────────────
@@ -9464,6 +9495,9 @@ function impIndividual() {
   if(!d) return;
   if (d.photos) restorePhotosFromBackup(d.photos);
   if(d.snapshot){
+    // Igual que loadFromHistory: no descartar el borrador en curso sin
+    // guardarlo antes de pisar el editor con el presupuesto importado.
+    if (S.quoteNumber && S.quoteNumber !== (d.snapshot.quoteNumber || '')) autoSaveToHistory();
     // Preservar numNext del state actual (ver loadFromHistory para detalles).
     const savedNumNext = S.numNext;
     Object.assign(S, migrateState(d.snapshot));
