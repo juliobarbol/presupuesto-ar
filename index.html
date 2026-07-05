@@ -9973,9 +9973,10 @@ function printDoc() {
   syncFromUI();
   autoSaveToHistory();
   buildDoc();
-  const client = (S.clientName||'').trim().replace(/[^\w\sáéíóúñüÁÉÍÓÚÑÜ-]/g,'').trim() || 'Presupuesto';
+  // El título es el nombre de archivo del PDF: "Presupuesto 2026-0049 - Cliente.pdf"
+  const client = (S.clientName||'').trim().replace(/[^\w\sáéíóúñüÁÉÍÓÚÑÜ-]/g,'').trim();
   const num    = S.quoteNumber || '';
-  document.title = num ? `${num} - ${client}` : client;
+  document.title = ('Presupuesto' + (num ? ' ' + num : '') + (client ? ' - ' + client : '')).trim();
   setTimeout(()=>{
     window.print();
     _restoreDocTitleWhenBack(S.coName ? ('Presupuestos — ' + S.coName) : 'Presupuestos');
