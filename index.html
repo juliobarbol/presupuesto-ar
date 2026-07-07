@@ -211,6 +211,26 @@ body{background-color:var(--bg)}
 .agenda-mode{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:8px 6px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;color:var(--muted);background:var(--card);border:1px solid var(--border);border-radius:var(--radius-field);cursor:pointer}
 .agenda-mode.active{color:var(--accent-fg);border-color:var(--accent-fg);background:var(--accent-light)}
 .agenda-help{font-size:12px;color:var(--muted);line-height:1.45;margin-bottom:12px}
+/* ── Agenda multi-día: duración, días ubicados y días por ubicar ── */
+.agenda-dur{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.agenda-step{width:32px;height:32px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;line-height:1;color:var(--accent-fg);background:var(--card);border:1px solid var(--border);border-radius:var(--radius-field);cursor:pointer}
+.agenda-step:active{background:var(--accent-light)}
+.agenda-step:disabled{opacity:.4;cursor:default}
+.agenda-dur-val{min-width:22px;text-align:center;font-size:15px;font-weight:700;color:var(--text)}
+.agenda-dur-lbl{font-size:13px;color:var(--muted)}
+.agenda-dias-list{display:flex;flex-direction:column;gap:6px;margin:10px 0}
+.agenda-dia-chip{display:flex;align-items:center;gap:8px;background:#ede9fe;color:#5b21b6;border:1px solid transparent;border-radius:var(--radius-field);padding:7px 10px;font-size:13px;font-weight:600}
+.agenda-dia-chip .ic{width:14px;height:14px;flex-shrink:0}
+.agenda-dia-chip .agenda-dia-txt{flex:1;min-width:0}
+.agenda-dia-chip.is-today{background:#fef3c7;color:#92400e}
+.agenda-dia-x{width:24px;height:24px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;line-height:1;color:inherit;background:transparent;border:none;cursor:pointer;opacity:.7}
+.agenda-dia-x:active{opacity:1}
+.agenda-pend{font-size:12.5px;font-weight:600;color:#a16207;background:#fef9c3;border-radius:var(--radius-field);padding:7px 11px;margin:2px 0 10px;line-height:1.4}
+.agenda-addrow{display:flex;gap:8px;align-items:stretch}
+.agenda-addrow input{flex:1;min-width:0}
+:root[data-theme="dark"] .agenda-dia-chip{background:rgba(139,92,246,.2);color:#c4b5fd}
+:root[data-theme="dark"] .agenda-dia-chip.is-today{background:#4a3a12;color:#fde68a}
+:root[data-theme="dark"] .agenda-pend{background:#3a3413;color:#fde68a}
 /* ── Bandeja de fotos compartidas (Web Share Target) ── */
 #share-overlay{display:none;position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(0,0,0,.45);z-index:2000;align-items:center;justify-content:center}
 #share-overlay.open{display:flex}
@@ -3322,9 +3342,27 @@ input[type=number]{-moz-appearance:textfield}
       <button type="button" class="agenda-mode" id="agenda-mode-recontacto" onclick="setAgendaMode('recontacto')"><svg class="ic" aria-hidden="true"><use href="#i-phone"></use></svg> Recontactar</button>
     </div>
     <p class="agenda-help" id="agenda-help" hidden>¿Aceptó pero todavía no puede fijar fecha? Agendá qué día volver a contactarlo para coordinar.</p>
+    <!-- Duración: solo en modo "trabajo". Cuántos días dura el trabajo en total.
+         Los días con fecha ya elegida se ubican abajo; el resto quedan "por ubicar". -->
+    <div class="fg" id="agenda-dur-wrap" hidden>
+      <label>¿Cuántos días dura el trabajo?</label>
+      <div class="agenda-dur">
+        <button type="button" class="agenda-step" id="agenda-dur-minus" onclick="agendaDurStep(-1)" aria-label="Menos días">−</button>
+        <span class="agenda-dur-val" id="agenda-dur-val">1</span>
+        <button type="button" class="agenda-step" onclick="agendaDurStep(1)" aria-label="Más días">+</button>
+        <span class="agenda-dur-lbl" id="agenda-dur-lbl">día</span>
+      </div>
+    </div>
+    <!-- Días ya ubicados en una fecha concreta (chips removibles). -->
+    <div class="agenda-dias-list" id="agenda-dias-list" hidden></div>
+    <!-- Aviso "faltan ubicar N días" (solo cuando hay días sin fecha). -->
+    <p class="agenda-pend" id="agenda-pend" hidden></p>
     <div class="fg">
       <label for="agenda-fecha" id="agenda-fecha-label">Día de comienzo del trabajo</label>
-      <input type="date" id="agenda-fecha" aria-label="Fecha" oninput="agendaOnDateChange()">
+      <div class="agenda-addrow">
+        <input type="date" id="agenda-fecha" aria-label="Fecha" oninput="agendaOnDateChange()">
+        <button type="button" class="btn btn-g btn-sm" id="agenda-add-dia" onclick="agendaAddDia()" hidden>Agregar día</button>
+      </div>
     </div>
     <div class="fg" id="agenda-nota-wrap" hidden>
       <label for="agenda-nota">Nota (opcional)</label>
@@ -7740,7 +7778,7 @@ function autoSaveToHistory() {
     const prev = h[idx];
     entry.estado = prev.estado || 'borrador';
     ['enviadoEn', 'seguimientoHechoEn', 'vencimientoVistoEn', 'fechaTrabajo',
-     'recontactoEn', 'recontactoNota', 'facturado']
+     'fechasTrabajo', 'diasEstimados', 'recontactoEn', 'recontactoNota', 'facturado']
       .forEach(k => { if (prev[k] !== undefined) entry[k] = prev[k]; });
   } else {
     entry.estado = 'borrador';
@@ -7906,13 +7944,40 @@ function toggleAgendaView() {
   if (typeof refreshCustomSelects === 'function') refreshCustomSelects();
 }
 
-// ─── AGENDA: FECHA DEL TRABAJO ───────────────────────────────
-// La fecha en que se va a realizar el trabajo de un presupuesto aceptado.
-// Vive a nivel del entry del historial (e.fechaTrabajo, formato YYYY-MM-DD
-// LOCAL — nunca UTC), como `estado` y `enviadoEn`. Es la fecha de COMIENZO:
-// un trabajo puede durar varios días o continuarse después de una pausa,
-// así que una fecha pasada con estado "aceptado" se muestra como "En curso"
-// (neutro), sin alarmas ni insistencia para cerrarlo.
+// ─── AGENDA: FECHA(S) DEL TRABAJO (MULTI-DÍA) ────────────────
+// Un trabajo aceptado puede durar varios días, y esos días NO siempre son
+// consecutivos ni se conocen de una: se agenda el primero y el resto se
+// ubican después, a medida que se organiza la continuación. Por eso el
+// modelo tiene dos partes, a nivel del entry del historial:
+//   · e.fechasTrabajo → array de fechas YA UBICADAS (YYYY-MM-DD LOCAL, nunca
+//     UTC), ordenado. Cada una es un día concreto en que se trabaja.
+//   · e.diasEstimados → cuántos días dura el trabajo EN TOTAL. Los días que
+//     faltan ubicar (diasEstimados − fechasTrabajo.length) quedan "por ubicar".
+// e.fechaTrabajo se mantiene como ESPEJO del primer día ubicado
+// (fechasTrabajo[0]) para no romper el código que lo lee. Entries viejos que
+// solo tienen e.fechaTrabajo se leen como un trabajo de 1 día (ver agFechas).
+// Una fecha pasada con estado "aceptado" se muestra como "En curso" (neutro),
+// sin alarmas ni insistencia para cerrarlo.
+
+// Fechas ubicadas de un entry (ordenadas, retrocompatible con entries viejos
+// que solo tenían e.fechaTrabajo). No muta el entry.
+function agFechas(e) {
+  if (!e) return [];
+  if (Array.isArray(e.fechasTrabajo) && e.fechasTrabajo.length)
+    return e.fechasTrabajo.slice().sort();
+  return e.fechaTrabajo ? [e.fechaTrabajo] : [];
+}
+// Días totales del trabajo: al menos los ya ubicados; si hay un estimado
+// explícito mayor, ese manda (los de más son "por ubicar").
+function agDiasEstimados(e) {
+  const ub = agFechas(e).length;
+  const n = parseInt(e && e.diasEstimados, 10);
+  return Math.max(ub, n > 0 ? n : 0);
+}
+// Días que faltan ubicar en una fecha concreta.
+function agDiasPendientes(e) {
+  return Math.max(0, agDiasEstimados(e) - agFechas(e).length);
+}
 
 const AGENDA_WD = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 
@@ -7926,21 +7991,37 @@ function fmtDiaCorto(iso) {
 }
 
 // Chips de agenda para una tarjeta del historial. Aceptado sin nada →
-// "Programar"; con fecha de trabajo → la fecha coloreada por proximidad;
-// con recontacto pendiente → chip celeste 📱 (ámbar cuando llegó el día).
-// En otros estados la fecha de trabajo se muestra solo como registro.
+// "Programar"; con día(s) de trabajo → el día más relevante (próximo/hoy, o
+// "En curso" si ya empezó) coloreado por proximidad, con un sufijo multi-día
+// que avisa cuántos días faltan ubicar; con recontacto pendiente → chip
+// celeste 📱 (ámbar cuando llegó el día). En otros estados es solo registro.
 function agendaChipFor(e) {
   const est = e.estado || 'borrador';
+  const fechas = agFechas(e);
+  const total = agDiasEstimados(e);
+  const pend = agDiasPendientes(e);
   let out = '';
-  if (e.fechaTrabajo) {
-    const f = e.fechaTrabajo;
-    const d = daysSinceDate(f); // >0 pasado · 0 hoy · <0 futuro
-    let cls = '', lbl = fmtDiaCorto(f);
+  if (fechas.length) {
+    // Día de referencia: el próximo que sea hoy o futuro; si ya pasaron
+    // todos, el último (el trabajo está en curso o es registro histórico).
+    const hoy = today();
+    const ref = fechas.find(f => f >= hoy) || fechas[fechas.length - 1];
+    const d = daysSinceDate(ref); // >0 pasado · 0 hoy · <0 futuro
+    let cls = '', lbl = fmtDiaCorto(ref);
     if (d === 0)       { cls = ' is-soon'; lbl = 'Hoy'; }
     else if (d === -1) { cls = ' is-soon'; lbl = 'Mañana'; }
     else if (d > 0 && est === 'aceptado') { cls = ' is-past'; lbl = `En curso · ${lbl}`; }
     else if (d > 0)    { cls = ' is-done'; }
-    out += `<button type="button" class="hagenda-chip${cls}" onclick="openAgendaDlg(${e.id})" title="Fecha del trabajo: ${fmtD(f)} — tocá para cambiarla">${icon('calendar')} ${lbl}</button>`;
+    // Sufijo multi-día: prioriza avisar los días que faltan ubicar.
+    let extra = '';
+    if (est === 'aceptado' && pend > 0)      extra = ` · +${pend}d por ubicar`;
+    else if (total > 1 || fechas.length > 1) extra = ` · ${total} días`;
+    const tit = `Días del trabajo: ${fechas.map(fmtD).join(', ')}`
+      + (pend > 0 ? ` (+${pend} por ubicar)` : '') + ' — tocá para editar';
+    out += `<button type="button" class="hagenda-chip${cls}" onclick="openAgendaDlg(${e.id})" title="${esc(tit)}">${icon('calendar')} ${lbl}${extra}</button>`;
+  } else if (est === 'aceptado' && pend > 0) {
+    // Duración cargada pero ningún día ubicado todavía: todo por ubicar.
+    out += `<button type="button" class="hagenda-chip is-soon" onclick="openAgendaDlg(${e.id})" title="El trabajo dura ${total} días y todavía no ubicaste ninguno — tocá para agendar">${icon('calendar')} ${total} días · por ubicar</button>`;
   } else if (est === 'aceptado' && !e.recontactoEn) {
     out += `<button type="button" class="hagenda-chip is-none" onclick="openAgendaDlg(${e.id})" title="Agendar la fecha del trabajo o un recontacto con el cliente">${icon('calendar')} Programar</button>`;
   }
@@ -7957,13 +8038,16 @@ function agendaChipFor(e) {
   return out;
 }
 
-// Entry cuyo diálogo de agenda está abierto (null si está cerrado), modo
-// activo ('trabajo' | 'recontacto') y valor de fecha editado por modo (se
-// conserva al alternar de pestaña dentro del diálogo sin guardar).
+// Estado del diálogo de agenda mientras está abierto (staging: no toca el
+// entry hasta Guardar). _agendaFechas = días de trabajo ya ubicados (copia
+// editable, ordenada); _agendaDiasEst = duración total en días; _agendaRecon
+// = fecha del modo recontacto. Se conservan al alternar de pestaña.
 let _agendaId = null;
 let _agendaMode = 'trabajo';
 let _agendaFromAccept = false;
-let _agendaVals = { trabajo: '', recontacto: '' };
+let _agendaFechas = [];
+let _agendaDiasEst = 1;
+let _agendaRecon = '';
 
 function openAgendaDlg(id, opts) {
   const e = getH().find(x => x.id === id);
@@ -7971,7 +8055,9 @@ function openAgendaDlg(id, opts) {
   if (!e || !ov) return;
   _agendaId = id;
   _agendaFromAccept = !!(opts && opts.fromAccept);
-  _agendaVals = { trabajo: e.fechaTrabajo || '', recontacto: e.recontactoEn || '' };
+  _agendaFechas = agFechas(e);
+  _agendaDiasEst = agDiasEstimados(e) || 1;
+  _agendaRecon = e.recontactoEn || '';
   const sub = document.getElementById('agenda-sub');
   if (sub) sub.textContent = `${e.quoteNumber || ''} · ${e.clientName || 'Sin cliente'}`;
   const nota = document.getElementById('agenda-nota');
@@ -7982,9 +8068,10 @@ function openAgendaDlg(id, opts) {
   ov.classList.add('open');
 }
 
-// Alterna entre "Fecha del trabajo" y "Recontactar" dentro del diálogo:
-// actualiza título, etiquetas, visibilidad de la nota y el valor del campo
-// de fecha (cada modo conserva el suyo mientras el diálogo esté abierto).
+// Alterna entre "Fecha del trabajo" (multi-día) y "Recontactar": actualiza
+// título, etiquetas, y muestra/oculta el bloque de duración + días ubicados
+// (solo trabajo) o la nota (solo recontacto). El campo de fecha es, en modo
+// trabajo, el "staging" para agregar un día más (arranca vacío).
 function setAgendaMode(m) {
   _agendaMode = (m === 'recontacto') ? 'recontacto' : 'trabajo';
   const rec = _agendaMode === 'recontacto';
@@ -7997,16 +8084,105 @@ function setAgendaMode(m) {
   if (ti) ti.textContent = rec ? 'Recontactar al cliente'
     : (_agendaFromAccept ? '¡Aceptado! ¿Cuándo se hace el trabajo?' : 'Fecha del trabajo');
   const lbl = document.getElementById('agenda-fecha-label');
-  if (lbl) lbl.textContent = rec ? '¿Qué día lo volvés a contactar?' : 'Día de comienzo del trabajo';
+  if (lbl) lbl.textContent = rec ? '¿Qué día lo volvés a contactar?'
+    : (_agendaFechas.length ? 'Agregar otro día' : 'Día de comienzo del trabajo');
   const help = document.getElementById('agenda-help');
   if (help) help.hidden = !rec;
   const notaWrap = document.getElementById('agenda-nota-wrap');
   if (notaWrap) notaWrap.hidden = !rec;
+  const addBtn = document.getElementById('agenda-add-dia');
+  if (addBtn) addBtn.hidden = rec;
   const inp = document.getElementById('agenda-fecha');
-  if (inp) { inp.value = _agendaVals[_agendaMode] || ''; if (typeof syncCdate === 'function') syncCdate(inp); }
+  // En trabajo el campo es de "agregar día" → arranca vacío; en recontacto
+  // muestra la fecha guardada del recontacto.
+  if (inp) { inp.value = rec ? (_agendaRecon || '') : ''; if (typeof syncCdate === 'function') syncCdate(inp); }
   const cl = document.getElementById('agenda-clear');
-  if (cl) cl.hidden = rec ? !e.recontactoEn : !e.fechaTrabajo;
+  if (cl) cl.hidden = rec ? !e.recontactoEn : true; // en trabajo se quita por día (chip)
+  renderAgendaDiasList();
   agendaOnDateChange();
+}
+
+// Repinta el stepper de duración, la lista de días ubicados y el aviso de
+// "faltan ubicar N días". Solo aplica en modo trabajo; en recontacto oculta
+// todo ese bloque.
+function renderAgendaDiasList() {
+  const rec = _agendaMode === 'recontacto';
+  const durWrap = document.getElementById('agenda-dur-wrap');
+  const box = document.getElementById('agenda-dias-list');
+  const pendEl = document.getElementById('agenda-pend');
+  if (durWrap) durWrap.hidden = rec;
+  if (rec) {
+    if (box) { box.hidden = true; box.innerHTML = ''; }
+    if (pendEl) pendEl.hidden = true;
+    return;
+  }
+  // La duración nunca puede ser menor a los días ya ubicados, ni menor a 1.
+  if (_agendaDiasEst < _agendaFechas.length) _agendaDiasEst = _agendaFechas.length;
+  if (_agendaDiasEst < 1) _agendaDiasEst = 1;
+  const valEl = document.getElementById('agenda-dur-val');
+  if (valEl) valEl.textContent = _agendaDiasEst;
+  const lblEl = document.getElementById('agenda-dur-lbl');
+  if (lblEl) lblEl.textContent = _agendaDiasEst === 1 ? 'día' : 'días';
+  const minus = document.getElementById('agenda-dur-minus');
+  if (minus) minus.disabled = _agendaDiasEst <= Math.max(1, _agendaFechas.length);
+  // Lista de días ubicados (chips removibles), ordenados.
+  const hoy = today();
+  if (box) {
+    if (_agendaFechas.length) {
+      box.hidden = false;
+      box.innerHTML = _agendaFechas.map((f, i) => {
+        const esHoy = f === hoy;
+        return `<div class="agenda-dia-chip${esHoy ? ' is-today' : ''}">
+          ${icon('calendar')}
+          <span class="agenda-dia-txt">Día ${i + 1}: ${esc(fmtDiaCorto(f))}${esHoy ? ' · hoy' : ''}</span>
+          <button type="button" class="agenda-dia-x" onclick="agendaRemoveDia('${f}')" aria-label="Quitar este día" title="Quitar este día">×</button>
+        </div>`;
+      }).join('');
+    } else { box.hidden = true; box.innerHTML = ''; }
+  }
+  // Aviso de días pendientes de ubicar.
+  const pend = Math.max(0, _agendaDiasEst - _agendaFechas.length);
+  if (pendEl) {
+    if (pend > 0) {
+      pendEl.hidden = false;
+      pendEl.textContent = _agendaFechas.length
+        ? `Faltan ubicar ${pend} día${pend > 1 ? 's' : ''} de ${_agendaDiasEst}. Agregalos cuando coordines cómo seguir.`
+        : `El trabajo dura ${_agendaDiasEst} días. Agregá el primero abajo; los demás los ubicás después.`;
+    } else pendEl.hidden = true;
+  }
+}
+
+// +/− de la duración total. No baja de los días ya ubicados (ni de 1).
+function agendaDurStep(delta) {
+  _agendaDiasEst = Math.max(Math.max(1, _agendaFechas.length), _agendaDiasEst + delta);
+  renderAgendaDiasList();
+}
+
+// "Agregar día": toma la fecha del campo y la suma a los días ubicados (sin
+// duplicar). Si supera la duración estimada, la sube para acompañar.
+function agendaAddDia() {
+  const inp = document.getElementById('agenda-fecha');
+  const f = (inp && inp.value) || '';
+  if (!f) { toast('Elegí primero un día', 'info', 2000); return; }
+  if (!_agendaFechas.includes(f)) {
+    _agendaFechas.push(f);
+    _agendaFechas.sort();
+    if (_agendaDiasEst < _agendaFechas.length) _agendaDiasEst = _agendaFechas.length;
+  }
+  if (inp) { inp.value = ''; if (typeof syncCdate === 'function') syncCdate(inp); }
+  const lbl = document.getElementById('agenda-fecha-label');
+  if (lbl) lbl.textContent = 'Agregar otro día';
+  renderAgendaDiasList();
+  agendaOnDateChange();
+}
+
+// Quita un día ubicado (la duración estimada se mantiene, así ese día pasa a
+// contar como "por ubicar").
+function agendaRemoveDia(f) {
+  _agendaFechas = _agendaFechas.filter(x => x !== f);
+  const lbl = document.getElementById('agenda-fecha-label');
+  if (lbl && !_agendaFechas.length) lbl.textContent = 'Día de comienzo del trabajo';
+  renderAgendaDiasList();
 }
 
 function closeAgendaDlg() {
@@ -8015,17 +8191,16 @@ function closeAgendaDlg() {
   _agendaId = null;
 }
 
-// Reacción al cambio de fecha en el diálogo: guarda el valor del modo
-// activo y muestra el aviso de superposición si ya hay otro trabajo
-// aceptado agendado ese mismo día (avisa, no bloquea: hacer dos trabajos
-// en un día es válido). La superposición solo aplica a fechas de trabajo.
+// Reacción al cambio del campo de fecha: en recontacto guarda el staging; en
+// trabajo muestra el aviso de superposición si ese día ya está agendado en
+// otro trabajo aceptado (avisa, no bloquea: hacer dos en un día es válido).
 function agendaOnDateChange() {
   const warn = document.getElementById('agenda-warn');
   const f = (document.getElementById('agenda-fecha') || {}).value || '';
-  _agendaVals[_agendaMode] = f;
+  if (_agendaMode === 'recontacto') _agendaRecon = f;
   if (!warn) return;
   const otros = (f && _agendaMode === 'trabajo')
-    ? getH().filter(x => x.id !== _agendaId && x.fechaTrabajo === f && (x.estado || '') === 'aceptado')
+    ? getH().filter(x => x.id !== _agendaId && (x.estado || '') === 'aceptado' && agFechas(x).includes(f))
     : [];
   if (otros.length) {
     const nombres = otros.map(x => x.clientName || x.quoteNumber || 'otro presupuesto');
@@ -8036,28 +8211,60 @@ function agendaOnDateChange() {
   }
 }
 
-// Persiste la fecha del modo activo en el entry (o la quita si el campo
-// quedó vacío). Devuelve el entry actualizado, o null si ya no existe.
-// Cargar una fecha de trabajo borra el recontacto pendiente: si ya
-// coordinaron el día, la llamada pendiente cumplió su función.
+// Persiste el modo activo en el entry. En trabajo escribe e.fechasTrabajo
+// (días ubicados), e.diasEstimados (duración) y espeja e.fechaTrabajo en el
+// primer día. Ubicar al menos un día borra el recontacto pendiente (ya se
+// coordinó). Devuelve el entry, o null si ya no existe.
 function _agendaPersist() {
   const h = getH();
   const e = h.find(x => x.id === _agendaId);
   if (!e) return null;
-  const f = _agendaVals[_agendaMode] || '';
   if (_agendaMode === 'recontacto') {
     const nota = ((document.getElementById('agenda-nota') || {}).value || '').trim();
+    const f = _agendaRecon || '';
     if (f) e.recontactoEn = f; else delete e.recontactoEn;
     if (f && nota) e.recontactoNota = nota; else delete e.recontactoNota;
-  } else if (f) {
-    e.fechaTrabajo = f;
-    delete e.recontactoEn;
-    delete e.recontactoNota;
   } else {
-    delete e.fechaTrabajo;
+    // Auto-agrega el día tipeado que no se llegó a "Agregar día".
+    const inp = document.getElementById('agenda-fecha');
+    const typed = (inp && inp.value) || '';
+    if (typed && !_agendaFechas.includes(typed)) { _agendaFechas.push(typed); _agendaFechas.sort(); }
+    const fechas = _agendaFechas.slice().sort();
+    const diasEst = Math.max(fechas.length, _agendaDiasEst || 0);
+    if (fechas.length) {
+      e.fechasTrabajo = fechas;
+      e.fechaTrabajo = fechas[0];             // espejo del primer día (compat)
+      if (diasEst > 1) e.diasEstimados = diasEst; else delete e.diasEstimados;
+      delete e.recontactoEn;
+      delete e.recontactoNota;
+    } else if (diasEst > 1) {
+      // Duración cargada pero ningún día ubicado todavía.
+      delete e.fechasTrabajo;
+      delete e.fechaTrabajo;
+      e.diasEstimados = diasEst;
+    } else {
+      delete e.fechasTrabajo;
+      delete e.fechaTrabajo;
+      delete e.diasEstimados;
+    }
   }
   setH(h);
   return e;
+}
+
+// Texto de confirmación al guardar un trabajo (contempla multi-día y pendientes).
+function _agendaTrabajoToast(e) {
+  const fechas = agFechas(e);
+  const pend = agDiasPendientes(e);
+  if (fechas.length) {
+    let msg = fechas.length === 1
+      ? `Trabajo agendado: ${fmtDiaCorto(fechas[0])}`
+      : `Trabajo agendado: ${fechas.length} días`;
+    if (pend > 0) msg += ` (+${pend} por ubicar)`;
+    return msg;
+  }
+  if (agDiasEstimados(e) > 1) return `Trabajo de ${agDiasEstimados(e)} días — faltan ubicar los días`;
+  return 'Fecha del trabajo quitada';
 }
 
 function agendaSave() {
@@ -8067,14 +8274,19 @@ function agendaSave() {
   renderHistory();
   if (!e) return;
   if (rec) toast(e.recontactoEn ? `Recontacto agendado: ${fmtDiaCorto(e.recontactoEn)}` : 'Recontacto quitado', 'ok');
-  else     toast(e.fechaTrabajo ? `Trabajo agendado: ${fmtDiaCorto(e.fechaTrabajo)}`   : 'Fecha del trabajo quitada', 'ok');
+  else     toast(_agendaTrabajoToast(e), 'ok');
 }
 
-// "Quitar fecha": vacía el campo del modo activo y guarda.
+// "Quitar fecha" (visible solo en recontacto): vacía el recontacto y guarda.
 function agendaClear() {
-  _agendaVals[_agendaMode] = '';
-  const inp = document.getElementById('agenda-fecha');
-  if (inp) { inp.value = ''; if (typeof syncCdate === 'function') syncCdate(inp); }
+  if (_agendaMode === 'recontacto') {
+    _agendaRecon = '';
+    const inp = document.getElementById('agenda-fecha');
+    if (inp) { inp.value = ''; if (typeof syncCdate === 'function') syncCdate(inp); }
+  } else {
+    _agendaFechas = [];
+    _agendaDiasEst = 1;
+  }
   agendaSave();
 }
 
@@ -8082,8 +8294,9 @@ function agendaClear() {
 // completo, sin API ni backend). En el celular la abre la app de Calendar,
 // que es donde el usuario tiene sus recordatorios reales con alarma.
 // `modo`: 'trabajo' (evento del trabajo, con ubicación) o 'recontacto'
-// (recordatorio de llamar al cliente, con la nota).
-function agendaGcalUrl(e, iso, modo) {
+// (recordatorio de llamar al cliente, con la nota). `dayInfo` opcional
+// ({ idx, total }) numera el día dentro de un trabajo de varios días.
+function agendaGcalUrl(e, iso, modo, dayInfo) {
   const p = iso.split('-');
   const d0 = p.join('');
   const sig = new Date(+p[0], +p[1] - 1, +p[2] + 1); // día siguiente, LOCAL
@@ -8092,7 +8305,8 @@ function agendaGcalUrl(e, iso, modo) {
   const rec = modo === 'recontacto';
   const quien = e.clientName || 'cliente';
   const num = e.quoteNumber ? ` (${e.quoteNumber})` : '';
-  const title = rec ? `Llamar a ${quien} — coordinar trabajo${num}` : `Trabajo: ${quien}${num}`;
+  const dnum = (dayInfo && dayInfo.total > 1) ? ` — día ${dayInfo.idx} de ${dayInfo.total}` : '';
+  const title = rec ? `Llamar a ${quien} — coordinar trabajo${num}` : `Trabajo: ${quien}${num}${dnum}`;
   const det = [];
   if (rec && e.recontactoNota) det.push(`Nota: ${e.recontactoNota}`);
   if (e.total > 0) det.push(`Presupuesto ${e.quoteNumber || ''}: ${fmtM(e.total, e.currency || 'ARS')}`);
@@ -8106,18 +8320,40 @@ function agendaGcalUrl(e, iso, modo) {
     + (loc ? '&location=' + encodeURIComponent(loc) : '');
 }
 
-// Botón "Google Calendar" del diálogo: guarda la fecha (para no perderla
-// al saltar de app) y abre el evento precargado en el calendario.
+// Botón "Google Calendar" del diálogo: guarda primero (para no perder los
+// datos al saltar de app) y abre el/los evento(s) precargado(s). En un
+// trabajo de varios días abre un evento por cada día ubicado.
 function agendaGcal() {
-  const rec = _agendaMode === 'recontacto';
-  const f = _agendaVals[_agendaMode] || '';
-  if (!f) { toast(rec ? 'Elegí primero el día del recontacto' : 'Elegí primero la fecha del trabajo', 'info', 2500); return; }
+  if (_agendaMode === 'recontacto') {
+    const f = _agendaRecon || '';
+    if (!f) { toast('Elegí primero el día del recontacto', 'info', 2500); return; }
+    const e = _agendaPersist();
+    if (!e) { closeAgendaDlg(); return; }
+    window.open(agendaGcalUrl(e, f, 'recontacto'), '_blank', 'noopener');
+    closeAgendaDlg();
+    renderHistory();
+    toast(`Recontacto agendado: ${fmtDiaCorto(f)}`, 'ok');
+    return;
+  }
+  // Trabajo: auto-agrega el día tipeado y abre un evento por cada día ubicado.
+  const inp = document.getElementById('agenda-fecha');
+  const typed = (inp && inp.value) || '';
+  if (typed && !_agendaFechas.includes(typed)) { _agendaFechas.push(typed); _agendaFechas.sort(); }
+  if (!_agendaFechas.length) { toast('Elegí primero al menos un día del trabajo', 'info', 2500); return; }
   const e = _agendaPersist();
   if (!e) { closeAgendaDlg(); return; }
-  window.open(agendaGcalUrl(e, f, _agendaMode), '_blank', 'noopener');
+  const fechas = agFechas(e);
+  fechas.forEach((f, i) => {
+    window.open(agendaGcalUrl(e, f, 'trabajo', { idx: i + 1, total: fechas.length }), '_blank', 'noopener');
+  });
   closeAgendaDlg();
   renderHistory();
-  toast(`${rec ? 'Recontacto' : 'Trabajo'} agendado: ${fmtDiaCorto(f)}`, 'ok');
+  const pend = agDiasPendientes(e);
+  let msg = fechas.length === 1
+    ? `Trabajo agendado: ${fmtDiaCorto(fechas[0])}`
+    : `${fechas.length} eventos abiertos en Calendar`;
+  if (pend > 0) msg += ` · +${pend} por ubicar`;
+  toast(msg, 'ok');
 }
 
 // ─── PUENTE PRESUPUESTO → FACTURACIÓN ────────────────────────
@@ -8868,11 +9104,23 @@ function toastRecontactosPendientes() {
 }
 
 // ─── BANNER "PODAS DE HOY" (resumen del día al abrir) ────────
-// Trabajos agendados para HOY: presupuestos aceptados cuya fecha de trabajo
-// (e.fechaTrabajo, YYYY-MM-DD local) es hoy. Espeja getRecontactosPendientes().
+// Trabajos agendados para HOY: presupuestos aceptados que tienen HOY entre
+// sus días de trabajo ubicados (un trabajo multi-día reaparece cada uno de
+// sus días). Espeja getRecontactosPendientes().
 function getTrabajosDeHoy() {
   const hoy = today();
-  return getH().filter(e => (e.estado || '') === 'aceptado' && e.fechaTrabajo === hoy);
+  return getH().filter(e => (e.estado || '') === 'aceptado' && agFechas(e).includes(hoy));
+}
+
+// Para un trabajo multi-día, qué número de día es HOY y cuántos hay en total
+// ({ idx, total }); null si es de un solo día. Sirve para el contexto
+// "Día 2 de 4" en el banner del día.
+function agDiaDeHoyInfo(e) {
+  const total = agDiasEstimados(e);
+  if (total <= 1) return null;
+  const idx = agFechas(e).indexOf(today());
+  if (idx < 0) return null;
+  return { idx: idx + 1, total };
 }
 
 // Texto de "parada" usable para una ruta multi-punto de Google Maps: un Plus
@@ -8976,9 +9224,11 @@ function renderMorningBanner() {
         const tieneUbic = !!mapsUrlFor(snap.workMapLink, snap.workAddress);
         const tieneTel  = !!histClientPhone(e);
         const lugar = (snap.workAddress || '').trim();
+        const dinfo = agDiaDeHoyInfo(e); // "Día 2 de 4" en trabajos multi-día
         return `<div class="fub-item">
           <div class="fub-item-info" onclick="goToHistoryEntry(${e.id})" role="button" tabindex="0" title="Ver este presupuesto en el historial">
             <span><span class="fub-item-num">${esc(e.quoteNumber||'—')}</span> <span class="fub-item-client">${esc(e.clientName||'(sin nombre)')}</span></span>
+            ${dinfo ? `<span class="fub-item-days">${icon('calendar')} Día ${dinfo.idx} de ${dinfo.total}</span>` : ''}
             ${lugar ? `<span class="fub-item-days">${icon('pin')} ${esc(lugar)}</span>` : ''}
           </div>
           <div class="mb-acts">
@@ -9379,9 +9629,13 @@ function renderHistory() {
   // nada al final) — así el filtro funciona como agenda de pendientes,
   // mezclando días de trabajo y días de llamar a coordinar.
   if (estadoFilt === 'aceptado') {
-    const agKey = e => (e.fechaTrabajo && e.recontactoEn)
-      ? (e.fechaTrabajo < e.recontactoEn ? e.fechaTrabajo : e.recontactoEn)
-      : (e.fechaTrabajo || e.recontactoEn || '');
+    // Clave = la fecha más próxima entre los días de trabajo ubicados y el
+    // recontacto pendiente (los sin nada, al final).
+    const agKey = e => {
+      const cand = agFechas(e);
+      if (e.recontactoEn) cand.push(e.recontactoEn);
+      return cand.length ? cand.sort()[0] : '';
+    };
     h = [...h].sort((a, b) => {
       const ka = agKey(a), kb = agKey(b);
       if (!ka && !kb) return 0;
