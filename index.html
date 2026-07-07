@@ -1186,6 +1186,31 @@ input[type=number]{-moz-appearance:textfield}
 .expiry-banner .fub-sub,.expiry-banner .fub-item-days,.expiry-banner .fub-more{color:#b91c1c}
 .expiry-banner .fub-item{border-color:#fecaca}
 
+/* Banner "Podas de hoy" (verde amanecer): salta una vez al abrir la app si
+   hay trabajos agendados para hoy. Reusa la estructura .fub-*; cada trabajo
+   apila info + una fila de accesos rápidos (llegar / WhatsApp / ver). */
+.morning-banner{background:linear-gradient(135deg,#ecfdf5,#d1fae5);border:1px solid #6ee7b7;border-radius:var(--radius-box);padding:14px 16px;margin-bottom:14px}
+.morning-banner .fub-head{justify-content:space-between}
+.morning-banner .fub-title{color:#065f46}
+.morning-banner .fub-sub{color:#047857}
+.morning-banner .fub-item{flex-direction:column;align-items:stretch;gap:9px;border-color:#a7f3d0}
+.morning-banner .fub-item-days{color:#047857}
+.mb-close{flex-shrink:0;width:30px;height:30px;border-radius:var(--radius-field);border:none;background:transparent;color:#047857;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
+.mb-close:active{background:rgba(4,120,87,.12)}
+.mb-close .ic{width:16px;height:16px}
+.mb-acts{display:flex;flex-wrap:wrap;gap:6px}
+.mb-act{flex:1 1 auto;min-width:92px;display:inline-flex;align-items:center;justify-content:center;gap:5px;font-size:12.5px;font-weight:700;border-radius:var(--radius-field);padding:9px 10px;text-decoration:none;white-space:nowrap;cursor:pointer;border:1px solid transparent}
+.mb-act .ic{width:15px;height:15px}
+.mb-act-map{background:#059669;color:#fff}
+.mb-act-map:active{background:#047857}
+.mb-act-wa{background:#25d366;color:#fff}
+.mb-act-wa:active{background:#1da851}
+.mb-act-view{background:var(--card);color:var(--accent-fg);border:1px solid #a7f3d0}
+.mb-act-view:active{background:var(--surface-2)}
+.mb-route{width:100%;margin-top:2px;display:inline-flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:700;color:#065f46;background:var(--card);border:1px solid #6ee7b7;border-radius:var(--radius-field);padding:10px;cursor:pointer}
+.mb-route:active{background:var(--surface-2)}
+.mb-route .ic{width:16px;height:16px}
+
 /* Panel de configuración de seguimiento (pestaña Empresa) */
 .fu-config{margin-top:18px;padding:16px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-box)}
 .fu-config-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
@@ -1291,6 +1316,16 @@ input[type=number]{-moz-appearance:textfield}
 :root[data-theme="dark"] .expiry-banner .fub-more{color:#fca5a5}
 :root[data-theme="dark"] .expiry-banner .fub-item{background:#1f0c0c;border-color:#5c1c1c}
 :root[data-theme="dark"] .hbadge-expired{background:rgba(239,68,68,.18);color:#fca5a5}
+
+/* Banner "Podas de hoy" (verde) */
+:root[data-theme="dark"] .morning-banner{background:linear-gradient(135deg,#0c2620,#0e2b22);border-color:#065f46}
+:root[data-theme="dark"] .morning-banner .fub-title,
+:root[data-theme="dark"] .morning-banner .fub-sub,
+:root[data-theme="dark"] .morning-banner .fub-item-days{color:#6ee7b7}
+:root[data-theme="dark"] .morning-banner .fub-item{background:#0a1c17;border-color:#065f46}
+:root[data-theme="dark"] .mb-close{color:#6ee7b7}
+:root[data-theme="dark"] .mb-act-view{border-color:#065f46}
+:root[data-theme="dark"] .mb-route{border-color:#065f46;color:#6ee7b7}
 
 /* Chip de agenda (fecha del trabajo) */
 :root[data-theme="dark"] .hagenda-chip{background:rgba(139,92,246,.2);color:#c4b5fd}
@@ -2318,6 +2353,8 @@ input[type=number]{-moz-appearance:textfield}
 
       <!-- ══ TAB EDITOR ══ -->
       <div id="panel-editor" class="tab-panel active">
+
+        <div id="morning-banner" class="morning-banner" style="display:none"></div>
 
         <div class="mode-switch" id="mode-switch">
           <button class="mode-btn active" id="mode-btn-normal" onclick="setMode('normal')" title="Lo más común: ya viste el árbol y pones un precio cerrado por cada trabajo.">
@@ -3399,6 +3436,7 @@ const LS = {
   PDF_THEME:      'pq_pdf_theme',
   PUSH_DEVICE_ID: 'pq_push_device_id',
   THEME:          'pq_theme',
+  MORNING_SHOWN:  'pq_morning_shown',
 };
 
 // Notificaciones push (avisos de seguimiento con la app cerrada). Ambos se
@@ -8822,6 +8860,117 @@ function toastRecontactosPendientes() {
   setTimeout(close, 12000);
 }
 
+// ─── BANNER "PODAS DE HOY" (resumen del día al abrir) ────────
+// Trabajos agendados para HOY: presupuestos aceptados cuya fecha de trabajo
+// (e.fechaTrabajo, YYYY-MM-DD local) es hoy. Espeja getRecontactosPendientes().
+function getTrabajosDeHoy() {
+  const hoy = today();
+  return getH().filter(e => (e.estado || '') === 'aceptado' && e.fechaTrabajo === hoy);
+}
+
+// Texto de "parada" usable para una ruta multi-punto de Google Maps: un Plus
+// Code o coordenadas (workMapLink que NO es un http link) o, si no, la
+// dirección de texto. Un link corto de Maps (goo.gl) no sirve como waypoint,
+// así que en ese caso se cae a la dirección. Devuelve '' si no hay nada usable.
+function _stopQueryForSnap(snap) {
+  const link = ((snap && snap.workMapLink) || '').trim();
+  const addr = ((snap && snap.workAddress) || '').trim();
+  if (link && !/^https?:\/\//i.test(link)) return link;
+  return addr;
+}
+
+// "Ruta del día": abre Google Maps en modo direcciones con todas las paradas
+// de hoy (origen = ubicación actual, destino = última, el resto waypoints).
+function rutaDelDiaMaps() {
+  const stops = getTrabajosDeHoy().map(e => _stopQueryForSnap(e.snapshot)).filter(Boolean);
+  if (stops.length < 2) {
+    toast('Necesitás al menos dos trabajos con dirección o ubicación para armar la ruta', 'info', 3500);
+    return;
+  }
+  const dest = stops[stops.length - 1];
+  const wps = stops.slice(0, -1);
+  const url = 'https://www.google.com/maps/dir/?api=1'
+    + '&destination=' + encodeURIComponent(dest)
+    + '&waypoints=' + wps.map(encodeURIComponent).join('%7C');
+  window.open(url, '_blank', 'noopener');
+}
+
+// Botón "Voy en camino": abre WhatsApp con un aviso corto y editable de que
+// el trabajo se hace hoy y ya estás yendo. Usa histClientPhone() (busca el
+// teléfono en el snapshot y, si falta, en la DB de clientes).
+function avisarVoyEnCamino(id) {
+  const e = getH().find(x => x.id === id);
+  if (!e) return;
+  const phone = normalizeArgPhone(histClientPhone(e));
+  const cliente = (e.clientName || '').trim();
+  const empresa = (S.coName || '').trim();
+  const saludo = cliente ? `Hola ${cliente}` : 'Hola';
+  const firma = empresa ? ` Te escribo de ${empresa}.` : '';
+  const msg = `${saludo}, ¿cómo estás?${firma} Te aviso que hoy hacemos el trabajo de poda y ya vamos en camino.`;
+  const base = phone ? `https://wa.me/${phone}` : 'https://wa.me/';
+  window.open(`${base}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
+}
+
+// Pinta el banner verde de "podas de hoy" arriba del editor. Cada trabajo trae
+// accesos rápidos que reusan la plomería existente (comoLlegar / WhatsApp /
+// previewFromHistory). Con más de un trabajo, agrega "Ruta del día".
+function renderMorningBanner() {
+  const el = document.getElementById('morning-banner');
+  if (!el) return;
+  const hoy = getTrabajosDeHoy();
+  if (!hoy.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
+
+  const n = hoy.length;
+  el.style.display = 'block';
+  el.innerHTML = `
+    <div class="fub-head">
+      <span class="fub-title">${icon('sun')} Buen día — Hoy tenés ${n} poda${n>1?'s':''}</span>
+      <button type="button" class="mb-close" onclick="dismissMorningBanner()" aria-label="Entendido, ocultar" title="Entendido">${icon('x')}</button>
+    </div>
+    <div class="fub-sub">Trabajo${n>1?'s':''} agendado${n>1?'s':''} para hoy. Accesos rápidos para llegar y avisarle al cliente.</div>
+    <div class="fub-list">
+      ${hoy.map(e => {
+        const snap = e.snapshot || {};
+        const tieneUbic = !!mapsUrlFor(snap.workMapLink, snap.workAddress);
+        const tieneTel  = !!histClientPhone(e);
+        const lugar = (snap.workAddress || '').trim();
+        return `<div class="fub-item">
+          <div class="fub-item-info" onclick="goToHistoryEntry(${e.id})" role="button" tabindex="0" title="Ver este presupuesto en el historial">
+            <span><span class="fub-item-num">${esc(e.quoteNumber||'—')}</span> <span class="fub-item-client">${esc(e.clientName||'(sin nombre)')}</span></span>
+            ${lugar ? `<span class="fub-item-days">${icon('pin')} ${esc(lugar)}</span>` : ''}
+          </div>
+          <div class="mb-acts">
+            ${tieneUbic ? `<button type="button" class="mb-act mb-act-map" onclick="comoLlegar(${e.id})">${icon('pin')} Cómo llegar</button>` : ''}
+            ${tieneTel ? `<button type="button" class="mb-act mb-act-wa" onclick="avisarVoyEnCamino(${e.id})">${icon('message')} Voy en camino</button>` : ''}
+            <button type="button" class="mb-act mb-act-view" onclick="previewFromHistory(${e.id})">${icon('eye')} Ver</button>
+          </div>
+        </div>`;
+      }).join('')}
+      ${n>1 ? `<button type="button" class="mb-route" onclick="rutaDelDiaMaps()">${icon('truck')} Ruta del día (${n} paradas)</button>` : ''}
+    </div>`;
+}
+
+// "Entendido" / ✕: oculta el banner por lo que resta del día. El gate de "una
+// vez por día" (LS.MORNING_SHOWN) ya lo marcó maybeShowMorningBanner() al
+// mostrarlo, así que un reload posterior no lo reabre.
+function dismissMorningBanner() {
+  const el = document.getElementById('morning-banner');
+  if (el) { el.style.display = 'none'; el.innerHTML = ''; }
+}
+
+// Gate de arranque: muestra el banner solo la primera vez que se abre la app
+// cada día (mirando LS.MORNING_SHOWN == today()). Espeja checkBackupReminder/
+// maybeShowWelcome. No marca el gate si no hay trabajos, para no "gastar" el
+// aviso en un día donde todavía no había nada agendado.
+function maybeShowMorningBanner() {
+  let shown = '';
+  try { shown = localStorage.getItem(LS.MORNING_SHOWN) || ''; } catch (_) {}
+  if (shown === today()) return;
+  if (!getTrabajosDeHoy().length) return;
+  try { localStorage.setItem(LS.MORNING_SHOWN, today()); } catch (_) {}
+  renderMorningBanner();
+}
+
 // Tras abrir WhatsApp, ofrecemos (sin forzar) marcar el seguimiento como
 // hecho. No lo marcamos automático porque el usuario podría no enviar el
 // mensaje; le damos el control con un toast accionable.
@@ -11451,6 +11600,10 @@ window.addEventListener('DOMContentLoaded', async () => {
   // Recontactos: aviso global al abrir la app (toast accionable), por si
   // el usuario usa la app sin pasar por la pestaña Historial.
   if (typeof toastRecontactosPendientes === 'function') toastRecontactosPendientes();
+
+  // Podas de hoy: banner "resumen del día" arriba del editor, una vez por
+  // día al abrir, si hay trabajos agendados para hoy.
+  if (typeof maybeShowMorningBanner === 'function') maybeShowMorningBanner();
 
   // Importar de contactos: mostrar el botón solo si el dispositivo soporta
   // la Contact Picker API (Chrome Android sobre HTTPS).
