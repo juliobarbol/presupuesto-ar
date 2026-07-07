@@ -1195,6 +1195,10 @@ input[type=number]{-moz-appearance:textfield}
 .morning-banner .fub-sub{color:#047857}
 .morning-banner .fub-item{flex-direction:column;align-items:stretch;gap:9px;border-color:#a7f3d0}
 .morning-banner .fub-item-days{color:#047857}
+.mb-summary{display:flex;flex-wrap:wrap;gap:8px;margin:2px 0 12px}
+.mb-stat{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:#065f46;background:var(--card);border:1px solid #a7f3d0;border-radius:var(--radius-field);padding:6px 11px}
+.mb-stat b{font-weight:800}
+.mb-stat .ic{width:15px;height:15px}
 .mb-close{flex-shrink:0;width:30px;height:30px;border-radius:var(--radius-field);border:none;background:transparent;color:#047857;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
 .mb-close:active{background:rgba(4,120,87,.12)}
 .mb-close .ic{width:16px;height:16px}
@@ -1323,6 +1327,7 @@ input[type=number]{-moz-appearance:textfield}
 :root[data-theme="dark"] .morning-banner .fub-sub,
 :root[data-theme="dark"] .morning-banner .fub-item-days{color:#6ee7b7}
 :root[data-theme="dark"] .morning-banner .fub-item{background:#0a1c17;border-color:#065f46}
+:root[data-theme="dark"] .mb-stat{color:#6ee7b7;background:#0a1c17;border-color:#065f46}
 :root[data-theme="dark"] .mb-close{color:#6ee7b7}
 :root[data-theme="dark"] .mb-act-view{border-color:#065f46}
 :root[data-theme="dark"] .mb-route{border-color:#065f46;color:#6ee7b7}
@@ -8921,6 +8926,30 @@ function renderMorningBanner() {
   if (!hoy.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
 
   const n = hoy.length;
+
+  // Resumen del día: monto total a cobrar (agrupado por moneda, por si hay
+  // trabajos en distintas monedas) y cantidad de árboles (suma de la cantidad
+  // de cada ítem de tipo "árbol" en los presupuestos de hoy).
+  let arboles = 0;
+  const porMoneda = {};
+  hoy.forEach(e => {
+    const snap = e.snapshot || {};
+    (snap.items || []).forEach(it => {
+      if (it && it.type === 'tree') arboles += Math.max(1, parseInt(it.qty) || 1);
+    });
+    const cur = e.currency || 'ARS';
+    porMoneda[cur] = (porMoneda[cur] || 0) + (parseFloat(e.total) || 0);
+  });
+  const montoStr = Object.keys(porMoneda)
+    .filter(c => porMoneda[c] > 0)
+    .map(c => fmtM(porMoneda[c], c))
+    .join(' · ');
+  const summary = (montoStr || arboles > 0) ? `
+    <div class="mb-summary">
+      ${montoStr ? `<span class="mb-stat">${icon('money')} A cobrar hoy: <b>${esc(montoStr)}</b></span>` : ''}
+      ${arboles > 0 ? `<span class="mb-stat">${icon('tree')} <b>${arboles}</b> árbol${arboles>1?'es':''}</span>` : ''}
+    </div>` : '';
+
   el.style.display = 'block';
   el.innerHTML = `
     <div class="fub-head">
@@ -8928,6 +8957,7 @@ function renderMorningBanner() {
       <button type="button" class="mb-close" onclick="dismissMorningBanner()" aria-label="Entendido, ocultar" title="Entendido">${icon('x')}</button>
     </div>
     <div class="fub-sub">Trabajo${n>1?'s':''} agendado${n>1?'s':''} para hoy. Accesos rápidos para llegar y avisarle al cliente.</div>
+    ${summary}
     <div class="fub-list">
       ${hoy.map(e => {
         const snap = e.snapshot || {};
@@ -8959,13 +8989,18 @@ function dismissMorningBanner() {
 }
 
 // Gate de arranque: muestra el banner solo la primera vez que se abre la app
-// cada día (mirando LS.MORNING_SHOWN == today()). Espeja checkBackupReminder/
-// maybeShowWelcome. No marca el gate si no hay trabajos, para no "gastar" el
-// aviso en un día donde todavía no había nada agendado.
+// cada día (mirando LS.MORNING_SHOWN == today()) y SOLO a la mañana (antes del
+// mediodía). Espeja checkBackupReminder/maybeShowWelcome. No marca el gate si
+// no hay trabajos o si ya pasó el mediodía, para no "gastar" el aviso en un día
+// donde todavía no había nada agendado ni consumirlo si abriste recién a la tarde.
 function maybeShowMorningBanner() {
   let shown = '';
   try { shown = localStorage.getItem(LS.MORNING_SHOWN) || ''; } catch (_) {}
   if (shown === today()) return;
+  // "Por la mañana": si abrís por primera vez pasado el mediodía, no salta
+  // (un "buen día" a las 3 de la tarde no tiene sentido). Vuelve a ofrecerse
+  // mañana temprano.
+  if (new Date().getHours() >= 12) return;
   if (!getTrabajosDeHoy().length) return;
   try { localStorage.setItem(LS.MORNING_SHOWN, today()); } catch (_) {}
   renderMorningBanner();
