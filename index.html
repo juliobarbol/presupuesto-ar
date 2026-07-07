@@ -1211,6 +1211,8 @@ input[type=number]{-moz-appearance:textfield}
 .mb-act-wa:active{background:#1da851}
 .mb-act-view{background:var(--card);color:var(--accent-fg);border:1px solid #a7f3d0}
 .mb-act-view:active{background:var(--surface-2)}
+.mb-act-done{background:var(--card);color:#065f46;border:1px solid #6ee7b7}
+.mb-act-done:active{background:var(--surface-2)}
 .mb-route{width:100%;margin-top:2px;display:inline-flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:700;color:#065f46;background:var(--card);border:1px solid #6ee7b7;border-radius:var(--radius-field);padding:10px;cursor:pointer}
 .mb-route:active{background:var(--surface-2)}
 .mb-route .ic{width:16px;height:16px}
@@ -1330,6 +1332,7 @@ input[type=number]{-moz-appearance:textfield}
 :root[data-theme="dark"] .mb-stat{color:#6ee7b7;background:#0a1c17;border-color:#065f46}
 :root[data-theme="dark"] .mb-close{color:#6ee7b7}
 :root[data-theme="dark"] .mb-act-view{border-color:#065f46}
+:root[data-theme="dark"] .mb-act-done{color:#6ee7b7;border-color:#065f46}
 :root[data-theme="dark"] .mb-route{border-color:#065f46;color:#6ee7b7}
 
 /* Chip de agenda (fecha del trabajo) */
@@ -3441,7 +3444,6 @@ const LS = {
   PDF_THEME:      'pq_pdf_theme',
   PUSH_DEVICE_ID: 'pq_push_device_id',
   THEME:          'pq_theme',
-  MORNING_SHOWN:  'pq_morning_shown',
 };
 
 // Notificaciones push (avisos de seguimiento con la app cerrada). Ambos se
@@ -8918,7 +8920,10 @@ function avisarVoyEnCamino(id) {
 
 // Pinta el banner verde de "podas de hoy" arriba del editor. Cada trabajo trae
 // accesos rápidos que reusan la plomería existente (comoLlegar / WhatsApp /
-// previewFromHistory). Con más de un trabajo, agrega "Ruta del día".
+// previewFromHistory / setEstadoHistory). Con más de un trabajo, agrega
+// "Ruta del día". El banner queda disponible TODO el día mientras el trabajo
+// siga abierto (aceptado): a la mañana saluda "Buen día"; más tarde muestra
+// la misma tarjeta para poder cerrar el trabajo (marcarlo realizado) al volver.
 function renderMorningBanner() {
   const el = document.getElementById('morning-banner');
   if (!el) return;
@@ -8926,6 +8931,13 @@ function renderMorningBanner() {
   if (!hoy.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
 
   const n = hoy.length;
+  const esManana = new Date().getHours() < 12;
+  const titulo = esManana
+    ? `${icon('sun')} Buen día — Hoy tenés ${n} poda${n>1?'s':''}`
+    : `${icon('tree')} Trabajo${n>1?'s':''} de hoy (${n})`;
+  const subtitulo = esManana
+    ? `Trabajo${n>1?'s':''} agendado${n>1?'s':''} para hoy. Accesos rápidos para llegar y avisarle al cliente.`
+    : `Cuando termines, marcá el trabajo como realizado para cerrarlo${n>1?'s':''}.`;
 
   // Resumen del día: monto total a cobrar (agrupado por moneda, por si hay
   // trabajos en distintas monedas) y cantidad de árboles (suma de la cantidad
@@ -8953,10 +8965,10 @@ function renderMorningBanner() {
   el.style.display = 'block';
   el.innerHTML = `
     <div class="fub-head">
-      <span class="fub-title">${icon('sun')} Buen día — Hoy tenés ${n} poda${n>1?'s':''}</span>
-      <button type="button" class="mb-close" onclick="dismissMorningBanner()" aria-label="Entendido, ocultar" title="Entendido">${icon('x')}</button>
+      <span class="fub-title">${titulo}</span>
+      <button type="button" class="mb-close" onclick="dismissMorningBanner()" aria-label="Ocultar por ahora" title="Ocultar por ahora">${icon('x')}</button>
     </div>
-    <div class="fub-sub">Trabajo${n>1?'s':''} agendado${n>1?'s':''} para hoy. Accesos rápidos para llegar y avisarle al cliente.</div>
+    <div class="fub-sub">${subtitulo}</div>
     ${summary}
     <div class="fub-list">
       ${hoy.map(e => {
@@ -8973,6 +8985,7 @@ function renderMorningBanner() {
             ${tieneUbic ? `<button type="button" class="mb-act mb-act-map" onclick="comoLlegar(${e.id})">${icon('pin')} Cómo llegar</button>` : ''}
             ${tieneTel ? `<button type="button" class="mb-act mb-act-wa" onclick="avisarVoyEnCamino(${e.id})">${icon('message')} Voy en camino</button>` : ''}
             <button type="button" class="mb-act mb-act-view" onclick="previewFromHistory(${e.id})">${icon('eye')} Ver</button>
+            <button type="button" class="mb-act mb-act-done" onclick="marcarTrabajoRealizado(${e.id})" title="Marcar el trabajo como realizado (te ofrece registrar la factura)">${icon('check')} Realizado</button>
           </div>
         </div>`;
       }).join('')}
@@ -8980,29 +8993,30 @@ function renderMorningBanner() {
     </div>`;
 }
 
-// "Entendido" / ✕: oculta el banner por lo que resta del día. El gate de "una
-// vez por día" (LS.MORNING_SHOWN) ya lo marcó maybeShowMorningBanner() al
-// mostrarlo, así que un reload posterior no lo reabre.
+// ✕: oculta el banner en esta apertura (no hay gate persistido). Como el
+// trabajo sigue abierto, al volver a abrir la app reaparece — así siempre lo
+// tenés a mano para cerrarlo. La forma "definitiva" de que desaparezca por el
+// día es marcarlo realizado (marcarTrabajoRealizado).
 function dismissMorningBanner() {
   const el = document.getElementById('morning-banner');
   if (el) { el.style.display = 'none'; el.innerHTML = ''; }
 }
 
-// Gate de arranque: muestra el banner solo la primera vez que se abre la app
-// cada día (mirando LS.MORNING_SHOWN == today()) y SOLO a la mañana (antes del
-// mediodía). Espeja checkBackupReminder/maybeShowWelcome. No marca el gate si
-// no hay trabajos o si ya pasó el mediodía, para no "gastar" el aviso en un día
-// donde todavía no había nada agendado ni consumirlo si abriste recién a la tarde.
+// Cierra el trabajo desde el banner: lo marca "realizado" (reusa
+// setEstadoHistory, que persiste, re-renderiza el historial y OFRECE registrar
+// la factura). Al dejar de ser "aceptado", el trabajo sale de getTrabajosDeHoy,
+// así que re-renderizamos el banner: baja a N-1 o desaparece si era el último.
+function marcarTrabajoRealizado(id) {
+  if (typeof setEstadoHistory === 'function') setEstadoHistory(id, 'realizado');
+  renderMorningBanner();
+}
+
+// Trigger de arranque: muestra la tarjeta del trabajo de hoy si hay alguno
+// abierto (aceptado + fecha == hoy). Se llama en cada apertura de la app, así
+// el banner queda disponible todo el día hasta que cierres el trabajo. El
+// saludo cambia según la hora (mañana: "Buen día"; después: "Trabajo de hoy").
 function maybeShowMorningBanner() {
-  let shown = '';
-  try { shown = localStorage.getItem(LS.MORNING_SHOWN) || ''; } catch (_) {}
-  if (shown === today()) return;
-  // "Por la mañana": si abrís por primera vez pasado el mediodía, no salta
-  // (un "buen día" a las 3 de la tarde no tiene sentido). Vuelve a ofrecerse
-  // mañana temprano.
-  if (new Date().getHours() >= 12) return;
   if (!getTrabajosDeHoy().length) return;
-  try { localStorage.setItem(LS.MORNING_SHOWN, today()); } catch (_) {}
   renderMorningBanner();
 }
 
