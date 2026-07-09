@@ -2351,6 +2351,12 @@ input[type=number]{-moz-appearance:textfield}
 .mapa-popup-estado { width:100%; font-size:12px; font-weight:600; padding:4px 6px; border:none; border-radius:8px; margin-bottom:6px; }
 .mapa-popup-acts { display:flex; gap:6px; }
 .mapa-popup-acts .btn { flex:1; }
+.mapa-popup-edit { display:block; width:100%; margin-top:6px; padding:2px; border:none; background:transparent; color:var(--muted); font-size:11px; text-align:center; cursor:pointer; opacity:.65; }
+.mapa-popup-edit:hover { opacity:1; text-decoration:underline; }
+.mapa-cluster { background:transparent; border:none; }
+.mapa-cluster span { display:flex; align-items:center; justify-content:center; width:26px; height:26px; box-sizing:border-box; border-radius:50%; border:2px solid #fff; box-shadow:0 1px 4px rgba(0,0,0,.45); color:#fff; font-size:12px; font-weight:700; font-variant-numeric:tabular-nums; }
+.mapa-cluster.is-hl span { box-shadow:0 0 0 4px rgba(14,165,233,.55), 0 1px 4px rgba(0,0,0,.45); }
+.mapa-spider-leg { stroke:#64748b; stroke-width:1.5; opacity:.5; }
 .mapa-zonastats { margin-top:8px; padding:8px 10px; border:1px solid var(--border); border-radius:10px; background:var(--card); }
 .mapa-zona-title { font-size:12px; font-weight:700; margin-bottom:5px; }
 .mapa-zona-chips { display:flex; flex-wrap:wrap; gap:4px; margin-bottom:5px; }
@@ -12104,6 +12110,8 @@ function factTopeChanged() {
 
 let _mapa = null;            // instancia Leaflet
 let _mapaLayer = null;       // layerGroup de marcadores de presupuestos
+let _mapaSpiderLayer = null; // layerGroup del abanico abierto (marcas + patas)
+let _mapaSpiderOpen = null;   // grupo cuyo abanico está abierto (o null)
 let _mapaUserMarker = null;  // marcador "estás acá" (cerca mío)
 let _mapaFilterSet = null;   // Set de estados visibles
 let _mapaPlacingId = null;   // id del presupuesto que se está ubicando a mano
@@ -12263,8 +12271,12 @@ function mapaInit() {
         attribution: '&copy; OpenStreetMap',
       }).addTo(_mapa);
       _mapaLayer = L.layerGroup().addTo(_mapa);
+      _mapaSpiderLayer = L.layerGroup().addTo(_mapa);
       _mapa.on('moveend', mapaUpdateZonaStats);
       _mapa.on('click', mapaOnMapClick);
+      // Panear o hacer zoom cierra el abanico abierto (las posiciones de las
+      // marcas del abanico son en píxeles, dejarían de coincidir).
+      _mapa.on('zoomstart movestart', mapaCollapseSpider);
     }
     mapaRefresh();
     // El contenedor estaba oculto al crearse; Leaflet necesita recalcular.
@@ -12298,6 +12310,7 @@ function mapaToggleFilter(s, on) {
 function mapaRefresh() {
   if (!_mapa || !_mapaLayer) return;
   const L = window.L;
+  mapaCollapseSpider(); // un re-dibujo cierra cualquier abanico abierto
   _mapaGeoRef = _mapaComputeGeoRef(); // referencia para Plus Codes cortos
   _mapaLayer.clearLayers();
   const desde = (document.getElementById('mapa-desde')?.value || '').trim();
@@ -12305,6 +12318,10 @@ function mapaRefresh() {
   const filt = _mapaFilterSet || new Set(ESTADOS);
   const sinUbicar = [];
   const bounds = [];
+  // Agrupar por ubicación: varios presupuestos en el MISMO punto (mismo lugar,
+  // cliente que volvió a llamar para otro trabajo) comparten una sola marca
+  // que se abre en abanico. Clave redondeada a ~5 decimales (≈1 m).
+  const groups = new Map();
   getH().forEach(e => {
     const est = e.estado || 'borrador';
     if (!filt.has(est)) return;
@@ -12313,8 +12330,19 @@ function mapaRefresh() {
     if (hasta && d && d > hasta) return;
     const ll = entryLatLng(e);
     if (!ll) { sinUbicar.push(e); return; }
-    bounds.push(ll);
-    _mapaLayer.addLayer(mapaMarker(L, e, est, ll));
+    const key = ll[0].toFixed(5) + ',' + ll[1].toFixed(5);
+    let g = groups.get(key);
+    if (!g) { g = { ll, items: [] }; groups.set(key, g); }
+    g.items.push({ e, est });
+  });
+  groups.forEach(g => {
+    bounds.push(g.ll);
+    if (g.items.length === 1) {
+      const { e, est } = g.items[0];
+      _mapaLayer.addLayer(mapaMarker(L, e, est, g.ll));
+    } else {
+      _mapaLayer.addLayer(mapaClusterMarker(L, g));
+    }
   });
   mapaRenderSinUbicar(sinUbicar);
   if (!_mapaFitDone && bounds.length) {
@@ -12336,8 +12364,56 @@ function mapaMarker(L, e, est, ll) {
   m._estado = est;
   m._total = e.total || 0;
   m._cur = e.currency || 'ARS';
+  m._entries = [e];
   m.bindPopup(mapaPopupHtml(e, est));
   return m;
+}
+
+// Marca de un GRUPO de presupuestos en el mismo punto: un círculo con la
+// cantidad, coloreado por el estado del presupuesto más reciente del grupo.
+// Al tocarla se abre en abanico (mapaSpiderfy) — no tiene popup propio.
+function mapaClusterMarker(L, g) {
+  const items = g.items;
+  const rep = items.slice().sort((a, b) => _mapaDateOf(b.e).localeCompare(_mapaDateOf(a.e)))[0];
+  const [txt] = ESTADO_COLORS[rep.est] || ESTADO_COLORS.borrador;
+  const hl = items.some(x => _mapaHighlight.has(x.e.id));
+  const icon = L.divIcon({
+    className: 'mapa-cluster' + (hl ? ' is-hl' : ''),
+    html: `<span style="background:${txt}">${items.length}</span>`,
+    iconSize: [26, 26], iconAnchor: [13, 13], popupAnchor: [0, -13],
+  });
+  const m = L.marker(g.ll, { icon });
+  m._entries = items.map(x => x.e);
+  m.on('click', () => mapaSpiderfy(g));
+  return m;
+}
+
+// Abre las marcas apiladas de un grupo en abanico (círculo de marcas
+// individuales alrededor del centro, con "patas" al punto real). Volver a
+// tocar el mismo grupo lo cierra. Las posiciones se calculan en píxeles, por
+// eso panear/zoom cierra el abanico (ver mapaInit).
+function mapaSpiderfy(g) {
+  const L = window.L;
+  if (!_mapa || !_mapaSpiderLayer) return;
+  if (_mapaSpiderOpen === g) { mapaCollapseSpider(); return; }
+  mapaCollapseSpider();
+  _mapaSpiderOpen = g;
+  const items = g.items;
+  const center = _mapa.latLngToLayerPoint(g.ll);
+  const n = items.length;
+  const radius = Math.min(46 + n * 8, 90);
+  items.forEach((x, i) => {
+    const ang = (2 * Math.PI * i) / n - Math.PI / 2;
+    const pt = L.point(center.x + radius * Math.cos(ang), center.y + radius * Math.sin(ang));
+    const ll = _mapa.layerPointToLatLng(pt);
+    _mapaSpiderLayer.addLayer(L.polyline([g.ll, ll], { className: 'mapa-spider-leg', interactive: false }));
+    _mapaSpiderLayer.addLayer(mapaMarker(L, x.e, x.est, ll));
+  });
+}
+
+function mapaCollapseSpider() {
+  if (_mapaSpiderLayer) _mapaSpiderLayer.clearLayers();
+  _mapaSpiderOpen = null;
 }
 
 function mapaPopupHtml(e, est) {
@@ -12351,9 +12427,10 @@ function mapaPopupHtml(e, est) {
     <div class="mapa-popup-meta">${num} · ${fmtM(e.total || 0, cur)} · ${fmtD(_mapaDateOf(e))}</div>
     <select class="mapa-popup-estado" style="color:${txt};background:${bg}" onchange="mapaSetEstado(${e.id}, this.value)" aria-label="Estado">${opts}</select>
     <div class="mapa-popup-acts">
-      <button class="btn btn-p btn-sm" onclick="mapaAbrir(${e.id})">${icon('folder')} Abrir</button>
+      <button class="btn btn-p btn-sm" onclick="mapaVer(${e.id})">${icon('eye')} Ver</button>
       <button class="btn btn-g btn-sm" onclick="comoLlegar(${e.id})">${icon('pin')} Llegar</button>
     </div>
+    <button class="mapa-popup-edit" onclick="mapaAbrir(${e.id})" title="Cargar este presupuesto en el editor para modificarlo">${icon('pencil')} Editar…</button>
   </div>`;
 }
 
@@ -12365,6 +12442,14 @@ function mapaSetEstado(id, val) {
 function mapaAbrir(id) {
   if (_mapa) _mapa.closePopup();
   if (typeof loadFromHistory === 'function') loadFromHistory(id);
+}
+
+// "Ver" desde el mapa: abre la vista previa de SOLO LECTURA (mismo modal que
+// usa la lista del historial). No toca el editor — así no se edita sin querer
+// un presupuesto ya enviado/aceptado/realizado.
+function mapaVer(id) {
+  if (_mapa) _mapa.closePopup();
+  if (typeof previewFromHistory === 'function') previewFromHistory(id);
 }
 
 function mapaRenderSinUbicar(list) {
@@ -12396,7 +12481,8 @@ function mapaUbicar(id) {
 }
 
 function mapaOnMapClick(ev) {
-  if (_mapaPlacingId == null) return;
+  // Un toque en el mapa vacío (fuera de una marca) cierra el abanico abierto.
+  if (_mapaPlacingId == null) { if (_mapaSpiderOpen) mapaCollapseSpider(); return; }
   const id = _mapaPlacingId;
   _mapaPlacingId = null;
   const canvas = document.getElementById('map-canvas');
@@ -12422,11 +12508,16 @@ function mapaUpdateZonaStats() {
   let total = 0, cur = '', totalMarks = 0;
   _mapaLayer.eachLayer(m => {
     if (!m.getLatLng || !b.contains(m.getLatLng())) return;
-    const est = m._estado || 'borrador';
-    counts[est] = (counts[est] || 0) + 1;
-    total += m._total || 0;
-    totalMarks++;
-    if (!cur && m._cur) cur = m._cur;
+    // Cada marca puede representar varios presupuestos (grupo apilado): se
+    // cuentan todos sus entries, no la marca. Los hijos del abanico viven en
+    // otro layer (_mapaSpiderLayer) y no se recorren acá → no cuentan doble.
+    (m._entries || []).forEach(e => {
+      const est = e.estado || 'borrador';
+      counts[est] = (counts[est] || 0) + 1;
+      total += e.total || 0;
+      totalMarks++;
+      if (!cur && e.currency) cur = e.currency;
+    });
   });
   if (!totalMarks) { box.innerHTML = '<div class="mapa-hint">Acercá o paneá el mapa a una zona con presupuestos para ver sus números.</div>'; return; }
   const c = k => counts[k] || 0;
