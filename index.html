@@ -231,6 +231,38 @@ body{background-color:var(--bg)}
 :root[data-theme="dark"] .agenda-dia-chip{background:rgba(139,92,246,.2);color:#c4b5fd}
 :root[data-theme="dark"] .agenda-dia-chip.is-today{background:#4a3a12;color:#fde68a}
 :root[data-theme="dark"] .agenda-pend{background:#3a3413;color:#fde68a}
+/* ── Pop-up de arranque del día (llamativo, 1 vez/día) ── */
+#day-alert-overlay{display:none;position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(6,40,30,.55);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);z-index:2100;align-items:center;justify-content:center;padding:18px}
+#day-alert-overlay.open{display:flex;animation:daFade .2s ease}
+#day-alert-box{position:relative;background:linear-gradient(160deg,#ecfdf5,#d1fae5);border:1px solid #6ee7b7;border-radius:22px;padding:26px 22px 22px;width:440px;max-width:94vw;max-height:90vh;overflow:auto;box-shadow:0 24px 70px rgba(4,60,40,.4);text-align:center;animation:daPop .32s cubic-bezier(.2,.9,.3,1.3)}
+@keyframes daFade{from{opacity:0}to{opacity:1}}
+@keyframes daPop{from{opacity:0;transform:scale(.85) translateY(12px)}to{opacity:1;transform:none}}
+.da-close{position:absolute;top:12px;right:12px;width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#065f46;background:rgba(255,255,255,.7);border:1px solid #a7f3d0;border-radius:50%;cursor:pointer;line-height:1}
+.da-close:active{background:#fff}
+.da-emoji{font-size:46px;line-height:1;margin-bottom:4px;animation:daWave 1.4s ease-in-out infinite}
+@keyframes daWave{0%,100%{transform:rotate(-6deg)}50%{transform:rotate(6deg)}}
+.da-kicker{font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:#059669}
+.da-title{font-family:'DM Serif Display',serif;font-size:26px;line-height:1.15;color:#064e3b;margin:2px 0 6px}
+.da-sub{font-size:13.5px;color:#047857;line-height:1.5;margin:0 0 14px}
+#day-alert-box .mb-summary{justify-content:center;margin:0 0 14px}
+.da-list{display:flex;flex-direction:column;gap:8px;margin-bottom:16px;text-align:left}
+.da-item{display:flex;flex-direction:column;gap:2px;background:rgba(255,255,255,.85);border:1px solid #a7f3d0;border-radius:14px;padding:11px 13px;cursor:pointer;width:100%;font-family:inherit}
+.da-item:active{background:#fff}
+.da-item-top{display:flex;gap:7px;align-items:baseline;flex-wrap:wrap}
+.da-item-num{font-size:13px;font-weight:800;color:#047857}
+.da-item-client{font-size:14px;font-weight:600;color:#064e3b}
+.da-item-meta{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:#059669}
+.da-item-meta .ic{width:13px;height:13px}
+.da-btns{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.da-btns .da-go{flex:1;min-width:150px}
+:root[data-theme="dark"] #day-alert-box{background:linear-gradient(160deg,#0c2620,#0e2b22);border-color:#065f46;box-shadow:0 24px 70px rgba(0,0,0,.6)}
+:root[data-theme="dark"] .da-close{color:#6ee7b7;background:rgba(255,255,255,.08);border-color:#065f46}
+:root[data-theme="dark"] .da-kicker{color:#34d399}
+:root[data-theme="dark"] .da-title{color:#a7f3d0}
+:root[data-theme="dark"] .da-sub{color:#6ee7b7}
+:root[data-theme="dark"] .da-item{background:rgba(255,255,255,.05);border-color:#065f46}
+:root[data-theme="dark"] .da-item-client{color:#d1fae5}
+:root[data-theme="dark"] .da-item-num,:root[data-theme="dark"] .da-item-meta{color:#6ee7b7}
 /* ── Bandeja de fotos compartidas (Web Share Target) ── */
 #share-overlay{display:none;position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(0,0,0,.45);z-index:2000;align-items:center;justify-content:center}
 #share-overlay.open{display:flex}
@@ -1413,6 +1445,7 @@ input[type=number]{-moz-appearance:textfield}
   #confirm-overlay,
   #agenda-overlay,
   #share-overlay,
+  #day-alert-overlay,
   #photo-viewer-overlay,
   #phrases-overlay,
   #sticky-totals,
@@ -3379,6 +3412,18 @@ input[type=number]{-moz-appearance:textfield}
   </div>
 </div>
 
+<!-- ════════════════════ POP-UP DE ARRANQUE DEL DÍA ════════════════════
+     Salta UNA vez, la primera apertura del día, si hay poda(s) agendada(s)
+     para hoy. Llama la atención; se cierra con la ✕ o "¡Vamos!" y no reaparece
+     ese día. El banner fijo (#morning-banner) y los avisos siguen igual.
+     La lógica vive en js/history.js (maybeShowDayAlert / renderDayAlert). -->
+<div id="day-alert-overlay" role="presentation" onclick="if(event.target===this)closeDayAlert()">
+  <div id="day-alert-box" role="dialog" aria-modal="true" aria-labelledby="day-alert-body">
+    <button type="button" class="da-close" onclick="closeDayAlert()" aria-label="Cerrar" title="Cerrar">✕</button>
+    <div id="day-alert-body"></div>
+  </div>
+</div>
+
 <!-- ════════════════════ BANDEJA DE FOTOS COMPARTIDAS ════════════════════
      Web Share Target: se abre cuando el usuario comparte fotos a la app.
      Por cada foto, elige el destino (árbol nuevo / ítem existente / descartar).
@@ -3482,6 +3527,7 @@ const LS = {
   PDF_THEME:      'pq_pdf_theme',
   PUSH_DEVICE_ID: 'pq_push_device_id',
   THEME:          'pq_theme',
+  DAY_ALERT_SEEN: 'pq_day_alert_seen',
 };
 
 // Notificaciones push (avisos de seguimiento con la app cerrada). Ambos se
@@ -9166,6 +9212,34 @@ function avisarVoyEnCamino(id) {
   window.open(`${base}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
 }
 
+// Resumen del día para una lista de trabajos de hoy: monto total a cobrar
+// (agrupado por moneda, por si hay trabajos en distintas monedas) y cantidad
+// de árboles (suma de la cantidad de cada ítem de tipo "árbol"). Devuelve las
+// partes crudas y el HTML listo (clases mb-*). Reusado por el banner fijo y
+// por el pop-up de arranque del día.
+function _resumenDelDia(hoy) {
+  let arboles = 0;
+  const porMoneda = {};
+  hoy.forEach(e => {
+    const snap = e.snapshot || {};
+    (snap.items || []).forEach(it => {
+      if (it && it.type === 'tree') arboles += Math.max(1, parseInt(it.qty) || 1);
+    });
+    const cur = e.currency || 'ARS';
+    porMoneda[cur] = (porMoneda[cur] || 0) + (parseFloat(e.total) || 0);
+  });
+  const montoStr = Object.keys(porMoneda)
+    .filter(c => porMoneda[c] > 0)
+    .map(c => fmtM(porMoneda[c], c))
+    .join(' · ');
+  const summaryHtml = (montoStr || arboles > 0) ? `
+    <div class="mb-summary">
+      ${montoStr ? `<span class="mb-stat">${icon('money')} A cobrar hoy: <b>${esc(montoStr)}</b></span>` : ''}
+      ${arboles > 0 ? `<span class="mb-stat">${icon('tree')} <b>${arboles}</b> árbol${arboles>1?'es':''}</span>` : ''}
+    </div>` : '';
+  return { arboles, montoStr, summaryHtml };
+}
+
 // Pinta el banner verde de "podas de hoy" arriba del editor. Cada trabajo trae
 // accesos rápidos que reusan la plomería existente (comoLlegar / WhatsApp /
 // previewFromHistory / setEstadoHistory). Con más de un trabajo, agrega
@@ -9187,28 +9261,7 @@ function renderMorningBanner() {
     ? `Trabajo${n>1?'s':''} agendado${n>1?'s':''} para hoy. Accesos rápidos para llegar y avisarle al cliente.`
     : `Cuando termines, marcá el trabajo como realizado para cerrarlo${n>1?'s':''}.`;
 
-  // Resumen del día: monto total a cobrar (agrupado por moneda, por si hay
-  // trabajos en distintas monedas) y cantidad de árboles (suma de la cantidad
-  // de cada ítem de tipo "árbol" en los presupuestos de hoy).
-  let arboles = 0;
-  const porMoneda = {};
-  hoy.forEach(e => {
-    const snap = e.snapshot || {};
-    (snap.items || []).forEach(it => {
-      if (it && it.type === 'tree') arboles += Math.max(1, parseInt(it.qty) || 1);
-    });
-    const cur = e.currency || 'ARS';
-    porMoneda[cur] = (porMoneda[cur] || 0) + (parseFloat(e.total) || 0);
-  });
-  const montoStr = Object.keys(porMoneda)
-    .filter(c => porMoneda[c] > 0)
-    .map(c => fmtM(porMoneda[c], c))
-    .join(' · ');
-  const summary = (montoStr || arboles > 0) ? `
-    <div class="mb-summary">
-      ${montoStr ? `<span class="mb-stat">${icon('money')} A cobrar hoy: <b>${esc(montoStr)}</b></span>` : ''}
-      ${arboles > 0 ? `<span class="mb-stat">${icon('tree')} <b>${arboles}</b> árbol${arboles>1?'es':''}</span>` : ''}
-    </div>` : '';
+  const { summaryHtml: summary } = _resumenDelDia(hoy);
 
   el.style.display = 'block';
   el.innerHTML = `
@@ -9265,9 +9318,85 @@ function marcarTrabajoRealizado(id) {
 // abierto (aceptado + fecha == hoy). Se llama en cada apertura de la app, así
 // el banner queda disponible todo el día hasta que cierres el trabajo. El
 // saludo cambia según la hora (mañana: "Buen día"; después: "Trabajo de hoy").
+// Además, la PRIMERA vez del día, dispara el pop-up llamativo (una sola vez).
 function maybeShowMorningBanner() {
   if (!getTrabajosDeHoy().length) return;
   renderMorningBanner();
+  maybeShowDayAlert();
+}
+
+// ─── POP-UP DE ARRANQUE DEL DÍA (llamativo, 1 vez por día) ───
+// La PRIMERA vez que se abre la app en un día con poda(s) agendada(s), salta
+// un modal centrado que llama toda la atención. Se cierra con la ✕ o el botón
+// y NO vuelve a aparecer ese día (gate persistido en LS.DAY_ALERT_SEEN). El
+// banner fijo de arriba y el resto de los avisos siguen funcionando igual.
+function _dayAlertSeenToday() {
+  try { return localStorage.getItem(LS.DAY_ALERT_SEEN) === today(); } catch (_) { return false; }
+}
+function _markDayAlertSeen() {
+  try { localStorage.setItem(LS.DAY_ALERT_SEEN, today()); } catch (_) {}
+}
+
+function maybeShowDayAlert() {
+  if (_dayAlertSeenToday()) return;
+  // No pisar el modal de bienvenida (primer uso) u otro overlay abierto.
+  if (document.querySelector('#moverlay.open, #agenda-overlay.open, #share-overlay.open')) return;
+  const hoy = getTrabajosDeHoy();
+  if (!hoy.length) return;
+  _markDayAlertSeen();   // se marca al mostrarlo: es "la primera apertura del día"
+  renderDayAlert(hoy);
+}
+
+function renderDayAlert(hoy) {
+  const ov = document.getElementById('day-alert-overlay');
+  const box = document.getElementById('day-alert-body');
+  if (!ov || !box) return;
+  const n = hoy.length;
+  const { summaryHtml } = _resumenDelDia(hoy);
+  const titulo = `Hoy tenés ${n} poda${n > 1 ? 's' : ''}`;
+  const sub = n > 1
+    ? 'Estos son los trabajos agendados para hoy. Tocá uno para verlo.'
+    : 'Tenés un trabajo agendado para hoy. Tocalo para verlo.';
+  box.innerHTML = `
+    <div class="da-emoji" aria-hidden="true">🌳</div>
+    <div class="da-kicker">¡Buen día!</div>
+    <h3 class="da-title">${titulo}</h3>
+    <p class="da-sub">${sub}</p>
+    ${summaryHtml}
+    <div class="da-list">
+      ${hoy.map(e => {
+        const snap = e.snapshot || {};
+        const lugar = (snap.workAddress || '').trim();
+        const dinfo = agDiaDeHoyInfo(e);
+        return `<button type="button" class="da-item" onclick="dayAlertGoTo(${e.id})">
+          <span class="da-item-top"><span class="da-item-num">${esc(e.quoteNumber || '—')}</span> <span class="da-item-client">${esc(e.clientName || '(sin nombre)')}</span></span>
+          ${dinfo ? `<span class="da-item-meta">${icon('calendar')} Día ${dinfo.idx} de ${dinfo.total}</span>` : ''}
+          ${lugar ? `<span class="da-item-meta">${icon('pin')} ${esc(lugar)}</span>` : ''}
+        </button>`;
+      }).join('')}
+    </div>
+    <div class="da-btns">
+      ${n > 1 ? `<button type="button" class="btn btn-g" onclick="dayAlertRuta()">${icon('truck')} Ruta del día</button>` : ''}
+      <button type="button" class="btn btn-p da-go" onclick="closeDayAlert()">¡Vamos! 💪</button>
+    </div>`;
+  ov.classList.add('open');
+}
+
+function closeDayAlert() {
+  const ov = document.getElementById('day-alert-overlay');
+  if (ov) ov.classList.remove('open');
+}
+
+// Tocar un trabajo del pop-up: lo abre en el historial y cierra el modal.
+function dayAlertGoTo(id) {
+  closeDayAlert();
+  if (typeof goToHistoryEntry === 'function') goToHistoryEntry(id);
+}
+
+// "Ruta del día" desde el pop-up: cierra y abre Maps con todas las paradas.
+function dayAlertRuta() {
+  closeDayAlert();
+  if (typeof rutaDelDiaMaps === 'function') rutaDelDiaMaps();
 }
 
 // Tras abrir WhatsApp, ofrecemos (sin forzar) marcar el seguimiento como
