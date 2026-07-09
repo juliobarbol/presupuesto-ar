@@ -4200,7 +4200,14 @@ function normalizeRiskData() {
 
 function saveLS() {
   S._schemaVersion = APP_SCHEMA_VERSION;
-  safeSetLS(LS.STATE, JSON.stringify(S));
+  // Serializar dentro de un try: si S tuviera una referencia circular,
+  // JSON.stringify lanzaría y la excepción cortaría el guardado antes de
+  // actualizar el indicador (lo dejaría colgado en "Guardando…"). Mejor
+  // fallar acá devolviendo false que romper el flujo.
+  let payload;
+  try { payload = JSON.stringify(S); }
+  catch (e) { console.error('saveLS: no se pudo serializar S', e); return false; }
+  return safeSetLS(LS.STATE, payload);
 }
 
 // Wrapper seguro para escrituras a localStorage. Atrapa QuotaExceededError
@@ -12622,7 +12629,16 @@ window.addEventListener('DOMContentLoaded', async () => {
   // reabrir, el editor tenga exactamente lo último que se estaba editando.
   function flushActiveState() {
     try { if (typeof syncFromUI === 'function') syncFromUI(); } catch (_) {}
-    try { clearTimeout(saveTimer); if (typeof saveLS === 'function') saveLS(); } catch (_) {}
+    try {
+      clearTimeout(saveTimer);
+      if (typeof saveLS === 'function') saveLS();
+      // Cerrar el ciclo del indicador: el guardado normal (sched) es el que
+      // pasa el cartel a "✓ Guardado". Como acá cancelamos ese timer y
+      // guardamos a mano, hay que actualizar el estado o quedaría colgado en
+      // "● Guardando…" al volver del segundo plano.
+      _lastSaveAt = Date.now();
+      if (typeof _renderSaveStatus === 'function') _renderSaveStatus();
+    } catch (_) {}
   }
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState !== 'hidden') return;
