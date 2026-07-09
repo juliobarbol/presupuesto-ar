@@ -2325,6 +2325,52 @@ input[type=number]{-moz-appearance:textfield}
 .pdoc.pdoc-compact .ptotals { padding-top: 8px; padding-bottom: 8px; }
 .pdoc.pdoc-compact .ptotal-amt { font-size: 20pt; }
 .pdoc.pdoc-compact .ptitle { font-size: 12pt; margin-bottom: 8px; }
+
+/* ─── MAPA (pestaña Mapa) ───────────────────────────── */
+.mapa-toolbar { display:flex; flex-wrap:wrap; gap:8px 14px; align-items:center; justify-content:space-between; margin-bottom:8px; }
+.mapa-filters { display:flex; flex-wrap:wrap; gap:6px; }
+.mapa-filter { display:inline-flex; align-items:center; gap:5px; font-size:12px; padding:3px 9px 3px 6px; border:1px solid var(--border); border-radius:999px; background:var(--card); cursor:pointer; user-select:none; color:var(--muted); }
+.mapa-filter.is-on { color:var(--fg,#111); border-color:var(--accent); }
+.mapa-filter input { margin:0; width:13px; height:13px; accent-color:var(--accent); }
+.mapa-filter-dot { width:11px; height:11px; border-radius:50%; border:1px solid rgba(0,0,0,.15); }
+.mapa-tools { display:flex; flex-wrap:wrap; gap:6px 10px; align-items:center; }
+.mapa-daterange { font-size:12px; color:var(--muted); display:inline-flex; align-items:center; gap:4px; }
+.mapa-daterange input { font-size:12px; padding:3px 6px; border:1px solid var(--border); border-radius:8px; background:var(--card); color:inherit; }
+#map-canvas { height:60vh; min-height:340px; width:100%; border-radius:12px; border:1px solid var(--border); overflow:hidden; background:var(--surface,#e5e7eb); z-index:0; }
+#map-canvas.mapa-placing { cursor:crosshair; }
+#map-canvas.mapa-placing .leaflet-grab { cursor:crosshair; }
+.mapa-pin span { display:block; width:20px; height:20px; box-sizing:border-box; border-radius:50%; border:2px solid #fff; box-shadow:0 1px 4px rgba(0,0,0,.45); }
+.mapa-pin.is-hl span { box-shadow:0 0 0 4px rgba(14,165,233,.55), 0 1px 4px rgba(0,0,0,.45); }
+.mapa-popup { min-width:170px; }
+.mapa-popup-cli { font-weight:700; font-size:14px; margin-bottom:2px; }
+.mapa-popup-meta { font-size:12px; color:var(--muted); margin-bottom:6px; }
+.mapa-popup-estado { width:100%; font-size:12px; font-weight:600; padding:4px 6px; border:none; border-radius:8px; margin-bottom:6px; }
+.mapa-popup-acts { display:flex; gap:6px; }
+.mapa-popup-acts .btn { flex:1; }
+.mapa-zonastats { margin-top:8px; padding:8px 10px; border:1px solid var(--border); border-radius:10px; background:var(--card); }
+.mapa-zona-title { font-size:12px; font-weight:700; margin-bottom:5px; }
+.mapa-zona-chips { display:flex; flex-wrap:wrap; gap:4px; margin-bottom:5px; }
+.mapa-zona-chip { font-size:11px; font-weight:600; padding:2px 8px; border-radius:999px; }
+.mapa-zona-conv { font-size:12px; color:var(--muted); }
+.mapa-hint-inline { font-size:11px; opacity:.8; }
+.mapa-cerca-panel { margin-top:8px; padding:10px; border:1px solid var(--accent); border-radius:10px; background:var(--accent-tint,var(--card)); }
+.mapa-cerca-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; font-size:13px; }
+.mapa-cerca-close { border:none; background:transparent; cursor:pointer; font-size:15px; color:var(--muted); line-height:1; padding:2px 6px; }
+.mapa-cerca-list { display:flex; flex-direction:column; gap:5px; }
+.mapa-cerca-item { display:flex; align-items:center; gap:8px; font-size:13px; }
+.mapa-cerca-cli { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.mapa-cerca-dist { font-size:12px; color:var(--muted); font-variant-numeric:tabular-nums; }
+.mapa-ruta-btn { width:100%; margin-top:8px; }
+.mapa-sinubicar { margin-top:10px; border:1px solid var(--border); border-radius:10px; background:var(--card); padding:2px 10px; }
+.mapa-sinubicar > summary { cursor:pointer; font-size:13px; font-weight:600; padding:8px 0; }
+.mapa-count { display:inline-block; min-width:18px; text-align:center; font-size:11px; padding:1px 6px; border-radius:999px; background:var(--accent); color:var(--accent-fg,#fff); }
+.mapa-su-item { display:flex; align-items:center; gap:8px; padding:7px 0; border-top:1px solid var(--border); }
+.mapa-su-info { flex:1; min-width:0; font-size:13px; }
+.mapa-su-addr { font-size:12px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.mapa-hint { font-size:12px; color:var(--muted); padding:6px 0; }
+.mapa-error { display:flex; align-items:center; justify-content:center; height:100%; padding:20px; text-align:center; color:var(--muted); font-size:14px; }
+:root[data-theme="dark"] .leaflet-popup-content-wrapper,
+:root[data-theme="dark"] .leaflet-popup-tip { background:var(--card); color:var(--fg,#e5e7eb); }
 </style>
 
 
@@ -2408,6 +2454,7 @@ input[type=number]{-moz-appearance:textfield}
     <button class="tab-btn" onclick="switchTab('empresa')"><svg class="ic"><use href="#i-building"></use></svg> Empresa</button>
     <button class="tab-btn" onclick="switchTab('estilo')"><svg class="ic"><use href="#i-palette"></use></svg> Estilo</button>
     <button class="tab-btn" onclick="switchTab('historial')"><svg class="ic"><use href="#i-book"></use></svg> Historial<span class="tab-dot" id="tab-hist-dot" hidden></span></button>
+    <button class="tab-btn" onclick="switchTab('mapa')"><svg class="ic"><use href="#i-pin"></use></svg> Mapa</button>
     <button class="tab-btn" onclick="switchTab('facturacion')"><svg class="ic ic-c-amber"><use href="#i-money"></use></svg> Facturas</button>
   </div>
 
@@ -3213,10 +3260,12 @@ input[type=number]{-moz-appearance:textfield}
         <div style="margin-bottom:4px">
           <select class="hsearch" id="hist-estado-filter" onchange="renderHistory()" style="margin-bottom:0">
             <option value="">Todos los estados</option>
+            <option value="por_ver">Ir a ver</option>
             <option value="borrador">Borrador</option>
             <option value="enviado">Enviado</option>
             <option value="aceptado">Aceptado</option>
             <option value="realizado">Realizado</option>
+            <option value="evolucion">Control en sitio</option>
             <option value="perdido">Perdido</option>
           </select>
         </div>
@@ -3228,6 +3277,26 @@ input[type=number]{-moz-appearance:textfield}
           <button class="btn btn-g btn-sm hist-clear-all" onclick="clearHistory()"><svg class="ic ic-c-red"><use href="#i-trash"></use></svg> Limpiar todo el historial</button>
         </div>
       </div><!-- /panel-historial -->
+
+      <!-- ══ TAB MAPA ══ -->
+      <div id="panel-mapa" class="tab-panel">
+        <div class="mapa-toolbar">
+          <div class="mapa-filters" id="mapa-filters" aria-label="Filtros por estado"><!-- checkboxes por estado (JS) --></div>
+          <div class="mapa-tools">
+            <label class="mapa-daterange">Desde <input type="date" id="mapa-desde" onchange="mapaRefresh()"></label>
+            <label class="mapa-daterange">Hasta <input type="date" id="mapa-hasta" onchange="mapaRefresh()"></label>
+            <button class="btn btn-g btn-sm" id="mapa-cerca-btn" onclick="mapaCercaMio(this)"><svg class="ic"><use href="#i-pin"></use></svg> Cerca mío</button>
+          </div>
+        </div>
+        <div id="map-canvas"></div>
+        <div class="mapa-zonastats" id="mapa-zonastats"></div>
+        <div id="mapa-cerca-panel" class="mapa-cerca-panel" hidden></div>
+        <details id="mapa-sinubicar" class="mapa-sinubicar">
+          <summary>Sin ubicar <span class="mapa-count" id="mapa-sinubicar-count">0</span></summary>
+          <div class="mapa-hint">Estos presupuestos no tienen coordenadas. Tocá “Ubicar” y después tocá el punto exacto en el mapa; queda guardado.</div>
+          <div id="mapa-sinubicar-list"></div>
+        </details>
+      </div><!-- /panel-mapa -->
 
       <!-- ══ TAB FACTURACIÓN ══ -->
       <div id="panel-facturacion" class="tab-panel">
@@ -3682,27 +3751,37 @@ function sanitizeSectionOrder(order){
 // El estado vive a nivel del entry del historial (no del snapshot),
 // porque es metadata comercial que se ve y filtra en la lista sin
 // necesidad de cargar el presupuesto. Default: 'borrador'.
+//   por_ver   → hay que ir a ver el árbol antes de presupuestar (relevamiento)
 //   borrador  → recién creado, sin enviar
 //   enviado   → entregado al cliente (se ofrece marcar al generar PDF)
 //   aceptado  → el cliente lo aprobó
 //   realizado → trabajo hecho (incluye cobrado)
+//   evolucion → hay que volver al sitio a controlar la evolución del árbol
 //   perdido   → no prosperó
-const ESTADOS = ['borrador', 'enviado', 'aceptado', 'realizado', 'perdido'];
+const ESTADOS = ['por_ver', 'borrador', 'enviado', 'aceptado', 'realizado', 'evolucion', 'perdido'];
 const ESTADO_LABELS = {
+  por_ver:   'Ir a ver',
   borrador:  'Borrador',
   enviado:   'Enviado',
   aceptado:  'Aceptado',
   realizado: 'Realizado',
+  evolucion: 'Control en sitio',
   perdido:   'Perdido',
 };
 const ESTADO_COLORS = {
   // [texto, fondo]
+  por_ver:   ['#155e63', '#cffafe'],
   borrador:  ['#475569', '#e2e8f0'],
   enviado:   ['#1e40af', '#dbeafe'],
   aceptado:  ['#92400e', '#fef3c7'],
   realizado: ['#065f46', '#d1fae5'],
+  evolucion: ['#6b21a8', '#f3e8ff'],
   perdido:   ['#991b1b', '#fee2e2'],
 };
+// Estados que implican una visita pendiente al lugar (para "pendientes cerca
+// mío" en el mapa): ir a ver el árbol, trabajo aceptado por hacer, o control
+// de evolución posterior.
+const PENDIENTES_CAMPO = ['por_ver', 'aceptado', 'evolucion'];
 function estadoLabel(e) { return ESTADO_LABELS[e] || ESTADO_LABELS.borrador; }
 
 let S = Object.assign({}, DEF);
@@ -6993,11 +7072,12 @@ function switchTab(name) {
   // a otra pestaña descartamos el enlace pendiente para no atar la factura a
   // un presupuesto que no corresponde.
   if (name !== 'facturacion') _pendingFacturaQuote = null;
-  const names = ['editor','empresa','estilo','historial','facturacion'];
+  const names = ['editor','empresa','estilo','historial','mapa','facturacion'];
   document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active', names[i]===name));
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
   const p = document.getElementById('panel-'+name); if(p) p.classList.add('active');
   if(name==='historial')   renderHistory();
+  if(name==='mapa'      && typeof mapaInit === 'function') mapaInit();
   if(name==='empresa')     {
     // Actualizamos contadores en los headers colapsables; las listas
     // mismas se renderizan al abrir cada sección (lazy).
@@ -8597,6 +8677,32 @@ function ensureHtml2Pdf() {
     document.head.appendChild(s);
   });
   return _h2pLoading;
+}
+
+// Leaflet (mapa) se vendoriza en /vendor y se carga lazy la primera vez que se
+// abre la pestaña Mapa — mismo criterio que html2pdf. Está en APP_SHELL, así
+// que offline funciona; los TILES del mapa sí necesitan conexión (son imágenes
+// remotas de OpenStreetMap), pero la lógica de marcadores/pines es local.
+let _leafletLoading = null;
+function ensureLeaflet() {
+  if (window.L && window.L.map) return Promise.resolve(window.L);
+  if (_leafletLoading) return _leafletLoading;
+  _leafletLoading = new Promise((resolve, reject) => {
+    if (!document.getElementById('leaflet-css')) {
+      const link = document.createElement('link');
+      link.id = 'leaflet-css';
+      link.rel = 'stylesheet';
+      link.href = './vendor/leaflet.css';
+      document.head.appendChild(link);
+    }
+    const s = document.createElement('script');
+    s.src = './vendor/leaflet.js';
+    s.async = true;
+    s.onload = () => (window.L && window.L.map) ? resolve(window.L) : reject(new Error('Leaflet no disponible'));
+    s.onerror = () => { _leafletLoading = null; reject(new Error('no se pudo cargar Leaflet')); };
+    document.head.appendChild(s);
+  });
+  return _leafletLoading;
 }
 
 // Construye el documento de un entry del historial y devuelve su HTML, SIN
@@ -11957,6 +12063,376 @@ function factSaveTope() {
 
 function factTopeChanged() {
   // live preview — no guardamos hasta que presiona Guardar
+}
+
+// ===== js/mapa.js =====
+// ═══════════════════════════════════════
+// MAPA.JS — Mapa de presupuestos por estado (Leaflet + OpenStreetMap)
+// ═══════════════════════════════════════
+// Muestra en un mapa cada presupuesto del historial con un pin coloreado por
+// su estado comercial. Las coordenadas salen de datos YA existentes
+// (workMapLink en formato lat,lng, o Plus Codes completos decodificados
+// offline). Los que no tengan coordenadas se ubican A MANO tocando el mapa
+// (sin geocoding: cero datos enviados afuera). Leaflet se carga lazy; los
+// tiles del fondo sí necesitan conexión.
+
+let _mapa = null;            // instancia Leaflet
+let _mapaLayer = null;       // layerGroup de marcadores de presupuestos
+let _mapaUserMarker = null;  // marcador "estás acá" (cerca mío)
+let _mapaFilterSet = null;   // Set de estados visibles
+let _mapaPlacingId = null;   // id del presupuesto que se está ubicando a mano
+let _mapaFitDone = false;    // el primer render encuadra a los marcadores
+let _mapaCercaList = [];     // pendientes cercanos (para armar la ruta)
+let _mapaUserLatLng = null;  // [lat,lng] de la última "cerca mío"
+let _mapaHighlight = new Set(); // ids resaltados (cerca mío)
+
+// Distancia en km entre dos coordenadas (haversine).
+function _haversineKm(lat1, lng1, lat2, lng2) {
+  const R = 6371, toR = Math.PI / 180;
+  const dLat = (lat2 - lat1) * toR, dLng = (lng2 - lng1) * toR;
+  const a = Math.sin(dLat / 2) ** 2 +
+            Math.cos(lat1 * toR) * Math.cos(lat2 * toR) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
+}
+
+// Decodifica un Plus Code COMPLETO (separador en la posición 8, ej.
+// "8FW4V75V+8Q") a [lat,lng] del centro del área, sin servicios externos.
+// Los códigos cortos (con localidad) devuelven null → se ubican a mano.
+function decodePlusCode(code) {
+  const A = '23456789CFGHJMPQRVWX';
+  if (!code) return null;
+  code = String(code).trim().toUpperCase();
+  if (code.indexOf('+') !== 8) return null;
+  code = code.replace('+', '').replace(/0+$/, '');
+  if (code.length < 2) return null;
+  for (let k = 0; k < code.length; k++) if (A.indexOf(code[k]) < 0) return null;
+  let lat = -90, lng = -180, latRes = 400, lngRes = 400, i = 0;
+  for (; i < Math.min(code.length, 10); i += 2) {
+    latRes /= 20; lngRes /= 20;
+    lat += A.indexOf(code[i]) * latRes;
+    lng += A.indexOf(code[i + 1]) * lngRes;
+  }
+  if (code.length > 10) {
+    let rowRes = latRes, colRes = lngRes;
+    for (; i < code.length; i++) {
+      const v = A.indexOf(code[i]);
+      rowRes /= 5; colRes /= 4;
+      lat += Math.floor(v / 4) * rowRes;
+      lng += (v % 4) * colRes;
+    }
+    lat += rowRes / 2; lng += colRes / 2;
+  } else {
+    lat += latRes / 2; lng += lngRes / 2;
+  }
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
+  return [lat, lng];
+}
+
+// Resuelve las coordenadas de un entry del historial, o null si no se puede
+// ubicar (queda para "sin ubicar"). Orden: (1) pin manual guardado, (2)
+// workMapLink como "lat,lng", (3) Plus Code completo.
+function entryLatLng(e) {
+  if (e && e.geo && isFinite(e.geo.lat) && isFinite(e.geo.lng)) return [e.geo.lat, e.geo.lng];
+  const link = ((e && e.snapshot && e.snapshot.workMapLink) || '').trim();
+  if (link && !/^https?:\/\//i.test(link)) {
+    const m = link.match(/^\s*(-?\d{1,3}(?:\.\d+)?)\s*,\s*(-?\d{1,3}(?:\.\d+)?)\s*$/);
+    if (m) {
+      const lat = parseFloat(m[1]), lng = parseFloat(m[2]);
+      if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) return [lat, lng];
+    }
+    const pc = decodePlusCode(link);
+    if (pc) return pc;
+  }
+  return null;
+}
+
+function _mapaDateOf(e) { return (((e.snapshot && e.snapshot.dateIssue) || e.savedAt || '') + '').slice(0, 10); }
+
+// Init lazy: primera entrada a la pestaña carga Leaflet, crea el mapa y dibuja.
+function mapaInit() {
+  const canvas = document.getElementById('map-canvas');
+  if (!canvas) return;
+  ensureLeaflet().then((L) => {
+    if (!_mapa) {
+      mapaBuildFilters();
+      _mapa = L.map(canvas, { zoomControl: true }).setView([-34.0, -64.0], 4);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap',
+      }).addTo(_mapa);
+      _mapaLayer = L.layerGroup().addTo(_mapa);
+      _mapa.on('moveend', mapaUpdateZonaStats);
+      _mapa.on('click', mapaOnMapClick);
+    }
+    mapaRefresh();
+    // El contenedor estaba oculto al crearse; Leaflet necesita recalcular.
+    setTimeout(() => { if (_mapa) _mapa.invalidateSize(); }, 60);
+  }).catch(() => {
+    canvas.innerHTML = '<div class="mapa-error">No se pudo cargar el mapa. Necesitás conexión la primera vez que lo abrís.</div>';
+  });
+}
+
+// Checkboxes de filtro por estado (con la leyenda de colores).
+function mapaBuildFilters() {
+  if (!_mapaFilterSet) _mapaFilterSet = new Set(ESTADOS);
+  const box = document.getElementById('mapa-filters');
+  if (!box) return;
+  box.innerHTML = ESTADOS.map(s => {
+    const [txt] = ESTADO_COLORS[s] || ESTADO_COLORS.borrador;
+    const on = _mapaFilterSet.has(s);
+    return `<label class="mapa-filter${on ? ' is-on' : ''}">
+      <input type="checkbox" ${on ? 'checked' : ''} onchange="mapaToggleFilter('${s}', this.checked)">
+      <span class="mapa-filter-dot" style="background:${txt}"></span>${estadoLabel(s)}</label>`;
+  }).join('');
+}
+function mapaToggleFilter(s, on) {
+  if (!_mapaFilterSet) _mapaFilterSet = new Set(ESTADOS);
+  if (on) _mapaFilterSet.add(s); else _mapaFilterSet.delete(s);
+  mapaBuildFilters();
+  mapaRefresh();
+}
+
+// Re-dibuja los marcadores según filtros de estado y de fecha.
+function mapaRefresh() {
+  if (!_mapa || !_mapaLayer) return;
+  const L = window.L;
+  _mapaLayer.clearLayers();
+  const desde = (document.getElementById('mapa-desde')?.value || '').trim();
+  const hasta = (document.getElementById('mapa-hasta')?.value || '').trim();
+  const filt = _mapaFilterSet || new Set(ESTADOS);
+  const sinUbicar = [];
+  const bounds = [];
+  getH().forEach(e => {
+    const est = e.estado || 'borrador';
+    if (!filt.has(est)) return;
+    const d = _mapaDateOf(e);
+    if (desde && d && d < desde) return;
+    if (hasta && d && d > hasta) return;
+    const ll = entryLatLng(e);
+    if (!ll) { sinUbicar.push(e); return; }
+    bounds.push(ll);
+    _mapaLayer.addLayer(mapaMarker(L, e, est, ll));
+  });
+  mapaRenderSinUbicar(sinUbicar);
+  if (!_mapaFitDone && bounds.length) {
+    _mapa.fitBounds(bounds, { padding: [30, 30], maxZoom: 15 });
+    _mapaFitDone = true;
+  }
+  mapaUpdateZonaStats();
+}
+
+function mapaMarker(L, e, est, ll) {
+  const [txt] = ESTADO_COLORS[est] || ESTADO_COLORS.borrador;
+  const hl = _mapaHighlight.has(e.id);
+  const icon = L.divIcon({
+    className: 'mapa-pin' + (hl ? ' is-hl' : ''),
+    html: `<span style="background:${txt}"></span>`,
+    iconSize: [20, 20], iconAnchor: [10, 10], popupAnchor: [0, -10],
+  });
+  const m = L.marker(ll, { icon });
+  m._estado = est;
+  m._total = e.total || 0;
+  m._cur = e.currency || 'ARS';
+  m.bindPopup(mapaPopupHtml(e, est));
+  return m;
+}
+
+function mapaPopupHtml(e, est) {
+  const cli = esc(e.clientName || '(sin nombre)');
+  const num = esc(e.quoteNumber || '—');
+  const cur = e.currency || 'ARS';
+  const opts = ESTADOS.map(s => `<option value="${s}"${s === est ? ' selected' : ''}>${estadoLabel(s)}</option>`).join('');
+  const [txt, bg] = ESTADO_COLORS[est] || ESTADO_COLORS.borrador;
+  return `<div class="mapa-popup">
+    <div class="mapa-popup-cli">${cli}</div>
+    <div class="mapa-popup-meta">${num} · ${fmtM(e.total || 0, cur)} · ${fmtD(_mapaDateOf(e))}</div>
+    <select class="mapa-popup-estado" style="color:${txt};background:${bg}" onchange="mapaSetEstado(${e.id}, this.value)" aria-label="Estado">${opts}</select>
+    <div class="mapa-popup-acts">
+      <button class="btn btn-p btn-sm" onclick="mapaAbrir(${e.id})">${icon('folder')} Abrir</button>
+      <button class="btn btn-g btn-sm" onclick="comoLlegar(${e.id})">${icon('pin')} Llegar</button>
+    </div>
+  </div>`;
+}
+
+function mapaSetEstado(id, val) {
+  if (typeof setEstadoHistory === 'function') setEstadoHistory(id, val);
+  mapaRefresh();
+}
+
+function mapaAbrir(id) {
+  if (_mapa) _mapa.closePopup();
+  if (typeof loadFromHistory === 'function') loadFromHistory(id);
+}
+
+function mapaRenderSinUbicar(list) {
+  const cnt = document.getElementById('mapa-sinubicar-count');
+  const box = document.getElementById('mapa-sinubicar-list');
+  if (cnt) cnt.textContent = list.length;
+  if (!box) return;
+  if (!list.length) { box.innerHTML = '<div class="mapa-hint">Todos los presupuestos del filtro actual están ubicados. 🎉</div>'; return; }
+  box.innerHTML = list.map(e => {
+    const cli = esc(e.clientName || '(sin nombre)');
+    const num = esc(e.quoteNumber || '—');
+    const addr = esc(((e.snapshot && e.snapshot.workAddress) || '').trim() || 'sin dirección');
+    return `<div class="mapa-su-item">
+      <div class="mapa-su-info"><b>${cli}</b> · ${num}<div class="mapa-su-addr">${addr}</div></div>
+      <button class="btn btn-p btn-sm" onclick="mapaUbicar(${e.id})">${icon('pin')} Ubicar</button>
+    </div>`;
+  }).join('');
+}
+
+// Activa el modo colocación: el próximo toque en el mapa fija la ubicación.
+function mapaUbicar(id) {
+  _mapaPlacingId = id;
+  const canvas = document.getElementById('map-canvas');
+  if (canvas) canvas.classList.add('mapa-placing');
+  const det = document.getElementById('mapa-sinubicar');
+  if (det) det.open = false;
+  if (_mapa) _mapa.closePopup();
+  toast('Tocá en el mapa el punto exacto de este trabajo', 'info', 4000);
+}
+
+function mapaOnMapClick(ev) {
+  if (_mapaPlacingId == null) return;
+  const id = _mapaPlacingId;
+  _mapaPlacingId = null;
+  const canvas = document.getElementById('map-canvas');
+  if (canvas) canvas.classList.remove('mapa-placing');
+  const lat = +ev.latlng.lat.toFixed(6), lng = +ev.latlng.lng.toFixed(6);
+  const h = getH();
+  const e = h.find(x => x.id === id);
+  if (!e) return;
+  e.geo = { lat, lng, manual: true };
+  if (!e.snapshot) e.snapshot = {};
+  e.snapshot.workMapLink = lat + ',' + lng; // reusa "Llegar" y las rutas existentes
+  setH(h);
+  toast('Ubicación guardada', 'ok', 2000);
+  mapaRefresh();
+}
+
+// Stats de la zona VISIBLE del mapa (se recalculan al panear/zoomear).
+function mapaUpdateZonaStats() {
+  const box = document.getElementById('mapa-zonastats');
+  if (!box || !_mapa || !_mapaLayer) return;
+  const b = _mapa.getBounds();
+  const counts = {};
+  let total = 0, cur = '', totalMarks = 0;
+  _mapaLayer.eachLayer(m => {
+    if (!m.getLatLng || !b.contains(m.getLatLng())) return;
+    const est = m._estado || 'borrador';
+    counts[est] = (counts[est] || 0) + 1;
+    total += m._total || 0;
+    totalMarks++;
+    if (!cur && m._cur) cur = m._cur;
+  });
+  if (!totalMarks) { box.innerHTML = '<div class="mapa-hint">Acercá o paneá el mapa a una zona con presupuestos para ver sus números.</div>'; return; }
+  const c = k => counts[k] || 0;
+  const ganados = c('aceptado') + c('realizado');
+  const decididos = c('enviado') + c('aceptado') + c('realizado') + c('perdido');
+  const conv = decididos ? Math.round(ganados / decididos * 100) : null;
+  const chips = ESTADOS.filter(s => counts[s]).map(s => {
+    const [txt, bg] = ESTADO_COLORS[s];
+    return `<span class="mapa-zona-chip" style="color:${txt};background:${bg}">${estadoLabel(s)} ${counts[s]}</span>`;
+  }).join('');
+  box.innerHTML = `
+    <div class="mapa-zona-title">En esta zona: ${totalMarks} presupuesto(s)</div>
+    <div class="mapa-zona-chips">${chips}</div>
+    <div class="mapa-zona-conv">${conv != null ? `Conversión: <b>${conv}%</b> <span class="mapa-hint-inline">(aceptado+realizado / decididos)</span>` : 'Conversión: —'}${total ? ` · Presupuestado: <b>${fmtM(total, cur || 'ARS')}</b>` : ''}</div>`;
+}
+
+// "Cerca mío": ubica al usuario y resalta pendientes de campo en 15 km.
+function mapaCercaMio(btn) {
+  if (!('geolocation' in navigator)) { toast('Este dispositivo no permite detectar la ubicación', 'err', 4000); return; }
+  const orig = btn ? btn.innerHTML : '';
+  if (btn) { btn.disabled = true; btn.innerHTML = '<svg class="ic"><use href="#i-pin"></use></svg> Buscando…'; }
+  const restore = () => { if (btn) { btn.disabled = false; btn.innerHTML = orig; } };
+  navigator.geolocation.getCurrentPosition((pos) => {
+    restore();
+    const ulat = pos.coords.latitude, ulng = pos.coords.longitude;
+    _mapaUserLatLng = [ulat, ulng];
+    ensureLeaflet().then((L) => {
+      if (!_mapa) return;
+      if (_mapaUserMarker) _mapa.removeLayer(_mapaUserMarker);
+      _mapaUserMarker = L.circleMarker([ulat, ulng], { radius: 8, color: '#fff', weight: 2, fillColor: '#0ea5e9', fillOpacity: .95 })
+        .addTo(_mapa).bindPopup('Estás acá');
+      const RADIO = 15; // km
+      const near = [];
+      getH().forEach(e => {
+        if (!PENDIENTES_CAMPO.includes(e.estado || 'borrador')) return;
+        const ll = entryLatLng(e);
+        if (!ll) return;
+        const dist = _haversineKm(ulat, ulng, ll[0], ll[1]);
+        if (dist <= RADIO) near.push({ e, ll, dist });
+      });
+      near.sort((a, b) => a.dist - b.dist);
+      _mapaCercaList = near;
+      _mapaHighlight = new Set(near.map(n => n.e.id));
+      mapaRefresh();
+      mapaRenderCerca(near);
+      if (near.length) _mapa.fitBounds([[ulat, ulng], ...near.map(n => n.ll)], { padding: [40, 40], maxZoom: 14 });
+      else _mapa.setView([ulat, ulng], 13);
+    });
+  }, () => { restore(); toast('No se pudo obtener tu ubicación', 'err', 4000); },
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
+}
+
+function mapaRenderCerca(near) {
+  const box = document.getElementById('mapa-cerca-panel');
+  if (!box) return;
+  box.hidden = false;
+  if (!near.length) {
+    box.innerHTML = `<div class="mapa-cerca-head"><b>Cerca tuyo</b><button class="mapa-cerca-close" onclick="mapaCerrarCerca()" aria-label="Cerrar">✕</button></div><div class="mapa-hint">No hay pendientes con ubicación en 15 km.</div>`;
+    return;
+  }
+  box.innerHTML = `
+    <div class="mapa-cerca-head"><b>Pendientes cerca tuyo (${near.length})</b><button class="mapa-cerca-close" onclick="mapaCerrarCerca()" aria-label="Cerrar">✕</button></div>
+    <div class="mapa-cerca-list">${near.map(n => {
+      const est = n.e.estado || 'borrador';
+      const [txt, bg] = ESTADO_COLORS[est] || ESTADO_COLORS.borrador;
+      return `<div class="mapa-cerca-item">
+        <span class="mapa-zona-chip" style="color:${txt};background:${bg}">${estadoLabel(est)}</span>
+        <b class="mapa-cerca-cli">${esc(n.e.clientName || '(sin nombre)')}</b>
+        <span class="mapa-cerca-dist">${n.dist.toFixed(1)} km</span>
+        <button class="btn btn-g btn-sm" onclick="comoLlegar(${n.e.id})">${icon('pin')} Llegar</button>
+      </div>`;
+    }).join('')}</div>
+    ${near.length >= 2 ? `<button class="btn btn-p mapa-ruta-btn" onclick="mapaArmarRuta()">${icon('pin')} Armar recorrido en Google Maps</button>` : ''}`;
+}
+
+function mapaCerrarCerca() {
+  const box = document.getElementById('mapa-cerca-panel');
+  if (box) box.hidden = true;
+  _mapaHighlight = new Set();
+  _mapaCercaList = [];
+  if (_mapaUserMarker && _mapa) { _mapa.removeLayer(_mapaUserMarker); _mapaUserMarker = null; }
+  mapaRefresh();
+}
+
+// Ordena las paradas cercanas por vecino más cercano desde la ubicación
+// actual (recorrido "más práctico") y abre Google Maps en modo direcciones.
+function mapaArmarRuta() {
+  if (!_mapaUserLatLng || _mapaCercaList.length < 1) { toast('Primero tocá “Cerca mío”', 'info', 3000); return; }
+  const [ulat, ulng] = _mapaUserLatLng;
+  const rem = _mapaCercaList.slice();
+  const ordered = [];
+  let clat = ulat, clng = ulng;
+  while (rem.length) {
+    let bi = 0, bd = Infinity;
+    for (let i = 0; i < rem.length; i++) {
+      const d = _haversineKm(clat, clng, rem[i].ll[0], rem[i].ll[1]);
+      if (d < bd) { bd = d; bi = i; }
+    }
+    const nx = rem.splice(bi, 1)[0];
+    ordered.push(nx); clat = nx.ll[0]; clng = nx.ll[1];
+  }
+  const stops = ordered.map(n => _stopQueryForSnap(n.e.snapshot) || `${n.ll[0]},${n.ll[1]}`);
+  const dest = stops[stops.length - 1];
+  const wps = stops.slice(0, -1);
+  let url = 'https://www.google.com/maps/dir/?api=1'
+    + '&origin=' + encodeURIComponent(`${ulat},${ulng}`)
+    + '&destination=' + encodeURIComponent(dest);
+  if (wps.length) url += '&waypoints=' + wps.map(encodeURIComponent).join('%7C');
+  window.open(url, '_blank', 'noopener');
 }
 
 // ===== js/core.js =====
