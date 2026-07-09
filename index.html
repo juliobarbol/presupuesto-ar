@@ -2441,16 +2441,12 @@ input[type=number]{-moz-appearance:textfield}
   <div id="topbar">
     <div class="logo"><svg class="ic"><use href="#i-tree"></use></svg> Presupuestos</div>
     <span id="save-status"></span>
-    <!-- Configuración (engranaje): aloja las pantallas de config poco
-         frecuentes (Mi empresa, Estilo) para liberar la barra de pestañas.
-         Exportar/Importar backup viven dentro de "Mi empresa". -->
+    <!-- Configuración (engranaje): abre la pantalla de Configuración (Empresa)
+         con sus sub-pestañas (Negocio · Textos · Estilo · Datos). Aloja las
+         pantallas de config poco frecuentes para liberar la barra de pestañas.
+         Exportar/Importar backup viven en la sub-pestaña "Negocio". -->
     <div class="topbar-menu">
-      <button class="tbtn tbtn-menu" id="btn-config" onclick="toggleTopMenu(event)" aria-label="Configuración" aria-haspopup="true" aria-expanded="false"><svg class="ic"><use href="#i-settings"></use></svg></button>
-      <div id="top-menu-pop" class="top-menu-pop" style="display:none">
-        <div class="top-menu-title">Configuración</div>
-        <button class="top-menu-item" onclick="closeTopMenu();switchTab('empresa')"><svg class="ic"><use href="#i-building"></use></svg> Mi empresa</button>
-        <button class="top-menu-item" onclick="closeTopMenu();switchTab('estilo')"><svg class="ic"><use href="#i-palette"></use></svg> Estilo del PDF</button>
-      </div>
+      <button class="tbtn tbtn-menu" id="btn-config" onclick="switchTab('empresa')" aria-label="Configuración" title="Configuración"><svg class="ic"><use href="#i-settings"></use></svg></button>
     </div>
   </div>
 
@@ -2861,9 +2857,10 @@ input[type=number]{-moz-appearance:textfield}
            - "Datos guardados": clientes, especies, servicios -->
       <div id="panel-empresa" class="tab-panel">
         <div class="subtabs">
-          <button class="subtab-btn active" onclick="switchSubtab('negocio')"><svg class="ic"><use href="#i-building"></use></svg> Mi negocio</button>
-          <button class="subtab-btn" onclick="switchSubtab('textos')"><svg class="ic"><use href="#i-pencil"></use></svg> Textos del PDF</button>
-          <button class="subtab-btn" onclick="switchSubtab('datos')"><svg class="ic"><use href="#i-idcard"></use></svg> Datos guardados</button>
+          <button class="subtab-btn active" onclick="switchSubtab('negocio')"><svg class="ic"><use href="#i-building"></use></svg> Negocio</button>
+          <button class="subtab-btn" onclick="switchSubtab('textos')"><svg class="ic"><use href="#i-pencil"></use></svg> Textos</button>
+          <button class="subtab-btn" onclick="switchSubtab('estilo')"><svg class="ic"><use href="#i-palette"></use></svg> Estilo</button>
+          <button class="subtab-btn" onclick="switchSubtab('datos')"><svg class="ic"><use href="#i-idcard"></use></svg> Datos</button>
         </div>
 
         <!-- ── SUB-TAB MI NEGOCIO ── -->
@@ -3058,55 +3055,8 @@ input[type=number]{-moz-appearance:textfield}
             <input type="text" id="doc-greeting" placeholder="Saludos,"></div>
         </div>
 
-        <!-- ── SUB-TAB DATOS GUARDADOS ──
-             Secciones colapsables: por defecto las 3 vienen cerradas
-             para que el usuario no tenga que hacer scroll para llegar a
-             la sección que le interesa. El header muestra el conteo. -->
-        <div id="subpanel-datos" class="subpanel">
-
-          <div class="collapsible-section" id="cs-clients">
-            <button type="button" class="collapsible-header" onclick="toggleCollapsibleSection('cs-clients')">
-              <span><svg class="ic"><use href="#i-users"></use></svg> Clientes guardados</span>
-              <span class="ch-count" id="cs-clients-count">0</span>
-              <span class="ch-chevron">▾</span>
-            </button>
-            <div class="collapsible-body">
-              <p class="hint" style="margin-bottom:10px">Se guardan automáticamente al completar un presupuesto. Al escribir el nombre del cliente en el Editor, se autocompletan el teléfono y la dirección.</p>
-              <div id="client-manager-list"></div>
-              <button class="btn btn-g btn-sm" style="margin-top:8px" onclick="renderClientManager()"><svg class="ic" aria-hidden="true"><use href="#i-refresh"></use></svg> Actualizar lista</button>
-            </div>
-          </div>
-
-          <div class="collapsible-section" id="cs-species">
-            <button type="button" class="collapsible-header" onclick="toggleCollapsibleSection('cs-species')">
-              <span><svg class="ic"><use href="#i-tree"></use></svg> Especies guardadas</span>
-              <span class="ch-count" id="cs-species-count">0</span>
-              <span class="ch-chevron">▾</span>
-            </button>
-            <div class="collapsible-body">
-              <p class="hint" style="margin-bottom:10px">Se guardan automáticamente al cargar árboles. Se usan para autocompletar en el campo Especie/s del Editor.</p>
-              <div id="species-manager-list"></div>
-              <button class="btn btn-g btn-sm" style="margin-top:8px" onclick="renderSpeciesManager()"><svg class="ic" aria-hidden="true"><use href="#i-refresh"></use></svg> Actualizar lista</button>
-            </div>
-          </div>
-
-          <div class="collapsible-section" id="cs-services">
-            <button type="button" class="collapsible-header" onclick="toggleCollapsibleSection('cs-services')">
-              <span><svg class="ic"><use href="#i-truck"></use></svg> Servicios guardados</span>
-              <span class="ch-count" id="cs-services-count">0</span>
-              <span class="ch-chevron">▾</span>
-            </button>
-            <div class="collapsible-body">
-              <p class="hint" style="margin-bottom:10px">Se autocompletan al cargar un ítem tipo Servicio. Tocá la <strong><svg class="ic ic-fill ic-c-amber"><use href="#i-star"></use></svg></strong> para que aparezcan como atajos rápidos arriba del botón "+ Servicio" en el editor.</p>
-              <div id="services-manager-list"></div>
-              <button class="btn btn-g btn-sm" style="margin-top:8px" onclick="renderServicesManager()"><svg class="ic" aria-hidden="true"><use href="#i-refresh"></use></svg> Actualizar lista</button>
-            </div>
-          </div>
-        </div>
-      </div><!-- /panel-empresa -->
-
-      <!-- ══ TAB ESTILO ══ -->
-      <div id="panel-estilo" class="tab-panel">
+        <!-- ── SUB-TAB ESTILO (movido desde la pestaña Estilo) ── -->
+        <div id="subpanel-estilo" class="subpanel">
         <div class="st">Apariencia de la app</div>
         <div class="theme-mode" id="theme-mode" role="group" aria-label="Tema de la aplicación">
           <button type="button" class="theme-mode-btn" data-mode="auto" onclick="setThemeMode('auto')"><svg class="ic"><use href="#i-theme"></use></svg> Auto</button>
@@ -3248,7 +3198,55 @@ input[type=number]{-moz-appearance:textfield}
           <input type="number" id="validity-days" value="30" min="1" inputmode="numeric" oninput="onValidityChange()">
           <div class="hint">El vencimiento se recalcula desde la fecha de emisión.</div>
         </div>
-      </div><!-- /panel-estilo -->
+        </div>
+
+        <!-- ── SUB-TAB DATOS GUARDADOS ──
+             Secciones colapsables: por defecto las 3 vienen cerradas
+             para que el usuario no tenga que hacer scroll para llegar a
+             la sección que le interesa. El header muestra el conteo. -->
+        <div id="subpanel-datos" class="subpanel">
+
+          <div class="collapsible-section" id="cs-clients">
+            <button type="button" class="collapsible-header" onclick="toggleCollapsibleSection('cs-clients')">
+              <span><svg class="ic"><use href="#i-users"></use></svg> Clientes guardados</span>
+              <span class="ch-count" id="cs-clients-count">0</span>
+              <span class="ch-chevron">▾</span>
+            </button>
+            <div class="collapsible-body">
+              <p class="hint" style="margin-bottom:10px">Se guardan automáticamente al completar un presupuesto. Al escribir el nombre del cliente en el Editor, se autocompletan el teléfono y la dirección.</p>
+              <div id="client-manager-list"></div>
+              <button class="btn btn-g btn-sm" style="margin-top:8px" onclick="renderClientManager()"><svg class="ic" aria-hidden="true"><use href="#i-refresh"></use></svg> Actualizar lista</button>
+            </div>
+          </div>
+
+          <div class="collapsible-section" id="cs-species">
+            <button type="button" class="collapsible-header" onclick="toggleCollapsibleSection('cs-species')">
+              <span><svg class="ic"><use href="#i-tree"></use></svg> Especies guardadas</span>
+              <span class="ch-count" id="cs-species-count">0</span>
+              <span class="ch-chevron">▾</span>
+            </button>
+            <div class="collapsible-body">
+              <p class="hint" style="margin-bottom:10px">Se guardan automáticamente al cargar árboles. Se usan para autocompletar en el campo Especie/s del Editor.</p>
+              <div id="species-manager-list"></div>
+              <button class="btn btn-g btn-sm" style="margin-top:8px" onclick="renderSpeciesManager()"><svg class="ic" aria-hidden="true"><use href="#i-refresh"></use></svg> Actualizar lista</button>
+            </div>
+          </div>
+
+          <div class="collapsible-section" id="cs-services">
+            <button type="button" class="collapsible-header" onclick="toggleCollapsibleSection('cs-services')">
+              <span><svg class="ic"><use href="#i-truck"></use></svg> Servicios guardados</span>
+              <span class="ch-count" id="cs-services-count">0</span>
+              <span class="ch-chevron">▾</span>
+            </button>
+            <div class="collapsible-body">
+              <p class="hint" style="margin-bottom:10px">Se autocompletan al cargar un ítem tipo Servicio. Tocá la <strong><svg class="ic ic-fill ic-c-amber"><use href="#i-star"></use></svg></strong> para que aparezcan como atajos rápidos arriba del botón "+ Servicio" en el editor.</p>
+              <div id="services-manager-list"></div>
+              <button class="btn btn-g btn-sm" style="margin-top:8px" onclick="renderServicesManager()"><svg class="ic" aria-hidden="true"><use href="#i-refresh"></use></svg> Actualizar lista</button>
+            </div>
+          </div>
+        </div>
+      </div><!-- /panel-empresa -->
+
 
       <!-- ══ TAB HISTORIAL ══ -->
       <div id="panel-historial" class="tab-panel">
@@ -7051,7 +7049,7 @@ document.addEventListener('change', e => { if(!noSync && e.target.closest('#app'
 // Las sub-pestañas reducen el scroll vertical de la pestaña Empresa.
 // Renderiza solo lo necesario al entrar en cada sub-tab.
 function switchSubtab(name) {
-  const names = ['negocio','textos','datos'];
+  const names = ['negocio','textos','estilo','datos'];
   document.querySelectorAll('.subtab-btn').forEach((b,i)=>b.classList.toggle('active', names[i]===name));
   document.querySelectorAll('.subpanel').forEach(p=>p.classList.remove('active'));
   const p = document.getElementById('subpanel-'+name); if(p) p.classList.add('active');
@@ -7101,7 +7099,7 @@ function switchTab(name) {
   // Resaltar el engranaje cuando estamos en una pantalla de Configuración
   // (esos paneles no tienen botón de pestaña que se marque activo).
   const _gear = document.getElementById('btn-config');
-  if (_gear) _gear.classList.toggle('is-active', name==='empresa' || name==='estilo');
+  if (_gear) _gear.classList.toggle('is-active', name==='empresa');
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
   const p = document.getElementById('panel-'+name); if(p) p.classList.add('active');
   if(name==='historial')   renderHistory();
