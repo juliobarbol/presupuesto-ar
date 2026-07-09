@@ -12085,6 +12085,7 @@ let _mapaFitDone = false;    // el primer render encuadra a los marcadores
 let _mapaCercaList = [];     // pendientes cercanos (para armar la ruta)
 let _mapaUserLatLng = null;  // [lat,lng] de la última "cerca mío"
 let _mapaHighlight = new Set(); // ids resaltados (cerca mío)
+let _mapaGeoRef = null;      // [lat,lng] de referencia para reconstruir Plus Codes cortos
 
 // Distancia en km entre dos coordenadas (haversine).
 function _haversineKm(lat1, lng1, lat2, lng2) {
@@ -12128,9 +12129,84 @@ function decodePlusCode(code) {
   return [lat, lng];
 }
 
+// Codifica lat,lng a los primeros `digits` caracteres de un Plus Code (sección
+// de pares). Se usa para armar el prefijo al reconstruir un código corto.
+function _olcEncodePairs(lat, lng, digits) {
+  const A = '23456789CFGHJMPQRVWX';
+  let latV = lat + 90, lngV = lng + 180;
+  if (latV < 0) latV = 0; else if (latV >= 180) latV = 179.999999;
+  lngV = ((lngV % 360) + 360) % 360;
+  let code = '', unit = 20, latR = latV, lngR = lngV;
+  for (let d = 0; d < digits; d += 2) {
+    const li = Math.min(19, Math.floor(latR / unit));
+    const gi = Math.min(19, Math.floor(lngR / unit));
+    code += A[li] + A[gi];
+    latR -= li * unit; lngR -= gi * unit;
+    unit /= 20;
+  }
+  return code;
+}
+
+// Reconstruye un Plus Code CORTO (el que copiás de Google Maps, ej.
+// "V75V+8Q") usando un punto de referencia cercano — así se ubica sin geocoding.
+// Devuelve [lat,lng] del centro, o null si no aplica.
+function recoverPlusCode(code, refLat, refLng) {
+  const sep = code.indexOf('+');
+  if (sep < 0 || sep >= 8 || sep % 2 !== 0) return null;
+  if (!isFinite(refLat) || !isFinite(refLng)) return null;
+  const padding = 8 - sep;
+  const prefix = _olcEncodePairs(refLat, refLng, padding);
+  if (prefix.length < padding) return null;
+  const center = decodePlusCode(prefix + code);
+  if (!center) return null;
+  const resolution = Math.pow(20, 2 - padding / 2);
+  const half = resolution / 2;
+  let lat = center[0], lng = center[1];
+  if (refLat + half < lat && lat - resolution >= -90) lat -= resolution;
+  else if (refLat - half > lat && lat + resolution <= 90) lat += resolution;
+  if (refLng + half < lng && lng - resolution >= -180) lng -= resolution;
+  else if (refLng - half > lng && lng + resolution <= 180) lng += resolution;
+  return [lat, lng];
+}
+
+// Extrae un Plus Code de un texto (puede venir con la localidad al lado) y lo
+// resuelve a [lat,lng]. Los completos se decodifican solos; los cortos usan
+// `ref` (referencia cercana). Devuelve null si no hay código o falta referencia.
+function plusCodeToLatLng(str, ref) {
+  if (!str) return null;
+  const m = String(str).toUpperCase().match(/([23456789CFGHJMPQRVWX]{2,8}\+[23456789CFGHJMPQRVWX]{2,3})/);
+  if (!m) return null;
+  const code = m[1];
+  if (code.indexOf('+') === 8) return decodePlusCode(code);
+  if (ref) return recoverPlusCode(code, ref[0], ref[1]);
+  return null;
+}
+
+// Punto de referencia para reconstruir Plus Codes cortos: la ubicación del
+// usuario (si tocó "Cerca mío"), si no el centroide de los presupuestos ya
+// ubicados con coordenadas "duras" (lat,lng o Plus Code completo), y si no el
+// centro actual del mapa. Todos los trabajos de un podador caen en la misma
+// zona, así que este centroide reconstruye los códigos cortos con precisión.
+function _mapaComputeGeoRef() {
+  if (_mapaUserLatLng) return _mapaUserLatLng;
+  let sLat = 0, sLng = 0, n = 0;
+  getH().forEach(e => {
+    if (e && e.geo && isFinite(e.geo.lat) && isFinite(e.geo.lng)) { sLat += e.geo.lat; sLng += e.geo.lng; n++; return; }
+    const link = ((e && e.snapshot && e.snapshot.workMapLink) || '').trim();
+    if (!link || /^https?:\/\//i.test(link)) return;
+    const m = link.match(/^\s*(-?\d{1,3}(?:\.\d+)?)\s*,\s*(-?\d{1,3}(?:\.\d+)?)\s*$/);
+    if (m) { sLat += parseFloat(m[1]); sLng += parseFloat(m[2]); n++; return; }
+    const full = plusCodeToLatLng(link, null); // solo resuelve los completos
+    if (full) { sLat += full[0]; sLng += full[1]; n++; }
+  });
+  if (n) return [sLat / n, sLng / n];
+  if (_mapa && _mapa.getCenter) { const c = _mapa.getCenter(); return [c.lat, c.lng]; }
+  return null;
+}
+
 // Resuelve las coordenadas de un entry del historial, o null si no se puede
 // ubicar (queda para "sin ubicar"). Orden: (1) pin manual guardado, (2)
-// workMapLink como "lat,lng", (3) Plus Code completo.
+// workMapLink como "lat,lng", (3) Plus Code completo o corto (con referencia).
 function entryLatLng(e) {
   if (e && e.geo && isFinite(e.geo.lat) && isFinite(e.geo.lng)) return [e.geo.lat, e.geo.lng];
   const link = ((e && e.snapshot && e.snapshot.workMapLink) || '').trim();
@@ -12140,7 +12216,7 @@ function entryLatLng(e) {
       const lat = parseFloat(m[1]), lng = parseFloat(m[2]);
       if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) return [lat, lng];
     }
-    const pc = decodePlusCode(link);
+    const pc = plusCodeToLatLng(link, _mapaGeoRef);
     if (pc) return pc;
   }
   return null;
@@ -12196,6 +12272,7 @@ function mapaToggleFilter(s, on) {
 function mapaRefresh() {
   if (!_mapa || !_mapaLayer) return;
   const L = window.L;
+  _mapaGeoRef = _mapaComputeGeoRef(); // referencia para Plus Codes cortos
   _mapaLayer.clearLayers();
   const desde = (document.getElementById('mapa-desde')?.value || '').trim();
   const hasta = (document.getElementById('mapa-hasta')?.value || '').trim();
@@ -12350,6 +12427,7 @@ function mapaCercaMio(btn) {
     restore();
     const ulat = pos.coords.latitude, ulng = pos.coords.longitude;
     _mapaUserLatLng = [ulat, ulng];
+    _mapaGeoRef = _mapaUserLatLng; // mejor referencia para Plus Codes cortos
     ensureLeaflet().then((L) => {
       if (!_mapa) return;
       if (_mapaUserMarker) _mapa.removeLayer(_mapaUserMarker);
