@@ -13,7 +13,7 @@
 //
 //  Para forzar actualizacion tras un deploy: subir el CACHE_VERSION.
 
-const CACHE_VERSION = 'presupuesto-v113';
+const CACHE_VERSION = 'presupuesto-v114';
 const APP_SHELL = [
   './',
   './index.html',
@@ -39,6 +39,10 @@ const APP_SHELL = [
   './fonts/ibm-plex-sans-italic-latin.woff2',
   './fonts/ibm-plex-serif-400-latin.woff2',
   './fonts/ibm-plex-serif-600-latin.woff2',
+  // Leaflet (mapa de presupuestos), vendorizado. Los TILES del mapa son
+  // remotos y necesitan conexión; la librería en sí funciona offline.
+  './vendor/leaflet.js',
+  './vendor/leaflet.css',
 ];
 
 // -- Install: precachear el app shell (resiliente) ------------
