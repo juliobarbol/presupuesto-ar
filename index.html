@@ -239,8 +239,10 @@ body{background-color:var(--bg)}
 @keyframes daPop{from{opacity:0;transform:scale(.85) translateY(12px)}to{opacity:1;transform:none}}
 .da-close{position:absolute;top:12px;right:12px;width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#065f46;background:rgba(255,255,255,.7);border:1px solid #a7f3d0;border-radius:50%;cursor:pointer;line-height:1}
 .da-close:active{background:#fff}
-.da-emoji{font-size:46px;line-height:1;margin-bottom:4px;animation:daWave 1.4s ease-in-out infinite}
-@keyframes daWave{0%,100%{transform:rotate(-6deg)}50%{transform:rotate(6deg)}}
+.da-badge{width:72px;height:72px;margin:0 auto 8px;display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,#34d399,#059669);border-radius:50%;box-shadow:0 8px 20px rgba(5,150,105,.35);animation:daPulse 1.8s ease-in-out infinite}
+.da-badge .ic{width:38px;height:38px;color:#fff}
+@keyframes daPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
+:root[data-theme="dark"] .da-badge{background:linear-gradient(160deg,#059669,#047857);box-shadow:0 8px 20px rgba(0,0,0,.45)}
 .da-kicker{font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:#059669}
 .da-title{font-family:'DM Serif Display',serif;font-size:26px;line-height:1.15;color:#064e3b;margin:2px 0 6px}
 .da-sub{font-size:13.5px;color:#047857;line-height:1.5;margin:0 0 14px}
@@ -9358,7 +9360,7 @@ function renderDayAlert(hoy) {
     ? 'Estos son los trabajos agendados para hoy. Tocá uno para verlo.'
     : 'Tenés un trabajo agendado para hoy. Tocalo para verlo.';
   box.innerHTML = `
-    <div class="da-emoji" aria-hidden="true">🌳</div>
+    <div class="da-badge" aria-hidden="true">${icon('tree')}</div>
     <div class="da-kicker">¡Buen día!</div>
     <h3 class="da-title">${titulo}</h3>
     <p class="da-sub">${sub}</p>
