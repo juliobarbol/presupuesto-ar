@@ -2343,7 +2343,7 @@ input[type=number]{-moz-appearance:textfield}
 #map-canvas { height:60vh; min-height:340px; width:100%; border-radius:12px; border:1px solid var(--border); overflow:hidden; background:var(--surface,#e5e7eb); z-index:0; }
 #map-canvas.mapa-placing { cursor:crosshair; }
 #map-canvas.mapa-placing .leaflet-grab { cursor:crosshair; }
-.mapa-pin span { display:block; width:20px; height:20px; box-sizing:border-box; border-radius:50%; border:2px solid #fff; box-shadow:0 1px 4px rgba(0,0,0,.45); }
+.mapa-pin span { display:block; width:22px; height:22px; box-sizing:border-box; border-radius:50%; border:2px solid #fff; box-shadow:0 1px 4px rgba(0,0,0,.45); }
 .mapa-pin.is-hl span { box-shadow:0 0 0 4px rgba(14,165,233,.55), 0 1px 4px rgba(0,0,0,.45); }
 .mapa-popup { min-width:170px; }
 .mapa-popup-cli { font-weight:700; font-size:14px; margin-bottom:2px; }
@@ -2353,10 +2353,21 @@ input[type=number]{-moz-appearance:textfield}
 .mapa-popup-acts .btn { flex:1; }
 .mapa-popup-edit { display:block; width:100%; margin-top:6px; padding:2px; border:none; background:transparent; color:var(--muted); font-size:11px; text-align:center; cursor:pointer; opacity:.65; }
 .mapa-popup-edit:hover { opacity:1; text-decoration:underline; }
+/* Popup de un grupo apilado: lista de todos los trabajos del mismo lugar. */
+.mapa-popup-group { min-width:210px; }
+.mapa-popup-group-title { font-weight:700; font-size:13px; margin-bottom:6px; }
+.mapa-popup-list { max-height:244px; overflow:auto; display:flex; flex-direction:column; gap:8px; }
+.mapa-grow { padding:7px 0; border-top:1px solid var(--border); }
+.mapa-grow:first-child { border-top:none; padding-top:0; }
+.mapa-grow-top { display:flex; align-items:center; gap:6px; margin-bottom:3px; }
+.mapa-grow-estado { flex:0 0 auto; font-size:11px; font-weight:600; padding:3px 5px; border:none; border-radius:8px; max-width:44%; }
+.mapa-grow-cli { flex:1; min-width:0; text-align:left; background:transparent; border:none; padding:0; cursor:pointer; font-weight:700; font-size:13px; color:inherit; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.mapa-grow-cli:hover { text-decoration:underline; }
+.mapa-grow-meta { font-size:11px; color:var(--muted); margin-bottom:5px; }
 .mapa-cluster { background:transparent; border:none; }
-.mapa-cluster span { display:flex; align-items:center; justify-content:center; width:26px; height:26px; box-sizing:border-box; border-radius:50%; border:2px solid #fff; box-shadow:0 1px 4px rgba(0,0,0,.45); color:#fff; font-size:12px; font-weight:700; font-variant-numeric:tabular-nums; }
-.mapa-cluster.is-hl span { box-shadow:0 0 0 4px rgba(14,165,233,.55), 0 1px 4px rgba(0,0,0,.45); }
-.mapa-spider-leg { stroke:#64748b; stroke-width:1.5; opacity:.5; }
+.mapa-cluster-ring { display:flex; align-items:center; justify-content:center; width:30px; height:30px; box-sizing:border-box; border-radius:50%; border:2px solid #fff; box-shadow:0 1px 4px rgba(0,0,0,.45); }
+.mapa-cluster-count { display:flex; align-items:center; justify-content:center; width:20px; height:20px; box-sizing:border-box; border-radius:50%; background:var(--card,#fff); color:var(--fg,#0f172a); font-size:11px; font-weight:700; font-variant-numeric:tabular-nums; }
+.mapa-cluster.is-hl .mapa-cluster-ring { box-shadow:0 0 0 4px rgba(14,165,233,.55), 0 1px 4px rgba(0,0,0,.45); }
 .mapa-zonastats { margin-top:8px; padding:8px 10px; border:1px solid var(--border); border-radius:10px; background:var(--card); }
 .mapa-zona-title { font-size:12px; font-weight:700; margin-bottom:5px; }
 .mapa-zona-chips { display:flex; flex-wrap:wrap; gap:4px; margin-bottom:5px; }
@@ -12110,8 +12121,6 @@ function factTopeChanged() {
 
 let _mapa = null;            // instancia Leaflet
 let _mapaLayer = null;       // layerGroup de marcadores de presupuestos
-let _mapaSpiderLayer = null; // layerGroup del abanico abierto (marcas + patas)
-let _mapaSpiderOpen = null;   // grupo cuyo abanico está abierto (o null)
 let _mapaUserMarker = null;  // marcador "estás acá" (cerca mío)
 let _mapaFilterSet = null;   // Set de estados visibles
 let _mapaPlacingId = null;   // id del presupuesto que se está ubicando a mano
@@ -12271,12 +12280,8 @@ function mapaInit() {
         attribution: '&copy; OpenStreetMap',
       }).addTo(_mapa);
       _mapaLayer = L.layerGroup().addTo(_mapa);
-      _mapaSpiderLayer = L.layerGroup().addTo(_mapa);
       _mapa.on('moveend', mapaUpdateZonaStats);
       _mapa.on('click', mapaOnMapClick);
-      // Panear o hacer zoom cierra el abanico abierto (las posiciones de las
-      // marcas del abanico son en píxeles, dejarían de coincidir).
-      _mapa.on('zoomstart movestart', mapaCollapseSpider);
     }
     mapaRefresh();
     // El contenedor estaba oculto al crearse; Leaflet necesita recalcular.
@@ -12310,7 +12315,6 @@ function mapaToggleFilter(s, on) {
 function mapaRefresh() {
   if (!_mapa || !_mapaLayer) return;
   const L = window.L;
-  mapaCollapseSpider(); // un re-dibujo cierra cualquier abanico abierto
   _mapaGeoRef = _mapaComputeGeoRef(); // referencia para Plus Codes cortos
   _mapaLayer.clearLayers();
   const desde = (document.getElementById('mapa-desde')?.value || '').trim();
@@ -12369,51 +12373,66 @@ function mapaMarker(L, e, est, ll) {
   return m;
 }
 
-// Marca de un GRUPO de presupuestos en el mismo punto: un círculo con la
-// cantidad, coloreado por el estado del presupuesto más reciente del grupo.
-// Al tocarla se abre en abanico (mapaSpiderfy) — no tiene popup propio.
+// Marca de un GRUPO de presupuestos en el mismo punto: un anillo con la
+// cantidad. El anillo se colorea con TODOS los estados presentes (segmentos
+// proporcionales), así se ve de un vistazo la mezcla sin abrirlo. Al tocarla
+// abre un popup con la LISTA de trabajos del lugar (cada uno con sus acciones).
 function mapaClusterMarker(L, g) {
   const items = g.items;
-  const rep = items.slice().sort((a, b) => _mapaDateOf(b.e).localeCompare(_mapaDateOf(a.e)))[0];
-  const [txt] = ESTADO_COLORS[rep.est] || ESTADO_COLORS.borrador;
   const hl = items.some(x => _mapaHighlight.has(x.e.id));
+  // Segmentos del anillo por estado, en el orden canónico de ESTADOS.
+  const byEst = {};
+  items.forEach(x => { byEst[x.est] = (byEst[x.est] || 0) + 1; });
+  const n = items.length;
+  let acc = 0;
+  const segs = ESTADOS.filter(s => byEst[s]).map(s => {
+    const [txt] = ESTADO_COLORS[s] || ESTADO_COLORS.borrador;
+    const from = acc / n * 360, to = (acc + byEst[s]) / n * 360;
+    acc += byEst[s];
+    return `${txt} ${from}deg ${to}deg`;
+  });
+  const ring = segs.length > 1 ? `conic-gradient(${segs.join(',')})` : segs[0].split(' ')[0];
   const icon = L.divIcon({
     className: 'mapa-cluster' + (hl ? ' is-hl' : ''),
-    html: `<span style="background:${txt}">${items.length}</span>`,
-    iconSize: [26, 26], iconAnchor: [13, 13], popupAnchor: [0, -13],
+    html: `<span class="mapa-cluster-ring" style="background:${ring}"><span class="mapa-cluster-count">${n}</span></span>`,
+    iconSize: [30, 30], iconAnchor: [15, 15], popupAnchor: [0, -15],
   });
   const m = L.marker(g.ll, { icon });
   m._entries = items.map(x => x.e);
-  m.on('click', () => mapaSpiderfy(g));
+  m.bindPopup(mapaGroupPopupHtml(g), { minWidth: 210 });
   return m;
 }
 
-// Abre las marcas apiladas de un grupo en abanico (círculo de marcas
-// individuales alrededor del centro, con "patas" al punto real). Volver a
-// tocar el mismo grupo lo cierra. Las posiciones se calculan en píxeles, por
-// eso panear/zoom cierra el abanico (ver mapaInit).
-function mapaSpiderfy(g) {
-  const L = window.L;
-  if (!_mapa || !_mapaSpiderLayer) return;
-  if (_mapaSpiderOpen === g) { mapaCollapseSpider(); return; }
-  mapaCollapseSpider();
-  _mapaSpiderOpen = g;
-  const items = g.items;
-  const center = _mapa.latLngToLayerPoint(g.ll);
-  const n = items.length;
-  const radius = Math.min(46 + n * 8, 90);
-  items.forEach((x, i) => {
-    const ang = (2 * Math.PI * i) / n - Math.PI / 2;
-    const pt = L.point(center.x + radius * Math.cos(ang), center.y + radius * Math.sin(ang));
-    const ll = _mapa.layerPointToLatLng(pt);
-    _mapaSpiderLayer.addLayer(L.polyline([g.ll, ll], { className: 'mapa-spider-leg', interactive: false }));
-    _mapaSpiderLayer.addLayer(mapaMarker(L, x.e, x.est, ll));
-  });
+// Popup de un grupo apilado: lista todos los trabajos del mismo lugar, del más
+// reciente al más viejo. Cada fila reusa los mismos handlers que el popup
+// individual (cambiar estado, ver, llegar, editar).
+function mapaGroupPopupHtml(g) {
+  const rows = g.items.slice()
+    .sort((a, b) => _mapaDateOf(b.e).localeCompare(_mapaDateOf(a.e)))
+    .map(x => mapaGroupRowHtml(x.e, x.est)).join('');
+  return `<div class="mapa-popup mapa-popup-group">
+    <div class="mapa-popup-group-title">${g.items.length} trabajos en este lugar</div>
+    <div class="mapa-popup-list">${rows}</div>
+  </div>`;
 }
 
-function mapaCollapseSpider() {
-  if (_mapaSpiderLayer) _mapaSpiderLayer.clearLayers();
-  _mapaSpiderOpen = null;
+function mapaGroupRowHtml(e, est) {
+  const cli = esc(e.clientName || '(sin nombre)');
+  const num = esc(e.quoteNumber || '—');
+  const cur = e.currency || 'ARS';
+  const [txt, bg] = ESTADO_COLORS[est] || ESTADO_COLORS.borrador;
+  const opts = ESTADOS.map(s => `<option value="${s}"${s === est ? ' selected' : ''}>${estadoLabel(s)}</option>`).join('');
+  return `<div class="mapa-grow">
+    <div class="mapa-grow-top">
+      <select class="mapa-grow-estado" style="color:${txt};background:${bg}" onchange="mapaSetEstado(${e.id}, this.value)" aria-label="Estado">${opts}</select>
+      <button class="mapa-grow-cli" onclick="mapaAbrir(${e.id})" title="Cargar este presupuesto en el editor para modificarlo">${cli}</button>
+    </div>
+    <div class="mapa-grow-meta">${num} · ${fmtM(e.total || 0, cur)} · ${fmtD(_mapaDateOf(e))}</div>
+    <div class="mapa-popup-acts">
+      <button class="btn btn-p btn-sm" onclick="mapaVer(${e.id})">${icon('eye')} Ver</button>
+      <button class="btn btn-g btn-sm" onclick="comoLlegar(${e.id})">${icon('pin')} Llegar</button>
+    </div>
+  </div>`;
 }
 
 function mapaPopupHtml(e, est) {
@@ -12481,8 +12500,7 @@ function mapaUbicar(id) {
 }
 
 function mapaOnMapClick(ev) {
-  // Un toque en el mapa vacío (fuera de una marca) cierra el abanico abierto.
-  if (_mapaPlacingId == null) { if (_mapaSpiderOpen) mapaCollapseSpider(); return; }
+  if (_mapaPlacingId == null) return;
   const id = _mapaPlacingId;
   _mapaPlacingId = null;
   const canvas = document.getElementById('map-canvas');
@@ -12509,8 +12527,7 @@ function mapaUpdateZonaStats() {
   _mapaLayer.eachLayer(m => {
     if (!m.getLatLng || !b.contains(m.getLatLng())) return;
     // Cada marca puede representar varios presupuestos (grupo apilado): se
-    // cuentan todos sus entries, no la marca. Los hijos del abanico viven en
-    // otro layer (_mapaSpiderLayer) y no se recorren acá → no cuentan doble.
+    // cuentan todos sus entries (m._entries), no la marca.
     (m._entries || []).forEach(e => {
       const est = e.estado || 'borrador';
       counts[est] = (counts[est] || 0) + 1;
