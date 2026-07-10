@@ -2357,8 +2357,9 @@ input[type=number]{-moz-appearance:textfield}
 .mapa-popup-group { min-width:210px; }
 .mapa-popup-group-title { font-weight:700; font-size:13px; margin-bottom:6px; }
 .mapa-popup-list { max-height:244px; overflow:auto; display:flex; flex-direction:column; gap:8px; }
-.mapa-grow { padding:7px 0; border-top:1px solid var(--border); }
-.mapa-grow:first-child { border-top:none; padding-top:0; }
+.mapa-grow { padding:7px 6px; margin:0 -6px; border-top:1px solid var(--border); border-radius:8px; cursor:pointer; }
+.mapa-grow:first-child { border-top:none; }
+.mapa-grow:hover { background:var(--surface,rgba(0,0,0,.03)); }
 .mapa-grow-top { display:flex; align-items:center; gap:6px; margin-bottom:3px; }
 .mapa-grow-estado { flex:0 0 auto; font-size:11px; font-weight:600; padding:3px 5px; border:none; border-radius:8px; max-width:44%; }
 .mapa-grow-cli { flex:1; min-width:0; text-align:left; background:transparent; border:none; padding:0; cursor:pointer; font-weight:700; font-size:13px; color:inherit; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -12422,15 +12423,18 @@ function mapaGroupRowHtml(e, est) {
   const cur = e.currency || 'ARS';
   const [txt, bg] = ESTADO_COLORS[est] || ESTADO_COLORS.borrador;
   const opts = ESTADOS.map(s => `<option value="${s}"${s === est ? ' selected' : ''}>${estadoLabel(s)}</option>`).join('');
-  return `<div class="mapa-grow">
+  // Tocar la fila (fuera de los controles) abre la vista previa del presupuesto,
+  // igual que "Ver". Los controles interactivos frenan la propagación para
+  // conservar su propia acción (cambiar estado, editar, llegar).
+  return `<div class="mapa-grow" onclick="mapaVer(${e.id})" role="button" tabindex="0" title="Ver este presupuesto">
     <div class="mapa-grow-top">
-      <select class="mapa-grow-estado" style="color:${txt};background:${bg}" onchange="mapaSetEstado(${e.id}, this.value)" aria-label="Estado">${opts}</select>
-      <button class="mapa-grow-cli" onclick="mapaAbrir(${e.id})" title="Cargar este presupuesto en el editor para modificarlo">${cli}</button>
+      <select class="mapa-grow-estado" style="color:${txt};background:${bg}" onclick="event.stopPropagation()" onchange="mapaSetEstado(${e.id}, this.value)" aria-label="Estado">${opts}</select>
+      <button class="mapa-grow-cli" onclick="event.stopPropagation();mapaAbrir(${e.id})" title="Cargar este presupuesto en el editor para modificarlo">${cli}</button>
     </div>
     <div class="mapa-grow-meta">${num} · ${fmtM(e.total || 0, cur)} · ${fmtD(_mapaDateOf(e))}</div>
     <div class="mapa-popup-acts">
-      <button class="btn btn-p btn-sm" onclick="mapaVer(${e.id})">${icon('eye')} Ver</button>
-      <button class="btn btn-g btn-sm" onclick="comoLlegar(${e.id})">${icon('pin')} Llegar</button>
+      <button class="btn btn-p btn-sm" onclick="event.stopPropagation();mapaVer(${e.id})">${icon('eye')} Ver</button>
+      <button class="btn btn-g btn-sm" onclick="event.stopPropagation();comoLlegar(${e.id})">${icon('pin')} Llegar</button>
     </div>
   </div>`;
 }
