@@ -1474,7 +1474,11 @@ input[type=number]{-moz-appearance:textfield}
 .agc-list-dayhead{font-family:'DM Serif Display',serif;font-size:15px;color:var(--text);margin:0 0 8px;display:flex;align-items:center;gap:7px}
 .agc-list-dayhead.is-today{color:var(--accent-fg)}
 .agc-list-dayhead .ic{width:15px;height:15px}
-.agc-list-overdue .agc-list-dayhead{color:var(--c-vence)}
+/* Barra plegable de "Atrasado" (colapsada por defecto) */
+.agc-overdue-toggle{display:flex;align-items:center;gap:8px;width:100%;padding:9px 12px;margin:0 0 8px;font-family:'DM Sans',sans-serif;font-size:13.5px;font-weight:700;color:var(--c-vence);background:var(--c-vence-bg);border:1px solid transparent;border-radius:var(--radius-field);cursor:pointer;text-align:left}
+.agc-overdue-toggle .ic{width:16px;height:16px;flex-shrink:0}
+.agc-overdue-lbl{flex:1;min-width:0}
+.agc-overdue-caret{font-size:12px;opacity:.8}
 .agc-list-empty{font-size:14px;color:var(--muted);text-align:center;padding:40px 16px;line-height:1.6}
 .agc-list-empty .ic{width:32px;height:32px;display:block;margin:0 auto 10px;color:var(--faint)}
 .agc-list-empty-sub{font-size:12.5px;color:var(--muted);opacity:.85}
@@ -3752,6 +3756,7 @@ const LS = {
   THEME:          'pq_theme',
   DAY_ALERT_SEEN: 'pq_day_alert_seen',
   NOTES:          'pq_agenda_notes',
+  CAL_VIEW:       'pq_cal_view',
 };
 
 // Notificaciones push (avisos de seguimiento con la app cerrada). Ambos se
@@ -12818,7 +12823,8 @@ const CAL_TIPO_LBL = { trabajo:'Trabajo', recontacto:'Recontacto', vencimiento:'
 
 let _calY = null, _calM = null;   // año / mes (0-11) que se está mostrando
 let _calSel = null;               // día seleccionado (iso) o null
-let _calView = 'mes';             // 'mes' (grilla) | 'agenda' (lista cronológica)
+let _calView = 'agenda';          // 'mes' (grilla) | 'agenda' (lista cronológica)
+let _calOverdueOpen = false;      // sección "Atrasado" desplegada (colapsada por defecto)
 
 // ─── NOTAS MANUALES (localStorage) ───────────────────────────
 // Cada nota: { id, fecha:'YYYY-MM-DD', texto, hecho:bool, creadoEn }.
@@ -12926,6 +12932,8 @@ function calInit() {
     const t = today().split('-');
     _calY = +t[0]; _calM = +t[1] - 1;
     _calSel = today();
+    // Vista recordada (por defecto Agenda: es lo que el usuario quiere ver primero).
+    try { const v = localStorage.getItem(LS.CAL_VIEW); if (v === 'mes' || v === 'agenda') _calView = v; } catch (_) {}
   }
   renderCal();
 }
@@ -12939,8 +12947,16 @@ function calToday() {
 }
 function calSelectDay(iso) { _calSel = iso; renderCal(); }
 
-// Alterna entre vista Mes (grilla) y Agenda (lista cronológica).
-function calSetView(v) { _calView = (v === 'agenda') ? 'agenda' : 'mes'; renderCal(); }
+// Alterna entre vista Mes (grilla) y Agenda (lista cronológica). Recuerda la
+// elección para la próxima vez que se abra la pestaña.
+function calSetView(v) {
+  _calView = (v === 'agenda') ? 'agenda' : 'mes';
+  try { localStorage.setItem(LS.CAL_VIEW, _calView); } catch (_) {}
+  renderCal();
+}
+
+// Despliega/colapsa la sección "Atrasado" de la vista Agenda.
+function calToggleOverdue() { _calOverdueOpen = !_calOverdueOpen; renderCalList(); }
 
 function renderCal() {
   // Mostrar/ocultar el bloque de mes o el de lista según la vista activa, y
@@ -13056,31 +13072,48 @@ function renderCalList() {
   if (!box) return;
   const idx = calBuildIndex();
   const hoy = today();
-  const overdue = [];      // {iso, ev} accionables con fecha < hoy
+  const overdue = [];      // {iso, ev} TAREAS pendientes con fecha < hoy
   const futuros = {};      // iso -> [ev], iso >= hoy
 
   Object.keys(idx).sort().forEach(iso => {
     idx[iso].forEach(ev => {
       if (iso >= hoy) { (futuros[iso] || (futuros[iso] = [])).push(ev); return; }
-      // Pasado: solo lo que sigue siendo una acción pendiente.
-      const pend = (ev.tipo === 'nota') ? !ev.done
-                 : (ev.tipo === 'recontacto' || ev.tipo === 'seguimiento' || ev.tipo === 'vencimiento');
+      // Pasado: "Atrasado" es para TAREAS que siguen sin resolverse.
+      //  · VENCIMIENTO no es una tarea sino un dato (el presupuesto dejó de estar
+      //    vigente) y ya lo avisa el banner rojo del Historial → NO se apila acá.
+      //  · TRABAJO pasado es registro histórico (vive en la grilla) → tampoco.
+      //  · SEGUIMIENTO se deriva de CADA presupuesto enviado, así que los viejos
+      //    se acumularían para siempre. Solo cuenta como "atrasado" si es
+      //    reciente (últimos 30 días); pasado eso el presupuesto está muerto.
+      //  · RECONTACTO y NOTA los creás a mano (son intenciones deliberadas) → se
+      //    mantienen sin importar la antigüedad; los resolvés o borrás vos.
+      let pend = false;
+      if (ev.tipo === 'nota') pend = !ev.done;
+      else if (ev.tipo === 'recontacto') pend = true;
+      else if (ev.tipo === 'seguimiento') { const d = daysSinceDate(iso); pend = (d != null && d <= 30); }
       if (pend) overdue.push({ iso, ev });
     });
   });
 
+  const dias = Object.keys(futuros).sort();
   let html = '';
 
+  // Sección "Atrasado": colapsada por defecto para que lo primero que se vea sea
+  // HOY. Se auto-despliega solo si no hay nada próximo (para no dejar la pantalla
+  // con una sola barra). Muestra el conteo aunque esté cerrada.
   if (overdue.length) {
-    // Más viejo primero (lo más atrasado arriba).
-    const rows = overdue.map(o => _calEvHTML(o.ev, fmtDiaCorto(o.iso))).join('');
+    const abierta = _calOverdueOpen || !dias.length;
+    const n = overdue.length;
+    const rows = abierta ? overdue.map(o => _calEvHTML(o.ev, fmtDiaCorto(o.iso))).join('') : '';
     html += `<div class="agc-list-group agc-list-overdue">
-      <h4 class="agc-list-dayhead">${icon('hourglass','ic-c-red')} Atrasado · pendiente</h4>
+      <button type="button" class="agc-overdue-toggle${abierta ? ' open' : ''}" onclick="calToggleOverdue()" aria-expanded="${abierta}">
+        ${icon('hourglass','ic-c-red')}<span class="agc-overdue-lbl">Atrasado · ${n} pendiente${n>1?'s':''}</span>
+        <span class="agc-overdue-caret">${abierta ? '▾' : '▸'}</span>
+      </button>
       ${rows}
     </div>`;
   }
 
-  const dias = Object.keys(futuros).sort();
   if (dias.length) {
     html += dias.map(iso => {
       let lbl;
