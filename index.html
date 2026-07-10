@@ -1464,6 +1464,20 @@ input[type=number]{-moz-appearance:textfield}
 .agc-day-empty{font-size:13px;color:var(--muted);padding:6px 2px;line-height:1.5}
 .agc-note-form{display:flex;gap:7px;align-items:stretch;margin-top:8px}
 .agc-note-form input{flex:1;min-width:0}
+/* Segmentado Mes / Agenda */
+.agc-viewtoggle{display:inline-flex;background:var(--surface-2);border-radius:var(--radius-field);padding:3px;gap:3px;margin-bottom:12px}
+.agc-vtab{flex:0 0 auto;padding:7px 18px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;color:var(--muted);background:transparent;border:none;border-radius:6px;cursor:pointer}
+.agc-vtab.active{background:var(--card);color:var(--accent-fg);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.agc-vtab:hover:not(.active){color:var(--text)}
+/* Vista Agenda (lista cronológica) */
+.agc-list-group{margin-bottom:18px}
+.agc-list-dayhead{font-family:'DM Serif Display',serif;font-size:15px;color:var(--text);margin:0 0 8px;display:flex;align-items:center;gap:7px}
+.agc-list-dayhead.is-today{color:var(--accent-fg)}
+.agc-list-dayhead .ic{width:15px;height:15px}
+.agc-list-overdue .agc-list-dayhead{color:var(--c-vence)}
+.agc-list-empty{font-size:14px;color:var(--muted);text-align:center;padding:40px 16px;line-height:1.6}
+.agc-list-empty .ic{width:32px;height:32px;display:block;margin:0 auto 10px;color:var(--faint)}
+.agc-list-empty-sub{font-size:12.5px;color:var(--muted);opacity:.85}
 @media (max-width:420px){
   .agc-cell{min-height:46px;padding:4px 3px 3px}
   .agc-title{font-size:16px;min-width:120px}
@@ -3407,13 +3421,9 @@ input[type=number]{-moz-appearance:textfield}
            derivado del historial, sin datos nuevos) + anotaciones/recordatorios
            manuales propios (LS.NOTES). La lógica vive en js/calendar.js. -->
       <div id="panel-agenda" class="tab-panel">
-        <div class="agc-toolbar">
-          <div class="agc-nav">
-            <button class="agc-navbtn" id="agc-prev" onclick="calPrevMonth()" aria-label="Mes anterior" title="Mes anterior">‹</button>
-            <span class="agc-title" id="agc-title">—</span>
-            <button class="agc-navbtn" id="agc-next" onclick="calNextMonth()" aria-label="Mes siguiente" title="Mes siguiente">›</button>
-          </div>
-          <button class="btn btn-p btn-sm" id="agc-today-btn" onclick="calToday()"><svg class="ic"><use href="#i-calendar"></use></svg> Hoy</button>
+        <div class="agc-viewtoggle" role="tablist" aria-label="Vista de la agenda">
+          <button class="agc-vtab active" id="agc-vtab-mes" onclick="calSetView('mes')">Mes</button>
+          <button class="agc-vtab" id="agc-vtab-agenda" onclick="calSetView('agenda')">Agenda</button>
         </div>
         <div class="agc-legend" id="agc-legend">
           <span class="agc-leg"><i class="agc-dot agc-c-trabajo"></i>Trabajo</span>
@@ -3422,9 +3432,22 @@ input[type=number]{-moz-appearance:textfield}
           <span class="agc-leg"><i class="agc-dot agc-c-seguimiento"></i>Seguimiento</span>
           <span class="agc-leg"><i class="agc-dot agc-c-nota"></i>Nota</span>
         </div>
-        <div class="agc-grid-head" id="agc-grid-head"></div>
-        <div class="agc-grid" id="agc-grid"></div>
-        <div class="agc-day" id="agc-day"></div>
+        <!-- Vista MES (grilla) -->
+        <div id="agc-month">
+          <div class="agc-toolbar">
+            <div class="agc-nav">
+              <button class="agc-navbtn" id="agc-prev" onclick="calPrevMonth()" aria-label="Mes anterior" title="Mes anterior">‹</button>
+              <span class="agc-title" id="agc-title">—</span>
+              <button class="agc-navbtn" id="agc-next" onclick="calNextMonth()" aria-label="Mes siguiente" title="Mes siguiente">›</button>
+            </div>
+            <button class="btn btn-p btn-sm" id="agc-today-btn" onclick="calToday()"><svg class="ic"><use href="#i-calendar"></use></svg> Hoy</button>
+          </div>
+          <div class="agc-grid-head" id="agc-grid-head"></div>
+          <div class="agc-grid" id="agc-grid"></div>
+          <div class="agc-day" id="agc-day"></div>
+        </div>
+        <!-- Vista AGENDA (lista cronológica) -->
+        <div id="agc-list" hidden></div>
       </div><!-- /panel-agenda -->
 
       <!-- ══ TAB FACTURACIÓN ══ -->
@@ -12795,6 +12818,7 @@ const CAL_TIPO_LBL = { trabajo:'Trabajo', recontacto:'Recontacto', vencimiento:'
 
 let _calY = null, _calM = null;   // año / mes (0-11) que se está mostrando
 let _calSel = null;               // día seleccionado (iso) o null
+let _calView = 'mes';             // 'mes' (grilla) | 'agenda' (lista cronológica)
 
 // ─── NOTAS MANUALES (localStorage) ───────────────────────────
 // Cada nota: { id, fecha:'YYYY-MM-DD', texto, hecho:bool, creadoEn }.
@@ -12915,7 +12939,24 @@ function calToday() {
 }
 function calSelectDay(iso) { _calSel = iso; renderCal(); }
 
+// Alterna entre vista Mes (grilla) y Agenda (lista cronológica).
+function calSetView(v) { _calView = (v === 'agenda') ? 'agenda' : 'mes'; renderCal(); }
+
 function renderCal() {
+  // Mostrar/ocultar el bloque de mes o el de lista según la vista activa, y
+  // sincronizar el segmentado. Se hace en cada render para que quede consistente
+  // aunque se entre a la pestaña con una vista ya elegida.
+  const monthWrap = document.getElementById('agc-month');
+  const listWrap = document.getElementById('agc-list');
+  const tabMes = document.getElementById('agc-vtab-mes');
+  const tabAg = document.getElementById('agc-vtab-agenda');
+  const esAgenda = _calView === 'agenda';
+  if (monthWrap) monthWrap.hidden = esAgenda;
+  if (listWrap) listWrap.hidden = !esAgenda;
+  if (tabMes) tabMes.classList.toggle('active', !esAgenda);
+  if (tabAg) tabAg.classList.toggle('active', esAgenda);
+  if (esAgenda) { renderCalList(); if (typeof calUpdateDot === 'function') calUpdateDot(); return; }
+
   const grid = document.getElementById('agc-grid');
   const head = document.getElementById('agc-grid-head');
   const title = document.getElementById('agc-title');
@@ -12956,7 +12997,32 @@ function renderCal() {
   if (typeof calUpdateDot === 'function') calUpdateDot();
 }
 
-// ─── RENDER: DETALLE DEL DÍA SELECCIONADO ────────────────────
+// Markup de una tarjeta de evento (reusado por el detalle del día y la lista de
+// la vista Agenda). `dateLabel` (opcional) antepone la fecha en la etiqueta del
+// tipo — útil en la sección "Atrasado", donde cada fila es de un día distinto.
+function _calEvHTML(ev, dateLabel) {
+  const kind = CAL_TIPO_LBL[ev.tipo] || '';
+  const kindTxt = dateLabel ? `${kind} · ${esc(dateLabel)}` : kind;
+  const sub = ev.sub ? `<div class="agc-ev-sub">${esc(ev.sub)}</div>` : '';
+  let acts = '';
+  if (ev.entryId != null) {
+    acts = `<button class="agc-ev-btn" onclick="goToHistoryEntry(${ev.entryId})" title="Ver el presupuesto en el historial">${icon('book')}</button>`;
+  } else if (ev.noteId != null) {
+    acts = `<button class="agc-ev-btn" onclick="calToggleNote('${ev.noteId}')" title="${ev.done ? 'Marcar pendiente' : 'Marcar hecho'}">${icon('check')}</button>`
+         + `<button class="agc-ev-btn" onclick="calDeleteNote('${ev.noteId}')" title="Borrar nota">${icon('trash')}</button>`;
+  }
+  return `<div class="agc-ev t-${ev.tipo}${ev.done ? ' done' : ''}">
+    <span class="agc-ev-bar"></span>
+    <div class="agc-ev-body">
+      <span class="agc-ev-kind">${kindTxt}</span>
+      <div class="agc-ev-title">${esc(ev.title)}</div>
+      ${sub}
+    </div>
+    <div class="agc-ev-acts">${acts}</div>
+  </div>`;
+}
+
+// ─── RENDER: DETALLE DEL DÍA SELECCIONADO (vista Mes) ────────
 function renderCalDay() {
   const box = document.getElementById('agc-day');
   if (!box) return;
@@ -12965,31 +13031,9 @@ function renderCalDay() {
   const evs = calBuildIndex()[iso] || [];
   const esHoy = iso === today();
 
-  let list;
-  if (!evs.length) {
-    list = `<div class="agc-day-empty">No hay nada agendado este día. Podés dejar una nota o recordatorio abajo.</div>`;
-  } else {
-    list = evs.map(ev => {
-      const kind = CAL_TIPO_LBL[ev.tipo] || '';
-      const sub = ev.sub ? `<div class="agc-ev-sub">${esc(ev.sub)}</div>` : '';
-      let acts = '';
-      if (ev.entryId != null) {
-        acts = `<button class="agc-ev-btn" onclick="goToHistoryEntry(${ev.entryId})" title="Ver el presupuesto en el historial">${icon('book')}</button>`;
-      } else if (ev.noteId != null) {
-        acts = `<button class="agc-ev-btn" onclick="calToggleNote('${ev.noteId}')" title="${ev.done ? 'Marcar pendiente' : 'Marcar hecho'}">${icon('check')}</button>`
-             + `<button class="agc-ev-btn" onclick="calDeleteNote('${ev.noteId}')" title="Borrar nota">${icon('trash')}</button>`;
-      }
-      return `<div class="agc-ev t-${ev.tipo}${ev.done ? ' done' : ''}">
-        <span class="agc-ev-bar"></span>
-        <div class="agc-ev-body">
-          <span class="agc-ev-kind">${kind}</span>
-          <div class="agc-ev-title">${esc(ev.title)}</div>
-          ${sub}
-        </div>
-        <div class="agc-ev-acts">${acts}</div>
-      </div>`;
-    }).join('');
-  }
+  const list = evs.length
+    ? evs.map(ev => _calEvHTML(ev)).join('')
+    : `<div class="agc-day-empty">No hay nada agendado este día. Podés dejar una nota o recordatorio abajo.</div>`;
 
   box.innerHTML = `
     <div class="agc-day-head">
@@ -13000,6 +13044,62 @@ function renderCalDay() {
       <input type="text" id="agc-note-input" placeholder="Anotá un recordatorio para este día…" maxlength="140" onkeydown="if(event.key==='Enter'){calSaveNote();}">
       <button class="btn btn-p btn-sm" onclick="calSaveNote()">${icon('plus')} Nota</button>
     </div>`;
+}
+
+// ─── RENDER: VISTA AGENDA (lista cronológica) ────────────────
+// Muestra lo que viene, agrupado por día (Hoy · Mañana · fecha), más una
+// sección "Atrasado" arriba con lo que quedó pendiente y ya pasó de fecha
+// (recontactos/seguimientos/vencimientos pasados y notas sin marcar). Los días
+// de trabajo ya pasados NO ensucian: son registro histórico, viven en el mes.
+function renderCalList() {
+  const box = document.getElementById('agc-list');
+  if (!box) return;
+  const idx = calBuildIndex();
+  const hoy = today();
+  const overdue = [];      // {iso, ev} accionables con fecha < hoy
+  const futuros = {};      // iso -> [ev], iso >= hoy
+
+  Object.keys(idx).sort().forEach(iso => {
+    idx[iso].forEach(ev => {
+      if (iso >= hoy) { (futuros[iso] || (futuros[iso] = [])).push(ev); return; }
+      // Pasado: solo lo que sigue siendo una acción pendiente.
+      const pend = (ev.tipo === 'nota') ? !ev.done
+                 : (ev.tipo === 'recontacto' || ev.tipo === 'seguimiento' || ev.tipo === 'vencimiento');
+      if (pend) overdue.push({ iso, ev });
+    });
+  });
+
+  let html = '';
+
+  if (overdue.length) {
+    // Más viejo primero (lo más atrasado arriba).
+    const rows = overdue.map(o => _calEvHTML(o.ev, fmtDiaCorto(o.iso))).join('');
+    html += `<div class="agc-list-group agc-list-overdue">
+      <h4 class="agc-list-dayhead">${icon('hourglass','ic-c-red')} Atrasado · pendiente</h4>
+      ${rows}
+    </div>`;
+  }
+
+  const dias = Object.keys(futuros).sort();
+  if (dias.length) {
+    html += dias.map(iso => {
+      let lbl;
+      if (iso === hoy) lbl = 'Hoy';
+      else if (iso === _calAddDays(hoy, 1)) lbl = 'Mañana';
+      else lbl = fmtDiaCorto(iso);
+      const rows = futuros[iso].map(ev => _calEvHTML(ev)).join('');
+      return `<div class="agc-list-group">
+        <h4 class="agc-list-dayhead${iso === hoy ? ' is-today' : ''}">${esc(lbl)}</h4>
+        ${rows}
+      </div>`;
+    }).join('');
+  }
+
+  if (!html) {
+    html = `<div class="agc-list-empty">${icon('calendar')} No tenés nada agendado próximamente.<br><span class="agc-list-empty-sub">Los trabajos, recontactos y recordatorios que cargues van a aparecer acá ordenados por fecha.</span></div>`;
+  }
+
+  box.innerHTML = html;
 }
 
 // ─── NOTAS: alta / toggle / borrado ──────────────────────────
