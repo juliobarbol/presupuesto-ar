@@ -41,7 +41,7 @@ grep -n "===== js/" index.html
 | `js/pdf.js` | `buildDoc`/`buildEstDoc`/`buildRiskDoc` (documento para imprimir/PDF), `printDoc` |
 | `js/facturacion.js` | Registro de facturas + tope anual |
 | `js/mapa.js` | Mapa de presupuestos (ubicación, "Sin ubicar", zonas) |
-| `js/calendar.js` | Pestaña **Agenda**: dos vistas (`_calView` `mes`/`agenda`) que superponen trabajos, recontactos, vencimientos y seguimientos (derivados del historial) + notas/recordatorios manuales (`getNotes`/`setNotes`, `LS.NOTES`, incluidas en el backup). Colores por concepto vía tokens `--c-*` (unificados con los chips/badges del historial); `renderCal` (grilla mes) / `renderCalList` (lista cronológica con sección "Atrasado") / `_calEvHTML` (tarjeta de evento compartida) |
+| `js/calendar.js` | Pestaña **Agenda**: dos vistas (`_calView` `mes`/`agenda`) que superponen trabajos, recontactos, vencimientos y seguimientos (derivados del historial) + notas/recordatorios manuales (`getNotes`/`setNotes`, `LS.NOTES`, incluidas en el backup). Colores por concepto vía tokens `--c-*` (unificados con los chips/badges del historial); `renderCal` (grilla mes) / `renderCalList` (lista cronológica con sección "Atrasado") / `_calEvHTML` (tarjeta de evento compartida). Estado y pendientes en `docs/agenda-roadmap.md` |
 | `js/core.js` | Inicialización (`DOMContentLoaded`) + setup de la PWA |
 
 El CSS vive en el `<style>` (líneas ~16–1711). Hay dos bloques de estilos del documento: uno `@media print` (`#doc-a4`) y otro de pantalla para la vista previa (`.doc-preview-host .doc-a4-screen`).
