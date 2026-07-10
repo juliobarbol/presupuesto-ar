@@ -12422,12 +12422,11 @@ function mapaGroupRowHtml(e, est) {
   const cur = e.currency || 'ARS';
   const [txt, bg] = ESTADO_COLORS[est] || ESTADO_COLORS.borrador;
   const opts = ESTADOS.map(s => `<option value="${s}"${s === est ? ' selected' : ''}>${estadoLabel(s)}</option>`).join('');
-  // Tocar la fila (incluido el nombre del cliente) abre la vista previa de solo
-  // lectura del presupuesto, igual que "Ver" — NO el editor: en el mapa se
-  // revisan presupuestos ya enviados, y para editarlos se cargan a mano desde
-  // el historial. Solo el chip de estado y "Llegar" frenan la propagación para
-  // conservar su acción.
-  return `<div class="mapa-grow" onclick="mapaVer(${e.id})" role="button" tabindex="0" title="Ver este presupuesto">
+  // Tocar la fila (incluido el nombre del cliente) lleva al presupuesto en la
+  // pestaña Historial, lo centra y lo resalta (goToHistoryEntry) — distinto del
+  // botón "Ver", que abre la imagen del presupuesto. Solo el chip de estado y
+  // "Llegar" frenan la propagación para conservar su acción.
+  return `<div class="mapa-grow" onclick="goToHistoryEntry(${e.id})" role="button" tabindex="0" title="Ver este presupuesto en el historial">
     <div class="mapa-grow-top">
       <select class="mapa-grow-estado" style="color:${txt};background:${bg}" onclick="event.stopPropagation()" onchange="mapaSetEstado(${e.id}, this.value)" aria-label="Estado">${opts}</select>
       <span class="mapa-grow-cli">${cli}</span>
