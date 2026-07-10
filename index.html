@@ -1441,22 +1441,19 @@ input[type=number]{-moz-appearance:textfield}
 .agc-dots{display:flex;flex-wrap:wrap;gap:2px;margin-top:auto}
 .agc-dots .agc-dot{width:6px;height:6px}
 .agc-more{font-size:9px;font-weight:700;color:var(--muted);line-height:1}
-/* Vista Semana: mismas celdas de puntos pero más altas (una sola fila enfocada) */
-.agc-cell-wk{min-height:74px}
-/* Vista 3 días: grilla de 3 columnas anchas con chips de evento */
-.agc-grid.agc-grid-3{grid-template-columns:repeat(3,1fr)}
-.agc-cell-day{min-height:104px;gap:5px;padding:6px 5px 5px}
-.agc-cell-dhead{display:flex;align-items:baseline;gap:5px}
-.agc-cell-wd{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--muted)}
-.agc-cell-chips{display:flex;flex-direction:column;gap:3px;min-width:0}
-.agc-chip{display:flex;align-items:center;gap:5px;padding:2px 5px;border-radius:5px;background:var(--surface-2);overflow:hidden}
-.agc-chip-bar{width:3px;align-self:stretch;min-height:12px;border-radius:2px;flex-shrink:0}
-.agc-chip-txt{font-size:11px;line-height:1.35;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.agc-chip.t-trabajo .agc-chip-bar{background:var(--c-trabajo)}
-.agc-chip.t-recontacto .agc-chip-bar{background:var(--c-recontacto)}
-.agc-chip.t-vencimiento .agc-chip-bar{background:var(--c-vence)}
-.agc-chip.t-seguimiento .agc-chip-bar{background:var(--c-seguimiento)}
-.agc-chip.t-nota .agc-chip-bar{background:var(--c-nota)}
+/* Semana / 3 días: tira de días (pastillas selector) + detalle abajo. En vez de
+   una grilla de columnas (celdas altas vacías y texto cortado en el teléfono),
+   una fila compacta de pastillas que selecciona el día; el detalle va debajo. */
+.agc-grid.agc-strip{display:flex;gap:6px}
+.agc-strip-day{flex:1 1 0;min-width:0;position:relative;display:flex;flex-direction:column;align-items:center;gap:5px;padding:9px 2px 8px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-field);cursor:pointer}
+.agc-strip-day.is-today{border-color:var(--accent-fg);box-shadow:inset 0 0 0 1px var(--accent-fg)}
+.agc-strip-day.is-sel{background:var(--accent-light);border-color:var(--accent-fg)}
+.agc-strip-wd{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--muted)}
+.agc-strip-day.is-today .agc-strip-wd{color:var(--accent-fg)}
+.agc-strip-num{font-size:17px;font-weight:700;color:var(--text);line-height:1}
+.agc-strip-day.is-today .agc-strip-num{color:var(--accent-fg)}
+.agc-strip-dots{display:flex;gap:2px;min-height:5px;align-items:center;flex-wrap:wrap;justify-content:center}
+.agc-strip-dots .agc-dot{width:5px;height:5px}
 /* Indicador de carga: cuántos trabajos hay agendados ese día (solo si ≥2) */
 .agc-load{position:absolute;top:3px;right:3px;min-width:15px;height:15px;padding:0 4px;display:inline-flex;align-items:center;justify-content:center;font-size:9.5px;font-weight:800;line-height:1;color:#fff;background:var(--c-trabajo);border-radius:8px}
 .agc-day-load{font-family:'DM Sans',sans-serif;font-size:11px;font-weight:700;color:var(--c-trabajo);background:var(--c-trabajo-bg);padding:2px 8px;border-radius:20px;margin-left:2px}
@@ -1506,8 +1503,6 @@ input[type=number]{-moz-appearance:textfield}
 .agc-list-empty-sub{font-size:12.5px;color:var(--muted);opacity:.85}
 @media (max-width:420px){
   .agc-cell{min-height:46px;padding:4px 3px 3px}
-  .agc-cell-wk{min-height:64px}
-  .agc-cell-day{min-height:96px}
   .agc-title{font-size:16px;min-width:120px}
   .agc-legend{font-size:11px;gap:5px 9px}
   .agc-vtab{padding:6px 10px;font-size:12px}
@@ -13028,53 +13023,35 @@ function renderCal() {
   if (listWrap) listWrap.hidden = !esAgenda;
   [['mes', 'agc-vtab-mes'], ['semana', 'agc-vtab-semana'], ['3dias', 'agc-vtab-3dias'], ['agenda', 'agc-vtab-agenda']]
     .forEach(([v, id]) => { const el = document.getElementById(id); if (el) el.classList.toggle('active', _calView === v); });
-  if (esAgenda) { renderCalList(); if (typeof calUpdateDot === 'function') calUpdateDot(); return; }
-  renderCalGrid();
+  if (esAgenda) renderCalList();
+  else if (_calView === 'semana' || _calView === '3dias') renderCalStrip();
+  else renderCalGrid();
   if (typeof calUpdateDot === 'function') calUpdateDot();
 }
 
-// Grilla de columnas parametrizada por rango. Genera el mes completo, una semana
-// (Lun→Dom) o 3 días desde la fecha ancla. Reutiliza el mismo bucle "desde
-// gridStart, sumar i días, N celdas" para las tres vistas.
+// Grilla del mes (7×N celdas con puntos). Semana y 3-días usan la tira de días
+// (renderCalStrip): en un teléfono una grilla de columnas queda con celdas altas
+// vacías y texto cortado, así que ahí conviene una tira compacta + detalle.
 function renderCalGrid() {
   const grid = document.getElementById('agc-grid');
   const head = document.getElementById('agc-grid-head');
   const title = document.getElementById('agc-title');
   if (!grid || !head) return;
   if (_calY == null) { const t = today().split('-'); _calY = +t[0]; _calM = +t[1] - 1; }
-  if (!_calAnchor) _calAnchor = today();
+
+  grid.classList.remove('agc-strip', 'agc-grid-3');
+  head.hidden = false;
+  head.innerHTML = CAL_WD_MON.map(d => `<span>${d}</span>`).join('');
+  if (title) title.textContent = `${CAL_MESES[_calM]} ${_calY}`;
 
   const idx = calBuildIndex();
   const hoy = today();
-  const esMes = _calView === 'mes';
-  const es3 = _calView === '3dias';
-
-  let gridStart, cells, cols;
-  if (_calView === 'semana' || es3) {
-    const a = _calDateFromISO(_calAnchor);
-    if (es3) { gridStart = a; cells = 3; cols = 3; }
-    else {
-      const off = (a.getDay() + 6) % 7;               // lunes = 0
-      gridStart = new Date(a.getFullYear(), a.getMonth(), a.getDate() - off);
-      cells = 7; cols = 7;
-    }
-    const end = new Date(gridStart.getFullYear(), gridStart.getMonth(), gridStart.getDate() + cells - 1);
-    if (title) title.textContent = _calRangeLabel(gridStart, end);
-  } else {
-    const first = new Date(_calY, _calM, 1);
-    const startOffset = (first.getDay() + 6) % 7;      // lunes = 0
-    const daysInMonth = new Date(_calY, _calM + 1, 0).getDate();
-    const weeks = Math.ceil((startOffset + daysInMonth) / 7);
-    cells = weeks * 7; cols = 7;
-    gridStart = new Date(_calY, _calM, 1 - startOffset);
-    if (title) title.textContent = `${CAL_MESES[_calM]} ${_calY}`;
-  }
-
-  // Encabezado de días fijos (Lun…Dom) solo para mes/semana; en 3-días el nombre
-  // del día va dentro de cada celda (las columnas corren día a día).
-  grid.classList.toggle('agc-grid-3', cols === 3);
-  head.hidden = es3;
-  if (!es3) head.innerHTML = CAL_WD_MON.map(d => `<span>${d}</span>`).join('');
+  const first = new Date(_calY, _calM, 1);
+  const startOffset = (first.getDay() + 6) % 7;         // lunes = 0
+  const daysInMonth = new Date(_calY, _calM + 1, 0).getDate();
+  const weeks = Math.ceil((startOffset + daysInMonth) / 7);
+  const cells = weeks * 7;
+  const gridStart = new Date(_calY, _calM, 1 - startOffset);
 
   let html = '';
   for (let i = 0; i < cells; i++) {
@@ -13082,41 +13059,75 @@ function renderCalGrid() {
     const iso = toLocalISODate(d);
     const evs = idx[iso] || [];
     let cls = 'agc-cell';
-    if (esMes && d.getMonth() !== _calM) cls += ' is-other';
+    if (d.getMonth() !== _calM) cls += ' is-other';
     if (iso === hoy) cls += ' is-today';
     if (iso === _calSel) cls += ' is-sel';
-    if (es3) cls += ' agc-cell-day';
-    else if (!esMes) cls += ' agc-cell-wk';
-
     const nTrab = _calJobCount(evs);
     const load = nTrab >= 2 ? `<span class="agc-load" title="${nTrab} trabajos agendados">${nTrab}</span>` : '';
-
-    if (es3) {
-      // Celda ancha: cabecera con día de la semana + fecha, y chips con título.
-      const chips = evs.length
-        ? `<div class="agc-cell-chips">${evs.slice(0, 4).map(_calCellChip).join('')}${evs.length > 4 ? `<span class="agc-more">+${evs.length - 4}</span>` : ''}</div>`
-        : '';
-      html += `<div class="${cls}" onclick="calSelectDay('${iso}')">`
-        + `<div class="agc-cell-dhead"><span class="agc-cell-wd">${CAL_WD_MON[(d.getDay() + 6) % 7]}</span><span class="agc-daynum">${d.getDate()}</span>${load}</div>`
-        + `${chips}</div>`;
-    } else {
-      // Celda compacta (mes/semana): puntos por tipo.
-      const lim = esMes ? 4 : 6;
-      const dots = evs.length
-        ? `<div class="agc-dots">${evs.slice(0, lim).map(ev => `<i class="agc-dot agc-c-${ev.tipo}"></i>`).join('')}${evs.length > lim ? `<span class="agc-more">+${evs.length - lim}</span>` : ''}</div>`
-        : '';
-      html += `<div class="${cls}" onclick="calSelectDay('${iso}')"><span class="agc-daynum">${d.getDate()}</span>${load}${dots}</div>`;
-    }
+    const dots = evs.length
+      ? `<div class="agc-dots">${evs.slice(0, 4).map(ev => `<i class="agc-dot agc-c-${ev.tipo}"></i>`).join('')}${evs.length > 4 ? `<span class="agc-more">+${evs.length - 4}</span>` : ''}</div>`
+      : '';
+    html += `<div class="${cls}" onclick="calSelectDay('${iso}')"><span class="agc-daynum">${d.getDate()}</span>${load}${dots}</div>`;
   }
   grid.innerHTML = html;
-
   renderCalDay();
 }
 
-// Chip de evento para la celda ancha de 3-días: barra de color por tipo + título
-// truncado. Reusa el patrón de clase `t-<tipo>` de las tarjetas `.agc-ev`.
-function _calCellChip(ev) {
-  return `<div class="agc-chip t-${ev.tipo}"><span class="agc-chip-bar"></span><span class="agc-chip-txt">${esc(ev.title)}</span></div>`;
+// Tira de días (Semana / 3-días): fila de "pastillas" compactas (día de semana +
+// número + puntos por tipo) que hace de selector. El contenido completo del día
+// tocado se lee abajo en el detalle (renderCalDay). Semana = Lun→Dom de la semana
+// ancla; 3-días = 3 días desde la ancla.
+function renderCalStrip() {
+  const grid = document.getElementById('agc-grid');
+  const head = document.getElementById('agc-grid-head');
+  const title = document.getElementById('agc-title');
+  if (!grid) return;
+  if (!_calAnchor) _calAnchor = today();
+
+  const es3 = _calView === '3dias';
+  const a = _calDateFromISO(_calAnchor);
+  let gridStart, cells;
+  if (es3) { gridStart = a; cells = 3; }
+  else {
+    const off = (a.getDay() + 6) % 7;                   // lunes = 0
+    gridStart = new Date(a.getFullYear(), a.getMonth(), a.getDate() - off);
+    cells = 7;
+  }
+  const startISO = toLocalISODate(gridStart);
+  const endD = new Date(gridStart.getFullYear(), gridStart.getMonth(), gridStart.getDate() + cells - 1);
+  if (title) title.textContent = _calRangeLabel(gridStart, endD);
+  if (head) head.hidden = true;
+  grid.classList.add('agc-strip');
+  grid.classList.remove('agc-grid-3');
+
+  // Mantener la selección dentro del rango visible: si _calSel quedó fuera (p. ej.
+  // al navegar de semana), elegir hoy si cae en el rango, o el primer día.
+  const hoy = today();
+  const endISO = toLocalISODate(endD);
+  if (!_calSel || _calSel < startISO || _calSel > endISO) {
+    _calSel = (hoy >= startISO && hoy <= endISO) ? hoy : startISO;
+  }
+
+  const idx = calBuildIndex();
+  const lim = es3 ? 6 : 4;
+  let html = '';
+  for (let i = 0; i < cells; i++) {
+    const d = new Date(gridStart.getFullYear(), gridStart.getMonth(), gridStart.getDate() + i);
+    const iso = toLocalISODate(d);
+    const evs = idx[iso] || [];
+    let cls = 'agc-strip-day';
+    if (iso === hoy) cls += ' is-today';
+    if (iso === _calSel) cls += ' is-sel';
+    const dots = evs.length
+      ? `${evs.slice(0, lim).map(ev => `<i class="agc-dot agc-c-${ev.tipo}"></i>`).join('')}${evs.length > lim ? `<span class="agc-more">+${evs.length - lim}</span>` : ''}`
+      : '';
+    html += `<button type="button" class="${cls}" onclick="calSelectDay('${iso}')">`
+      + `<span class="agc-strip-wd">${CAL_WD_MON[(d.getDay() + 6) % 7]}</span>`
+      + `<span class="agc-strip-num">${d.getDate()}</span>`
+      + `<span class="agc-strip-dots">${dots}</span></button>`;
+  }
+  grid.innerHTML = html;
+  renderCalDay();
 }
 
 // Markup de una tarjeta de evento (reusado por el detalle del día y la lista de
@@ -13152,6 +13163,8 @@ function renderCalDay() {
   if (!iso) { box.innerHTML = ''; return; }
   const evs = calBuildIndex()[iso] || [];
   const esHoy = iso === today();
+  const nTrab = _calJobCount(evs);
+  const loadChip = nTrab >= 2 ? ` <span class="agc-day-load">${nTrab} trabajos</span>` : '';
 
   const list = evs.length
     ? evs.map(ev => _calEvHTML(ev)).join('')
@@ -13159,7 +13172,7 @@ function renderCalDay() {
 
   box.innerHTML = `
     <div class="agc-day-head">
-      <span class="agc-day-title">${esc(_calLongDate(iso))}${esHoy ? ' · hoy' : ''}</span>
+      <span class="agc-day-title">${esc(_calLongDate(iso))}${esHoy ? ' · hoy' : ''}${loadChip}</span>
     </div>
     ${list}
     <div class="agc-note-form">

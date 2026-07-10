@@ -41,19 +41,22 @@ extra por evento:
     (mismo criterio que `agendaGcalUrl`); fechas LOCAL (`YYYYMMDD`), texto escapado
     (`_icsEsc`), líneas plegadas (`_icsFold`) y UID único por evento (guarda anti-colisión).
     Vencimientos/seguimientos quedan afuera (son derivados y ruidosos).
-- **Fase 3 — Vistas Semana y 3 días (grilla de columnas)** (v132). Toggle de 4 vistas
-  (Mes · Semana · 3 días · Agenda). `renderCal()` es dispatcher; `renderCalGrid()`
-  generaliza el bucle del mes a un rango arbitrario (`gridStart` + `cells` + `cols`):
-  - **Semana**: 7 columnas Lun→Dom de la semana de la fecha ancla; celdas de puntos
-    más altas (`.agc-cell-wk`). **3 días**: 3 columnas anchas (`.agc-grid-3`) desde la
-    ancla, header oculto (el día va en cada celda `.agc-cell-day`), con **chips** de
-    título por evento (`_calCellChip`, colores por tipo reusando `t-<tipo>`).
-  - Fecha ancla `_calAnchor` (iso) para las grillas no mensuales; navegación unificada
+- **Fase 3 — Vistas Semana y 3 días** (v132, rediseñado en v133). Toggle de 4 vistas
+  (Mes · Semana · 3 días · Agenda). `renderCal()` es dispatcher: Mes → `renderCalGrid()`
+  (grilla 7×N), Semana/3-días → `renderCalStrip()`, Agenda → `renderCalList()`.
+  - **Tira de días (`renderCalStrip`).** En el teléfono una grilla de columnas dejaba
+    celdas altas vacías (Semana) y texto cortado (3 días). Por eso Semana y 3 días usan
+    una fila de **pastillas** compactas (`.agc-strip-day` = día de semana + número +
+    puntos por tipo) que hace de **selector**; el contenido completo del día tocado se
+    lee en el detalle de abajo (`renderCalDay`, con chip "N trabajos" cuando ≥2). Semana
+    = 7 pastillas Lun→Dom de la semana ancla; 3 días = 3 pastillas desde la ancla.
+    Mantiene `_calSel` dentro del rango visible al navegar (clamp a hoy o al primer día).
+  - Fecha ancla `_calAnchor` (iso) para las vistas no mensuales; navegación unificada
     `calPrev`/`calNext` (`calStep`) que se mueve ±1 mes / ±7 / ±3 días según la vista.
     `calToday` y `calSelectDay` compartidos; el detalle del día (`renderCalDay`) y el
-    alta de notas se reusan bajo las tres grillas. Vista recordada en `LS.CAL_VIEW`
-    (whitelist `CAL_VIEWS`). Toggle scrollable + padding reducido en móvil para las 4
-    pestañas. Helpers nuevos: `_calDateFromISO`, `_calRangeLabel`.
+    alta de notas se reusan bajo las tres vistas de grilla/tira. Vista recordada en
+    `LS.CAL_VIEW` (whitelist `CAL_VIEWS`). Toggle scrollable + padding reducido en móvil
+    para las 4 pestañas. Helpers nuevos: `_calDateFromISO`, `_calRangeLabel`.
 
 ## Ideas futuras (no comprometidas)
 - Botón "Hoy" también en la vista Agenda (scroll al grupo Hoy).
