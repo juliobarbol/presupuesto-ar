@@ -15,7 +15,7 @@
 
 ## Estructura de archivos
 - `index.html` — **toda la app** (markup + `<style>` + `<script>`).
-- `sw.js` — Service Worker (offline + actualizaciones). **`CACHE_VERSION` actual: `presupuesto-v131`**.
+- `sw.js` — Service Worker (offline + actualizaciones). **`CACHE_VERSION` actual: `presupuesto-v132`**.
 - `manifest.webmanifest`, `*.png` — PWA (instalación, iconos).
 - `push-worker/` — Cloudflare Worker **opcional** para notificaciones push de seguimiento (avisos con la app cerrada). No es parte del PWA shell; se despliega aparte. Ver `docs/push-setup.md`. La app es inerte a esto hasta rellenar `PUSH_WORKER_URL` / `PUSH_VAPID_KEY` en `index.html`.
 
@@ -41,7 +41,7 @@ grep -n "===== js/" index.html
 | `js/pdf.js` | `buildDoc`/`buildEstDoc`/`buildRiskDoc` (documento para imprimir/PDF), `printDoc` |
 | `js/facturacion.js` | Registro de facturas + tope anual |
 | `js/mapa.js` | Mapa de presupuestos (ubicación, "Sin ubicar", zonas) |
-| `js/calendar.js` | Pestaña **Agenda**: dos vistas (`_calView` `mes`/`agenda`) que superponen trabajos, recontactos, vencimientos y seguimientos (derivados del historial) + notas/recordatorios manuales (`getNotes`/`setNotes`, `LS.NOTES`, incluidas en el backup). Colores por concepto vía tokens `--c-*` (unificados con los chips/badges del historial); `renderCal` (grilla mes) / `renderCalList` (lista cronológica con sección "Atrasado") / `_calEvHTML` (tarjeta de evento compartida). Estado y pendientes en `docs/agenda-roadmap.md` |
+| `js/calendar.js` | Pestaña **Agenda**: cuatro vistas (`_calView` `mes`/`semana`/`3dias`/`agenda`) que superponen trabajos, recontactos, vencimientos y seguimientos (derivados del historial) + notas/recordatorios manuales (`getNotes`/`setNotes`, `LS.NOTES`, incluidas en el backup). Colores por concepto vía tokens `--c-*` (unificados con los chips/badges del historial); `renderCal` (dispatcher) → `renderCalGrid` (grilla mes/semana/3-días, con `_calAnchor` y navegación unificada `calPrev`/`calNext`) / `renderCalList` (lista cronológica con sección "Atrasado") / `_calEvHTML` (tarjeta de evento compartida). Export masivo a `.ics` (`calExportIcs`). Estado y pendientes en `docs/agenda-roadmap.md` |
 | `js/core.js` | Inicialización (`DOMContentLoaded`) + setup de la PWA |
 
 El CSS vive en el `<style>` (líneas ~16–1711). Hay dos bloques de estilos del documento: uno `@media print` (`#doc-a4`) y otro de pantalla para la vista previa (`.doc-preview-host .doc-a4-screen`).
@@ -71,7 +71,7 @@ El CSS vive en el `<style>` (líneas ~16–1711). Hay dos bloques de estilos del
 > versión nueva la próxima vez que abran la app con conexión.
 
 1. Desarrollar en la rama de trabajo (`claude/...`), no en `main`.
-2. **Subir `CACHE_VERSION` en `sw.js`** en cada cambio que se despliegue (si no, los dispositivos siguen con la versión vieja en caché). Formato: `presupuesto-vNN`. **Versión actual: v131**.
+2. **Subir `CACHE_VERSION` en `sw.js`** en cada cambio que se despliegue (si no, los dispositivos siguen con la versión vieja en caché). Formato: `presupuesto-vNN`. **Versión actual: v132**.
 3. Si agregás un archivo nuevo (ej. otro `.js` o `.css`), **agregarlo a `APP_SHELL` en `sw.js`** o se rompe el offline.
 4. **Mergear a `main`** → Cloudflare despliega solo.
 

@@ -41,8 +41,21 @@ extra por evento:
     (mismo criterio que `agendaGcalUrl`); fechas LOCAL (`YYYYMMDD`), texto escapado
     (`_icsEsc`), líneas plegadas (`_icsFold`) y UID único por evento (guarda anti-colisión).
     Vencimientos/seguimientos quedan afuera (son derivados y ruidosos).
+- **Fase 3 — Vistas Semana y 3 días (grilla de columnas)** (v132). Toggle de 4 vistas
+  (Mes · Semana · 3 días · Agenda). `renderCal()` es dispatcher; `renderCalGrid()`
+  generaliza el bucle del mes a un rango arbitrario (`gridStart` + `cells` + `cols`):
+  - **Semana**: 7 columnas Lun→Dom de la semana de la fecha ancla; celdas de puntos
+    más altas (`.agc-cell-wk`). **3 días**: 3 columnas anchas (`.agc-grid-3`) desde la
+    ancla, header oculto (el día va en cada celda `.agc-cell-day`), con **chips** de
+    título por evento (`_calCellChip`, colores por tipo reusando `t-<tipo>`).
+  - Fecha ancla `_calAnchor` (iso) para las grillas no mensuales; navegación unificada
+    `calPrev`/`calNext` (`calStep`) que se mueve ±1 mes / ±7 / ±3 días según la vista.
+    `calToday` y `calSelectDay` compartidos; el detalle del día (`renderCalDay`) y el
+    alta de notas se reusan bajo las tres grillas. Vista recordada en `LS.CAL_VIEW`
+    (whitelist `CAL_VIEWS`). Toggle scrollable + padding reducido en móvil para las 4
+    pestañas. Helpers nuevos: `_calDateFromISO`, `_calRangeLabel`.
 
-## Ideas Fase 3 (no comprometidas)
+## Ideas futuras (no comprometidas)
 - Botón "Hoy" también en la vista Agenda (scroll al grupo Hoy).
 - Umbral de "seguimiento reciente" configurable (hoy fijo en 30 días en `renderCalList`).
 - Notas con hora / recordatorio push (ya hay `push-worker/` para seguimientos).
