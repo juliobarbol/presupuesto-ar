@@ -65,6 +65,16 @@ a{-webkit-tap-highlight-color:transparent}
   /* Elevación sutil para cards (look "flotante" limpio). */
   --shadow-card:0 1px 2px rgba(16,40,32,.04),0 1px 3px rgba(16,40,32,.07);
   --shadow-card-hover:0 4px 14px rgba(16,40,32,.12);
+  /* ── Colores por CONCEPTO de agenda (unificados entre Historial y Calendario).
+     Cada concepto tiene un color y SIEMPRE significa lo mismo en las dos vistas.
+     La urgencia NO cambia el tono (se marca con realce); lo ya hecho se atenúa a
+     gris. Trío por concepto: sólido (puntos/barras), -bg (fondo chip), -fg (texto
+     chip). Los estados del presupuesto son otro eje y viven en ESTADO_COLORS. */
+  --c-trabajo:#7c3aed;     --c-trabajo-bg:#ede9fe; --c-trabajo-fg:#5b21b6;
+  --c-recontacto:#0891b2;  --c-recontacto-bg:#cffafe; --c-recontacto-fg:#155e75;
+  --c-seguimiento:#d97706; --c-seguimiento-bg:#fef3c7; --c-seguimiento-fg:#92400e;
+  --c-vence:#dc2626;       --c-vence-bg:#fee2e2; --c-vence-fg:#991b1b;
+  --c-nota:#ec4899;        --c-nota-bg:#fce7f3; --c-nota-fg:#9d174e;
 }
 
 /* ═══ MODO OSCURO ═══════════════════════════════════════════════════
@@ -101,6 +111,13 @@ a{-webkit-tap-highlight-color:transparent}
   --accent-2:#0c8f68;
   --shadow-card:0 1px 2px rgba(0,0,0,.32),0 1px 3px rgba(0,0,0,.42);
   --shadow-card-hover:0 6px 20px rgba(0,0,0,.55);
+  /* Concepto de agenda en oscuro: el sólido (punto/barra) queda saturado; los
+     fondos de chip pasan a tintes translúcidos y el texto se aclara. */
+  --c-trabajo-bg:rgba(139,92,246,.2);  --c-trabajo-fg:#c4b5fd;
+  --c-recontacto-bg:rgba(8,145,178,.22); --c-recontacto-fg:#67e8f9;
+  --c-seguimiento-bg:#4a3a12; --c-seguimiento-fg:#fde68a;
+  --c-vence-bg:rgba(239,68,68,.18); --c-vence-fg:#fca5a5;
+  --c-nota:#f472b6; --c-nota-bg:rgba(236,72,153,.2); --c-nota-fg:#f9a8d4;
 }
 
 html,body{height:100%;font-family:'DM Sans',sans-serif;font-size:14px;background:var(--bg);color:var(--text)}
@@ -145,10 +162,14 @@ body{background-color:var(--bg)}
 .save-status.saved{color:rgba(255,255,255,.85)}
 .tbtn{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22);color:#fff;padding:5px 12px;border-radius:var(--radius-field);cursor:pointer;font-size:12px;font-family:'DM Sans',sans-serif;font-weight:500;transition:.15s}
 .tbtn:hover{background:rgba(255,255,255,.26)}
-.tbtn-menu{padding:4px 10px;font-size:18px;line-height:1;font-weight:700}
+.tbtn-menu{padding:4px 9px;font-size:18px;line-height:1;font-weight:700}
+.tbtn-menu .ic{width:18px;height:18px;display:block}
+#btn-config.is-active{background:rgba(255,255,255,.32);border-color:rgba(255,255,255,.4)}
 
-/* MENÚ DESPLEGABLE del topbar (⋯) */
+/* MENÚ DESPLEGABLE del topbar (⚙ Configuración) */
 .topbar-menu{position:relative}
+.top-menu-title{font-size:11px;font-weight:700;color:var(--muted);padding:6px 12px 4px;text-transform:uppercase;letter-spacing:.4px}
+.top-menu-item .ic{width:16px;height:16px;flex:none;color:var(--accent-fg)}
 .top-menu-pop{
   position:absolute;top:calc(100% + 6px);right:0;
   min-width:180px;background:var(--card);border:1px solid var(--border);
@@ -211,6 +232,60 @@ body{background-color:var(--bg)}
 .agenda-mode{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:8px 6px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;color:var(--muted);background:var(--card);border:1px solid var(--border);border-radius:var(--radius-field);cursor:pointer}
 .agenda-mode.active{color:var(--accent-fg);border-color:var(--accent-fg);background:var(--accent-light)}
 .agenda-help{font-size:12px;color:var(--muted);line-height:1.45;margin-bottom:12px}
+/* ── Agenda multi-día: duración, días ubicados y días por ubicar ── */
+.agenda-dur{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.agenda-step{width:32px;height:32px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;line-height:1;color:var(--accent-fg);background:var(--card);border:1px solid var(--border);border-radius:var(--radius-field);cursor:pointer}
+.agenda-step:active{background:var(--accent-light)}
+.agenda-step:disabled{opacity:.4;cursor:default}
+.agenda-dur-val{min-width:22px;text-align:center;font-size:15px;font-weight:700;color:var(--text)}
+.agenda-dur-lbl{font-size:13px;color:var(--muted)}
+.agenda-dias-list{display:flex;flex-direction:column;gap:6px;margin:10px 0}
+.agenda-dia-chip{display:flex;align-items:center;gap:8px;background:#ede9fe;color:#5b21b6;border:1px solid transparent;border-radius:var(--radius-field);padding:7px 10px;font-size:13px;font-weight:600}
+.agenda-dia-chip .ic{width:14px;height:14px;flex-shrink:0}
+.agenda-dia-chip .agenda-dia-txt{flex:1;min-width:0}
+.agenda-dia-chip.is-today{background:#fef3c7;color:#92400e}
+.agenda-dia-x{width:24px;height:24px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;line-height:1;color:inherit;background:transparent;border:none;cursor:pointer;opacity:.7}
+.agenda-dia-x:active{opacity:1}
+.agenda-pend{font-size:12.5px;font-weight:600;color:#a16207;background:#fef9c3;border-radius:var(--radius-field);padding:7px 11px;margin:2px 0 10px;line-height:1.4}
+.agenda-addrow{display:flex;gap:8px;align-items:stretch}
+.agenda-addrow input{flex:1;min-width:0}
+:root[data-theme="dark"] .agenda-dia-chip{background:rgba(139,92,246,.2);color:#c4b5fd}
+:root[data-theme="dark"] .agenda-dia-chip.is-today{background:#4a3a12;color:#fde68a}
+:root[data-theme="dark"] .agenda-pend{background:#3a3413;color:#fde68a}
+/* ── Pop-up de arranque del día (llamativo, 1 vez/día) ── */
+#day-alert-overlay{display:none;position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(6,40,30,.55);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);z-index:2100;align-items:center;justify-content:center;padding:18px}
+#day-alert-overlay.open{display:flex;animation:daFade .2s ease}
+#day-alert-box{position:relative;background:linear-gradient(160deg,#ecfdf5,#d1fae5);border:1px solid #6ee7b7;border-radius:22px;padding:26px 22px 22px;width:440px;max-width:94vw;max-height:90vh;overflow:auto;box-shadow:0 24px 70px rgba(4,60,40,.4);text-align:center;animation:daPop .32s cubic-bezier(.2,.9,.3,1.3)}
+@keyframes daFade{from{opacity:0}to{opacity:1}}
+@keyframes daPop{from{opacity:0;transform:scale(.85) translateY(12px)}to{opacity:1;transform:none}}
+.da-close{position:absolute;top:12px;right:12px;width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#065f46;background:rgba(255,255,255,.7);border:1px solid #a7f3d0;border-radius:50%;cursor:pointer;line-height:1}
+.da-close:active{background:#fff}
+.da-badge{width:72px;height:72px;margin:0 auto 8px;display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,#34d399,#059669);border-radius:50%;box-shadow:0 8px 20px rgba(5,150,105,.35);animation:daPulse 1.8s ease-in-out infinite}
+.da-badge .ic{width:38px;height:38px;color:#fff}
+@keyframes daPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
+:root[data-theme="dark"] .da-badge{background:linear-gradient(160deg,#059669,#047857);box-shadow:0 8px 20px rgba(0,0,0,.45)}
+.da-kicker{font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:#059669}
+.da-title{font-family:'DM Serif Display',serif;font-size:26px;line-height:1.15;color:#064e3b;margin:2px 0 6px}
+.da-sub{font-size:13.5px;color:#047857;line-height:1.5;margin:0 0 14px}
+#day-alert-box .mb-summary{justify-content:center;margin:0 0 14px}
+.da-list{display:flex;flex-direction:column;gap:8px;margin-bottom:16px;text-align:left}
+.da-item{display:flex;flex-direction:column;gap:2px;background:rgba(255,255,255,.85);border:1px solid #a7f3d0;border-radius:14px;padding:11px 13px;cursor:pointer;width:100%;font-family:inherit}
+.da-item:active{background:#fff}
+.da-item-top{display:flex;gap:7px;align-items:baseline;flex-wrap:wrap}
+.da-item-num{font-size:13px;font-weight:800;color:#047857}
+.da-item-client{font-size:14px;font-weight:600;color:#064e3b}
+.da-item-meta{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:#059669}
+.da-item-meta .ic{width:13px;height:13px}
+.da-btns{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.da-btns .da-go{flex:1;min-width:150px}
+:root[data-theme="dark"] #day-alert-box{background:linear-gradient(160deg,#0c2620,#0e2b22);border-color:#065f46;box-shadow:0 24px 70px rgba(0,0,0,.6)}
+:root[data-theme="dark"] .da-close{color:#6ee7b7;background:rgba(255,255,255,.08);border-color:#065f46}
+:root[data-theme="dark"] .da-kicker{color:#34d399}
+:root[data-theme="dark"] .da-title{color:#a7f3d0}
+:root[data-theme="dark"] .da-sub{color:#6ee7b7}
+:root[data-theme="dark"] .da-item{background:rgba(255,255,255,.05);border-color:#065f46}
+:root[data-theme="dark"] .da-item-client{color:#d1fae5}
+:root[data-theme="dark"] .da-item-num,:root[data-theme="dark"] .da-item-meta{color:#6ee7b7}
 /* ── Bandeja de fotos compartidas (Web Share Target) ── */
 #share-overlay{display:none;position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(0,0,0,.45);z-index:2000;align-items:center;justify-content:center}
 #share-overlay.open{display:flex}
@@ -856,14 +931,16 @@ input[type=number]{-moz-appearance:textfield}
 
 /* Chip de agenda en la tarjeta del historial: muestra la fecha del trabajo
    y abre el diálogo para cargarla/cambiarla. Colores por proximidad. */
-.hagenda-chip{display:inline-flex;align-items:center;gap:5px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;border:1px solid transparent;border-radius:var(--radius-field);padding:5px 10px;cursor:pointer;background:#ede9fe;color:#5b21b6}
+/* Chip de agenda: el COLOR = concepto (no cambia por urgencia). Base = trabajo
+   (violeta). is-call = recontacto (celeste). La urgencia (hoy/mañana/atrasado)
+   se marca con .is-due (realce del mismo tono, sin cambiar el color). Lo ya
+   cumplido usa .is-done (gris atenuado) y lo sin agendar .is-none (gris borde). */
+.hagenda-chip{display:inline-flex;align-items:center;gap:5px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;border:1px solid transparent;border-radius:var(--radius-field);padding:5px 10px;cursor:pointer;background:var(--c-trabajo-bg);color:var(--c-trabajo-fg)}
 .hagenda-chip .ic{width:13px;height:13px}
+.hagenda-chip.is-call{background:var(--c-recontacto-bg);color:var(--c-recontacto-fg)}     /* recontacto */
 .hagenda-chip.is-none{background:var(--card);color:var(--muted);border-color:var(--border);font-weight:600}
-.hagenda-chip.is-soon{background:#fef3c7;color:#92400e}   /* hoy o mañana */
-.hagenda-chip.is-past{background:#dbeafe;color:#1e40af}   /* comenzó y sigue abierto: "en curso", sin alarma */
-.hagenda-chip.is-done{background:var(--surface-2);color:var(--muted);border-color:var(--border)} /* registro histórico */
-.hagenda-chip.is-call{background:#cffafe;color:#155e75}     /* recontacto a futuro */
-.hagenda-chip.is-call-due{background:#fef3c7;color:#92400e} /* llamar hoy / atrasado */
+.hagenda-chip.is-done{background:var(--surface-2);color:var(--muted);border-color:var(--border)} /* registro histórico / ya hecho */
+.hagenda-chip.is-due{box-shadow:inset 0 0 0 1.5px currentColor;font-weight:800} /* realce de urgencia, mismo tono */
 /* Toast con botón de acción (ej: "¿Marcar como enviado?") */
 .toast-action{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:12px;white-space:normal;pointer-events:auto}
 .toast-action .toast-btn{font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;color:#fff;background:var(--accent);border:none;border-radius:var(--radius-field);padding:6px 12px;cursor:pointer;white-space:nowrap}
@@ -1143,7 +1220,7 @@ input[type=number]{-moz-appearance:textfield}
    SEGUIMIENTO COMERCIAL
 ═══════════════════════════════════════ */
 /* Badge 🔔 en la tarjeta del historial */
-.hbadge-followup{display:inline-block;font-size:10px;font-weight:700;padding:1px 8px;border-radius:var(--radius-box);margin-left:6px;vertical-align:middle;background:#fef3c7;color:#92400e;animation:fuPulse 2s ease-in-out infinite}
+.hbadge-followup{display:inline-block;font-size:10px;font-weight:700;padding:1px 8px;border-radius:var(--radius-box);margin-left:6px;vertical-align:middle;background:var(--c-seguimiento-bg);color:var(--c-seguimiento-fg);animation:fuPulse 2s ease-in-out infinite}
 @keyframes fuPulse{0%,100%{opacity:1}50%{opacity:.6}}
 
 /* Banner de seguimientos pendientes (arriba del historial) */
@@ -1168,7 +1245,7 @@ input[type=number]{-moz-appearance:textfield}
 .fub-more{font-size:12px;color:#a16207;text-align:center;padding:4px;font-style:italic}
 
 /* Badge ⌛ de presupuesto vencido en la tarjeta del historial */
-.hbadge-expired{display:inline-block;font-size:10px;font-weight:700;padding:1px 8px;border-radius:var(--radius-box);margin-left:6px;vertical-align:middle;background:#fee2e2;color:#991b1b}
+.hbadge-expired{display:inline-block;font-size:10px;font-weight:700;padding:1px 8px;border-radius:var(--radius-box);margin-left:6px;vertical-align:middle;background:var(--c-vence-bg);color:var(--c-vence-fg)}
 /* Banner de presupuestos vencidos (reusa la estructura .fub-*, en rojo) */
 /* Banner de recontactos (celeste): clientes que aceptaron y hay que volver
    a llamar para coordinar la fecha del trabajo. Reusa las clases fub-*. */
@@ -1185,6 +1262,37 @@ input[type=number]{-moz-appearance:textfield}
 .expiry-banner .fub-title{color:#991b1b}
 .expiry-banner .fub-sub,.expiry-banner .fub-item-days,.expiry-banner .fub-more{color:#b91c1c}
 .expiry-banner .fub-item{border-color:#fecaca}
+
+/* Banner "Podas de hoy" (verde amanecer): salta una vez al abrir la app si
+   hay trabajos agendados para hoy. Reusa la estructura .fub-*; cada trabajo
+   apila info + una fila de accesos rápidos (llegar / WhatsApp / ver). */
+.morning-banner{background:linear-gradient(135deg,#ecfdf5,#d1fae5);border:1px solid #6ee7b7;border-radius:var(--radius-box);padding:14px 16px;margin-bottom:14px}
+.morning-banner .fub-head{justify-content:space-between}
+.morning-banner .fub-title{color:#065f46}
+.morning-banner .fub-sub{color:#047857}
+.morning-banner .fub-item{flex-direction:column;align-items:stretch;gap:9px;border-color:#a7f3d0}
+.morning-banner .fub-item-days{color:#047857}
+.mb-summary{display:flex;flex-wrap:wrap;gap:8px;margin:2px 0 12px}
+.mb-stat{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:#065f46;background:var(--card);border:1px solid #a7f3d0;border-radius:var(--radius-field);padding:6px 11px}
+.mb-stat b{font-weight:800}
+.mb-stat .ic{width:15px;height:15px}
+.mb-close{flex-shrink:0;width:30px;height:30px;border-radius:var(--radius-field);border:none;background:transparent;color:#047857;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
+.mb-close:active{background:rgba(4,120,87,.12)}
+.mb-close .ic{width:16px;height:16px}
+.mb-acts{display:flex;flex-wrap:wrap;gap:6px}
+.mb-act{flex:1 1 auto;min-width:92px;display:inline-flex;align-items:center;justify-content:center;gap:5px;font-size:12.5px;font-weight:700;border-radius:var(--radius-field);padding:9px 10px;text-decoration:none;white-space:nowrap;cursor:pointer;border:1px solid transparent}
+.mb-act .ic{width:15px;height:15px}
+.mb-act-map{background:#059669;color:#fff}
+.mb-act-map:active{background:#047857}
+.mb-act-wa{background:#25d366;color:#fff}
+.mb-act-wa:active{background:#1da851}
+.mb-act-view{background:var(--card);color:var(--accent-fg);border:1px solid #a7f3d0}
+.mb-act-view:active{background:var(--surface-2)}
+.mb-act-done{background:var(--card);color:#065f46;border:1px solid #6ee7b7}
+.mb-act-done:active{background:var(--surface-2)}
+.mb-route{width:100%;margin-top:2px;display:inline-flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:700;color:#065f46;background:var(--card);border:1px solid #6ee7b7;border-radius:var(--radius-field);padding:10px;cursor:pointer}
+.mb-route:active{background:var(--surface-2)}
+.mb-route .ic{width:16px;height:16px}
 
 /* Panel de configuración de seguimiento (pestaña Empresa) */
 .fu-config{margin-top:18px;padding:16px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-box)}
@@ -1271,8 +1379,6 @@ input[type=number]{-moz-appearance:textfield}
 :root[data-theme="dark"] .recontacto-banner .fub-title,
 :root[data-theme="dark"] .recontacto-banner .fub-sub{color:#67e8f9}
 :root[data-theme="dark"] .recontacto-banner .fub-item{background:#0a1c20;border-color:#155e75}
-:root[data-theme="dark"] .hagenda-chip.is-call{background:rgba(8,145,178,.22);color:#67e8f9}
-:root[data-theme="dark"] .hagenda-chip.is-call-due{background:#4a3a12;color:#fde68a}
 
 /* Banner y filas de seguimiento (ámbar) */
 :root[data-theme="dark"] .followup-banner{background:linear-gradient(135deg,#2a2410,#332b12);border-color:#5c4a1c}
@@ -1281,7 +1387,6 @@ input[type=number]{-moz-appearance:textfield}
 :root[data-theme="dark"] .fub-sub,
 :root[data-theme="dark"] .fub-more{color:#fcd34d}
 :root[data-theme="dark"] .fub-item{background:#1f1b0c;border-color:#5c4a1c}
-:root[data-theme="dark"] .hbadge-followup{background:#4a3a12;color:#fcd34d}
 
 /* Banner y filas de presupuestos vencidos (rojo) */
 :root[data-theme="dark"] .expiry-banner{background:linear-gradient(135deg,#2a1212,#331616);border-color:#5c1c1c}
@@ -1290,15 +1395,104 @@ input[type=number]{-moz-appearance:textfield}
 :root[data-theme="dark"] .expiry-banner .fub-sub,
 :root[data-theme="dark"] .expiry-banner .fub-more{color:#fca5a5}
 :root[data-theme="dark"] .expiry-banner .fub-item{background:#1f0c0c;border-color:#5c1c1c}
-:root[data-theme="dark"] .hbadge-expired{background:rgba(239,68,68,.18);color:#fca5a5}
 
-/* Chip de agenda (fecha del trabajo) */
-:root[data-theme="dark"] .hagenda-chip{background:rgba(139,92,246,.2);color:#c4b5fd}
-:root[data-theme="dark"] .hagenda-chip.is-none{background:var(--card);color:var(--muted);border-color:var(--border)}
-:root[data-theme="dark"] .hagenda-chip.is-soon{background:#4a3a12;color:#fde68a}
-:root[data-theme="dark"] .hagenda-chip.is-past{background:rgba(59,130,246,.18);color:#93c5fd}
-:root[data-theme="dark"] .hagenda-chip.is-done{background:var(--surface-2);color:var(--muted);border-color:var(--border)}
+/* Banner "Podas de hoy" (verde) */
+:root[data-theme="dark"] .morning-banner{background:linear-gradient(135deg,#0c2620,#0e2b22);border-color:#065f46}
+:root[data-theme="dark"] .morning-banner .fub-title,
+:root[data-theme="dark"] .morning-banner .fub-sub,
+:root[data-theme="dark"] .morning-banner .fub-item-days{color:#6ee7b7}
+:root[data-theme="dark"] .morning-banner .fub-item{background:#0a1c17;border-color:#065f46}
+:root[data-theme="dark"] .mb-stat{color:#6ee7b7;background:#0a1c17;border-color:#065f46}
+:root[data-theme="dark"] .mb-close{color:#6ee7b7}
+:root[data-theme="dark"] .mb-act-view{border-color:#065f46}
+:root[data-theme="dark"] .mb-act-done{color:#6ee7b7;border-color:#065f46}
+:root[data-theme="dark"] .mb-route{border-color:#065f46;color:#6ee7b7}
+
+/* Chip de agenda: base/is-call/is-none/is-done ya son theme-aware vía tokens y
+   variables (--c-*, --card, --surface-2), no necesitan override en oscuro. */
 :root[data-theme="dark"] .agenda-warn{background:#4a3a12;color:#fde68a}
+
+/* ══ AGENDA / CALENDARIO (pestaña Agenda) ══════════════════════════════════
+   Grilla de mes que superpone trabajos, recontactos, vencimientos, seguimientos
+   y notas manuales. Colores por tipo, alineados con los chips de agenda. */
+.agc-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.agc-nav{display:flex;align-items:center;gap:6px}
+.agc-navbtn{width:34px;height:34px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;line-height:1;color:var(--accent-fg);background:var(--card);border:1px solid var(--border);border-radius:var(--radius-field);cursor:pointer}
+.agc-navbtn:active{background:var(--accent-light)}
+.agc-title{font-family:'DM Serif Display',serif;font-size:18px;color:var(--text);min-width:150px;text-align:center;text-transform:capitalize}
+.agc-legend{display:flex;flex-wrap:wrap;gap:6px 12px;margin-bottom:10px;font-size:11.5px;color:var(--muted)}
+.agc-leg{display:inline-flex;align-items:center;gap:5px}
+.agc-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.agc-c-trabajo{background:var(--c-trabajo)}
+.agc-c-recontacto{background:var(--c-recontacto)}
+.agc-c-vencimiento{background:var(--c-vence)}
+.agc-c-seguimiento{background:var(--c-seguimiento)}
+.agc-c-nota{background:var(--c-nota)}
+.agc-grid-head{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px}
+.agc-grid-head span{text-align:center;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
+.agc-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.agc-cell{position:relative;min-height:52px;display:flex;flex-direction:column;align-items:stretch;gap:3px;padding:5px 4px 4px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-field);cursor:pointer;overflow:hidden}
+.agc-cell.is-other{opacity:.4}
+.agc-cell.is-empty{cursor:default;background:transparent;border-color:transparent}
+.agc-cell.is-today{border-color:var(--accent-fg);box-shadow:inset 0 0 0 1px var(--accent-fg)}
+.agc-cell.is-sel{background:var(--accent-light)}
+.agc-daynum{font-size:12px;font-weight:600;color:var(--text);line-height:1}
+.agc-cell.is-today .agc-daynum{color:var(--accent-fg);font-weight:800}
+.agc-dots{display:flex;flex-wrap:wrap;gap:2px;margin-top:auto}
+.agc-dots .agc-dot{width:6px;height:6px}
+.agc-more{font-size:9px;font-weight:700;color:var(--muted);line-height:1}
+/* Indicador de carga: cuántos trabajos hay agendados ese día (solo si ≥2) */
+.agc-load{position:absolute;top:3px;right:3px;min-width:15px;height:15px;padding:0 4px;display:inline-flex;align-items:center;justify-content:center;font-size:9.5px;font-weight:800;line-height:1;color:#fff;background:var(--c-trabajo);border-radius:8px}
+.agc-day-load{font-family:'DM Sans',sans-serif;font-size:11px;font-weight:700;color:var(--c-trabajo);background:var(--c-trabajo-bg);padding:2px 8px;border-radius:20px;margin-left:2px}
+/* Fila de acciones de la agenda (export .ics) */
+.agc-actions{display:flex;justify-content:flex-end;margin-bottom:12px}
+/* Detalle del día seleccionado */
+.agc-day{margin-top:14px}
+.agc-day-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+.agc-day-title{font-family:'DM Serif Display',serif;font-size:16px;color:var(--text)}
+.agc-ev{display:flex;align-items:flex-start;gap:9px;padding:10px 12px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-field);margin-bottom:7px}
+.agc-ev-bar{width:4px;align-self:stretch;border-radius:3px;flex-shrink:0}
+.agc-ev.t-trabajo .agc-ev-bar{background:var(--c-trabajo)}
+.agc-ev.t-recontacto .agc-ev-bar{background:var(--c-recontacto)}
+.agc-ev.t-vencimiento .agc-ev-bar{background:var(--c-vence)}
+.agc-ev.t-seguimiento .agc-ev-bar{background:var(--c-seguimiento)}
+.agc-ev.t-nota .agc-ev-bar{background:var(--c-nota)}
+.agc-ev-body{flex:1;min-width:0}
+.agc-ev-kind{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);display:block;margin-bottom:2px}
+.agc-ev-title{font-size:14px;font-weight:600;color:var(--text);line-height:1.35;word-break:break-word}
+.agc-ev-sub{font-size:12px;color:var(--muted);margin-top:2px;line-height:1.4;word-break:break-word}
+.agc-ev.done .agc-ev-title{text-decoration:line-through;opacity:.6}
+.agc-ev-acts{display:flex;flex-direction:column;gap:5px;flex-shrink:0}
+.agc-ev-btn{width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-field);cursor:pointer;color:var(--muted);padding:0}
+.agc-ev-btn .ic{width:15px;height:15px}
+.agc-ev-btn:active{background:var(--accent-light)}
+.agc-day-empty{font-size:13px;color:var(--muted);padding:6px 2px;line-height:1.5}
+.agc-note-form{display:flex;gap:7px;align-items:stretch;margin-top:8px}
+.agc-note-form input{flex:1;min-width:0}
+/* Segmentado Mes / Agenda */
+.agc-viewtoggle{display:inline-flex;background:var(--surface-2);border-radius:var(--radius-field);padding:3px;gap:3px;margin-bottom:12px}
+.agc-vtab{flex:0 0 auto;padding:7px 18px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;color:var(--muted);background:transparent;border:none;border-radius:6px;cursor:pointer}
+.agc-vtab.active{background:var(--card);color:var(--accent-fg);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.agc-vtab:hover:not(.active){color:var(--text)}
+/* Vista Agenda (lista cronológica) */
+.agc-list-group{margin-bottom:18px}
+.agc-list-dayhead{font-family:'DM Serif Display',serif;font-size:15px;color:var(--text);margin:0 0 8px;display:flex;align-items:center;gap:7px}
+.agc-list-dayhead.is-today{color:var(--accent-fg)}
+.agc-list-dayhead .ic{width:15px;height:15px}
+/* Barra plegable de "Atrasado" (colapsada por defecto) */
+.agc-overdue-toggle{display:flex;align-items:center;gap:8px;width:100%;padding:9px 12px;margin:0 0 8px;font-family:'DM Sans',sans-serif;font-size:13.5px;font-weight:700;color:var(--c-vence);background:var(--c-vence-bg);border:1px solid transparent;border-radius:var(--radius-field);cursor:pointer;text-align:left}
+.agc-overdue-toggle .ic{width:16px;height:16px;flex-shrink:0}
+.agc-overdue-lbl{flex:1;min-width:0}
+.agc-overdue-caret{font-size:12px;opacity:.8}
+.agc-list-empty{font-size:14px;color:var(--muted);text-align:center;padding:40px 16px;line-height:1.6}
+.agc-list-empty .ic{width:32px;height:32px;display:block;margin:0 auto 10px;color:var(--faint)}
+.agc-list-empty-sub{font-size:12.5px;color:var(--muted);opacity:.85}
+@media (max-width:420px){
+  .agc-cell{min-height:46px;padding:4px 3px 3px}
+  .agc-title{font-size:16px;min-width:120px}
+  .agc-legend{font-size:11px;gap:5px 9px}
+}
+:root[data-theme="dark"] .agc-cell.is-sel{background:var(--accent-light)}
 
 /* Badges y chips claros → tintes oscuros translúcidos */
 :root[data-theme="dark"] .ib-tree{background:rgba(34,197,94,.18);color:#86efac}
@@ -1350,6 +1544,7 @@ input[type=number]{-moz-appearance:textfield}
   #confirm-overlay,
   #agenda-overlay,
   #share-overlay,
+  #day-alert-overlay,
   #photo-viewer-overlay,
   #phrases-overlay,
   #sticky-totals,
@@ -2227,6 +2422,71 @@ input[type=number]{-moz-appearance:textfield}
 .pdoc.pdoc-compact .ptotals { padding-top: 8px; padding-bottom: 8px; }
 .pdoc.pdoc-compact .ptotal-amt { font-size: 20pt; }
 .pdoc.pdoc-compact .ptitle { font-size: 12pt; margin-bottom: 8px; }
+
+/* ─── MAPA (pestaña Mapa) ───────────────────────────── */
+.mapa-toolbar { display:flex; flex-wrap:wrap; gap:8px 14px; align-items:center; justify-content:space-between; margin-bottom:8px; }
+.mapa-filters { display:flex; flex-wrap:wrap; gap:6px; }
+.mapa-filter { display:inline-flex; align-items:center; gap:5px; font-size:12px; padding:3px 9px 3px 6px; border:1px solid var(--border); border-radius:999px; background:var(--card); cursor:pointer; user-select:none; color:var(--muted); }
+.mapa-filter.is-on { color:var(--fg,#111); border-color:var(--accent); }
+.mapa-filter input { margin:0; width:13px; height:13px; accent-color:var(--accent); }
+.mapa-filter-dot { width:11px; height:11px; border-radius:50%; border:1px solid rgba(0,0,0,.15); }
+.mapa-tools { display:flex; flex-wrap:wrap; gap:6px 10px; align-items:center; }
+.mapa-daterange { font-size:12px; color:var(--muted); display:inline-flex; align-items:center; gap:4px; }
+.mapa-daterange input { font-size:12px; padding:3px 6px; border:1px solid var(--border); border-radius:8px; background:var(--card); color:inherit; }
+#map-canvas { height:60vh; min-height:340px; width:100%; border-radius:12px; border:1px solid var(--border); overflow:hidden; background:var(--surface,#e5e7eb); z-index:0; }
+#map-canvas.mapa-placing { cursor:crosshair; }
+#map-canvas.mapa-placing .leaflet-grab { cursor:crosshair; }
+.mapa-pin span { display:block; width:22px; height:22px; box-sizing:border-box; border-radius:50%; border:2px solid #fff; box-shadow:0 1px 4px rgba(0,0,0,.45); }
+.mapa-pin.is-hl span { box-shadow:0 0 0 4px rgba(14,165,233,.55), 0 1px 4px rgba(0,0,0,.45); }
+.mapa-popup { min-width:170px; }
+.mapa-popup-cli { font-weight:700; font-size:14px; margin-bottom:2px; }
+.mapa-popup-meta { font-size:12px; color:var(--muted); margin-bottom:6px; }
+.mapa-popup-estado { width:100%; font-size:12px; font-weight:600; padding:4px 6px; border:none; border-radius:8px; margin-bottom:6px; }
+.mapa-popup-acts { display:flex; gap:6px; }
+.mapa-popup-acts .btn { flex:1; }
+.mapa-popup-edit { display:block; width:100%; margin-top:6px; padding:2px; border:none; background:transparent; color:var(--muted); font-size:11px; text-align:center; cursor:pointer; opacity:.65; }
+.mapa-popup-edit:hover { opacity:1; text-decoration:underline; }
+/* Popup de un grupo apilado: lista de todos los trabajos del mismo lugar. */
+.mapa-popup-group { min-width:210px; }
+.mapa-popup-group-title { font-weight:700; font-size:13px; margin-bottom:6px; }
+.mapa-popup-list { max-height:244px; overflow:auto; display:flex; flex-direction:column; gap:8px; }
+.mapa-grow { padding:7px 6px; margin:0 -6px; border-top:1px solid var(--border); border-radius:8px; cursor:pointer; }
+.mapa-grow:first-child { border-top:none; }
+.mapa-grow:hover { background:var(--surface,rgba(0,0,0,.03)); }
+.mapa-grow-top { display:flex; align-items:center; gap:6px; margin-bottom:3px; }
+.mapa-grow-estado { flex:0 0 auto; font-size:11px; font-weight:600; padding:3px 5px; border:none; border-radius:8px; max-width:44%; }
+.mapa-grow-cli { flex:1; min-width:0; font-weight:700; font-size:13px; color:inherit; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.mapa-grow-meta { font-size:11px; color:var(--muted); margin-bottom:5px; }
+.mapa-cluster { background:transparent; border:none; }
+.mapa-cluster-ring { display:flex; align-items:center; justify-content:center; width:30px; height:30px; box-sizing:border-box; border-radius:50%; border:2px solid #fff; box-shadow:0 1px 4px rgba(0,0,0,.45); }
+.mapa-cluster-count { display:flex; align-items:center; justify-content:center; width:20px; height:20px; box-sizing:border-box; border-radius:50%; background:var(--card,#fff); color:var(--fg,#0f172a); font-size:11px; font-weight:700; font-variant-numeric:tabular-nums; }
+.mapa-cluster.is-hl .mapa-cluster-ring { box-shadow:0 0 0 4px rgba(14,165,233,.55), 0 1px 4px rgba(0,0,0,.45); }
+.mapa-zonastats { margin-top:8px; padding:8px 10px; border:1px solid var(--border); border-radius:10px; background:var(--card); }
+.mapa-zona-title { font-size:12px; font-weight:700; margin-bottom:5px; }
+.mapa-zona-chips { display:flex; flex-wrap:wrap; gap:4px; margin-bottom:5px; }
+.mapa-zona-chip { font-size:11px; font-weight:600; padding:2px 8px; border-radius:999px; }
+.mapa-zona-conv { font-size:12px; color:var(--muted); }
+.mapa-hint-inline { font-size:11px; opacity:.8; }
+.mapa-cerca-panel { margin-top:8px; padding:10px; border:1px solid var(--accent); border-radius:10px; background:var(--accent-tint,var(--card)); }
+.mapa-cerca-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; font-size:13px; }
+.mapa-cerca-close { border:none; background:transparent; cursor:pointer; font-size:15px; color:var(--muted); line-height:1; padding:2px 6px; }
+.mapa-cerca-list { display:flex; flex-direction:column; gap:5px; }
+.mapa-cerca-item { display:flex; align-items:center; gap:8px; font-size:13px; }
+.mapa-cerca-cli { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.mapa-cerca-dist { font-size:12px; color:var(--muted); font-variant-numeric:tabular-nums; }
+.mapa-ruta-btn { width:100%; margin-top:8px; }
+.mapa-sinubicar { margin-top:10px; border:1px solid var(--border); border-radius:10px; background:var(--card); padding:2px 10px; }
+.mapa-sinubicar > summary { cursor:pointer; font-size:13px; font-weight:600; padding:8px 0; }
+.mapa-count { display:inline-block; min-width:18px; text-align:center; font-size:11px; padding:1px 6px; border-radius:999px; background:var(--accent); color:var(--accent-fg,#fff); }
+.mapa-su-item { display:flex; align-items:center; gap:8px; padding:7px 0; border-top:1px solid var(--border); }
+.mapa-su-info { flex:1; min-width:0; font-size:13px; cursor:pointer; border-radius:8px; padding:2px 4px; margin:-2px -4px; }
+.mapa-su-info:hover { background:var(--surface,rgba(0,0,0,.03)); }
+.mapa-su-addr { font-size:12px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.mapa-su-acts { display:flex; flex-direction:column; gap:4px; flex:0 0 auto; }
+.mapa-hint { font-size:12px; color:var(--muted); padding:6px 0; }
+.mapa-error { display:flex; align-items:center; justify-content:center; height:100%; padding:20px; text-align:center; color:var(--muted); font-size:14px; }
+:root[data-theme="dark"] .leaflet-popup-content-wrapper,
+:root[data-theme="dark"] .leaflet-popup-tip { background:var(--card); color:var(--fg,#e5e7eb); }
 </style>
 
 
@@ -2293,23 +2553,20 @@ input[type=number]{-moz-appearance:textfield}
   <div id="topbar">
     <div class="logo"><svg class="ic"><use href="#i-tree"></use></svg> Presupuestos</div>
     <span id="save-status"></span>
-    <!-- Menú colapsable: Exportar / Importar viven adentro. Libera
-         espacio en el topbar — antes ocupaban ancho permanente para
-         acciones que se usan ocasionalmente. -->
+    <!-- Configuración (engranaje): abre la pantalla de Configuración (Empresa)
+         con sus sub-pestañas (Negocio · Textos · Estilo · Datos). Aloja las
+         pantallas de config poco frecuentes para liberar la barra de pestañas.
+         Exportar/Importar backup viven en la sub-pestaña "Negocio". -->
     <div class="topbar-menu">
-      <button class="tbtn tbtn-menu" onclick="toggleTopMenu(event)" aria-label="Más opciones" aria-haspopup="true" aria-expanded="false">⋯</button>
-      <div id="top-menu-pop" class="top-menu-pop" style="display:none">
-        <button class="top-menu-item" onclick="closeTopMenu();openModal('export')"><span>↑</span> Exportar</button>
-        <button class="top-menu-item" onclick="closeTopMenu();openModal('import')"><span>↓</span> Importar</button>
-      </div>
+      <button class="tbtn tbtn-menu" id="btn-config" onclick="switchTab('empresa')" aria-label="Configuración" title="Configuración"><svg class="ic"><use href="#i-settings"></use></svg></button>
     </div>
   </div>
 
   <div id="tabs">
     <button class="tab-btn active" onclick="switchTab('editor')"><svg class="ic"><use href="#i-pencil"></use></svg> Editor</button>
-    <button class="tab-btn" onclick="switchTab('empresa')"><svg class="ic"><use href="#i-building"></use></svg> Empresa</button>
-    <button class="tab-btn" onclick="switchTab('estilo')"><svg class="ic"><use href="#i-palette"></use></svg> Estilo</button>
     <button class="tab-btn" onclick="switchTab('historial')"><svg class="ic"><use href="#i-book"></use></svg> Historial<span class="tab-dot" id="tab-hist-dot" hidden></span></button>
+    <button class="tab-btn" onclick="switchTab('mapa')"><svg class="ic"><use href="#i-pin"></use></svg> Mapa</button>
+    <button class="tab-btn" onclick="switchTab('agenda')"><svg class="ic"><use href="#i-calendar"></use></svg> Agenda<span class="tab-dot" id="tab-agenda-dot" hidden></span></button>
     <button class="tab-btn" onclick="switchTab('facturacion')"><svg class="ic ic-c-amber"><use href="#i-money"></use></svg> Facturas</button>
   </div>
 
@@ -2318,6 +2575,8 @@ input[type=number]{-moz-appearance:textfield}
 
       <!-- ══ TAB EDITOR ══ -->
       <div id="panel-editor" class="tab-panel active">
+
+        <div id="morning-banner" class="morning-banner" style="display:none"></div>
 
         <div class="mode-switch" id="mode-switch">
           <button class="mode-btn active" id="mode-btn-normal" onclick="setMode('normal')" title="Lo más común: ya viste el árbol y pones un precio cerrado por cada trabajo.">
@@ -2711,9 +2970,10 @@ input[type=number]{-moz-appearance:textfield}
            - "Datos guardados": clientes, especies, servicios -->
       <div id="panel-empresa" class="tab-panel">
         <div class="subtabs">
-          <button class="subtab-btn active" onclick="switchSubtab('negocio')"><svg class="ic"><use href="#i-building"></use></svg> Mi negocio</button>
-          <button class="subtab-btn" onclick="switchSubtab('textos')"><svg class="ic"><use href="#i-pencil"></use></svg> Textos del PDF</button>
-          <button class="subtab-btn" onclick="switchSubtab('datos')"><svg class="ic"><use href="#i-idcard"></use></svg> Datos guardados</button>
+          <button class="subtab-btn active" onclick="switchSubtab('negocio')"><svg class="ic"><use href="#i-building"></use></svg> Negocio</button>
+          <button class="subtab-btn" onclick="switchSubtab('textos')"><svg class="ic"><use href="#i-pencil"></use></svg> Textos</button>
+          <button class="subtab-btn" onclick="switchSubtab('estilo')"><svg class="ic"><use href="#i-palette"></use></svg> Estilo</button>
+          <button class="subtab-btn" onclick="switchSubtab('datos')"><svg class="ic"><use href="#i-idcard"></use></svg> Datos</button>
         </div>
 
         <!-- ── SUB-TAB MI NEGOCIO ── -->
@@ -2813,6 +3073,18 @@ input[type=number]{-moz-appearance:textfield}
             </div>
           </div>
 
+          <!-- ── COPIA DE SEGURIDAD (ARCHIVO) ── -->
+          <div class="fu-config" id="backup-file-section">
+            <div class="fu-config-head">
+              <span class="st" style="margin:0;border:none;padding:0"><svg class="ic"><use href="#i-save"></use></svg> Copia de seguridad (archivo)</span>
+            </div>
+            <p class="fu-help">Tus datos se guardan solo en este dispositivo. Exportá un backup cada tanto (o al cambiar de teléfono) y guardalo en un lugar seguro; lo restaurás con Importar.</p>
+            <div class="arow">
+              <button type="button" class="btn btn-p btn-sm" onclick="openModal('export')"><svg class="ic"><use href="#i-download"></use></svg> Exportar…</button>
+              <button type="button" class="btn btn-g btn-sm" onclick="openModal('import')"><svg class="ic"><use href="#i-folder"></use></svg> Importar…</button>
+            </div>
+          </div>
+
           <!-- ── COPIA DE SEGURIDAD EN GOOGLE DRIVE ── -->
           <!-- Oculta hasta que el dueño configure el Client ID (gdriveUpdateUI). -->
           <div class="fu-config" id="gdrive-section" style="display:none">
@@ -2896,55 +3168,8 @@ input[type=number]{-moz-appearance:textfield}
             <input type="text" id="doc-greeting" placeholder="Saludos,"></div>
         </div>
 
-        <!-- ── SUB-TAB DATOS GUARDADOS ──
-             Secciones colapsables: por defecto las 3 vienen cerradas
-             para que el usuario no tenga que hacer scroll para llegar a
-             la sección que le interesa. El header muestra el conteo. -->
-        <div id="subpanel-datos" class="subpanel">
-
-          <div class="collapsible-section" id="cs-clients">
-            <button type="button" class="collapsible-header" onclick="toggleCollapsibleSection('cs-clients')">
-              <span><svg class="ic"><use href="#i-users"></use></svg> Clientes guardados</span>
-              <span class="ch-count" id="cs-clients-count">0</span>
-              <span class="ch-chevron">▾</span>
-            </button>
-            <div class="collapsible-body">
-              <p class="hint" style="margin-bottom:10px">Se guardan automáticamente al completar un presupuesto. Al escribir el nombre del cliente en el Editor, se autocompletan el teléfono y la dirección.</p>
-              <div id="client-manager-list"></div>
-              <button class="btn btn-g btn-sm" style="margin-top:8px" onclick="renderClientManager()"><svg class="ic" aria-hidden="true"><use href="#i-refresh"></use></svg> Actualizar lista</button>
-            </div>
-          </div>
-
-          <div class="collapsible-section" id="cs-species">
-            <button type="button" class="collapsible-header" onclick="toggleCollapsibleSection('cs-species')">
-              <span><svg class="ic"><use href="#i-tree"></use></svg> Especies guardadas</span>
-              <span class="ch-count" id="cs-species-count">0</span>
-              <span class="ch-chevron">▾</span>
-            </button>
-            <div class="collapsible-body">
-              <p class="hint" style="margin-bottom:10px">Se guardan automáticamente al cargar árboles. Se usan para autocompletar en el campo Especie/s del Editor.</p>
-              <div id="species-manager-list"></div>
-              <button class="btn btn-g btn-sm" style="margin-top:8px" onclick="renderSpeciesManager()"><svg class="ic" aria-hidden="true"><use href="#i-refresh"></use></svg> Actualizar lista</button>
-            </div>
-          </div>
-
-          <div class="collapsible-section" id="cs-services">
-            <button type="button" class="collapsible-header" onclick="toggleCollapsibleSection('cs-services')">
-              <span><svg class="ic"><use href="#i-truck"></use></svg> Servicios guardados</span>
-              <span class="ch-count" id="cs-services-count">0</span>
-              <span class="ch-chevron">▾</span>
-            </button>
-            <div class="collapsible-body">
-              <p class="hint" style="margin-bottom:10px">Se autocompletan al cargar un ítem tipo Servicio. Tocá la <strong><svg class="ic ic-fill ic-c-amber"><use href="#i-star"></use></svg></strong> para que aparezcan como atajos rápidos arriba del botón "+ Servicio" en el editor.</p>
-              <div id="services-manager-list"></div>
-              <button class="btn btn-g btn-sm" style="margin-top:8px" onclick="renderServicesManager()"><svg class="ic" aria-hidden="true"><use href="#i-refresh"></use></svg> Actualizar lista</button>
-            </div>
-          </div>
-        </div>
-      </div><!-- /panel-empresa -->
-
-      <!-- ══ TAB ESTILO ══ -->
-      <div id="panel-estilo" class="tab-panel">
+        <!-- ── SUB-TAB ESTILO (movido desde la pestaña Estilo) ── -->
+        <div id="subpanel-estilo" class="subpanel">
         <div class="st">Apariencia de la app</div>
         <div class="theme-mode" id="theme-mode" role="group" aria-label="Tema de la aplicación">
           <button type="button" class="theme-mode-btn" data-mode="auto" onclick="setThemeMode('auto')"><svg class="ic"><use href="#i-theme"></use></svg> Auto</button>
@@ -3086,7 +3311,55 @@ input[type=number]{-moz-appearance:textfield}
           <input type="number" id="validity-days" value="30" min="1" inputmode="numeric" oninput="onValidityChange()">
           <div class="hint">El vencimiento se recalcula desde la fecha de emisión.</div>
         </div>
-      </div><!-- /panel-estilo -->
+        </div>
+
+        <!-- ── SUB-TAB DATOS GUARDADOS ──
+             Secciones colapsables: por defecto las 3 vienen cerradas
+             para que el usuario no tenga que hacer scroll para llegar a
+             la sección que le interesa. El header muestra el conteo. -->
+        <div id="subpanel-datos" class="subpanel">
+
+          <div class="collapsible-section" id="cs-clients">
+            <button type="button" class="collapsible-header" onclick="toggleCollapsibleSection('cs-clients')">
+              <span><svg class="ic"><use href="#i-users"></use></svg> Clientes guardados</span>
+              <span class="ch-count" id="cs-clients-count">0</span>
+              <span class="ch-chevron">▾</span>
+            </button>
+            <div class="collapsible-body">
+              <p class="hint" style="margin-bottom:10px">Se guardan automáticamente al completar un presupuesto. Al escribir el nombre del cliente en el Editor, se autocompletan el teléfono y la dirección.</p>
+              <div id="client-manager-list"></div>
+              <button class="btn btn-g btn-sm" style="margin-top:8px" onclick="renderClientManager()"><svg class="ic" aria-hidden="true"><use href="#i-refresh"></use></svg> Actualizar lista</button>
+            </div>
+          </div>
+
+          <div class="collapsible-section" id="cs-species">
+            <button type="button" class="collapsible-header" onclick="toggleCollapsibleSection('cs-species')">
+              <span><svg class="ic"><use href="#i-tree"></use></svg> Especies guardadas</span>
+              <span class="ch-count" id="cs-species-count">0</span>
+              <span class="ch-chevron">▾</span>
+            </button>
+            <div class="collapsible-body">
+              <p class="hint" style="margin-bottom:10px">Se guardan automáticamente al cargar árboles. Se usan para autocompletar en el campo Especie/s del Editor.</p>
+              <div id="species-manager-list"></div>
+              <button class="btn btn-g btn-sm" style="margin-top:8px" onclick="renderSpeciesManager()"><svg class="ic" aria-hidden="true"><use href="#i-refresh"></use></svg> Actualizar lista</button>
+            </div>
+          </div>
+
+          <div class="collapsible-section" id="cs-services">
+            <button type="button" class="collapsible-header" onclick="toggleCollapsibleSection('cs-services')">
+              <span><svg class="ic"><use href="#i-truck"></use></svg> Servicios guardados</span>
+              <span class="ch-count" id="cs-services-count">0</span>
+              <span class="ch-chevron">▾</span>
+            </button>
+            <div class="collapsible-body">
+              <p class="hint" style="margin-bottom:10px">Se autocompletan al cargar un ítem tipo Servicio. Tocá la <strong><svg class="ic ic-fill ic-c-amber"><use href="#i-star"></use></svg></strong> para que aparezcan como atajos rápidos arriba del botón "+ Servicio" en el editor.</p>
+              <div id="services-manager-list"></div>
+              <button class="btn btn-g btn-sm" style="margin-top:8px" onclick="renderServicesManager()"><svg class="ic" aria-hidden="true"><use href="#i-refresh"></use></svg> Actualizar lista</button>
+            </div>
+          </div>
+        </div>
+      </div><!-- /panel-empresa -->
+
 
       <!-- ══ TAB HISTORIAL ══ -->
       <div id="panel-historial" class="tab-panel">
@@ -3113,10 +3386,12 @@ input[type=number]{-moz-appearance:textfield}
         <div style="margin-bottom:4px">
           <select class="hsearch" id="hist-estado-filter" onchange="renderHistory()" style="margin-bottom:0">
             <option value="">Todos los estados</option>
+            <option value="por_ver">Ir a ver</option>
             <option value="borrador">Borrador</option>
             <option value="enviado">Enviado</option>
             <option value="aceptado">Aceptado</option>
             <option value="realizado">Realizado</option>
+            <option value="evolucion">Control en sitio</option>
             <option value="perdido">Perdido</option>
           </select>
         </div>
@@ -3128,6 +3403,64 @@ input[type=number]{-moz-appearance:textfield}
           <button class="btn btn-g btn-sm hist-clear-all" onclick="clearHistory()"><svg class="ic ic-c-red"><use href="#i-trash"></use></svg> Limpiar todo el historial</button>
         </div>
       </div><!-- /panel-historial -->
+
+      <!-- ══ TAB MAPA ══ -->
+      <div id="panel-mapa" class="tab-panel">
+        <div class="mapa-toolbar">
+          <div class="mapa-filters" id="mapa-filters" aria-label="Filtros por estado"><!-- checkboxes por estado (JS) --></div>
+          <div class="mapa-tools">
+            <label class="mapa-daterange">Desde <input type="date" id="mapa-desde" onchange="mapaRefresh()"></label>
+            <label class="mapa-daterange">Hasta <input type="date" id="mapa-hasta" onchange="mapaRefresh()"></label>
+            <button class="btn btn-g btn-sm" id="mapa-cerca-btn" onclick="mapaCercaMio(this)"><svg class="ic"><use href="#i-pin"></use></svg> Cerca mío</button>
+          </div>
+        </div>
+        <div id="map-canvas"></div>
+        <div class="mapa-zonastats" id="mapa-zonastats"></div>
+        <div id="mapa-cerca-panel" class="mapa-cerca-panel" hidden></div>
+        <details id="mapa-sinubicar" class="mapa-sinubicar">
+          <summary>Sin ubicar <span class="mapa-count" id="mapa-sinubicar-count">0</span></summary>
+          <div class="mapa-hint">Estos presupuestos no tienen coordenadas. Tocá “Ubicar” y después tocá el punto exacto en el mapa; queda guardado.</div>
+          <div id="mapa-sinubicar-list"></div>
+        </details>
+      </div><!-- /panel-mapa -->
+
+      <!-- ══ TAB AGENDA (CALENDARIO) ══ ═══════════════════════════════════════
+           Vista de calendario que superpone TODO lo que tiene fecha: días de
+           trabajo agendados, recontactos, vencimientos y seguimientos (todo
+           derivado del historial, sin datos nuevos) + anotaciones/recordatorios
+           manuales propios (LS.NOTES). La lógica vive en js/calendar.js. -->
+      <div id="panel-agenda" class="tab-panel">
+        <div class="agc-viewtoggle" role="tablist" aria-label="Vista de la agenda">
+          <button class="agc-vtab active" id="agc-vtab-mes" onclick="calSetView('mes')">Mes</button>
+          <button class="agc-vtab" id="agc-vtab-agenda" onclick="calSetView('agenda')">Agenda</button>
+        </div>
+        <div class="agc-legend" id="agc-legend">
+          <span class="agc-leg"><i class="agc-dot agc-c-trabajo"></i>Trabajo</span>
+          <span class="agc-leg"><i class="agc-dot agc-c-recontacto"></i>Recontacto</span>
+          <span class="agc-leg"><i class="agc-dot agc-c-vencimiento"></i>Vence</span>
+          <span class="agc-leg"><i class="agc-dot agc-c-seguimiento"></i>Seguimiento</span>
+          <span class="agc-leg"><i class="agc-dot agc-c-nota"></i>Nota</span>
+        </div>
+        <div class="agc-actions">
+          <button class="btn btn-g btn-sm" id="agc-export-ics" onclick="calExportIcs()" title="Descargá un archivo .ics con tus trabajos y recontactos próximos para sumarlos al calendario del teléfono"><svg class="ic" aria-hidden="true"><use href="#i-download"></use></svg> Exportar .ics</button>
+        </div>
+        <!-- Vista MES (grilla) -->
+        <div id="agc-month">
+          <div class="agc-toolbar">
+            <div class="agc-nav">
+              <button class="agc-navbtn" id="agc-prev" onclick="calPrevMonth()" aria-label="Mes anterior" title="Mes anterior">‹</button>
+              <span class="agc-title" id="agc-title">—</span>
+              <button class="agc-navbtn" id="agc-next" onclick="calNextMonth()" aria-label="Mes siguiente" title="Mes siguiente">›</button>
+            </div>
+            <button class="btn btn-p btn-sm" id="agc-today-btn" onclick="calToday()"><svg class="ic"><use href="#i-calendar"></use></svg> Hoy</button>
+          </div>
+          <div class="agc-grid-head" id="agc-grid-head"></div>
+          <div class="agc-grid" id="agc-grid"></div>
+          <div class="agc-day" id="agc-day"></div>
+        </div>
+        <!-- Vista AGENDA (lista cronológica) -->
+        <div id="agc-list" hidden></div>
+      </div><!-- /panel-agenda -->
 
       <!-- ══ TAB FACTURACIÓN ══ -->
       <div id="panel-facturacion" class="tab-panel">
@@ -3277,9 +3610,27 @@ input[type=number]{-moz-appearance:textfield}
       <button type="button" class="agenda-mode" id="agenda-mode-recontacto" onclick="setAgendaMode('recontacto')"><svg class="ic" aria-hidden="true"><use href="#i-phone"></use></svg> Recontactar</button>
     </div>
     <p class="agenda-help" id="agenda-help" hidden>¿Aceptó pero todavía no puede fijar fecha? Agendá qué día volver a contactarlo para coordinar.</p>
+    <!-- Duración: solo en modo "trabajo". Cuántos días dura el trabajo en total.
+         Los días con fecha ya elegida se ubican abajo; el resto quedan "por ubicar". -->
+    <div class="fg" id="agenda-dur-wrap" hidden>
+      <label>¿Cuántos días dura el trabajo?</label>
+      <div class="agenda-dur">
+        <button type="button" class="agenda-step" id="agenda-dur-minus" onclick="agendaDurStep(-1)" aria-label="Menos días">−</button>
+        <span class="agenda-dur-val" id="agenda-dur-val">1</span>
+        <button type="button" class="agenda-step" onclick="agendaDurStep(1)" aria-label="Más días">+</button>
+        <span class="agenda-dur-lbl" id="agenda-dur-lbl">día</span>
+      </div>
+    </div>
+    <!-- Días ya ubicados en una fecha concreta (chips removibles). -->
+    <div class="agenda-dias-list" id="agenda-dias-list" hidden></div>
+    <!-- Aviso "faltan ubicar N días" (solo cuando hay días sin fecha). -->
+    <p class="agenda-pend" id="agenda-pend" hidden></p>
     <div class="fg">
       <label for="agenda-fecha" id="agenda-fecha-label">Día de comienzo del trabajo</label>
-      <input type="date" id="agenda-fecha" aria-label="Fecha" oninput="agendaOnDateChange()">
+      <div class="agenda-addrow">
+        <input type="date" id="agenda-fecha" aria-label="Fecha" oninput="agendaOnDateChange()">
+        <button type="button" class="btn btn-g btn-sm" id="agenda-add-dia" onclick="agendaAddDia()" hidden>Agregar día</button>
+      </div>
     </div>
     <div class="fg" id="agenda-nota-wrap" hidden>
       <label for="agenda-nota">Nota (opcional)</label>
@@ -3293,6 +3644,18 @@ input[type=number]{-moz-appearance:textfield}
       <button type="button" class="btn btn-s" id="agenda-cancel" onclick="closeAgendaDlg()">Cancelar</button>
       <button type="button" class="btn btn-p" id="agenda-ok" onclick="agendaSave()">Guardar</button>
     </div>
+  </div>
+</div>
+
+<!-- ════════════════════ POP-UP DE ARRANQUE DEL DÍA ════════════════════
+     Salta UNA vez, la primera apertura del día, si hay poda(s) agendada(s)
+     para hoy. Llama la atención; se cierra con la ✕ o "¡Vamos!" y no reaparece
+     ese día. El banner fijo (#morning-banner) y los avisos siguen igual.
+     La lógica vive en js/history.js (maybeShowDayAlert / renderDayAlert). -->
+<div id="day-alert-overlay" role="presentation" onclick="if(event.target===this)closeDayAlert()">
+  <div id="day-alert-box" role="dialog" aria-modal="true" aria-labelledby="day-alert-body">
+    <button type="button" class="da-close" onclick="closeDayAlert()" aria-label="Cerrar" title="Cerrar">✕</button>
+    <div id="day-alert-body"></div>
   </div>
 </div>
 
@@ -3399,6 +3762,9 @@ const LS = {
   PDF_THEME:      'pq_pdf_theme',
   PUSH_DEVICE_ID: 'pq_push_device_id',
   THEME:          'pq_theme',
+  DAY_ALERT_SEEN: 'pq_day_alert_seen',
+  NOTES:          'pq_agenda_notes',
+  CAL_VIEW:       'pq_cal_view',
 };
 
 // Notificaciones push (avisos de seguimiento con la app cerrada). Ambos se
@@ -3551,27 +3917,37 @@ function sanitizeSectionOrder(order){
 // El estado vive a nivel del entry del historial (no del snapshot),
 // porque es metadata comercial que se ve y filtra en la lista sin
 // necesidad de cargar el presupuesto. Default: 'borrador'.
+//   por_ver   → hay que ir a ver el árbol antes de presupuestar (relevamiento)
 //   borrador  → recién creado, sin enviar
 //   enviado   → entregado al cliente (se ofrece marcar al generar PDF)
 //   aceptado  → el cliente lo aprobó
 //   realizado → trabajo hecho (incluye cobrado)
+//   evolucion → hay que volver al sitio a controlar la evolución del árbol
 //   perdido   → no prosperó
-const ESTADOS = ['borrador', 'enviado', 'aceptado', 'realizado', 'perdido'];
+const ESTADOS = ['por_ver', 'borrador', 'enviado', 'aceptado', 'realizado', 'evolucion', 'perdido'];
 const ESTADO_LABELS = {
+  por_ver:   'Ir a ver',
   borrador:  'Borrador',
   enviado:   'Enviado',
   aceptado:  'Aceptado',
   realizado: 'Realizado',
+  evolucion: 'Control en sitio',
   perdido:   'Perdido',
 };
 const ESTADO_COLORS = {
   // [texto, fondo]
+  por_ver:   ['#155e63', '#cffafe'],
   borrador:  ['#475569', '#e2e8f0'],
   enviado:   ['#1e40af', '#dbeafe'],
   aceptado:  ['#92400e', '#fef3c7'],
   realizado: ['#065f46', '#d1fae5'],
+  evolucion: ['#6b21a8', '#f3e8ff'],
   perdido:   ['#991b1b', '#fee2e2'],
 };
+// Estados que implican una visita pendiente al lugar (para "pendientes cerca
+// mío" en el mapa): ir a ver el árbol, trabajo aceptado por hacer, o control
+// de evolución posterior.
+const PENDIENTES_CAMPO = ['por_ver', 'aceptado', 'evolucion'];
 function estadoLabel(e) { return ESTADO_LABELS[e] || ESTADO_LABELS.borrador; }
 
 let S = Object.assign({}, DEF);
@@ -3990,7 +4366,14 @@ function normalizeRiskData() {
 
 function saveLS() {
   S._schemaVersion = APP_SCHEMA_VERSION;
-  safeSetLS(LS.STATE, JSON.stringify(S));
+  // Serializar dentro de un try: si S tuviera una referencia circular,
+  // JSON.stringify lanzaría y la excepción cortaría el guardado antes de
+  // actualizar el indicador (lo dejaría colgado en "Guardando…"). Mejor
+  // fallar acá devolviendo false que romper el flujo.
+  let payload;
+  try { payload = JSON.stringify(S); }
+  catch (e) { console.error('saveLS: no se pudo serializar S', e); return false; }
+  return safeSetLS(LS.STATE, payload);
 }
 
 // Wrapper seguro para escrituras a localStorage. Atrapa QuotaExceededError
@@ -6819,7 +7202,7 @@ document.addEventListener('change', e => { if(!noSync && e.target.closest('#app'
 // Las sub-pestañas reducen el scroll vertical de la pestaña Empresa.
 // Renderiza solo lo necesario al entrar en cada sub-tab.
 function switchSubtab(name) {
-  const names = ['negocio','textos','datos'];
+  const names = ['negocio','textos','estilo','datos'];
   document.querySelectorAll('.subtab-btn').forEach((b,i)=>b.classList.toggle('active', names[i]===name));
   document.querySelectorAll('.subpanel').forEach(p=>p.classList.remove('active'));
   const p = document.getElementById('subpanel-'+name); if(p) p.classList.add('active');
@@ -6862,11 +7245,19 @@ function switchTab(name) {
   // a otra pestaña descartamos el enlace pendiente para no atar la factura a
   // un presupuesto que no corresponde.
   if (name !== 'facturacion') _pendingFacturaQuote = null;
-  const names = ['editor','empresa','estilo','historial','facturacion'];
+  // Empresa y Estilo ya no tienen botón en la barra (viven en el engranaje ⚙);
+  // este array debe coincidir en orden con los .tab-btn que SÍ quedan en #tabs.
+  const names = ['editor','historial','mapa','agenda','facturacion'];
   document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active', names[i]===name));
+  // Resaltar el engranaje cuando estamos en una pantalla de Configuración
+  // (esos paneles no tienen botón de pestaña que se marque activo).
+  const _gear = document.getElementById('btn-config');
+  if (_gear) _gear.classList.toggle('is-active', name==='empresa');
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
   const p = document.getElementById('panel-'+name); if(p) p.classList.add('active');
   if(name==='historial')   renderHistory();
+  if(name==='mapa'      && typeof mapaInit === 'function') mapaInit();
+  if(name==='agenda'    && typeof calInit === 'function') calInit();
   if(name==='empresa')     {
     // Actualizamos contadores en los headers colapsables; las listas
     // mismas se renderizan al abrir cada sección (lazy).
@@ -7528,7 +7919,7 @@ function openModal(type) {
         <li><b>Creá tu presupuesto</b> — sumá los trabajos y sus precios.</li>
         <li><b>Compartilo</b> — descargá el PDF o enviálo por WhatsApp.</li>
       </ol>
-      <p style="font-size:12px;color:var(--muted);margin:0 0 14px"><svg class="ic ic-c-green"><use href="#i-save"></use></svg> Tus datos se guardan <b>solo en este dispositivo</b>. Hacé un backup cada tanto desde el menú (↑ Exportar → Backup total) para no perderlos.</p>
+      <p style="font-size:12px;color:var(--muted);margin:0 0 14px"><svg class="ic ic-c-green"><use href="#i-save"></use></svg> Tus datos se guardan <b>solo en este dispositivo</b>. Hacé un backup cada tanto desde ⚙ Configuración → Mi empresa → Copia de seguridad para no perderlos.</p>
       <button class="btn btn-p btn-bl" onclick="startOnboarding()"><svg class="ic"><use href="#i-building"></use></svg> Configurar mi negocio</button>
       <button class="btn btn-s btn-bl" onclick="closeModal()">Lo hago después</button>
     </div>`;
@@ -7611,7 +8002,7 @@ function checkBackupReminder() {
     : Infinity;
   if (daysSince < 14) return;
   setTimeout(()=>{
-    toast('Hace rato que no hacés un backup. Exportalo desde ↑ Exportar → Backup total para no perder tus presupuestos.', 'info', 8000);
+    toast('Hace rato que no hacés un backup. Exportalo desde ⚙ Configuración → Mi empresa → Copia de seguridad para no perder tus presupuestos.', 'info', 8000);
   }, 2500);
 }
 
@@ -7695,7 +8086,7 @@ function autoSaveToHistory() {
     const prev = h[idx];
     entry.estado = prev.estado || 'borrador';
     ['enviadoEn', 'seguimientoHechoEn', 'vencimientoVistoEn', 'fechaTrabajo',
-     'recontactoEn', 'recontactoNota', 'facturado']
+     'fechasTrabajo', 'diasEstimados', 'recontactoEn', 'recontactoNota', 'facturado']
       .forEach(k => { if (prev[k] !== undefined) entry[k] = prev[k]; });
   } else {
     entry.estado = 'borrador';
@@ -7861,13 +8252,40 @@ function toggleAgendaView() {
   if (typeof refreshCustomSelects === 'function') refreshCustomSelects();
 }
 
-// ─── AGENDA: FECHA DEL TRABAJO ───────────────────────────────
-// La fecha en que se va a realizar el trabajo de un presupuesto aceptado.
-// Vive a nivel del entry del historial (e.fechaTrabajo, formato YYYY-MM-DD
-// LOCAL — nunca UTC), como `estado` y `enviadoEn`. Es la fecha de COMIENZO:
-// un trabajo puede durar varios días o continuarse después de una pausa,
-// así que una fecha pasada con estado "aceptado" se muestra como "En curso"
-// (neutro), sin alarmas ni insistencia para cerrarlo.
+// ─── AGENDA: FECHA(S) DEL TRABAJO (MULTI-DÍA) ────────────────
+// Un trabajo aceptado puede durar varios días, y esos días NO siempre son
+// consecutivos ni se conocen de una: se agenda el primero y el resto se
+// ubican después, a medida que se organiza la continuación. Por eso el
+// modelo tiene dos partes, a nivel del entry del historial:
+//   · e.fechasTrabajo → array de fechas YA UBICADAS (YYYY-MM-DD LOCAL, nunca
+//     UTC), ordenado. Cada una es un día concreto en que se trabaja.
+//   · e.diasEstimados → cuántos días dura el trabajo EN TOTAL. Los días que
+//     faltan ubicar (diasEstimados − fechasTrabajo.length) quedan "por ubicar".
+// e.fechaTrabajo se mantiene como ESPEJO del primer día ubicado
+// (fechasTrabajo[0]) para no romper el código que lo lee. Entries viejos que
+// solo tienen e.fechaTrabajo se leen como un trabajo de 1 día (ver agFechas).
+// Una fecha pasada con estado "aceptado" se muestra como "En curso" (neutro),
+// sin alarmas ni insistencia para cerrarlo.
+
+// Fechas ubicadas de un entry (ordenadas, retrocompatible con entries viejos
+// que solo tenían e.fechaTrabajo). No muta el entry.
+function agFechas(e) {
+  if (!e) return [];
+  if (Array.isArray(e.fechasTrabajo) && e.fechasTrabajo.length)
+    return e.fechasTrabajo.slice().sort();
+  return e.fechaTrabajo ? [e.fechaTrabajo] : [];
+}
+// Días totales del trabajo: al menos los ya ubicados; si hay un estimado
+// explícito mayor, ese manda (los de más son "por ubicar").
+function agDiasEstimados(e) {
+  const ub = agFechas(e).length;
+  const n = parseInt(e && e.diasEstimados, 10);
+  return Math.max(ub, n > 0 ? n : 0);
+}
+// Días que faltan ubicar en una fecha concreta.
+function agDiasPendientes(e) {
+  return Math.max(0, agDiasEstimados(e) - agFechas(e).length);
+}
 
 const AGENDA_WD = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 
@@ -7881,30 +8299,50 @@ function fmtDiaCorto(iso) {
 }
 
 // Chips de agenda para una tarjeta del historial. Aceptado sin nada →
-// "Programar"; con fecha de trabajo → la fecha coloreada por proximidad;
-// con recontacto pendiente → chip celeste 📱 (ámbar cuando llegó el día).
-// En otros estados la fecha de trabajo se muestra solo como registro.
+// "Programar"; con día(s) de trabajo → el día más relevante (próximo/hoy, o
+// "En curso" si ya empezó) coloreado por proximidad, con un sufijo multi-día
+// que avisa cuántos días faltan ubicar; con recontacto pendiente → chip
+// celeste 📱 (ámbar cuando llegó el día). En otros estados es solo registro.
 function agendaChipFor(e) {
   const est = e.estado || 'borrador';
+  const fechas = agFechas(e);
+  const total = agDiasEstimados(e);
+  const pend = agDiasPendientes(e);
   let out = '';
-  if (e.fechaTrabajo) {
-    const f = e.fechaTrabajo;
-    const d = daysSinceDate(f); // >0 pasado · 0 hoy · <0 futuro
-    let cls = '', lbl = fmtDiaCorto(f);
-    if (d === 0)       { cls = ' is-soon'; lbl = 'Hoy'; }
-    else if (d === -1) { cls = ' is-soon'; lbl = 'Mañana'; }
-    else if (d > 0 && est === 'aceptado') { cls = ' is-past'; lbl = `En curso · ${lbl}`; }
+  if (fechas.length) {
+    // Día de referencia: el próximo que sea hoy o futuro; si ya pasaron
+    // todos, el último (el trabajo está en curso o es registro histórico).
+    const hoy = today();
+    const ref = fechas.find(f => f >= hoy) || fechas[fechas.length - 1];
+    const d = daysSinceDate(ref); // >0 pasado · 0 hoy · <0 futuro
+    // El color del chip es SIEMPRE el del concepto "trabajo" (violeta, la clase
+    // base). La urgencia no cambia el tono: hoy/mañana llevan .is-due (realce).
+    // Lo ya cumplido (pasado y no aceptado) se atenúa a gris con .is-done.
+    let cls = '', lbl = fmtDiaCorto(ref);
+    if (d === 0)       { cls = ' is-due'; lbl = 'Hoy'; }
+    else if (d === -1) { cls = ' is-due'; lbl = 'Mañana'; }
+    else if (d > 0 && est === 'aceptado') { lbl = `En curso · ${lbl}`; }
     else if (d > 0)    { cls = ' is-done'; }
-    out += `<button type="button" class="hagenda-chip${cls}" onclick="openAgendaDlg(${e.id})" title="Fecha del trabajo: ${fmtD(f)} — tocá para cambiarla">${icon('calendar')} ${lbl}</button>`;
+    // Sufijo multi-día: prioriza avisar los días que faltan ubicar.
+    let extra = '';
+    if (est === 'aceptado' && pend > 0)      extra = ` · +${pend}d por ubicar`;
+    else if (total > 1 || fechas.length > 1) extra = ` · ${total} días`;
+    const tit = `Días del trabajo: ${fechas.map(fmtD).join(', ')}`
+      + (pend > 0 ? ` (+${pend} por ubicar)` : '') + ' — tocá para editar';
+    out += `<button type="button" class="hagenda-chip${cls}" onclick="openAgendaDlg(${e.id})" title="${esc(tit)}">${icon('calendar')} ${lbl}${extra}</button>`;
+  } else if (est === 'aceptado' && pend > 0) {
+    // Duración cargada pero ningún día ubicado todavía: todo por ubicar.
+    out += `<button type="button" class="hagenda-chip is-due" onclick="openAgendaDlg(${e.id})" title="El trabajo dura ${total} días y todavía no ubicaste ninguno — tocá para agendar">${icon('calendar')} ${total} días · por ubicar</button>`;
   } else if (est === 'aceptado' && !e.recontactoEn) {
     out += `<button type="button" class="hagenda-chip is-none" onclick="openAgendaDlg(${e.id})" title="Agendar la fecha del trabajo o un recontacto con el cliente">${icon('calendar')} Programar</button>`;
   }
   // Recontacto: solo tiene sentido mientras el presupuesto siga aceptado.
   if (e.recontactoEn && est === 'aceptado') {
     const d = daysSinceDate(e.recontactoEn);
+    // Recontacto = celeste siempre (concepto). Atrasado/hoy → realce is-due.
     let cls = ' is-call', lbl = fmtDiaCorto(e.recontactoEn);
-    if (d === 0)    { cls = ' is-call-due'; lbl = 'Llamar hoy'; }
-    else if (d > 0) { cls = ' is-call-due'; lbl = `Llamar · hace ${d}d`; }
+    if (d === 0)    { cls = ' is-call is-due'; lbl = 'Llamar hoy'; }
+    else if (d > 0) { cls = ' is-call is-due'; lbl = `Llamar · hace ${d}d`; }
     const tit = 'Recontactar al cliente para coordinar la fecha'
       + (e.recontactoNota ? ` — ${e.recontactoNota}` : '');
     out += `<button type="button" class="hagenda-chip${cls}" onclick="openAgendaDlg(${e.id},{mode:'recontacto'})" title="${esc(tit)}">${icon('phone')} ${lbl}</button>`;
@@ -7912,13 +8350,16 @@ function agendaChipFor(e) {
   return out;
 }
 
-// Entry cuyo diálogo de agenda está abierto (null si está cerrado), modo
-// activo ('trabajo' | 'recontacto') y valor de fecha editado por modo (se
-// conserva al alternar de pestaña dentro del diálogo sin guardar).
+// Estado del diálogo de agenda mientras está abierto (staging: no toca el
+// entry hasta Guardar). _agendaFechas = días de trabajo ya ubicados (copia
+// editable, ordenada); _agendaDiasEst = duración total en días; _agendaRecon
+// = fecha del modo recontacto. Se conservan al alternar de pestaña.
 let _agendaId = null;
 let _agendaMode = 'trabajo';
 let _agendaFromAccept = false;
-let _agendaVals = { trabajo: '', recontacto: '' };
+let _agendaFechas = [];
+let _agendaDiasEst = 1;
+let _agendaRecon = '';
 
 function openAgendaDlg(id, opts) {
   const e = getH().find(x => x.id === id);
@@ -7926,7 +8367,9 @@ function openAgendaDlg(id, opts) {
   if (!e || !ov) return;
   _agendaId = id;
   _agendaFromAccept = !!(opts && opts.fromAccept);
-  _agendaVals = { trabajo: e.fechaTrabajo || '', recontacto: e.recontactoEn || '' };
+  _agendaFechas = agFechas(e);
+  _agendaDiasEst = agDiasEstimados(e) || 1;
+  _agendaRecon = e.recontactoEn || '';
   const sub = document.getElementById('agenda-sub');
   if (sub) sub.textContent = `${e.quoteNumber || ''} · ${e.clientName || 'Sin cliente'}`;
   const nota = document.getElementById('agenda-nota');
@@ -7937,9 +8380,10 @@ function openAgendaDlg(id, opts) {
   ov.classList.add('open');
 }
 
-// Alterna entre "Fecha del trabajo" y "Recontactar" dentro del diálogo:
-// actualiza título, etiquetas, visibilidad de la nota y el valor del campo
-// de fecha (cada modo conserva el suyo mientras el diálogo esté abierto).
+// Alterna entre "Fecha del trabajo" (multi-día) y "Recontactar": actualiza
+// título, etiquetas, y muestra/oculta el bloque de duración + días ubicados
+// (solo trabajo) o la nota (solo recontacto). El campo de fecha es, en modo
+// trabajo, el "staging" para agregar un día más (arranca vacío).
 function setAgendaMode(m) {
   _agendaMode = (m === 'recontacto') ? 'recontacto' : 'trabajo';
   const rec = _agendaMode === 'recontacto';
@@ -7952,16 +8396,105 @@ function setAgendaMode(m) {
   if (ti) ti.textContent = rec ? 'Recontactar al cliente'
     : (_agendaFromAccept ? '¡Aceptado! ¿Cuándo se hace el trabajo?' : 'Fecha del trabajo');
   const lbl = document.getElementById('agenda-fecha-label');
-  if (lbl) lbl.textContent = rec ? '¿Qué día lo volvés a contactar?' : 'Día de comienzo del trabajo';
+  if (lbl) lbl.textContent = rec ? '¿Qué día lo volvés a contactar?'
+    : (_agendaFechas.length ? 'Agregar otro día' : 'Día de comienzo del trabajo');
   const help = document.getElementById('agenda-help');
   if (help) help.hidden = !rec;
   const notaWrap = document.getElementById('agenda-nota-wrap');
   if (notaWrap) notaWrap.hidden = !rec;
+  const addBtn = document.getElementById('agenda-add-dia');
+  if (addBtn) addBtn.hidden = rec;
   const inp = document.getElementById('agenda-fecha');
-  if (inp) { inp.value = _agendaVals[_agendaMode] || ''; if (typeof syncCdate === 'function') syncCdate(inp); }
+  // En trabajo el campo es de "agregar día" → arranca vacío; en recontacto
+  // muestra la fecha guardada del recontacto.
+  if (inp) { inp.value = rec ? (_agendaRecon || '') : ''; if (typeof syncCdate === 'function') syncCdate(inp); }
   const cl = document.getElementById('agenda-clear');
-  if (cl) cl.hidden = rec ? !e.recontactoEn : !e.fechaTrabajo;
+  if (cl) cl.hidden = rec ? !e.recontactoEn : true; // en trabajo se quita por día (chip)
+  renderAgendaDiasList();
   agendaOnDateChange();
+}
+
+// Repinta el stepper de duración, la lista de días ubicados y el aviso de
+// "faltan ubicar N días". Solo aplica en modo trabajo; en recontacto oculta
+// todo ese bloque.
+function renderAgendaDiasList() {
+  const rec = _agendaMode === 'recontacto';
+  const durWrap = document.getElementById('agenda-dur-wrap');
+  const box = document.getElementById('agenda-dias-list');
+  const pendEl = document.getElementById('agenda-pend');
+  if (durWrap) durWrap.hidden = rec;
+  if (rec) {
+    if (box) { box.hidden = true; box.innerHTML = ''; }
+    if (pendEl) pendEl.hidden = true;
+    return;
+  }
+  // La duración nunca puede ser menor a los días ya ubicados, ni menor a 1.
+  if (_agendaDiasEst < _agendaFechas.length) _agendaDiasEst = _agendaFechas.length;
+  if (_agendaDiasEst < 1) _agendaDiasEst = 1;
+  const valEl = document.getElementById('agenda-dur-val');
+  if (valEl) valEl.textContent = _agendaDiasEst;
+  const lblEl = document.getElementById('agenda-dur-lbl');
+  if (lblEl) lblEl.textContent = _agendaDiasEst === 1 ? 'día' : 'días';
+  const minus = document.getElementById('agenda-dur-minus');
+  if (minus) minus.disabled = _agendaDiasEst <= Math.max(1, _agendaFechas.length);
+  // Lista de días ubicados (chips removibles), ordenados.
+  const hoy = today();
+  if (box) {
+    if (_agendaFechas.length) {
+      box.hidden = false;
+      box.innerHTML = _agendaFechas.map((f, i) => {
+        const esHoy = f === hoy;
+        return `<div class="agenda-dia-chip${esHoy ? ' is-today' : ''}">
+          ${icon('calendar')}
+          <span class="agenda-dia-txt">Día ${i + 1}: ${esc(fmtDiaCorto(f))}${esHoy ? ' · hoy' : ''}</span>
+          <button type="button" class="agenda-dia-x" onclick="agendaRemoveDia('${f}')" aria-label="Quitar este día" title="Quitar este día">×</button>
+        </div>`;
+      }).join('');
+    } else { box.hidden = true; box.innerHTML = ''; }
+  }
+  // Aviso de días pendientes de ubicar.
+  const pend = Math.max(0, _agendaDiasEst - _agendaFechas.length);
+  if (pendEl) {
+    if (pend > 0) {
+      pendEl.hidden = false;
+      pendEl.textContent = _agendaFechas.length
+        ? `Faltan ubicar ${pend} día${pend > 1 ? 's' : ''} de ${_agendaDiasEst}. Agregalos cuando coordines cómo seguir.`
+        : `El trabajo dura ${_agendaDiasEst} días. Agregá el primero abajo; los demás los ubicás después.`;
+    } else pendEl.hidden = true;
+  }
+}
+
+// +/− de la duración total. No baja de los días ya ubicados (ni de 1).
+function agendaDurStep(delta) {
+  _agendaDiasEst = Math.max(Math.max(1, _agendaFechas.length), _agendaDiasEst + delta);
+  renderAgendaDiasList();
+}
+
+// "Agregar día": toma la fecha del campo y la suma a los días ubicados (sin
+// duplicar). Si supera la duración estimada, la sube para acompañar.
+function agendaAddDia() {
+  const inp = document.getElementById('agenda-fecha');
+  const f = (inp && inp.value) || '';
+  if (!f) { toast('Elegí primero un día', 'info', 2000); return; }
+  if (!_agendaFechas.includes(f)) {
+    _agendaFechas.push(f);
+    _agendaFechas.sort();
+    if (_agendaDiasEst < _agendaFechas.length) _agendaDiasEst = _agendaFechas.length;
+  }
+  if (inp) { inp.value = ''; if (typeof syncCdate === 'function') syncCdate(inp); }
+  const lbl = document.getElementById('agenda-fecha-label');
+  if (lbl) lbl.textContent = 'Agregar otro día';
+  renderAgendaDiasList();
+  agendaOnDateChange();
+}
+
+// Quita un día ubicado (la duración estimada se mantiene, así ese día pasa a
+// contar como "por ubicar").
+function agendaRemoveDia(f) {
+  _agendaFechas = _agendaFechas.filter(x => x !== f);
+  const lbl = document.getElementById('agenda-fecha-label');
+  if (lbl && !_agendaFechas.length) lbl.textContent = 'Día de comienzo del trabajo';
+  renderAgendaDiasList();
 }
 
 function closeAgendaDlg() {
@@ -7970,17 +8503,16 @@ function closeAgendaDlg() {
   _agendaId = null;
 }
 
-// Reacción al cambio de fecha en el diálogo: guarda el valor del modo
-// activo y muestra el aviso de superposición si ya hay otro trabajo
-// aceptado agendado ese mismo día (avisa, no bloquea: hacer dos trabajos
-// en un día es válido). La superposición solo aplica a fechas de trabajo.
+// Reacción al cambio del campo de fecha: en recontacto guarda el staging; en
+// trabajo muestra el aviso de superposición si ese día ya está agendado en
+// otro trabajo aceptado (avisa, no bloquea: hacer dos en un día es válido).
 function agendaOnDateChange() {
   const warn = document.getElementById('agenda-warn');
   const f = (document.getElementById('agenda-fecha') || {}).value || '';
-  _agendaVals[_agendaMode] = f;
+  if (_agendaMode === 'recontacto') _agendaRecon = f;
   if (!warn) return;
   const otros = (f && _agendaMode === 'trabajo')
-    ? getH().filter(x => x.id !== _agendaId && x.fechaTrabajo === f && (x.estado || '') === 'aceptado')
+    ? getH().filter(x => x.id !== _agendaId && (x.estado || '') === 'aceptado' && agFechas(x).includes(f))
     : [];
   if (otros.length) {
     const nombres = otros.map(x => x.clientName || x.quoteNumber || 'otro presupuesto');
@@ -7991,28 +8523,60 @@ function agendaOnDateChange() {
   }
 }
 
-// Persiste la fecha del modo activo en el entry (o la quita si el campo
-// quedó vacío). Devuelve el entry actualizado, o null si ya no existe.
-// Cargar una fecha de trabajo borra el recontacto pendiente: si ya
-// coordinaron el día, la llamada pendiente cumplió su función.
+// Persiste el modo activo en el entry. En trabajo escribe e.fechasTrabajo
+// (días ubicados), e.diasEstimados (duración) y espeja e.fechaTrabajo en el
+// primer día. Ubicar al menos un día borra el recontacto pendiente (ya se
+// coordinó). Devuelve el entry, o null si ya no existe.
 function _agendaPersist() {
   const h = getH();
   const e = h.find(x => x.id === _agendaId);
   if (!e) return null;
-  const f = _agendaVals[_agendaMode] || '';
   if (_agendaMode === 'recontacto') {
     const nota = ((document.getElementById('agenda-nota') || {}).value || '').trim();
+    const f = _agendaRecon || '';
     if (f) e.recontactoEn = f; else delete e.recontactoEn;
     if (f && nota) e.recontactoNota = nota; else delete e.recontactoNota;
-  } else if (f) {
-    e.fechaTrabajo = f;
-    delete e.recontactoEn;
-    delete e.recontactoNota;
   } else {
-    delete e.fechaTrabajo;
+    // Auto-agrega el día tipeado que no se llegó a "Agregar día".
+    const inp = document.getElementById('agenda-fecha');
+    const typed = (inp && inp.value) || '';
+    if (typed && !_agendaFechas.includes(typed)) { _agendaFechas.push(typed); _agendaFechas.sort(); }
+    const fechas = _agendaFechas.slice().sort();
+    const diasEst = Math.max(fechas.length, _agendaDiasEst || 0);
+    if (fechas.length) {
+      e.fechasTrabajo = fechas;
+      e.fechaTrabajo = fechas[0];             // espejo del primer día (compat)
+      if (diasEst > 1) e.diasEstimados = diasEst; else delete e.diasEstimados;
+      delete e.recontactoEn;
+      delete e.recontactoNota;
+    } else if (diasEst > 1) {
+      // Duración cargada pero ningún día ubicado todavía.
+      delete e.fechasTrabajo;
+      delete e.fechaTrabajo;
+      e.diasEstimados = diasEst;
+    } else {
+      delete e.fechasTrabajo;
+      delete e.fechaTrabajo;
+      delete e.diasEstimados;
+    }
   }
   setH(h);
   return e;
+}
+
+// Texto de confirmación al guardar un trabajo (contempla multi-día y pendientes).
+function _agendaTrabajoToast(e) {
+  const fechas = agFechas(e);
+  const pend = agDiasPendientes(e);
+  if (fechas.length) {
+    let msg = fechas.length === 1
+      ? `Trabajo agendado: ${fmtDiaCorto(fechas[0])}`
+      : `Trabajo agendado: ${fechas.length} días`;
+    if (pend > 0) msg += ` (+${pend} por ubicar)`;
+    return msg;
+  }
+  if (agDiasEstimados(e) > 1) return `Trabajo de ${agDiasEstimados(e)} días — faltan ubicar los días`;
+  return 'Fecha del trabajo quitada';
 }
 
 function agendaSave() {
@@ -8022,14 +8586,19 @@ function agendaSave() {
   renderHistory();
   if (!e) return;
   if (rec) toast(e.recontactoEn ? `Recontacto agendado: ${fmtDiaCorto(e.recontactoEn)}` : 'Recontacto quitado', 'ok');
-  else     toast(e.fechaTrabajo ? `Trabajo agendado: ${fmtDiaCorto(e.fechaTrabajo)}`   : 'Fecha del trabajo quitada', 'ok');
+  else     toast(_agendaTrabajoToast(e), 'ok');
 }
 
-// "Quitar fecha": vacía el campo del modo activo y guarda.
+// "Quitar fecha" (visible solo en recontacto): vacía el recontacto y guarda.
 function agendaClear() {
-  _agendaVals[_agendaMode] = '';
-  const inp = document.getElementById('agenda-fecha');
-  if (inp) { inp.value = ''; if (typeof syncCdate === 'function') syncCdate(inp); }
+  if (_agendaMode === 'recontacto') {
+    _agendaRecon = '';
+    const inp = document.getElementById('agenda-fecha');
+    if (inp) { inp.value = ''; if (typeof syncCdate === 'function') syncCdate(inp); }
+  } else {
+    _agendaFechas = [];
+    _agendaDiasEst = 1;
+  }
   agendaSave();
 }
 
@@ -8037,8 +8606,9 @@ function agendaClear() {
 // completo, sin API ni backend). En el celular la abre la app de Calendar,
 // que es donde el usuario tiene sus recordatorios reales con alarma.
 // `modo`: 'trabajo' (evento del trabajo, con ubicación) o 'recontacto'
-// (recordatorio de llamar al cliente, con la nota).
-function agendaGcalUrl(e, iso, modo) {
+// (recordatorio de llamar al cliente, con la nota). `dayInfo` opcional
+// ({ idx, total }) numera el día dentro de un trabajo de varios días.
+function agendaGcalUrl(e, iso, modo, dayInfo) {
   const p = iso.split('-');
   const d0 = p.join('');
   const sig = new Date(+p[0], +p[1] - 1, +p[2] + 1); // día siguiente, LOCAL
@@ -8047,7 +8617,8 @@ function agendaGcalUrl(e, iso, modo) {
   const rec = modo === 'recontacto';
   const quien = e.clientName || 'cliente';
   const num = e.quoteNumber ? ` (${e.quoteNumber})` : '';
-  const title = rec ? `Llamar a ${quien} — coordinar trabajo${num}` : `Trabajo: ${quien}${num}`;
+  const dnum = (dayInfo && dayInfo.total > 1) ? ` — día ${dayInfo.idx} de ${dayInfo.total}` : '';
+  const title = rec ? `Llamar a ${quien} — coordinar trabajo${num}` : `Trabajo: ${quien}${num}${dnum}`;
   const det = [];
   if (rec && e.recontactoNota) det.push(`Nota: ${e.recontactoNota}`);
   if (e.total > 0) det.push(`Presupuesto ${e.quoteNumber || ''}: ${fmtM(e.total, e.currency || 'ARS')}`);
@@ -8061,18 +8632,40 @@ function agendaGcalUrl(e, iso, modo) {
     + (loc ? '&location=' + encodeURIComponent(loc) : '');
 }
 
-// Botón "Google Calendar" del diálogo: guarda la fecha (para no perderla
-// al saltar de app) y abre el evento precargado en el calendario.
+// Botón "Google Calendar" del diálogo: guarda primero (para no perder los
+// datos al saltar de app) y abre el/los evento(s) precargado(s). En un
+// trabajo de varios días abre un evento por cada día ubicado.
 function agendaGcal() {
-  const rec = _agendaMode === 'recontacto';
-  const f = _agendaVals[_agendaMode] || '';
-  if (!f) { toast(rec ? 'Elegí primero el día del recontacto' : 'Elegí primero la fecha del trabajo', 'info', 2500); return; }
+  if (_agendaMode === 'recontacto') {
+    const f = _agendaRecon || '';
+    if (!f) { toast('Elegí primero el día del recontacto', 'info', 2500); return; }
+    const e = _agendaPersist();
+    if (!e) { closeAgendaDlg(); return; }
+    window.open(agendaGcalUrl(e, f, 'recontacto'), '_blank', 'noopener');
+    closeAgendaDlg();
+    renderHistory();
+    toast(`Recontacto agendado: ${fmtDiaCorto(f)}`, 'ok');
+    return;
+  }
+  // Trabajo: auto-agrega el día tipeado y abre un evento por cada día ubicado.
+  const inp = document.getElementById('agenda-fecha');
+  const typed = (inp && inp.value) || '';
+  if (typed && !_agendaFechas.includes(typed)) { _agendaFechas.push(typed); _agendaFechas.sort(); }
+  if (!_agendaFechas.length) { toast('Elegí primero al menos un día del trabajo', 'info', 2500); return; }
   const e = _agendaPersist();
   if (!e) { closeAgendaDlg(); return; }
-  window.open(agendaGcalUrl(e, f, _agendaMode), '_blank', 'noopener');
+  const fechas = agFechas(e);
+  fechas.forEach((f, i) => {
+    window.open(agendaGcalUrl(e, f, 'trabajo', { idx: i + 1, total: fechas.length }), '_blank', 'noopener');
+  });
   closeAgendaDlg();
   renderHistory();
-  toast(`${rec ? 'Recontacto' : 'Trabajo'} agendado: ${fmtDiaCorto(f)}`, 'ok');
+  const pend = agDiasPendientes(e);
+  let msg = fechas.length === 1
+    ? `Trabajo agendado: ${fmtDiaCorto(fechas[0])}`
+    : `${fechas.length} eventos abiertos en Calendar`;
+  if (pend > 0) msg += ` · +${pend} por ubicar`;
+  toast(msg, 'ok');
 }
 
 // ─── PUENTE PRESUPUESTO → FACTURACIÓN ────────────────────────
@@ -8268,6 +8861,32 @@ function ensureHtml2Pdf() {
     document.head.appendChild(s);
   });
   return _h2pLoading;
+}
+
+// Leaflet (mapa) se vendoriza en /vendor y se carga lazy la primera vez que se
+// abre la pestaña Mapa — mismo criterio que html2pdf. Está en APP_SHELL, así
+// que offline funciona; los TILES del mapa sí necesitan conexión (son imágenes
+// remotas de OpenStreetMap), pero la lógica de marcadores/pines es local.
+let _leafletLoading = null;
+function ensureLeaflet() {
+  if (window.L && window.L.map) return Promise.resolve(window.L);
+  if (_leafletLoading) return _leafletLoading;
+  _leafletLoading = new Promise((resolve, reject) => {
+    if (!document.getElementById('leaflet-css')) {
+      const link = document.createElement('link');
+      link.id = 'leaflet-css';
+      link.rel = 'stylesheet';
+      link.href = './vendor/leaflet.css';
+      document.head.appendChild(link);
+    }
+    const s = document.createElement('script');
+    s.src = './vendor/leaflet.js';
+    s.async = true;
+    s.onload = () => (window.L && window.L.map) ? resolve(window.L) : reject(new Error('Leaflet no disponible'));
+    s.onerror = () => { _leafletLoading = null; reject(new Error('no se pudo cargar Leaflet')); };
+    document.head.appendChild(s);
+  });
+  return _leafletLoading;
 }
 
 // Construye el documento de un entry del historial y devuelve su HTML, SIN
@@ -8636,6 +9255,8 @@ function renderFollowupBanner() {
   // Los tres banners (seguimiento, vencidos y recontactos) se refrescan juntos.
   if (typeof renderExpiryBanner === 'function') renderExpiryBanner();
   if (typeof renderRecontactoBanner === 'function') renderRecontactoBanner();
+  // Y de paso el globito de la pestaña Agenda (¿hay algo agendado hoy?).
+  if (typeof calUpdateDot === 'function') calUpdateDot();
   const el = document.getElementById('followup-banner');
   if (!el) return;
   const pend = (typeof getPendingFollowups === 'function') ? getPendingFollowups() : [];
@@ -8820,6 +9441,256 @@ function toastRecontactosPendientes() {
     else switchTab('historial');
   };
   setTimeout(close, 12000);
+}
+
+// ─── BANNER "PODAS DE HOY" (resumen del día al abrir) ────────
+// Trabajos agendados para HOY: presupuestos aceptados que tienen HOY entre
+// sus días de trabajo ubicados (un trabajo multi-día reaparece cada uno de
+// sus días). Espeja getRecontactosPendientes().
+function getTrabajosDeHoy() {
+  const hoy = today();
+  return getH().filter(e => (e.estado || '') === 'aceptado' && agFechas(e).includes(hoy));
+}
+
+// Para un trabajo multi-día, qué número de día es HOY y cuántos hay en total
+// ({ idx, total }); null si es de un solo día. Sirve para el contexto
+// "Día 2 de 4" en el banner del día.
+function agDiaDeHoyInfo(e) {
+  const total = agDiasEstimados(e);
+  if (total <= 1) return null;
+  const idx = agFechas(e).indexOf(today());
+  if (idx < 0) return null;
+  return { idx: idx + 1, total };
+}
+
+// Texto de "parada" usable para una ruta multi-punto de Google Maps: un Plus
+// Code o coordenadas (workMapLink que NO es un http link) o, si no, la
+// dirección de texto. Un link corto de Maps (goo.gl) no sirve como waypoint,
+// así que en ese caso se cae a la dirección. Devuelve '' si no hay nada usable.
+function _stopQueryForSnap(snap) {
+  const link = ((snap && snap.workMapLink) || '').trim();
+  const addr = ((snap && snap.workAddress) || '').trim();
+  if (link && !/^https?:\/\//i.test(link)) return link;
+  return addr;
+}
+
+// "Ruta del día": abre Google Maps en modo direcciones con todas las paradas
+// de hoy (origen = ubicación actual, destino = última, el resto waypoints).
+function rutaDelDiaMaps() {
+  const stops = getTrabajosDeHoy().map(e => _stopQueryForSnap(e.snapshot)).filter(Boolean);
+  if (stops.length < 2) {
+    toast('Necesitás al menos dos trabajos con dirección o ubicación para armar la ruta', 'info', 3500);
+    return;
+  }
+  const dest = stops[stops.length - 1];
+  const wps = stops.slice(0, -1);
+  const url = 'https://www.google.com/maps/dir/?api=1'
+    + '&destination=' + encodeURIComponent(dest)
+    + '&waypoints=' + wps.map(encodeURIComponent).join('%7C');
+  window.open(url, '_blank', 'noopener');
+}
+
+// Botón "Voy en camino": abre WhatsApp con un aviso corto y editable de que
+// el trabajo se hace hoy y ya estás yendo. Usa histClientPhone() (busca el
+// teléfono en el snapshot y, si falta, en la DB de clientes).
+function avisarVoyEnCamino(id) {
+  const e = getH().find(x => x.id === id);
+  if (!e) return;
+  const phone = normalizeArgPhone(histClientPhone(e));
+  const cliente = (e.clientName || '').trim();
+  const empresa = (S.coName || '').trim();
+  const saludo = cliente ? `Hola ${cliente}` : 'Hola';
+  const firma = empresa ? ` Te escribo de ${empresa}.` : '';
+  const msg = `${saludo}, ¿cómo estás?${firma} Te aviso que hoy hacemos el trabajo de poda y ya vamos en camino.`;
+  const base = phone ? `https://wa.me/${phone}` : 'https://wa.me/';
+  window.open(`${base}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
+}
+
+// Resumen del día para una lista de trabajos de hoy: monto total a cobrar
+// (agrupado por moneda, por si hay trabajos en distintas monedas) y cantidad
+// de árboles (suma de la cantidad de cada ítem de tipo "árbol"). Devuelve las
+// partes crudas y el HTML listo (clases mb-*). Reusado por el banner fijo y
+// por el pop-up de arranque del día.
+function _resumenDelDia(hoy) {
+  let arboles = 0;
+  const porMoneda = {};
+  hoy.forEach(e => {
+    const snap = e.snapshot || {};
+    (snap.items || []).forEach(it => {
+      if (it && it.type === 'tree') arboles += Math.max(1, parseInt(it.qty) || 1);
+    });
+    const cur = e.currency || 'ARS';
+    porMoneda[cur] = (porMoneda[cur] || 0) + (parseFloat(e.total) || 0);
+  });
+  const montoStr = Object.keys(porMoneda)
+    .filter(c => porMoneda[c] > 0)
+    .map(c => fmtM(porMoneda[c], c))
+    .join(' · ');
+  const summaryHtml = (montoStr || arboles > 0) ? `
+    <div class="mb-summary">
+      ${montoStr ? `<span class="mb-stat">${icon('money')} A cobrar hoy: <b>${esc(montoStr)}</b></span>` : ''}
+      ${arboles > 0 ? `<span class="mb-stat">${icon('tree')} <b>${arboles}</b> árbol${arboles>1?'es':''}</span>` : ''}
+    </div>` : '';
+  return { arboles, montoStr, summaryHtml };
+}
+
+// Pinta el banner verde de "podas de hoy" arriba del editor. Cada trabajo trae
+// accesos rápidos que reusan la plomería existente (comoLlegar / WhatsApp /
+// previewFromHistory / setEstadoHistory). Con más de un trabajo, agrega
+// "Ruta del día". El banner queda disponible TODO el día mientras el trabajo
+// siga abierto (aceptado): a la mañana saluda "Buen día"; más tarde muestra
+// la misma tarjeta para poder cerrar el trabajo (marcarlo realizado) al volver.
+function renderMorningBanner() {
+  const el = document.getElementById('morning-banner');
+  if (!el) return;
+  const hoy = getTrabajosDeHoy();
+  if (!hoy.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
+
+  const n = hoy.length;
+  const esManana = new Date().getHours() < 12;
+  const titulo = esManana
+    ? `${icon('sun')} Buen día — Hoy tenés ${n} poda${n>1?'s':''}`
+    : `${icon('tree')} Trabajo${n>1?'s':''} de hoy (${n})`;
+  const subtitulo = esManana
+    ? `Trabajo${n>1?'s':''} agendado${n>1?'s':''} para hoy. Accesos rápidos para llegar y avisarle al cliente.`
+    : `Cuando termines, marcá el trabajo como realizado para cerrarlo${n>1?'s':''}.`;
+
+  const { summaryHtml: summary } = _resumenDelDia(hoy);
+
+  el.style.display = 'block';
+  el.innerHTML = `
+    <div class="fub-head">
+      <span class="fub-title">${titulo}</span>
+      <button type="button" class="mb-close" onclick="dismissMorningBanner()" aria-label="Ocultar por ahora" title="Ocultar por ahora">${icon('x')}</button>
+    </div>
+    <div class="fub-sub">${subtitulo}</div>
+    ${summary}
+    <div class="fub-list">
+      ${hoy.map(e => {
+        const snap = e.snapshot || {};
+        const tieneUbic = !!mapsUrlFor(snap.workMapLink, snap.workAddress);
+        const tieneTel  = !!histClientPhone(e);
+        const lugar = (snap.workAddress || '').trim();
+        const dinfo = agDiaDeHoyInfo(e); // "Día 2 de 4" en trabajos multi-día
+        return `<div class="fub-item">
+          <div class="fub-item-info" onclick="goToHistoryEntry(${e.id})" role="button" tabindex="0" title="Ver este presupuesto en el historial">
+            <span><span class="fub-item-num">${esc(e.quoteNumber||'—')}</span> <span class="fub-item-client">${esc(e.clientName||'(sin nombre)')}</span></span>
+            ${dinfo ? `<span class="fub-item-days">${icon('calendar')} Día ${dinfo.idx} de ${dinfo.total}</span>` : ''}
+            ${lugar ? `<span class="fub-item-days">${icon('pin')} ${esc(lugar)}</span>` : ''}
+          </div>
+          <div class="mb-acts">
+            ${tieneUbic ? `<button type="button" class="mb-act mb-act-map" onclick="comoLlegar(${e.id})">${icon('pin')} Cómo llegar</button>` : ''}
+            ${tieneTel ? `<button type="button" class="mb-act mb-act-wa" onclick="avisarVoyEnCamino(${e.id})">${icon('message')} Voy en camino</button>` : ''}
+            <button type="button" class="mb-act mb-act-view" onclick="previewFromHistory(${e.id})">${icon('eye')} Ver</button>
+            <button type="button" class="mb-act mb-act-done" onclick="marcarTrabajoRealizado(${e.id})" title="Marcar el trabajo como realizado (te ofrece registrar la factura)">${icon('check')} Realizado</button>
+          </div>
+        </div>`;
+      }).join('')}
+      ${n>1 ? `<button type="button" class="mb-route" onclick="rutaDelDiaMaps()">${icon('truck')} Ruta del día (${n} paradas)</button>` : ''}
+    </div>`;
+}
+
+// ✕: oculta el banner en esta apertura (no hay gate persistido). Como el
+// trabajo sigue abierto, al volver a abrir la app reaparece — así siempre lo
+// tenés a mano para cerrarlo. La forma "definitiva" de que desaparezca por el
+// día es marcarlo realizado (marcarTrabajoRealizado).
+function dismissMorningBanner() {
+  const el = document.getElementById('morning-banner');
+  if (el) { el.style.display = 'none'; el.innerHTML = ''; }
+}
+
+// Cierra el trabajo desde el banner: lo marca "realizado" (reusa
+// setEstadoHistory, que persiste, re-renderiza el historial y OFRECE registrar
+// la factura). Al dejar de ser "aceptado", el trabajo sale de getTrabajosDeHoy,
+// así que re-renderizamos el banner: baja a N-1 o desaparece si era el último.
+function marcarTrabajoRealizado(id) {
+  if (typeof setEstadoHistory === 'function') setEstadoHistory(id, 'realizado');
+  renderMorningBanner();
+}
+
+// Trigger de arranque: muestra la tarjeta del trabajo de hoy si hay alguno
+// abierto (aceptado + fecha == hoy). Se llama en cada apertura de la app, así
+// el banner queda disponible todo el día hasta que cierres el trabajo. El
+// saludo cambia según la hora (mañana: "Buen día"; después: "Trabajo de hoy").
+// Además, la PRIMERA vez del día, dispara el pop-up llamativo (una sola vez).
+function maybeShowMorningBanner() {
+  if (!getTrabajosDeHoy().length) return;
+  renderMorningBanner();
+  maybeShowDayAlert();
+}
+
+// ─── POP-UP DE ARRANQUE DEL DÍA (llamativo, 1 vez por día) ───
+// La PRIMERA vez que se abre la app en un día con poda(s) agendada(s), salta
+// un modal centrado que llama toda la atención. Se cierra con la ✕ o el botón
+// y NO vuelve a aparecer ese día (gate persistido en LS.DAY_ALERT_SEEN). El
+// banner fijo de arriba y el resto de los avisos siguen funcionando igual.
+function _dayAlertSeenToday() {
+  try { return localStorage.getItem(LS.DAY_ALERT_SEEN) === today(); } catch (_) { return false; }
+}
+function _markDayAlertSeen() {
+  try { localStorage.setItem(LS.DAY_ALERT_SEEN, today()); } catch (_) {}
+}
+
+function maybeShowDayAlert() {
+  if (_dayAlertSeenToday()) return;
+  // No pisar el modal de bienvenida (primer uso) u otro overlay abierto.
+  if (document.querySelector('#moverlay.open, #agenda-overlay.open, #share-overlay.open')) return;
+  const hoy = getTrabajosDeHoy();
+  if (!hoy.length) return;
+  _markDayAlertSeen();   // se marca al mostrarlo: es "la primera apertura del día"
+  renderDayAlert(hoy);
+}
+
+function renderDayAlert(hoy) {
+  const ov = document.getElementById('day-alert-overlay');
+  const box = document.getElementById('day-alert-body');
+  if (!ov || !box) return;
+  const n = hoy.length;
+  const { summaryHtml } = _resumenDelDia(hoy);
+  const titulo = `Hoy tenés ${n} poda${n > 1 ? 's' : ''}`;
+  const sub = n > 1
+    ? 'Estos son los trabajos agendados para hoy. Tocá uno para verlo.'
+    : 'Tenés un trabajo agendado para hoy. Tocalo para verlo.';
+  box.innerHTML = `
+    <div class="da-badge" aria-hidden="true">${icon('tree')}</div>
+    <div class="da-kicker">¡Buen día!</div>
+    <h3 class="da-title">${titulo}</h3>
+    <p class="da-sub">${sub}</p>
+    ${summaryHtml}
+    <div class="da-list">
+      ${hoy.map(e => {
+        const snap = e.snapshot || {};
+        const lugar = (snap.workAddress || '').trim();
+        const dinfo = agDiaDeHoyInfo(e);
+        return `<button type="button" class="da-item" onclick="dayAlertGoTo(${e.id})">
+          <span class="da-item-top"><span class="da-item-num">${esc(e.quoteNumber || '—')}</span> <span class="da-item-client">${esc(e.clientName || '(sin nombre)')}</span></span>
+          ${dinfo ? `<span class="da-item-meta">${icon('calendar')} Día ${dinfo.idx} de ${dinfo.total}</span>` : ''}
+          ${lugar ? `<span class="da-item-meta">${icon('pin')} ${esc(lugar)}</span>` : ''}
+        </button>`;
+      }).join('')}
+    </div>
+    <div class="da-btns">
+      ${n > 1 ? `<button type="button" class="btn btn-g" onclick="dayAlertRuta()">${icon('truck')} Ruta del día</button>` : ''}
+      <button type="button" class="btn btn-p da-go" onclick="closeDayAlert()">¡Vamos! 💪</button>
+    </div>`;
+  ov.classList.add('open');
+}
+
+function closeDayAlert() {
+  const ov = document.getElementById('day-alert-overlay');
+  if (ov) ov.classList.remove('open');
+}
+
+// Tocar un trabajo del pop-up: lo abre en el historial y cierra el modal.
+function dayAlertGoTo(id) {
+  closeDayAlert();
+  if (typeof goToHistoryEntry === 'function') goToHistoryEntry(id);
+}
+
+// "Ruta del día" desde el pop-up: cierra y abre Maps con todas las paradas.
+function dayAlertRuta() {
+  closeDayAlert();
+  if (typeof rutaDelDiaMaps === 'function') rutaDelDiaMaps();
 }
 
 // Tras abrir WhatsApp, ofrecemos (sin forzar) marcar el seguimiento como
@@ -9181,9 +10052,13 @@ function renderHistory() {
   // nada al final) — así el filtro funciona como agenda de pendientes,
   // mezclando días de trabajo y días de llamar a coordinar.
   if (estadoFilt === 'aceptado') {
-    const agKey = e => (e.fechaTrabajo && e.recontactoEn)
-      ? (e.fechaTrabajo < e.recontactoEn ? e.fechaTrabajo : e.recontactoEn)
-      : (e.fechaTrabajo || e.recontactoEn || '');
+    // Clave = la fecha más próxima entre los días de trabajo ubicados y el
+    // recontacto pendiente (los sin nada, al final).
+    const agKey = e => {
+      const cand = agFechas(e);
+      if (e.recontactoEn) cand.push(e.recontactoEn);
+      return cand.length ? cand.sort()[0] : '';
+    };
     h = [...h].sort((a, b) => {
       const ka = agKey(a), kb = agKey(b);
       if (!ka && !kb) return 0;
@@ -9473,6 +10348,7 @@ function buildBackupObject() {
     facturas: facturas,
     tope: tope,
     reciboSeq: (function(){ try { return localStorage.getItem(RECIBO_SEQ_KEY); } catch(_) { return null; } })(),
+    notes: (typeof getNotes === 'function') ? getNotes() : [],
     photos: photos
   };
 }
@@ -9690,6 +10566,9 @@ function applyBackupObject(d) {
       const inc = parseInt(d.reciboSeq,10) || 0;
       if (inc > cur) safeSetLS(RECIBO_SEQ_KEY, String(inc));
     }
+    // Notas/recordatorios manuales de la Agenda (calendario). Backups viejos no
+    // los traen → se deja intacto lo que haya en localStorage.
+    if (Array.isArray(d.notes)) safeSetLS(LS.NOTES, JSON.stringify(d.notes));
     if (!Array.isArray(S.itemsB)) S.itemsB = [];
     normalizeRiskData();
     // Backups viejos (v3-) traían las fotos embebidas en el estado: migrarlas.
@@ -11376,6 +12255,1056 @@ function factTopeChanged() {
   // live preview — no guardamos hasta que presiona Guardar
 }
 
+// ===== js/mapa.js =====
+// ═══════════════════════════════════════
+// MAPA.JS — Mapa de presupuestos por estado (Leaflet + OpenStreetMap)
+// ═══════════════════════════════════════
+// Muestra en un mapa cada presupuesto del historial con un pin coloreado por
+// su estado comercial. Las coordenadas salen de datos YA existentes
+// (workMapLink en formato lat,lng, o Plus Codes completos decodificados
+// offline). Los que no tengan coordenadas se ubican A MANO tocando el mapa
+// (sin geocoding: cero datos enviados afuera). Leaflet se carga lazy; los
+// tiles del fondo sí necesitan conexión.
+
+let _mapa = null;            // instancia Leaflet
+let _mapaLayer = null;       // layerGroup de marcadores de presupuestos
+let _mapaUserMarker = null;  // marcador "estás acá" (cerca mío)
+let _mapaFilterSet = null;   // Set de estados visibles
+let _mapaPlacingId = null;   // id del presupuesto que se está ubicando a mano
+let _mapaFitDone = false;    // el primer render encuadra a los marcadores
+let _mapaCercaList = [];     // pendientes cercanos (para armar la ruta)
+let _mapaUserLatLng = null;  // [lat,lng] de la última "cerca mío"
+let _mapaHighlight = new Set(); // ids resaltados (cerca mío)
+let _mapaGeoRef = null;      // [lat,lng] de referencia para reconstruir Plus Codes cortos
+
+// Distancia en km entre dos coordenadas (haversine).
+function _haversineKm(lat1, lng1, lat2, lng2) {
+  const R = 6371, toR = Math.PI / 180;
+  const dLat = (lat2 - lat1) * toR, dLng = (lng2 - lng1) * toR;
+  const a = Math.sin(dLat / 2) ** 2 +
+            Math.cos(lat1 * toR) * Math.cos(lat2 * toR) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
+}
+
+// Decodifica un Plus Code COMPLETO (separador en la posición 8, ej.
+// "8FW4V75V+8Q") a [lat,lng] del centro del área, sin servicios externos.
+// Los códigos cortos (con localidad) devuelven null → se ubican a mano.
+function decodePlusCode(code) {
+  const A = '23456789CFGHJMPQRVWX';
+  if (!code) return null;
+  code = String(code).trim().toUpperCase();
+  if (code.indexOf('+') !== 8) return null;
+  code = code.replace('+', '').replace(/0+$/, '');
+  if (code.length < 2) return null;
+  for (let k = 0; k < code.length; k++) if (A.indexOf(code[k]) < 0) return null;
+  let lat = -90, lng = -180, latRes = 400, lngRes = 400, i = 0;
+  for (; i < Math.min(code.length, 10); i += 2) {
+    latRes /= 20; lngRes /= 20;
+    lat += A.indexOf(code[i]) * latRes;
+    lng += A.indexOf(code[i + 1]) * lngRes;
+  }
+  if (code.length > 10) {
+    let rowRes = latRes, colRes = lngRes;
+    for (; i < code.length; i++) {
+      const v = A.indexOf(code[i]);
+      rowRes /= 5; colRes /= 4;
+      lat += Math.floor(v / 4) * rowRes;
+      lng += (v % 4) * colRes;
+    }
+    lat += rowRes / 2; lng += colRes / 2;
+  } else {
+    lat += latRes / 2; lng += lngRes / 2;
+  }
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
+  return [lat, lng];
+}
+
+// Codifica lat,lng a los primeros `digits` caracteres de un Plus Code (sección
+// de pares). Se usa para armar el prefijo al reconstruir un código corto.
+function _olcEncodePairs(lat, lng, digits) {
+  const A = '23456789CFGHJMPQRVWX';
+  let latV = lat + 90, lngV = lng + 180;
+  if (latV < 0) latV = 0; else if (latV >= 180) latV = 179.999999;
+  lngV = ((lngV % 360) + 360) % 360;
+  let code = '', unit = 20, latR = latV, lngR = lngV;
+  for (let d = 0; d < digits; d += 2) {
+    const li = Math.min(19, Math.floor(latR / unit));
+    const gi = Math.min(19, Math.floor(lngR / unit));
+    code += A[li] + A[gi];
+    latR -= li * unit; lngR -= gi * unit;
+    unit /= 20;
+  }
+  return code;
+}
+
+// Reconstruye un Plus Code CORTO (el que copiás de Google Maps, ej.
+// "V75V+8Q") usando un punto de referencia cercano — así se ubica sin geocoding.
+// Devuelve [lat,lng] del centro, o null si no aplica.
+function recoverPlusCode(code, refLat, refLng) {
+  const sep = code.indexOf('+');
+  if (sep < 0 || sep >= 8 || sep % 2 !== 0) return null;
+  if (!isFinite(refLat) || !isFinite(refLng)) return null;
+  const padding = 8 - sep;
+  const prefix = _olcEncodePairs(refLat, refLng, padding);
+  if (prefix.length < padding) return null;
+  const center = decodePlusCode(prefix + code);
+  if (!center) return null;
+  const resolution = Math.pow(20, 2 - padding / 2);
+  const half = resolution / 2;
+  let lat = center[0], lng = center[1];
+  if (refLat + half < lat && lat - resolution >= -90) lat -= resolution;
+  else if (refLat - half > lat && lat + resolution <= 90) lat += resolution;
+  if (refLng + half < lng && lng - resolution >= -180) lng -= resolution;
+  else if (refLng - half > lng && lng + resolution <= 180) lng += resolution;
+  return [lat, lng];
+}
+
+// Extrae un Plus Code de un texto (puede venir con la localidad al lado) y lo
+// resuelve a [lat,lng]. Los completos se decodifican solos; los cortos usan
+// `ref` (referencia cercana). Devuelve null si no hay código o falta referencia.
+function plusCodeToLatLng(str, ref) {
+  if (!str) return null;
+  const m = String(str).toUpperCase().match(/([23456789CFGHJMPQRVWX]{2,8}\+[23456789CFGHJMPQRVWX]{2,3})/);
+  if (!m) return null;
+  const code = m[1];
+  if (code.indexOf('+') === 8) return decodePlusCode(code);
+  if (ref) return recoverPlusCode(code, ref[0], ref[1]);
+  return null;
+}
+
+// Punto de referencia para reconstruir Plus Codes cortos: la ubicación del
+// usuario (si tocó "Cerca mío"), si no el centroide de los presupuestos ya
+// ubicados con coordenadas "duras" (lat,lng o Plus Code completo), y si no el
+// centro actual del mapa. Todos los trabajos de un podador caen en la misma
+// zona, así que este centroide reconstruye los códigos cortos con precisión.
+function _mapaComputeGeoRef() {
+  if (_mapaUserLatLng) return _mapaUserLatLng;
+  let sLat = 0, sLng = 0, n = 0;
+  getH().forEach(e => {
+    if (e && e.geo && isFinite(e.geo.lat) && isFinite(e.geo.lng)) { sLat += e.geo.lat; sLng += e.geo.lng; n++; return; }
+    const link = ((e && e.snapshot && e.snapshot.workMapLink) || '').trim();
+    if (!link || /^https?:\/\//i.test(link)) return;
+    const m = link.match(/^\s*(-?\d{1,3}(?:\.\d+)?)\s*,\s*(-?\d{1,3}(?:\.\d+)?)\s*$/);
+    if (m) { sLat += parseFloat(m[1]); sLng += parseFloat(m[2]); n++; return; }
+    const full = plusCodeToLatLng(link, null); // solo resuelve los completos
+    if (full) { sLat += full[0]; sLng += full[1]; n++; }
+  });
+  if (n) return [sLat / n, sLng / n];
+  if (_mapa && _mapa.getCenter) { const c = _mapa.getCenter(); return [c.lat, c.lng]; }
+  return null;
+}
+
+// Resuelve las coordenadas de un entry del historial, o null si no se puede
+// ubicar (queda para "sin ubicar"). Orden: (1) pin manual guardado, (2)
+// workMapLink como "lat,lng", (3) Plus Code completo o corto (con referencia).
+function entryLatLng(e) {
+  if (e && e.geo && isFinite(e.geo.lat) && isFinite(e.geo.lng)) return [e.geo.lat, e.geo.lng];
+  const link = ((e && e.snapshot && e.snapshot.workMapLink) || '').trim();
+  if (link && !/^https?:\/\//i.test(link)) {
+    const m = link.match(/^\s*(-?\d{1,3}(?:\.\d+)?)\s*,\s*(-?\d{1,3}(?:\.\d+)?)\s*$/);
+    if (m) {
+      const lat = parseFloat(m[1]), lng = parseFloat(m[2]);
+      if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) return [lat, lng];
+    }
+    const pc = plusCodeToLatLng(link, _mapaGeoRef);
+    if (pc) return pc;
+  }
+  return null;
+}
+
+function _mapaDateOf(e) { return (((e.snapshot && e.snapshot.dateIssue) || e.savedAt || '') + '').slice(0, 10); }
+
+// Init lazy: primera entrada a la pestaña carga Leaflet, crea el mapa y dibuja.
+function mapaInit() {
+  const canvas = document.getElementById('map-canvas');
+  if (!canvas) return;
+  ensureLeaflet().then((L) => {
+    if (!_mapa) {
+      mapaBuildFilters();
+      _mapa = L.map(canvas, { zoomControl: true }).setView([-34.0, -64.0], 4);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap',
+      }).addTo(_mapa);
+      _mapaLayer = L.layerGroup().addTo(_mapa);
+      _mapa.on('moveend', mapaUpdateZonaStats);
+      _mapa.on('click', mapaOnMapClick);
+    }
+    mapaRefresh();
+    // El contenedor estaba oculto al crearse; Leaflet necesita recalcular.
+    setTimeout(() => { if (_mapa) _mapa.invalidateSize(); }, 60);
+  }).catch(() => {
+    canvas.innerHTML = '<div class="mapa-error">No se pudo cargar el mapa. Necesitás conexión la primera vez que lo abrís.</div>';
+  });
+}
+
+// Checkboxes de filtro por estado (con la leyenda de colores).
+function mapaBuildFilters() {
+  if (!_mapaFilterSet) _mapaFilterSet = new Set(ESTADOS);
+  const box = document.getElementById('mapa-filters');
+  if (!box) return;
+  box.innerHTML = ESTADOS.map(s => {
+    const [txt] = ESTADO_COLORS[s] || ESTADO_COLORS.borrador;
+    const on = _mapaFilterSet.has(s);
+    return `<label class="mapa-filter${on ? ' is-on' : ''}">
+      <input type="checkbox" ${on ? 'checked' : ''} onchange="mapaToggleFilter('${s}', this.checked)">
+      <span class="mapa-filter-dot" style="background:${txt}"></span>${estadoLabel(s)}</label>`;
+  }).join('');
+}
+function mapaToggleFilter(s, on) {
+  if (!_mapaFilterSet) _mapaFilterSet = new Set(ESTADOS);
+  if (on) _mapaFilterSet.add(s); else _mapaFilterSet.delete(s);
+  mapaBuildFilters();
+  mapaRefresh();
+}
+
+// Re-dibuja los marcadores según filtros de estado y de fecha.
+function mapaRefresh() {
+  if (!_mapa || !_mapaLayer) return;
+  const L = window.L;
+  _mapaGeoRef = _mapaComputeGeoRef(); // referencia para Plus Codes cortos
+  _mapaLayer.clearLayers();
+  const desde = (document.getElementById('mapa-desde')?.value || '').trim();
+  const hasta = (document.getElementById('mapa-hasta')?.value || '').trim();
+  const filt = _mapaFilterSet || new Set(ESTADOS);
+  const sinUbicar = [];
+  const bounds = [];
+  // Agrupar por ubicación: varios presupuestos en el MISMO punto (mismo lugar,
+  // cliente que volvió a llamar para otro trabajo) comparten una sola marca
+  // que se abre en abanico. Clave redondeada a ~5 decimales (≈1 m).
+  const groups = new Map();
+  getH().forEach(e => {
+    const est = e.estado || 'borrador';
+    if (!filt.has(est)) return;
+    const d = _mapaDateOf(e);
+    if (desde && d && d < desde) return;
+    if (hasta && d && d > hasta) return;
+    const ll = entryLatLng(e);
+    if (!ll) { sinUbicar.push(e); return; }
+    const key = ll[0].toFixed(5) + ',' + ll[1].toFixed(5);
+    let g = groups.get(key);
+    if (!g) { g = { ll, items: [] }; groups.set(key, g); }
+    g.items.push({ e, est });
+  });
+  groups.forEach(g => {
+    bounds.push(g.ll);
+    if (g.items.length === 1) {
+      const { e, est } = g.items[0];
+      _mapaLayer.addLayer(mapaMarker(L, e, est, g.ll));
+    } else {
+      _mapaLayer.addLayer(mapaClusterMarker(L, g));
+    }
+  });
+  mapaRenderSinUbicar(sinUbicar);
+  if (!_mapaFitDone && bounds.length) {
+    _mapa.fitBounds(bounds, { padding: [30, 30], maxZoom: 15 });
+    _mapaFitDone = true;
+  }
+  mapaUpdateZonaStats();
+}
+
+function mapaMarker(L, e, est, ll) {
+  const [txt] = ESTADO_COLORS[est] || ESTADO_COLORS.borrador;
+  const hl = _mapaHighlight.has(e.id);
+  const icon = L.divIcon({
+    className: 'mapa-pin' + (hl ? ' is-hl' : ''),
+    html: `<span style="background:${txt}"></span>`,
+    iconSize: [20, 20], iconAnchor: [10, 10], popupAnchor: [0, -10],
+  });
+  const m = L.marker(ll, { icon });
+  m._estado = est;
+  m._total = e.total || 0;
+  m._cur = e.currency || 'ARS';
+  m._entries = [e];
+  m.bindPopup(mapaPopupHtml(e, est));
+  return m;
+}
+
+// Marca de un GRUPO de presupuestos en el mismo punto: un anillo con la
+// cantidad. El anillo se colorea con TODOS los estados presentes (segmentos
+// proporcionales), así se ve de un vistazo la mezcla sin abrirlo. Al tocarla
+// abre un popup con la LISTA de trabajos del lugar (cada uno con sus acciones).
+function mapaClusterMarker(L, g) {
+  const items = g.items;
+  const hl = items.some(x => _mapaHighlight.has(x.e.id));
+  // Segmentos del anillo por estado, en el orden canónico de ESTADOS.
+  const byEst = {};
+  items.forEach(x => { byEst[x.est] = (byEst[x.est] || 0) + 1; });
+  const n = items.length;
+  let acc = 0;
+  const segs = ESTADOS.filter(s => byEst[s]).map(s => {
+    const [txt] = ESTADO_COLORS[s] || ESTADO_COLORS.borrador;
+    const from = acc / n * 360, to = (acc + byEst[s]) / n * 360;
+    acc += byEst[s];
+    return `${txt} ${from}deg ${to}deg`;
+  });
+  const ring = segs.length > 1 ? `conic-gradient(${segs.join(',')})` : segs[0].split(' ')[0];
+  const icon = L.divIcon({
+    className: 'mapa-cluster' + (hl ? ' is-hl' : ''),
+    html: `<span class="mapa-cluster-ring" style="background:${ring}"><span class="mapa-cluster-count">${n}</span></span>`,
+    iconSize: [30, 30], iconAnchor: [15, 15], popupAnchor: [0, -15],
+  });
+  const m = L.marker(g.ll, { icon });
+  m._entries = items.map(x => x.e);
+  m.bindPopup(mapaGroupPopupHtml(g), { minWidth: 210 });
+  return m;
+}
+
+// Popup de un grupo apilado: lista todos los trabajos del mismo lugar, del más
+// reciente al más viejo. Cada fila reusa los mismos handlers que el popup
+// individual (cambiar estado, ver, llegar, editar).
+function mapaGroupPopupHtml(g) {
+  const rows = g.items.slice()
+    .sort((a, b) => _mapaDateOf(b.e).localeCompare(_mapaDateOf(a.e)))
+    .map(x => mapaGroupRowHtml(x.e, x.est)).join('');
+  return `<div class="mapa-popup mapa-popup-group">
+    <div class="mapa-popup-group-title">${g.items.length} trabajos en este lugar</div>
+    <div class="mapa-popup-list">${rows}</div>
+  </div>`;
+}
+
+function mapaGroupRowHtml(e, est) {
+  const cli = esc(e.clientName || '(sin nombre)');
+  const num = esc(e.quoteNumber || '—');
+  const cur = e.currency || 'ARS';
+  const [txt, bg] = ESTADO_COLORS[est] || ESTADO_COLORS.borrador;
+  const opts = ESTADOS.map(s => `<option value="${s}"${s === est ? ' selected' : ''}>${estadoLabel(s)}</option>`).join('');
+  // Tocar la fila (incluido el nombre del cliente) lleva al presupuesto en la
+  // pestaña Historial, lo centra y lo resalta (goToHistoryEntry) — distinto del
+  // botón "Ver", que abre la imagen del presupuesto. Solo el chip de estado y
+  // "Llegar" frenan la propagación para conservar su acción.
+  return `<div class="mapa-grow" onclick="goToHistoryEntry(${e.id})" role="button" tabindex="0" title="Ver este presupuesto en el historial">
+    <div class="mapa-grow-top">
+      <select class="mapa-grow-estado" style="color:${txt};background:${bg}" onclick="event.stopPropagation()" onchange="mapaSetEstado(${e.id}, this.value)" aria-label="Estado">${opts}</select>
+      <span class="mapa-grow-cli">${cli}</span>
+    </div>
+    <div class="mapa-grow-meta">${num} · ${fmtM(e.total || 0, cur)} · ${fmtD(_mapaDateOf(e))}</div>
+    <div class="mapa-popup-acts">
+      <button class="btn btn-p btn-sm" onclick="event.stopPropagation();mapaVer(${e.id})">${icon('eye')} Ver</button>
+      <button class="btn btn-g btn-sm" onclick="event.stopPropagation();comoLlegar(${e.id})">${icon('pin')} Llegar</button>
+    </div>
+  </div>`;
+}
+
+function mapaPopupHtml(e, est) {
+  const cli = esc(e.clientName || '(sin nombre)');
+  const num = esc(e.quoteNumber || '—');
+  const cur = e.currency || 'ARS';
+  const opts = ESTADOS.map(s => `<option value="${s}"${s === est ? ' selected' : ''}>${estadoLabel(s)}</option>`).join('');
+  const [txt, bg] = ESTADO_COLORS[est] || ESTADO_COLORS.borrador;
+  return `<div class="mapa-popup">
+    <div class="mapa-popup-cli">${cli}</div>
+    <div class="mapa-popup-meta">${num} · ${fmtM(e.total || 0, cur)} · ${fmtD(_mapaDateOf(e))}</div>
+    <select class="mapa-popup-estado" style="color:${txt};background:${bg}" onchange="mapaSetEstado(${e.id}, this.value)" aria-label="Estado">${opts}</select>
+    <div class="mapa-popup-acts">
+      <button class="btn btn-p btn-sm" onclick="mapaVer(${e.id})">${icon('eye')} Ver</button>
+      <button class="btn btn-g btn-sm" onclick="comoLlegar(${e.id})">${icon('pin')} Llegar</button>
+    </div>
+    <button class="mapa-popup-edit" onclick="mapaAbrir(${e.id})" title="Cargar este presupuesto en el editor para modificarlo">${icon('pencil')} Editar…</button>
+  </div>`;
+}
+
+function mapaSetEstado(id, val) {
+  if (typeof setEstadoHistory === 'function') setEstadoHistory(id, val);
+  mapaRefresh();
+}
+
+function mapaAbrir(id) {
+  if (_mapa) _mapa.closePopup();
+  if (typeof loadFromHistory === 'function') loadFromHistory(id);
+}
+
+// "Ver" desde el mapa: abre la vista previa de SOLO LECTURA (mismo modal que
+// usa la lista del historial). No toca el editor — así no se edita sin querer
+// un presupuesto ya enviado/aceptado/realizado.
+function mapaVer(id) {
+  if (_mapa) _mapa.closePopup();
+  if (typeof previewFromHistory === 'function') previewFromHistory(id);
+}
+
+function mapaRenderSinUbicar(list) {
+  const cnt = document.getElementById('mapa-sinubicar-count');
+  const box = document.getElementById('mapa-sinubicar-list');
+  if (cnt) cnt.textContent = list.length;
+  if (!box) return;
+  if (!list.length) { box.innerHTML = '<div class="mapa-hint">Todos los presupuestos del filtro actual están ubicados. 🎉</div>'; return; }
+  // Los estimativos suelen no llevar ubicación exacta: se dejan al final y se
+  // marcan con su badge para distinguirlos de un presupuesto normal sin ubicar.
+  const ordered = list.slice().sort((a, b) => (a.isEstimative ? 1 : 0) - (b.isEstimative ? 1 : 0));
+  box.innerHTML = ordered.map(e => {
+    const cli = esc(e.clientName || '(sin nombre)');
+    const num = esc(e.quoteNumber || '—');
+    const addr = esc(((e.snapshot && e.snapshot.workAddress) || '').trim() || 'sin dirección');
+    const estBadge = e.isEstimative ? '<span class="hbadge-est">Estimativo</span>' : '';
+    // Tocar la info (fuera de los botones) lleva al presupuesto resaltado en el
+    // Historial. "Editar" lo carga en el editor (para pegar coordenadas a mano);
+    // "Ubicar" activa el modo de tocar el punto en el mapa.
+    return `<div class="mapa-su-item">
+      <div class="mapa-su-info" onclick="goToHistoryEntry(${e.id})" role="button" tabindex="0" title="Ver este presupuesto en el historial"><b>${cli}</b> · ${num}${estBadge}<div class="mapa-su-addr">${addr}</div></div>
+      <div class="mapa-su-acts">
+        <button class="btn btn-g btn-sm" onclick="mapaAbrir(${e.id})" title="Cargar en el editor para agregar la ubicación">${icon('pencil')} Editar</button>
+        <button class="btn btn-p btn-sm" onclick="mapaUbicar(${e.id})">${icon('pin')} Ubicar</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// Activa el modo colocación: el próximo toque en el mapa fija la ubicación.
+function mapaUbicar(id) {
+  _mapaPlacingId = id;
+  const canvas = document.getElementById('map-canvas');
+  if (canvas) canvas.classList.add('mapa-placing');
+  const det = document.getElementById('mapa-sinubicar');
+  if (det) det.open = false;
+  if (_mapa) _mapa.closePopup();
+  toast('Tocá en el mapa el punto exacto de este trabajo', 'info', 4000);
+}
+
+function mapaOnMapClick(ev) {
+  if (_mapaPlacingId == null) return;
+  const id = _mapaPlacingId;
+  _mapaPlacingId = null;
+  const canvas = document.getElementById('map-canvas');
+  if (canvas) canvas.classList.remove('mapa-placing');
+  const lat = +ev.latlng.lat.toFixed(6), lng = +ev.latlng.lng.toFixed(6);
+  const h = getH();
+  const e = h.find(x => x.id === id);
+  if (!e) return;
+  e.geo = { lat, lng, manual: true };
+  if (!e.snapshot) e.snapshot = {};
+  e.snapshot.workMapLink = lat + ',' + lng; // reusa "Llegar" y las rutas existentes
+  setH(h);
+  toast('Ubicación guardada', 'ok', 2000);
+  mapaRefresh();
+}
+
+// Stats de la zona VISIBLE del mapa (se recalculan al panear/zoomear).
+function mapaUpdateZonaStats() {
+  const box = document.getElementById('mapa-zonastats');
+  if (!box || !_mapa || !_mapaLayer) return;
+  const b = _mapa.getBounds();
+  const counts = {};
+  let total = 0, cur = '', totalMarks = 0;
+  _mapaLayer.eachLayer(m => {
+    if (!m.getLatLng || !b.contains(m.getLatLng())) return;
+    // Cada marca puede representar varios presupuestos (grupo apilado): se
+    // cuentan todos sus entries (m._entries), no la marca.
+    (m._entries || []).forEach(e => {
+      const est = e.estado || 'borrador';
+      counts[est] = (counts[est] || 0) + 1;
+      total += e.total || 0;
+      totalMarks++;
+      if (!cur && e.currency) cur = e.currency;
+    });
+  });
+  if (!totalMarks) { box.innerHTML = '<div class="mapa-hint">Acercá o paneá el mapa a una zona con presupuestos para ver sus números.</div>'; return; }
+  const c = k => counts[k] || 0;
+  const ganados = c('aceptado') + c('realizado');
+  const decididos = c('enviado') + c('aceptado') + c('realizado') + c('perdido');
+  const conv = decididos ? Math.round(ganados / decididos * 100) : null;
+  const chips = ESTADOS.filter(s => counts[s]).map(s => {
+    const [txt, bg] = ESTADO_COLORS[s];
+    return `<span class="mapa-zona-chip" style="color:${txt};background:${bg}">${estadoLabel(s)} ${counts[s]}</span>`;
+  }).join('');
+  box.innerHTML = `
+    <div class="mapa-zona-title">En esta zona: ${totalMarks} presupuesto(s)</div>
+    <div class="mapa-zona-chips">${chips}</div>
+    <div class="mapa-zona-conv">${conv != null ? `Conversión: <b>${conv}%</b> <span class="mapa-hint-inline">(aceptado+realizado / decididos)</span>` : 'Conversión: —'}${total ? ` · Presupuestado: <b>${fmtM(total, cur || 'ARS')}</b>` : ''}</div>`;
+}
+
+// "Cerca mío": ubica al usuario y resalta pendientes de campo en 15 km.
+function mapaCercaMio(btn) {
+  if (!('geolocation' in navigator)) { toast('Este dispositivo no permite detectar la ubicación', 'err', 4000); return; }
+  const orig = btn ? btn.innerHTML : '';
+  if (btn) { btn.disabled = true; btn.innerHTML = '<svg class="ic"><use href="#i-pin"></use></svg> Buscando…'; }
+  const restore = () => { if (btn) { btn.disabled = false; btn.innerHTML = orig; } };
+  navigator.geolocation.getCurrentPosition((pos) => {
+    restore();
+    const ulat = pos.coords.latitude, ulng = pos.coords.longitude;
+    _mapaUserLatLng = [ulat, ulng];
+    _mapaGeoRef = _mapaUserLatLng; // mejor referencia para Plus Codes cortos
+    ensureLeaflet().then((L) => {
+      if (!_mapa) return;
+      if (_mapaUserMarker) _mapa.removeLayer(_mapaUserMarker);
+      _mapaUserMarker = L.circleMarker([ulat, ulng], { radius: 8, color: '#fff', weight: 2, fillColor: '#0ea5e9', fillOpacity: .95 })
+        .addTo(_mapa).bindPopup('Estás acá');
+      const RADIO = 15; // km
+      const near = [];
+      getH().forEach(e => {
+        if (!PENDIENTES_CAMPO.includes(e.estado || 'borrador')) return;
+        const ll = entryLatLng(e);
+        if (!ll) return;
+        const dist = _haversineKm(ulat, ulng, ll[0], ll[1]);
+        if (dist <= RADIO) near.push({ e, ll, dist });
+      });
+      near.sort((a, b) => a.dist - b.dist);
+      _mapaCercaList = near;
+      _mapaHighlight = new Set(near.map(n => n.e.id));
+      mapaRefresh();
+      mapaRenderCerca(near);
+      if (near.length) _mapa.fitBounds([[ulat, ulng], ...near.map(n => n.ll)], { padding: [40, 40], maxZoom: 14 });
+      else _mapa.setView([ulat, ulng], 13);
+    });
+  }, () => { restore(); toast('No se pudo obtener tu ubicación', 'err', 4000); },
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
+}
+
+function mapaRenderCerca(near) {
+  const box = document.getElementById('mapa-cerca-panel');
+  if (!box) return;
+  box.hidden = false;
+  if (!near.length) {
+    box.innerHTML = `<div class="mapa-cerca-head"><b>Cerca tuyo</b><button class="mapa-cerca-close" onclick="mapaCerrarCerca()" aria-label="Cerrar">✕</button></div><div class="mapa-hint">No hay pendientes con ubicación en 15 km.</div>`;
+    return;
+  }
+  box.innerHTML = `
+    <div class="mapa-cerca-head"><b>Pendientes cerca tuyo (${near.length})</b><button class="mapa-cerca-close" onclick="mapaCerrarCerca()" aria-label="Cerrar">✕</button></div>
+    <div class="mapa-cerca-list">${near.map(n => {
+      const est = n.e.estado || 'borrador';
+      const [txt, bg] = ESTADO_COLORS[est] || ESTADO_COLORS.borrador;
+      return `<div class="mapa-cerca-item">
+        <span class="mapa-zona-chip" style="color:${txt};background:${bg}">${estadoLabel(est)}</span>
+        <b class="mapa-cerca-cli">${esc(n.e.clientName || '(sin nombre)')}</b>
+        <span class="mapa-cerca-dist">${n.dist.toFixed(1)} km</span>
+        <button class="btn btn-g btn-sm" onclick="comoLlegar(${n.e.id})">${icon('pin')} Llegar</button>
+      </div>`;
+    }).join('')}</div>
+    ${near.length >= 2 ? `<button class="btn btn-p mapa-ruta-btn" onclick="mapaArmarRuta()">${icon('pin')} Armar recorrido en Google Maps</button>` : ''}`;
+}
+
+function mapaCerrarCerca() {
+  const box = document.getElementById('mapa-cerca-panel');
+  if (box) box.hidden = true;
+  _mapaHighlight = new Set();
+  _mapaCercaList = [];
+  if (_mapaUserMarker && _mapa) { _mapa.removeLayer(_mapaUserMarker); _mapaUserMarker = null; }
+  mapaRefresh();
+}
+
+// Ordena las paradas cercanas por vecino más cercano desde la ubicación
+// actual (recorrido "más práctico") y abre Google Maps en modo direcciones.
+function mapaArmarRuta() {
+  if (!_mapaUserLatLng || _mapaCercaList.length < 1) { toast('Primero tocá “Cerca mío”', 'info', 3000); return; }
+  const [ulat, ulng] = _mapaUserLatLng;
+  const rem = _mapaCercaList.slice();
+  const ordered = [];
+  let clat = ulat, clng = ulng;
+  while (rem.length) {
+    let bi = 0, bd = Infinity;
+    for (let i = 0; i < rem.length; i++) {
+      const d = _haversineKm(clat, clng, rem[i].ll[0], rem[i].ll[1]);
+      if (d < bd) { bd = d; bi = i; }
+    }
+    const nx = rem.splice(bi, 1)[0];
+    ordered.push(nx); clat = nx.ll[0]; clng = nx.ll[1];
+  }
+  const stops = ordered.map(n => _stopQueryForSnap(n.e.snapshot) || `${n.ll[0]},${n.ll[1]}`);
+  const dest = stops[stops.length - 1];
+  const wps = stops.slice(0, -1);
+  let url = 'https://www.google.com/maps/dir/?api=1'
+    + '&origin=' + encodeURIComponent(`${ulat},${ulng}`)
+    + '&destination=' + encodeURIComponent(dest);
+  if (wps.length) url += '&waypoints=' + wps.map(encodeURIComponent).join('%7C');
+  window.open(url, '_blank', 'noopener');
+}
+
+// ===== js/calendar.js =====
+// ═══════════════════════════════════════════════════════════════════════════
+// CALENDAR.JS — Pestaña "Agenda": vista de calendario (mes) que superpone TODO
+// lo que tiene fecha en la app. Es una CAPA DE VISUALIZACIÓN: no inventa datos
+// nuevos salvo las notas manuales. Las fuentes son:
+//   · trabajo      → días agendados de un presupuesto (agFechas)
+//   · recontacto   → e.recontactoEn (aceptado)
+//   · vencimiento  → e.snapshot.dateExpiry (respeta la config de seguimiento)
+//   · seguimiento  → e.enviadoEn + cfg.days (día en que toca contactar)
+//   · nota         → anotaciones/recordatorios propios (LS.NOTES), lo único
+//                    que se guarda de nuevo. Sobrevive backup/restore.
+// Todas las fechas son LOCALES (YYYY-MM-DD), nunca UTC (regla del proyecto).
+// La semana arranca en LUNES (convención AR).
+
+const CAL_MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const CAL_WD_MON = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+const CAL_DIAS = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+// Orden de prioridad de los tipos (para ordenar dentro de un día y los puntos).
+const CAL_TIPO_ORD = { trabajo:0, recontacto:1, vencimiento:2, seguimiento:3, nota:4 };
+const CAL_TIPO_LBL = { trabajo:'Trabajo', recontacto:'Recontacto', vencimiento:'Vence', seguimiento:'Seguimiento', nota:'Nota' };
+
+let _calY = null, _calM = null;   // año / mes (0-11) que se está mostrando
+let _calSel = null;               // día seleccionado (iso) o null
+let _calView = 'agenda';          // 'mes' (grilla) | 'agenda' (lista cronológica)
+let _calOverdueOpen = false;      // sección "Atrasado" desplegada (colapsada por defecto)
+
+// ─── NOTAS MANUALES (localStorage) ───────────────────────────
+// Cada nota: { id, fecha:'YYYY-MM-DD', texto, hecho:bool, creadoEn }.
+function getNotes() {
+  try { const a = JSON.parse(localStorage.getItem(LS.NOTES) || '[]'); return Array.isArray(a) ? a : []; }
+  catch (e) { return []; }
+}
+function setNotes(a) { safeSetLS(LS.NOTES, JSON.stringify(a || [])); }
+
+// ─── HELPERS DE FECHA (locales) ──────────────────────────────
+// Suma n días a una fecha ISO local y devuelve otra ISO local.
+function _calAddDays(iso, n) {
+  const p = String(iso).split('-');
+  if (p.length !== 3) return iso;
+  const d = new Date(+p[0], +p[1] - 1, +p[2] + (n || 0));
+  return toLocalISODate(d);
+}
+// ISO local a partir de un timestamp (e.enviadoEn se guarda como ISO UTC con
+// hora; para el calendario nos importa el DÍA local en que se envió).
+function _calTsToLocalISO(ts) {
+  if (!ts) return null;
+  const d = new Date(ts);
+  if (isNaN(d.getTime())) return null;
+  return toLocalISODate(d);
+}
+// "Lunes 12 de julio" (día seleccionado). Construye el Date con partes locales.
+function _calLongDate(iso) {
+  const p = String(iso).split('-');
+  if (p.length !== 3) return fmtD(iso);
+  const dt = new Date(+p[0], +p[1] - 1, +p[2]);
+  return `${CAL_DIAS[dt.getDay()]} ${+p[2]} de ${CAL_MESES[+p[1] - 1].toLowerCase()}`;
+}
+
+// ─── ÍNDICE DE EVENTOS ───────────────────────────────────────
+// Recorre el historial (una vez) + las notas y arma { 'YYYY-MM-DD': [ev, …] }.
+// Cada ev: { tipo, title, sub, entryId?, noteId?, done? }.
+function calBuildIndex() {
+  const idx = {};
+  const push = (iso, ev) => { if (!iso) return; (idx[iso] || (idx[iso] = [])).push(ev); };
+  const h = (typeof getH === 'function') ? getH() : [];
+  const cfg = (typeof getFollowupCfg === 'function') ? getFollowupCfg() : null;
+
+  h.forEach(e => {
+    const est = e.estado || 'borrador';
+    const quien = (e.clientName || '').trim() || '(sin nombre)';
+    const num = e.quoteNumber ? `N° ${e.quoteNumber}` : '';
+
+    // Trabajo(s): días ubicados de la agenda (multi-día soportado).
+    const fechas = (typeof agFechas === 'function') ? agFechas(e) : (e.fechaTrabajo ? [e.fechaTrabajo] : []);
+    if (fechas.length) {
+      const total = (typeof agDiasEstimados === 'function') ? agDiasEstimados(e) : fechas.length;
+      fechas.forEach((f, i) => {
+        const dnum = total > 1 ? ` · día ${i + 1} de ${total}` : '';
+        push(f, { tipo: 'trabajo', title: quien, sub: (num ? num : '') + dnum, entryId: e.id });
+      });
+    }
+
+    // Recontacto: solo mientras siga aceptado (coordinar la fecha del trabajo).
+    if (e.recontactoEn && est === 'aceptado') {
+      push(e.recontactoEn, {
+        tipo: 'recontacto', title: `Llamar a ${quien}`,
+        sub: (e.recontactoNota || '').trim() || num, entryId: e.id
+      });
+    }
+
+    // Vencimiento y seguimiento respetan la config de seguimiento (misma que
+    // los banners): si el usuario los apagó, tampoco aparecen acá.
+    const estOk = cfg && cfg.enabled && Array.isArray(cfg.estados) && cfg.estados.includes(est);
+    if (estOk) {
+      const exp = e.snapshot && e.snapshot.dateExpiry;
+      if (cfg.expiryEnabled && exp) {
+        push(exp, { tipo: 'vencimiento', title: `Vence ${quien}`, sub: num, entryId: e.id });
+      }
+      if (e.enviadoEn) {
+        // ¿Ya se hizo el seguimiento después del envío? Entonces no lo mostramos.
+        let hecho = false;
+        if (e.seguimientoHechoEn) {
+          const seg = new Date(e.seguimientoHechoEn).getTime();
+          const env = new Date(e.enviadoEn).getTime();
+          hecho = seg >= env;
+        }
+        if (!hecho) {
+          const base = _calTsToLocalISO(e.enviadoEn);
+          const due = base ? _calAddDays(base, cfg.days || 0) : null;
+          if (due) push(due, { tipo: 'seguimiento', title: `Seguimiento ${quien}`, sub: num, entryId: e.id });
+        }
+      }
+    }
+  });
+
+  // Notas manuales.
+  getNotes().forEach(n => {
+    if (!n || !n.fecha) return;
+    push(n.fecha, { tipo: 'nota', title: n.texto || '(nota)', sub: '', noteId: n.id, done: !!n.hecho });
+  });
+
+  // Ordenar cada día por prioridad de tipo.
+  Object.keys(idx).forEach(k => idx[k].sort((a, b) => (CAL_TIPO_ORD[a.tipo] || 9) - (CAL_TIPO_ORD[b.tipo] || 9)));
+  return idx;
+}
+
+// ─── RENDER: GRILLA DEL MES ──────────────────────────────────
+function calInit() {
+  if (_calY == null || _calM == null) {
+    const t = today().split('-');
+    _calY = +t[0]; _calM = +t[1] - 1;
+    _calSel = today();
+    // Vista recordada (por defecto Agenda: es lo que el usuario quiere ver primero).
+    try { const v = localStorage.getItem(LS.CAL_VIEW); if (v === 'mes' || v === 'agenda') _calView = v; } catch (_) {}
+  }
+  renderCal();
+}
+
+function calPrevMonth() { _calM--; if (_calM < 0) { _calM = 11; _calY--; } renderCal(); }
+function calNextMonth() { _calM++; if (_calM > 11) { _calM = 0; _calY++; } renderCal(); }
+function calToday() {
+  const t = today().split('-');
+  _calY = +t[0]; _calM = +t[1] - 1; _calSel = today();
+  renderCal();
+}
+function calSelectDay(iso) { _calSel = iso; renderCal(); }
+
+// Alterna entre vista Mes (grilla) y Agenda (lista cronológica). Recuerda la
+// elección para la próxima vez que se abra la pestaña.
+function calSetView(v) {
+  _calView = (v === 'agenda') ? 'agenda' : 'mes';
+  try { localStorage.setItem(LS.CAL_VIEW, _calView); } catch (_) {}
+  renderCal();
+}
+
+// Despliega/colapsa la sección "Atrasado" de la vista Agenda.
+function calToggleOverdue() { _calOverdueOpen = !_calOverdueOpen; renderCalList(); }
+
+function renderCal() {
+  // Mostrar/ocultar el bloque de mes o el de lista según la vista activa, y
+  // sincronizar el segmentado. Se hace en cada render para que quede consistente
+  // aunque se entre a la pestaña con una vista ya elegida.
+  const monthWrap = document.getElementById('agc-month');
+  const listWrap = document.getElementById('agc-list');
+  const tabMes = document.getElementById('agc-vtab-mes');
+  const tabAg = document.getElementById('agc-vtab-agenda');
+  const esAgenda = _calView === 'agenda';
+  if (monthWrap) monthWrap.hidden = esAgenda;
+  if (listWrap) listWrap.hidden = !esAgenda;
+  if (tabMes) tabMes.classList.toggle('active', !esAgenda);
+  if (tabAg) tabAg.classList.toggle('active', esAgenda);
+  if (esAgenda) { renderCalList(); if (typeof calUpdateDot === 'function') calUpdateDot(); return; }
+
+  const grid = document.getElementById('agc-grid');
+  const head = document.getElementById('agc-grid-head');
+  const title = document.getElementById('agc-title');
+  if (!grid || !head) return;
+  if (_calY == null) { const t = today().split('-'); _calY = +t[0]; _calM = +t[1] - 1; }
+  if (title) title.textContent = `${CAL_MESES[_calM]} ${_calY}`;
+  head.innerHTML = CAL_WD_MON.map(d => `<span>${d}</span>`).join('');
+
+  const idx = calBuildIndex();
+  const hoy = today();
+  const first = new Date(_calY, _calM, 1);
+  const startOffset = (first.getDay() + 6) % 7;         // lunes = 0
+  const daysInMonth = new Date(_calY, _calM + 1, 0).getDate();
+  const weeks = Math.ceil((startOffset + daysInMonth) / 7);
+  const cells = weeks * 7;
+  const gridStart = new Date(_calY, _calM, 1 - startOffset);
+
+  let html = '';
+  for (let i = 0; i < cells; i++) {
+    const d = new Date(gridStart.getFullYear(), gridStart.getMonth(), gridStart.getDate() + i);
+    const iso = toLocalISODate(d);
+    const other = d.getMonth() !== _calM;
+    const evs = idx[iso] || [];
+    let cls = 'agc-cell';
+    if (other) cls += ' is-other';
+    if (iso === hoy) cls += ' is-today';
+    if (iso === _calSel) cls += ' is-sel';
+    let dots = '';
+    if (evs.length) {
+      const shown = evs.slice(0, 4);
+      dots = `<div class="agc-dots">${shown.map(ev => `<i class="agc-dot agc-c-${ev.tipo}"></i>`).join('')}${evs.length > 4 ? `<span class="agc-more">+${evs.length - 4}</span>` : ''}</div>`;
+    }
+    // Indicador de carga: cuántos trabajos hay agendados ese día. Solo se muestra
+    // a partir de 2 (con uno solo ya lo dice el punto) para avisar sin ensuciar.
+    const nTrab = _calJobCount(evs);
+    const load = nTrab >= 2 ? `<span class="agc-load" title="${nTrab} trabajos agendados">${nTrab}</span>` : '';
+    html += `<div class="${cls}" onclick="calSelectDay('${iso}')"><span class="agc-daynum">${d.getDate()}</span>${load}${dots}</div>`;
+  }
+  grid.innerHTML = html;
+
+  renderCalDay();
+  if (typeof calUpdateDot === 'function') calUpdateDot();
+}
+
+// Markup de una tarjeta de evento (reusado por el detalle del día y la lista de
+// la vista Agenda). `dateLabel` (opcional) antepone la fecha en la etiqueta del
+// tipo — útil en la sección "Atrasado", donde cada fila es de un día distinto.
+function _calEvHTML(ev, dateLabel) {
+  const kind = CAL_TIPO_LBL[ev.tipo] || '';
+  const kindTxt = dateLabel ? `${kind} · ${esc(dateLabel)}` : kind;
+  const sub = ev.sub ? `<div class="agc-ev-sub">${esc(ev.sub)}</div>` : '';
+  let acts = '';
+  if (ev.entryId != null) {
+    acts = `<button class="agc-ev-btn" onclick="goToHistoryEntry(${ev.entryId})" title="Ver el presupuesto en el historial">${icon('book')}</button>`;
+  } else if (ev.noteId != null) {
+    acts = `<button class="agc-ev-btn" onclick="calToggleNote('${ev.noteId}')" title="${ev.done ? 'Marcar pendiente' : 'Marcar hecho'}">${icon('check')}</button>`
+         + `<button class="agc-ev-btn" onclick="calDeleteNote('${ev.noteId}')" title="Borrar nota">${icon('trash')}</button>`;
+  }
+  return `<div class="agc-ev t-${ev.tipo}${ev.done ? ' done' : ''}">
+    <span class="agc-ev-bar"></span>
+    <div class="agc-ev-body">
+      <span class="agc-ev-kind">${kindTxt}</span>
+      <div class="agc-ev-title">${esc(ev.title)}</div>
+      ${sub}
+    </div>
+    <div class="agc-ev-acts">${acts}</div>
+  </div>`;
+}
+
+// ─── RENDER: DETALLE DEL DÍA SELECCIONADO (vista Mes) ────────
+function renderCalDay() {
+  const box = document.getElementById('agc-day');
+  if (!box) return;
+  const iso = _calSel;
+  if (!iso) { box.innerHTML = ''; return; }
+  const evs = calBuildIndex()[iso] || [];
+  const esHoy = iso === today();
+
+  const list = evs.length
+    ? evs.map(ev => _calEvHTML(ev)).join('')
+    : `<div class="agc-day-empty">No hay nada agendado este día. Podés dejar una nota o recordatorio abajo.</div>`;
+
+  box.innerHTML = `
+    <div class="agc-day-head">
+      <span class="agc-day-title">${esc(_calLongDate(iso))}${esHoy ? ' · hoy' : ''}</span>
+    </div>
+    ${list}
+    <div class="agc-note-form">
+      <input type="text" id="agc-note-input" placeholder="Anotá un recordatorio para este día…" maxlength="140" onkeydown="if(event.key==='Enter'){calSaveNote();}">
+      <button class="btn btn-p btn-sm" onclick="calSaveNote()">${icon('plus')} Nota</button>
+    </div>`;
+}
+
+// ─── RENDER: VISTA AGENDA (lista cronológica) ────────────────
+// Muestra lo que viene, agrupado por día (Hoy · Mañana · fecha), más una
+// sección "Atrasado" arriba con lo que quedó pendiente y ya pasó de fecha
+// (recontactos/seguimientos/vencimientos pasados y notas sin marcar). Los días
+// de trabajo ya pasados NO ensucian: son registro histórico, viven en el mes.
+function renderCalList() {
+  const box = document.getElementById('agc-list');
+  if (!box) return;
+  const idx = calBuildIndex();
+  const hoy = today();
+  const overdue = [];      // {iso, ev} TAREAS pendientes con fecha < hoy
+  const futuros = {};      // iso -> [ev], iso >= hoy
+
+  Object.keys(idx).sort().forEach(iso => {
+    idx[iso].forEach(ev => {
+      if (iso >= hoy) { (futuros[iso] || (futuros[iso] = [])).push(ev); return; }
+      // Pasado: "Atrasado" es para TAREAS que siguen sin resolverse.
+      //  · VENCIMIENTO no es una tarea sino un dato (el presupuesto dejó de estar
+      //    vigente) y ya lo avisa el banner rojo del Historial → NO se apila acá.
+      //  · TRABAJO pasado es registro histórico (vive en la grilla) → tampoco.
+      //  · SEGUIMIENTO se deriva de CADA presupuesto enviado, así que los viejos
+      //    se acumularían para siempre. Solo cuenta como "atrasado" si es
+      //    reciente (últimos 30 días); pasado eso el presupuesto está muerto.
+      //  · RECONTACTO y NOTA los creás a mano (son intenciones deliberadas) → se
+      //    mantienen sin importar la antigüedad; los resolvés o borrás vos.
+      let pend = false;
+      if (ev.tipo === 'nota') pend = !ev.done;
+      else if (ev.tipo === 'recontacto') pend = true;
+      else if (ev.tipo === 'seguimiento') { const d = daysSinceDate(iso); pend = (d != null && d <= 30); }
+      if (pend) overdue.push({ iso, ev });
+    });
+  });
+
+  const dias = Object.keys(futuros).sort();
+  let html = '';
+
+  // Sección "Atrasado": colapsada por defecto para que lo primero que se vea sea
+  // HOY. Se auto-despliega solo si no hay nada próximo (para no dejar la pantalla
+  // con una sola barra). Muestra el conteo aunque esté cerrada.
+  if (overdue.length) {
+    const abierta = _calOverdueOpen || !dias.length;
+    const n = overdue.length;
+    const rows = abierta ? overdue.map(o => _calEvHTML(o.ev, fmtDiaCorto(o.iso))).join('') : '';
+    html += `<div class="agc-list-group agc-list-overdue">
+      <button type="button" class="agc-overdue-toggle${abierta ? ' open' : ''}" onclick="calToggleOverdue()" aria-expanded="${abierta}">
+        ${icon('hourglass','ic-c-red')}<span class="agc-overdue-lbl">Atrasado · ${n} pendiente${n>1?'s':''}</span>
+        <span class="agc-overdue-caret">${abierta ? '▾' : '▸'}</span>
+      </button>
+      ${rows}
+    </div>`;
+  }
+
+  if (dias.length) {
+    html += dias.map(iso => {
+      let lbl;
+      if (iso === hoy) lbl = 'Hoy';
+      else if (iso === _calAddDays(hoy, 1)) lbl = 'Mañana';
+      else lbl = fmtDiaCorto(iso);
+      const rows = futuros[iso].map(ev => _calEvHTML(ev)).join('');
+      // Aviso de carga del día (≥2 trabajos) en el encabezado de la lista.
+      const nTrab = _calJobCount(futuros[iso]);
+      const load = nTrab >= 2 ? ` <span class="agc-day-load">${nTrab} trabajos</span>` : '';
+      return `<div class="agc-list-group">
+        <h4 class="agc-list-dayhead${iso === hoy ? ' is-today' : ''}">${esc(lbl)}${load}</h4>
+        ${rows}
+      </div>`;
+    }).join('');
+  }
+
+  if (!html) {
+    html = `<div class="agc-list-empty">${icon('calendar')} No tenés nada agendado próximamente.<br><span class="agc-list-empty-sub">Los trabajos, recontactos y recordatorios que cargues van a aparecer acá ordenados por fecha.</span></div>`;
+  }
+
+  box.innerHTML = html;
+}
+
+// ─── NOTAS: alta / toggle / borrado ──────────────────────────
+function calSaveNote() {
+  const inp = document.getElementById('agc-note-input');
+  if (!inp || !_calSel) return;
+  const texto = (inp.value || '').trim();
+  if (!texto) { toast('Escribí algo para la nota', 'info', 2200); return; }
+  const notes = getNotes();
+  notes.push({
+    id: 'n_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    fecha: _calSel, texto: texto, hecho: false, creadoEn: new Date().toISOString()
+  });
+  setNotes(notes);
+  inp.value = '';
+  renderCal();
+  toast('Nota agendada', 'ok');
+}
+function calToggleNote(id) {
+  const notes = getNotes();
+  const n = notes.find(x => x.id === id);
+  if (!n) return;
+  n.hecho = !n.hecho;
+  setNotes(notes);
+  renderCal();
+}
+function calDeleteNote(id) {
+  const notes = getNotes().filter(x => x.id !== id);
+  setNotes(notes);
+  renderCal();
+  toast('Nota borrada', 'info', 2000);
+}
+
+// Cuenta cuántos eventos de tipo "trabajo" hay en un array de eventos del día.
+function _calJobCount(evs) {
+  if (!Array.isArray(evs)) return 0;
+  return evs.reduce((a, ev) => a + (ev && ev.tipo === 'trabajo' ? 1 : 0), 0);
+}
+
+// ─── EXPORT .ICS (agenda completa) ───────────────────────────
+// Genera UN archivo .ics con los trabajos, recontactos y notas PRÓXIMOS
+// (fecha >= hoy) para suscribir la agenda entera en el calendario del teléfono
+// de una sola vez, sin depender de red (offline-first). A diferencia del botón
+// "Google Calendar" del historial (un evento por vez), esto exporta todo junto.
+// Eventos de día completo: DTEND es EXCLUSIVO → día siguiente (mismo criterio
+// que agendaGcalUrl). Fechas en LOCAL (YYYYMMDD), nunca UTC.
+function _icsEsc(s) {
+  return String(s == null ? '' : s)
+    .replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,')
+    .replace(/\r?\n/g, '\\n');
+}
+// Plegado de líneas largas (RFC 5545): continúa con CRLF + espacio. Cortamos por
+// unidades de código JS (nunca partimos un carácter); un leve exceso sobre 75
+// octetos por tildes lo toleran todos los parsers.
+function _icsFold(line) {
+  if (line.length <= 73) return line;
+  let out = '', rest = line;
+  while (rest.length > 73) { out += rest.slice(0, 73) + '\r\n '; rest = rest.slice(73); }
+  return out + rest;
+}
+function _icsStamp() {
+  const d = new Date(), p = n => String(n).padStart(2, '0');
+  return d.getUTCFullYear() + p(d.getUTCMonth() + 1) + p(d.getUTCDate())
+    + 'T' + p(d.getUTCHours()) + p(d.getUTCMinutes()) + p(d.getUTCSeconds()) + 'Z';
+}
+function calExportIcs() {
+  const idx = calBuildIndex();
+  const hoy = today();
+  const h = (typeof getH === 'function') ? getH() : [];
+  const byId = {};
+  h.forEach(e => { if (e && e.id != null) byId[e.id] = e; });
+
+  const stamp = _icsStamp();
+  const body = [];
+  const seenUid = {};   // evita UIDs repetidos (un evento pisaría a otro al importar)
+  let count = 0;
+
+  Object.keys(idx).sort().forEach(iso => {
+    if (iso < hoy) return;                       // solo lo que viene
+    idx[iso].forEach(ev => {
+      // Exportamos tareas concretas: trabajos, recontactos y notas pendientes.
+      // Vencimientos/seguimientos son derivados y ruidosos → quedan afuera.
+      if (ev.tipo === 'nota') { if (ev.done) return; }
+      else if (ev.tipo !== 'trabajo' && ev.tipo !== 'recontacto') return;
+
+      const dstart = iso.replace(/-/g, '');
+      const dend = _calAddDays(iso, 1).replace(/-/g, '');
+      const e = (ev.entryId != null) ? byId[ev.entryId] : null;
+
+      let summary = '', loc = '';
+      const desc = [];
+      if (ev.tipo === 'trabajo') {
+        summary = 'Trabajo: ' + ev.title + (ev.sub ? ' — ' + ev.sub : '');
+        if (e) {
+          const snap = e.snapshot || {};
+          if (e.total > 0) desc.push('Presupuesto ' + (e.quoteNumber || '') + ': ' + fmtM(e.total, e.currency || 'ARS'));
+          if (snap.clientContact) desc.push('Contacto: ' + snap.clientContact);
+          if (snap.workMapLink) desc.push('Ubicación: ' + snap.workMapLink);
+          loc = (snap.workAddress || snap.workMapLink || '').trim();
+        }
+      } else if (ev.tipo === 'recontacto') {
+        summary = ev.title;                        // "Llamar a <cliente>"
+        if (e) {
+          const snap = e.snapshot || {};
+          if (e.recontactoNota) desc.push('Nota: ' + e.recontactoNota);
+          if (e.total > 0) desc.push('Presupuesto ' + (e.quoteNumber || '') + ': ' + fmtM(e.total, e.currency || 'ARS'));
+          if (snap.clientContact) desc.push('Contacto: ' + snap.clientContact);
+        }
+      } else {                                     // nota
+        summary = 'Nota: ' + ev.title;
+      }
+
+      let uidBase = (ev.entryId != null ? 'e' + ev.entryId + '-' + ev.tipo : 'n' + (ev.noteId || count))
+        + '-' + dstart;
+      const nRep = (seenUid[uidBase] = (seenUid[uidBase] || 0) + 1);
+      const uid = uidBase + (nRep > 1 ? '-' + nRep : '') + '@presupuesto-ar';
+
+      body.push('BEGIN:VEVENT');
+      body.push('UID:' + _icsEsc(uid));
+      body.push('DTSTAMP:' + stamp);
+      body.push('DTSTART;VALUE=DATE:' + dstart);
+      body.push('DTEND;VALUE=DATE:' + dend);
+      body.push('SUMMARY:' + _icsEsc(summary));
+      if (desc.length) body.push('DESCRIPTION:' + _icsEsc(desc.join('\n')));
+      if (loc) body.push('LOCATION:' + _icsEsc(loc));
+      body.push('END:VEVENT');
+      count++;
+    });
+  });
+
+  if (!count) { toast('No hay trabajos ni recontactos próximos para exportar', 'info', 3000); return; }
+
+  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0',
+    'PRODID:-//Presupuestos AR//Agenda//ES', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH']
+    .concat(body, ['END:VCALENDAR']);
+  const ics = lines.map(_icsFold).join('\r\n') + '\r\n';
+
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([ics], { type: 'text/calendar;charset=utf-8' }));
+  a.download = 'agenda-presupuestos-' + hoy + '.ics';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+  const plural = count > 1 ? 's' : '';
+  toast(count + ' evento' + plural + ' exportado' + plural + ' a .ics', 'ok');
+}
+
+// Globito en la pestaña Agenda: se enciende si HOY hay algo agendado.
+function calUpdateDot() {
+  const dot = document.getElementById('tab-agenda-dot');
+  if (!dot) return;
+  const hoy = today();
+  const evs = calBuildIndex()[hoy] || [];
+  // Notas ya hechas no cuentan como "pendiente de hoy".
+  const hay = evs.some(ev => !(ev.tipo === 'nota' && ev.done));
+  dot.hidden = !hay;
+}
+
 // ===== js/core.js =====
 // ═══════════════════════════════════════
 // CORE.JS — Inicialización principal de la app
@@ -11452,6 +13381,10 @@ window.addEventListener('DOMContentLoaded', async () => {
   // el usuario usa la app sin pasar por la pestaña Historial.
   if (typeof toastRecontactosPendientes === 'function') toastRecontactosPendientes();
 
+  // Podas de hoy: banner "resumen del día" arriba del editor, una vez por
+  // día al abrir, si hay trabajos agendados para hoy.
+  if (typeof maybeShowMorningBanner === 'function') maybeShowMorningBanner();
+
   // Importar de contactos: mostrar el botón solo si el dispositivo soporta
   // la Contact Picker API (Chrome Android sobre HTTPS).
   if (typeof initContactPicker === 'function') initContactPicker();
@@ -11481,7 +13414,16 @@ window.addEventListener('DOMContentLoaded', async () => {
   // reabrir, el editor tenga exactamente lo último que se estaba editando.
   function flushActiveState() {
     try { if (typeof syncFromUI === 'function') syncFromUI(); } catch (_) {}
-    try { clearTimeout(saveTimer); if (typeof saveLS === 'function') saveLS(); } catch (_) {}
+    try {
+      clearTimeout(saveTimer);
+      if (typeof saveLS === 'function') saveLS();
+      // Cerrar el ciclo del indicador: el guardado normal (sched) es el que
+      // pasa el cartel a "✓ Guardado". Como acá cancelamos ese timer y
+      // guardamos a mano, hay que actualizar el estado o quedaría colgado en
+      // "● Guardando…" al volver del segundo plano.
+      _lastSaveAt = Date.now();
+      if (typeof _renderSaveStatus === 'function') _renderSaveStatus();
+    } catch (_) {}
   }
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState !== 'hidden') return;
