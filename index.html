@@ -1441,6 +1441,11 @@ input[type=number]{-moz-appearance:textfield}
 .agc-dots{display:flex;flex-wrap:wrap;gap:2px;margin-top:auto}
 .agc-dots .agc-dot{width:6px;height:6px}
 .agc-more{font-size:9px;font-weight:700;color:var(--muted);line-height:1}
+/* Indicador de carga: cuántos trabajos hay agendados ese día (solo si ≥2) */
+.agc-load{position:absolute;top:3px;right:3px;min-width:15px;height:15px;padding:0 4px;display:inline-flex;align-items:center;justify-content:center;font-size:9.5px;font-weight:800;line-height:1;color:#fff;background:var(--c-trabajo);border-radius:8px}
+.agc-day-load{font-family:'DM Sans',sans-serif;font-size:11px;font-weight:700;color:var(--c-trabajo);background:var(--c-trabajo-bg);padding:2px 8px;border-radius:20px;margin-left:2px}
+/* Fila de acciones de la agenda (export .ics) */
+.agc-actions{display:flex;justify-content:flex-end;margin-bottom:12px}
 /* Detalle del día seleccionado */
 .agc-day{margin-top:14px}
 .agc-day-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
@@ -3435,6 +3440,9 @@ input[type=number]{-moz-appearance:textfield}
           <span class="agc-leg"><i class="agc-dot agc-c-vencimiento"></i>Vence</span>
           <span class="agc-leg"><i class="agc-dot agc-c-seguimiento"></i>Seguimiento</span>
           <span class="agc-leg"><i class="agc-dot agc-c-nota"></i>Nota</span>
+        </div>
+        <div class="agc-actions">
+          <button class="btn btn-g btn-sm" id="agc-export-ics" onclick="calExportIcs()" title="Descargá un archivo .ics con tus trabajos y recontactos próximos para sumarlos al calendario del teléfono"><svg class="ic" aria-hidden="true"><use href="#i-download"></use></svg> Exportar .ics</button>
         </div>
         <!-- Vista MES (grilla) -->
         <div id="agc-month">
@@ -13005,7 +13013,11 @@ function renderCal() {
       const shown = evs.slice(0, 4);
       dots = `<div class="agc-dots">${shown.map(ev => `<i class="agc-dot agc-c-${ev.tipo}"></i>`).join('')}${evs.length > 4 ? `<span class="agc-more">+${evs.length - 4}</span>` : ''}</div>`;
     }
-    html += `<div class="${cls}" onclick="calSelectDay('${iso}')"><span class="agc-daynum">${d.getDate()}</span>${dots}</div>`;
+    // Indicador de carga: cuántos trabajos hay agendados ese día. Solo se muestra
+    // a partir de 2 (con uno solo ya lo dice el punto) para avisar sin ensuciar.
+    const nTrab = _calJobCount(evs);
+    const load = nTrab >= 2 ? `<span class="agc-load" title="${nTrab} trabajos agendados">${nTrab}</span>` : '';
+    html += `<div class="${cls}" onclick="calSelectDay('${iso}')"><span class="agc-daynum">${d.getDate()}</span>${load}${dots}</div>`;
   }
   grid.innerHTML = html;
 
@@ -13121,8 +13133,11 @@ function renderCalList() {
       else if (iso === _calAddDays(hoy, 1)) lbl = 'Mañana';
       else lbl = fmtDiaCorto(iso);
       const rows = futuros[iso].map(ev => _calEvHTML(ev)).join('');
+      // Aviso de carga del día (≥2 trabajos) en el encabezado de la lista.
+      const nTrab = _calJobCount(futuros[iso]);
+      const load = nTrab >= 2 ? ` <span class="agc-day-load">${nTrab} trabajos</span>` : '';
       return `<div class="agc-list-group">
-        <h4 class="agc-list-dayhead${iso === hoy ? ' is-today' : ''}">${esc(lbl)}</h4>
+        <h4 class="agc-list-dayhead${iso === hoy ? ' is-today' : ''}">${esc(lbl)}${load}</h4>
         ${rows}
       </div>`;
     }).join('');
@@ -13164,6 +13179,119 @@ function calDeleteNote(id) {
   setNotes(notes);
   renderCal();
   toast('Nota borrada', 'info', 2000);
+}
+
+// Cuenta cuántos eventos de tipo "trabajo" hay en un array de eventos del día.
+function _calJobCount(evs) {
+  if (!Array.isArray(evs)) return 0;
+  return evs.reduce((a, ev) => a + (ev && ev.tipo === 'trabajo' ? 1 : 0), 0);
+}
+
+// ─── EXPORT .ICS (agenda completa) ───────────────────────────
+// Genera UN archivo .ics con los trabajos, recontactos y notas PRÓXIMOS
+// (fecha >= hoy) para suscribir la agenda entera en el calendario del teléfono
+// de una sola vez, sin depender de red (offline-first). A diferencia del botón
+// "Google Calendar" del historial (un evento por vez), esto exporta todo junto.
+// Eventos de día completo: DTEND es EXCLUSIVO → día siguiente (mismo criterio
+// que agendaGcalUrl). Fechas en LOCAL (YYYYMMDD), nunca UTC.
+function _icsEsc(s) {
+  return String(s == null ? '' : s)
+    .replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,')
+    .replace(/\r?\n/g, '\\n');
+}
+// Plegado de líneas largas (RFC 5545): continúa con CRLF + espacio. Cortamos por
+// unidades de código JS (nunca partimos un carácter); un leve exceso sobre 75
+// octetos por tildes lo toleran todos los parsers.
+function _icsFold(line) {
+  if (line.length <= 73) return line;
+  let out = '', rest = line;
+  while (rest.length > 73) { out += rest.slice(0, 73) + '\r\n '; rest = rest.slice(73); }
+  return out + rest;
+}
+function _icsStamp() {
+  const d = new Date(), p = n => String(n).padStart(2, '0');
+  return d.getUTCFullYear() + p(d.getUTCMonth() + 1) + p(d.getUTCDate())
+    + 'T' + p(d.getUTCHours()) + p(d.getUTCMinutes()) + p(d.getUTCSeconds()) + 'Z';
+}
+function calExportIcs() {
+  const idx = calBuildIndex();
+  const hoy = today();
+  const h = (typeof getH === 'function') ? getH() : [];
+  const byId = {};
+  h.forEach(e => { if (e && e.id != null) byId[e.id] = e; });
+
+  const stamp = _icsStamp();
+  const body = [];
+  const seenUid = {};   // evita UIDs repetidos (un evento pisaría a otro al importar)
+  let count = 0;
+
+  Object.keys(idx).sort().forEach(iso => {
+    if (iso < hoy) return;                       // solo lo que viene
+    idx[iso].forEach(ev => {
+      // Exportamos tareas concretas: trabajos, recontactos y notas pendientes.
+      // Vencimientos/seguimientos son derivados y ruidosos → quedan afuera.
+      if (ev.tipo === 'nota') { if (ev.done) return; }
+      else if (ev.tipo !== 'trabajo' && ev.tipo !== 'recontacto') return;
+
+      const dstart = iso.replace(/-/g, '');
+      const dend = _calAddDays(iso, 1).replace(/-/g, '');
+      const e = (ev.entryId != null) ? byId[ev.entryId] : null;
+
+      let summary = '', loc = '';
+      const desc = [];
+      if (ev.tipo === 'trabajo') {
+        summary = 'Trabajo: ' + ev.title + (ev.sub ? ' — ' + ev.sub : '');
+        if (e) {
+          const snap = e.snapshot || {};
+          if (e.total > 0) desc.push('Presupuesto ' + (e.quoteNumber || '') + ': ' + fmtM(e.total, e.currency || 'ARS'));
+          if (snap.clientContact) desc.push('Contacto: ' + snap.clientContact);
+          if (snap.workMapLink) desc.push('Ubicación: ' + snap.workMapLink);
+          loc = (snap.workAddress || snap.workMapLink || '').trim();
+        }
+      } else if (ev.tipo === 'recontacto') {
+        summary = ev.title;                        // "Llamar a <cliente>"
+        if (e) {
+          const snap = e.snapshot || {};
+          if (e.recontactoNota) desc.push('Nota: ' + e.recontactoNota);
+          if (e.total > 0) desc.push('Presupuesto ' + (e.quoteNumber || '') + ': ' + fmtM(e.total, e.currency || 'ARS'));
+          if (snap.clientContact) desc.push('Contacto: ' + snap.clientContact);
+        }
+      } else {                                     // nota
+        summary = 'Nota: ' + ev.title;
+      }
+
+      let uidBase = (ev.entryId != null ? 'e' + ev.entryId + '-' + ev.tipo : 'n' + (ev.noteId || count))
+        + '-' + dstart;
+      const nRep = (seenUid[uidBase] = (seenUid[uidBase] || 0) + 1);
+      const uid = uidBase + (nRep > 1 ? '-' + nRep : '') + '@presupuesto-ar';
+
+      body.push('BEGIN:VEVENT');
+      body.push('UID:' + _icsEsc(uid));
+      body.push('DTSTAMP:' + stamp);
+      body.push('DTSTART;VALUE=DATE:' + dstart);
+      body.push('DTEND;VALUE=DATE:' + dend);
+      body.push('SUMMARY:' + _icsEsc(summary));
+      if (desc.length) body.push('DESCRIPTION:' + _icsEsc(desc.join('\n')));
+      if (loc) body.push('LOCATION:' + _icsEsc(loc));
+      body.push('END:VEVENT');
+      count++;
+    });
+  });
+
+  if (!count) { toast('No hay trabajos ni recontactos próximos para exportar', 'info', 3000); return; }
+
+  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0',
+    'PRODID:-//Presupuestos AR//Agenda//ES', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH']
+    .concat(body, ['END:VCALENDAR']);
+  const ics = lines.map(_icsFold).join('\r\n') + '\r\n';
+
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([ics], { type: 'text/calendar;charset=utf-8' }));
+  a.download = 'agenda-presupuestos-' + hoy + '.ics';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+  const plural = count > 1 ? 's' : '';
+  toast(count + ' evento' + plural + ' exportado' + plural + ' a .ics', 'ok');
 }
 
 // Globito en la pestaña Agenda: se enciende si HOY hay algo agendado.

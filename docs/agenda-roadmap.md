@@ -28,19 +28,19 @@ extra por evento:
   colapsada por defecto para ver primero lo actual. Reglas de "Atrasado":
   vencimientos excluidos (son dato, no tarea); seguimientos solo si ≤30 días;
   recontactos y notas siempre (creados a mano).
-
-## Pendiente de Fase 2
-1. **Indicador de carga del día ("2 trabajos").** Avisar cuántos trabajos ya hay
-   agendados en un día para no sobre-agendar. Dónde: en la celda del mes y/o en el
-   encabezado de día de la lista. Fácil: contar `evs.filter(tipo==='trabajo')` en
-   `calBuildIndex`/`renderCal`. Decidir si mostrar siempre o solo cuando ≥2.
-2. **Exportar toda la agenda (no evento por evento).** Hoy solo existe export por
-   evento a Google Calendar (`agendaGcalUrl`/`agendaGcal`, en la sección agenda del
-   historial). Falta un **export masivo**: generar un archivo **.ics** con todos los
-   trabajos/recontactos futuros y descargarlo (un `Blob` `text/calendar`), para
-   suscribir la agenda entera en el calendario del teléfono de una. Sin red, encaja
-   con offline-first. Ojo fechas LOCAL (no UTC) — usar el mismo criterio que
-   `agendaGcalUrl` (arma `dates` con el día siguiente como fin).
+- **Fase 2 (completada) — carga del día + export .ics** (v131).
+  - **Indicador de carga del día.** `_calJobCount(evs)` cuenta los trabajos del día;
+    se muestra solo a partir de 2 (con uno alcanza el punto). En la grilla del mes,
+    badge violeta arriba a la derecha de la celda (`.agc-load`); en la vista Agenda,
+    chip "N trabajos" en el encabezado del día (`.agc-day-load`).
+  - **Export masivo a .ics.** `calExportIcs()` arma UN `Blob` `text/calendar` con los
+    trabajos, recontactos y notas pendientes **futuros** (fecha ≥ hoy) y lo descarga
+    (`agenda-presupuestos-YYYY-MM-DD.ics`), para suscribir la agenda entera en el
+    calendario del teléfono. Botón "Exportar .ics" en la fila `.agc-actions` (visible
+    en ambas vistas). Eventos de día completo con `DTEND` **exclusivo** = día siguiente
+    (mismo criterio que `agendaGcalUrl`); fechas LOCAL (`YYYYMMDD`), texto escapado
+    (`_icsEsc`), líneas plegadas (`_icsFold`) y UID único por evento (guarda anti-colisión).
+    Vencimientos/seguimientos quedan afuera (son derivados y ruidosos).
 
 ## Ideas Fase 3 (no comprometidas)
 - Botón "Hoy" también en la vista Agenda (scroll al grupo Hoy).
