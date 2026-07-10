@@ -65,6 +65,16 @@ a{-webkit-tap-highlight-color:transparent}
   /* Elevación sutil para cards (look "flotante" limpio). */
   --shadow-card:0 1px 2px rgba(16,40,32,.04),0 1px 3px rgba(16,40,32,.07);
   --shadow-card-hover:0 4px 14px rgba(16,40,32,.12);
+  /* ── Colores por CONCEPTO de agenda (unificados entre Historial y Calendario).
+     Cada concepto tiene un color y SIEMPRE significa lo mismo en las dos vistas.
+     La urgencia NO cambia el tono (se marca con realce); lo ya hecho se atenúa a
+     gris. Trío por concepto: sólido (puntos/barras), -bg (fondo chip), -fg (texto
+     chip). Los estados del presupuesto son otro eje y viven en ESTADO_COLORS. */
+  --c-trabajo:#7c3aed;     --c-trabajo-bg:#ede9fe; --c-trabajo-fg:#5b21b6;
+  --c-recontacto:#0891b2;  --c-recontacto-bg:#cffafe; --c-recontacto-fg:#155e75;
+  --c-seguimiento:#d97706; --c-seguimiento-bg:#fef3c7; --c-seguimiento-fg:#92400e;
+  --c-vence:#dc2626;       --c-vence-bg:#fee2e2; --c-vence-fg:#991b1b;
+  --c-nota:#db2777;        --c-nota-bg:#fce7f3; --c-nota-fg:#9d174e;
 }
 
 /* ═══ MODO OSCURO ═══════════════════════════════════════════════════
@@ -101,6 +111,13 @@ a{-webkit-tap-highlight-color:transparent}
   --accent-2:#0c8f68;
   --shadow-card:0 1px 2px rgba(0,0,0,.32),0 1px 3px rgba(0,0,0,.42);
   --shadow-card-hover:0 6px 20px rgba(0,0,0,.55);
+  /* Concepto de agenda en oscuro: el sólido (punto/barra) queda saturado; los
+     fondos de chip pasan a tintes translúcidos y el texto se aclara. */
+  --c-trabajo-bg:rgba(139,92,246,.2);  --c-trabajo-fg:#c4b5fd;
+  --c-recontacto-bg:rgba(8,145,178,.22); --c-recontacto-fg:#67e8f9;
+  --c-seguimiento-bg:#4a3a12; --c-seguimiento-fg:#fde68a;
+  --c-vence-bg:rgba(239,68,68,.18); --c-vence-fg:#fca5a5;
+  --c-nota:#ec4899; --c-nota-bg:rgba(219,39,119,.2); --c-nota-fg:#f9a8d4;
 }
 
 html,body{height:100%;font-family:'DM Sans',sans-serif;font-size:14px;background:var(--bg);color:var(--text)}
@@ -914,14 +931,16 @@ input[type=number]{-moz-appearance:textfield}
 
 /* Chip de agenda en la tarjeta del historial: muestra la fecha del trabajo
    y abre el diálogo para cargarla/cambiarla. Colores por proximidad. */
-.hagenda-chip{display:inline-flex;align-items:center;gap:5px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;border:1px solid transparent;border-radius:var(--radius-field);padding:5px 10px;cursor:pointer;background:#ede9fe;color:#5b21b6}
+/* Chip de agenda: el COLOR = concepto (no cambia por urgencia). Base = trabajo
+   (violeta). is-call = recontacto (celeste). La urgencia (hoy/mañana/atrasado)
+   se marca con .is-due (realce del mismo tono, sin cambiar el color). Lo ya
+   cumplido usa .is-done (gris atenuado) y lo sin agendar .is-none (gris borde). */
+.hagenda-chip{display:inline-flex;align-items:center;gap:5px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;border:1px solid transparent;border-radius:var(--radius-field);padding:5px 10px;cursor:pointer;background:var(--c-trabajo-bg);color:var(--c-trabajo-fg)}
 .hagenda-chip .ic{width:13px;height:13px}
+.hagenda-chip.is-call{background:var(--c-recontacto-bg);color:var(--c-recontacto-fg)}     /* recontacto */
 .hagenda-chip.is-none{background:var(--card);color:var(--muted);border-color:var(--border);font-weight:600}
-.hagenda-chip.is-soon{background:#fef3c7;color:#92400e}   /* hoy o mañana */
-.hagenda-chip.is-past{background:#dbeafe;color:#1e40af}   /* comenzó y sigue abierto: "en curso", sin alarma */
-.hagenda-chip.is-done{background:var(--surface-2);color:var(--muted);border-color:var(--border)} /* registro histórico */
-.hagenda-chip.is-call{background:#cffafe;color:#155e75}     /* recontacto a futuro */
-.hagenda-chip.is-call-due{background:#fef3c7;color:#92400e} /* llamar hoy / atrasado */
+.hagenda-chip.is-done{background:var(--surface-2);color:var(--muted);border-color:var(--border)} /* registro histórico / ya hecho */
+.hagenda-chip.is-due{box-shadow:inset 0 0 0 1.5px currentColor;font-weight:800} /* realce de urgencia, mismo tono */
 /* Toast con botón de acción (ej: "¿Marcar como enviado?") */
 .toast-action{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:12px;white-space:normal;pointer-events:auto}
 .toast-action .toast-btn{font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;color:#fff;background:var(--accent);border:none;border-radius:var(--radius-field);padding:6px 12px;cursor:pointer;white-space:nowrap}
@@ -1201,7 +1220,7 @@ input[type=number]{-moz-appearance:textfield}
    SEGUIMIENTO COMERCIAL
 ═══════════════════════════════════════ */
 /* Badge 🔔 en la tarjeta del historial */
-.hbadge-followup{display:inline-block;font-size:10px;font-weight:700;padding:1px 8px;border-radius:var(--radius-box);margin-left:6px;vertical-align:middle;background:#fef3c7;color:#92400e;animation:fuPulse 2s ease-in-out infinite}
+.hbadge-followup{display:inline-block;font-size:10px;font-weight:700;padding:1px 8px;border-radius:var(--radius-box);margin-left:6px;vertical-align:middle;background:var(--c-seguimiento-bg);color:var(--c-seguimiento-fg);animation:fuPulse 2s ease-in-out infinite}
 @keyframes fuPulse{0%,100%{opacity:1}50%{opacity:.6}}
 
 /* Banner de seguimientos pendientes (arriba del historial) */
@@ -1226,7 +1245,7 @@ input[type=number]{-moz-appearance:textfield}
 .fub-more{font-size:12px;color:#a16207;text-align:center;padding:4px;font-style:italic}
 
 /* Badge ⌛ de presupuesto vencido en la tarjeta del historial */
-.hbadge-expired{display:inline-block;font-size:10px;font-weight:700;padding:1px 8px;border-radius:var(--radius-box);margin-left:6px;vertical-align:middle;background:#fee2e2;color:#991b1b}
+.hbadge-expired{display:inline-block;font-size:10px;font-weight:700;padding:1px 8px;border-radius:var(--radius-box);margin-left:6px;vertical-align:middle;background:var(--c-vence-bg);color:var(--c-vence-fg)}
 /* Banner de presupuestos vencidos (reusa la estructura .fub-*, en rojo) */
 /* Banner de recontactos (celeste): clientes que aceptaron y hay que volver
    a llamar para coordinar la fecha del trabajo. Reusa las clases fub-*. */
@@ -1360,8 +1379,6 @@ input[type=number]{-moz-appearance:textfield}
 :root[data-theme="dark"] .recontacto-banner .fub-title,
 :root[data-theme="dark"] .recontacto-banner .fub-sub{color:#67e8f9}
 :root[data-theme="dark"] .recontacto-banner .fub-item{background:#0a1c20;border-color:#155e75}
-:root[data-theme="dark"] .hagenda-chip.is-call{background:rgba(8,145,178,.22);color:#67e8f9}
-:root[data-theme="dark"] .hagenda-chip.is-call-due{background:#4a3a12;color:#fde68a}
 
 /* Banner y filas de seguimiento (ámbar) */
 :root[data-theme="dark"] .followup-banner{background:linear-gradient(135deg,#2a2410,#332b12);border-color:#5c4a1c}
@@ -1370,7 +1387,6 @@ input[type=number]{-moz-appearance:textfield}
 :root[data-theme="dark"] .fub-sub,
 :root[data-theme="dark"] .fub-more{color:#fcd34d}
 :root[data-theme="dark"] .fub-item{background:#1f1b0c;border-color:#5c4a1c}
-:root[data-theme="dark"] .hbadge-followup{background:#4a3a12;color:#fcd34d}
 
 /* Banner y filas de presupuestos vencidos (rojo) */
 :root[data-theme="dark"] .expiry-banner{background:linear-gradient(135deg,#2a1212,#331616);border-color:#5c1c1c}
@@ -1379,7 +1395,6 @@ input[type=number]{-moz-appearance:textfield}
 :root[data-theme="dark"] .expiry-banner .fub-sub,
 :root[data-theme="dark"] .expiry-banner .fub-more{color:#fca5a5}
 :root[data-theme="dark"] .expiry-banner .fub-item{background:#1f0c0c;border-color:#5c1c1c}
-:root[data-theme="dark"] .hbadge-expired{background:rgba(239,68,68,.18);color:#fca5a5}
 
 /* Banner "Podas de hoy" (verde) */
 :root[data-theme="dark"] .morning-banner{background:linear-gradient(135deg,#0c2620,#0e2b22);border-color:#065f46}
@@ -1393,12 +1408,8 @@ input[type=number]{-moz-appearance:textfield}
 :root[data-theme="dark"] .mb-act-done{color:#6ee7b7;border-color:#065f46}
 :root[data-theme="dark"] .mb-route{border-color:#065f46;color:#6ee7b7}
 
-/* Chip de agenda (fecha del trabajo) */
-:root[data-theme="dark"] .hagenda-chip{background:rgba(139,92,246,.2);color:#c4b5fd}
-:root[data-theme="dark"] .hagenda-chip.is-none{background:var(--card);color:var(--muted);border-color:var(--border)}
-:root[data-theme="dark"] .hagenda-chip.is-soon{background:#4a3a12;color:#fde68a}
-:root[data-theme="dark"] .hagenda-chip.is-past{background:rgba(59,130,246,.18);color:#93c5fd}
-:root[data-theme="dark"] .hagenda-chip.is-done{background:var(--surface-2);color:var(--muted);border-color:var(--border)}
+/* Chip de agenda: base/is-call/is-none/is-done ya son theme-aware vía tokens y
+   variables (--c-*, --card, --surface-2), no necesitan override en oscuro. */
 :root[data-theme="dark"] .agenda-warn{background:#4a3a12;color:#fde68a}
 
 /* ══ AGENDA / CALENDARIO (pestaña Agenda) ══════════════════════════════════
@@ -1412,11 +1423,11 @@ input[type=number]{-moz-appearance:textfield}
 .agc-legend{display:flex;flex-wrap:wrap;gap:6px 12px;margin-bottom:10px;font-size:11.5px;color:var(--muted)}
 .agc-leg{display:inline-flex;align-items:center;gap:5px}
 .agc-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
-.agc-c-trabajo{background:#7c3aed}
-.agc-c-recontacto{background:#0891b2}
-.agc-c-vencimiento{background:#dc2626}
-.agc-c-seguimiento{background:#d97706}
-.agc-c-nota{background:#059669}
+.agc-c-trabajo{background:var(--c-trabajo)}
+.agc-c-recontacto{background:var(--c-recontacto)}
+.agc-c-vencimiento{background:var(--c-vence)}
+.agc-c-seguimiento{background:var(--c-seguimiento)}
+.agc-c-nota{background:var(--c-nota)}
 .agc-grid-head{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px}
 .agc-grid-head span{text-align:center;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
 .agc-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
@@ -1436,11 +1447,11 @@ input[type=number]{-moz-appearance:textfield}
 .agc-day-title{font-family:'DM Serif Display',serif;font-size:16px;color:var(--text)}
 .agc-ev{display:flex;align-items:flex-start;gap:9px;padding:10px 12px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-field);margin-bottom:7px}
 .agc-ev-bar{width:4px;align-self:stretch;border-radius:3px;flex-shrink:0}
-.agc-ev.t-trabajo .agc-ev-bar{background:#7c3aed}
-.agc-ev.t-recontacto .agc-ev-bar{background:#0891b2}
-.agc-ev.t-vencimiento .agc-ev-bar{background:#dc2626}
-.agc-ev.t-seguimiento .agc-ev-bar{background:#d97706}
-.agc-ev.t-nota .agc-ev-bar{background:#059669}
+.agc-ev.t-trabajo .agc-ev-bar{background:var(--c-trabajo)}
+.agc-ev.t-recontacto .agc-ev-bar{background:var(--c-recontacto)}
+.agc-ev.t-vencimiento .agc-ev-bar{background:var(--c-vence)}
+.agc-ev.t-seguimiento .agc-ev-bar{background:var(--c-seguimiento)}
+.agc-ev.t-nota .agc-ev-bar{background:var(--c-nota)}
 .agc-ev-body{flex:1;min-width:0}
 .agc-ev-kind{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);display:block;margin-bottom:2px}
 .agc-ev-title{font-size:14px;font-weight:600;color:var(--text);line-height:1.35;word-break:break-word}
@@ -8268,10 +8279,13 @@ function agendaChipFor(e) {
     const hoy = today();
     const ref = fechas.find(f => f >= hoy) || fechas[fechas.length - 1];
     const d = daysSinceDate(ref); // >0 pasado · 0 hoy · <0 futuro
+    // El color del chip es SIEMPRE el del concepto "trabajo" (violeta, la clase
+    // base). La urgencia no cambia el tono: hoy/mañana llevan .is-due (realce).
+    // Lo ya cumplido (pasado y no aceptado) se atenúa a gris con .is-done.
     let cls = '', lbl = fmtDiaCorto(ref);
-    if (d === 0)       { cls = ' is-soon'; lbl = 'Hoy'; }
-    else if (d === -1) { cls = ' is-soon'; lbl = 'Mañana'; }
-    else if (d > 0 && est === 'aceptado') { cls = ' is-past'; lbl = `En curso · ${lbl}`; }
+    if (d === 0)       { cls = ' is-due'; lbl = 'Hoy'; }
+    else if (d === -1) { cls = ' is-due'; lbl = 'Mañana'; }
+    else if (d > 0 && est === 'aceptado') { lbl = `En curso · ${lbl}`; }
     else if (d > 0)    { cls = ' is-done'; }
     // Sufijo multi-día: prioriza avisar los días que faltan ubicar.
     let extra = '';
@@ -8282,16 +8296,17 @@ function agendaChipFor(e) {
     out += `<button type="button" class="hagenda-chip${cls}" onclick="openAgendaDlg(${e.id})" title="${esc(tit)}">${icon('calendar')} ${lbl}${extra}</button>`;
   } else if (est === 'aceptado' && pend > 0) {
     // Duración cargada pero ningún día ubicado todavía: todo por ubicar.
-    out += `<button type="button" class="hagenda-chip is-soon" onclick="openAgendaDlg(${e.id})" title="El trabajo dura ${total} días y todavía no ubicaste ninguno — tocá para agendar">${icon('calendar')} ${total} días · por ubicar</button>`;
+    out += `<button type="button" class="hagenda-chip is-due" onclick="openAgendaDlg(${e.id})" title="El trabajo dura ${total} días y todavía no ubicaste ninguno — tocá para agendar">${icon('calendar')} ${total} días · por ubicar</button>`;
   } else if (est === 'aceptado' && !e.recontactoEn) {
     out += `<button type="button" class="hagenda-chip is-none" onclick="openAgendaDlg(${e.id})" title="Agendar la fecha del trabajo o un recontacto con el cliente">${icon('calendar')} Programar</button>`;
   }
   // Recontacto: solo tiene sentido mientras el presupuesto siga aceptado.
   if (e.recontactoEn && est === 'aceptado') {
     const d = daysSinceDate(e.recontactoEn);
+    // Recontacto = celeste siempre (concepto). Atrasado/hoy → realce is-due.
     let cls = ' is-call', lbl = fmtDiaCorto(e.recontactoEn);
-    if (d === 0)    { cls = ' is-call-due'; lbl = 'Llamar hoy'; }
-    else if (d > 0) { cls = ' is-call-due'; lbl = `Llamar · hace ${d}d`; }
+    if (d === 0)    { cls = ' is-call is-due'; lbl = 'Llamar hoy'; }
+    else if (d > 0) { cls = ' is-call is-due'; lbl = `Llamar · hace ${d}d`; }
     const tit = 'Recontactar al cliente para coordinar la fecha'
       + (e.recontactoNota ? ` — ${e.recontactoNota}` : '');
     out += `<button type="button" class="hagenda-chip${cls}" onclick="openAgendaDlg(${e.id},{mode:'recontacto'})" title="${esc(tit)}">${icon('phone')} ${lbl}</button>`;
