@@ -1441,19 +1441,30 @@ input[type=number]{-moz-appearance:textfield}
 .agc-dots{display:flex;flex-wrap:wrap;gap:2px;margin-top:auto}
 .agc-dots .agc-dot{width:6px;height:6px}
 .agc-more{font-size:9px;font-weight:700;color:var(--muted);line-height:1}
-/* Semana / 3 días: tira de días (pastillas selector) + detalle abajo. En vez de
-   una grilla de columnas (celdas altas vacías y texto cortado en el teléfono),
-   una fila compacta de pastillas que selecciona el día; el detalle va debajo. */
-.agc-grid.agc-strip{display:flex;gap:6px}
-.agc-strip-day{flex:1 1 0;min-width:0;position:relative;display:flex;flex-direction:column;align-items:center;gap:5px;padding:9px 2px 8px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-field);cursor:pointer}
-.agc-strip-day.is-today{border-color:var(--accent-fg);box-shadow:inset 0 0 0 1px var(--accent-fg)}
-.agc-strip-day.is-sel{background:var(--accent-light);border-color:var(--accent-fg)}
-.agc-strip-wd{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--muted)}
-.agc-strip-day.is-today .agc-strip-wd{color:var(--accent-fg)}
-.agc-strip-num{font-size:17px;font-weight:700;color:var(--text);line-height:1}
-.agc-strip-day.is-today .agc-strip-num{color:var(--accent-fg)}
-.agc-strip-dots{display:flex;gap:2px;min-height:5px;align-items:center;flex-wrap:wrap;justify-content:center}
-.agc-strip-dots .agc-dot{width:5px;height:5px}
+/* Semana / 3 días: columnas por día con los eventos como bloques (texto a la
+   vista, sin tener que tocar). Semana = scroll horizontal (no entran 7 columnas
+   legibles en el teléfono); 3-días = 3 columnas que llenan el ancho. */
+.agc-grid.agc-cols{display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px;scrollbar-width:thin}
+.agc-grid.agc-cols .agc-col{flex:0 0 132px;display:flex;flex-direction:column;gap:5px;min-width:0}
+.agc-grid.agc-cols-3 .agc-col{flex:1 1 0}
+.agc-col-head{position:relative;display:flex;flex-direction:column;align-items:center;gap:1px;padding:6px 2px 5px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-field);cursor:pointer}
+.agc-col.is-today .agc-col-head{border-color:var(--accent-fg);box-shadow:inset 0 0 0 1px var(--accent-fg)}
+.agc-col.is-sel .agc-col-head{background:var(--accent-light);border-color:var(--accent-fg)}
+.agc-col-wd{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--muted)}
+.agc-col.is-today .agc-col-wd{color:var(--accent-fg)}
+.agc-col-num{font-size:15px;font-weight:700;color:var(--text);line-height:1}
+.agc-col.is-today .agc-col-num{color:var(--accent-fg)}
+.agc-col-body{display:flex;flex-direction:column;gap:4px}
+.agc-col-ev{display:block;width:100%;text-align:left;background:var(--surface-2);border:1px solid var(--border);border-left:4px solid var(--border);border-radius:6px;padding:5px 7px;cursor:pointer}
+.agc-col-ev.t-trabajo{border-left-color:var(--c-trabajo)}
+.agc-col-ev.t-recontacto{border-left-color:var(--c-recontacto)}
+.agc-col-ev.t-vencimiento{border-left-color:var(--c-vence)}
+.agc-col-ev.t-seguimiento{border-left-color:var(--c-seguimiento)}
+.agc-col-ev.t-nota{border-left-color:var(--c-nota)}
+.agc-col-ev-title{font-size:12px;font-weight:600;color:var(--text);line-height:1.3;overflow-wrap:anywhere}
+.agc-col-ev-sub{font-size:10.5px;color:var(--muted);line-height:1.3;margin-top:1px;overflow-wrap:anywhere}
+.agc-col-ev.done .agc-col-ev-title{text-decoration:line-through;opacity:.6}
+.agc-col-empty{font-size:14px;color:var(--faint);text-align:center;padding:6px 0}
 /* Indicador de carga: cuántos trabajos hay agendados ese día (solo si ≥2) */
 .agc-load{position:absolute;top:3px;right:3px;min-width:15px;height:15px;padding:0 4px;display:inline-flex;align-items:center;justify-content:center;font-size:9.5px;font-weight:800;line-height:1;color:#fff;background:var(--c-trabajo);border-radius:8px}
 .agc-day-load{font-family:'DM Sans',sans-serif;font-size:11px;font-weight:700;color:var(--c-trabajo);background:var(--c-trabajo-bg);padding:2px 8px;border-radius:20px;margin-left:2px}
@@ -13024,7 +13035,7 @@ function renderCal() {
   [['mes', 'agc-vtab-mes'], ['semana', 'agc-vtab-semana'], ['3dias', 'agc-vtab-3dias'], ['agenda', 'agc-vtab-agenda']]
     .forEach(([v, id]) => { const el = document.getElementById(id); if (el) el.classList.toggle('active', _calView === v); });
   if (esAgenda) renderCalList();
-  else if (_calView === 'semana' || _calView === '3dias') renderCalStrip();
+  else if (_calView === 'semana' || _calView === '3dias') renderCalCols();
   else renderCalGrid();
   if (typeof calUpdateDot === 'function') calUpdateDot();
 }
@@ -13039,7 +13050,8 @@ function renderCalGrid() {
   if (!grid || !head) return;
   if (_calY == null) { const t = today().split('-'); _calY = +t[0]; _calM = +t[1] - 1; }
 
-  grid.classList.remove('agc-strip', 'agc-grid-3');
+  grid.classList.remove('agc-cols', 'agc-cols-3', 'agc-grid-3');
+  grid.scrollLeft = 0;
   head.hidden = false;
   head.innerHTML = CAL_WD_MON.map(d => `<span>${d}</span>`).join('');
   if (title) title.textContent = `${CAL_MESES[_calM]} ${_calY}`;
@@ -13073,11 +13085,12 @@ function renderCalGrid() {
   renderCalDay();
 }
 
-// Tira de días (Semana / 3-días): fila de "pastillas" compactas (día de semana +
-// número + puntos por tipo) que hace de selector. El contenido completo del día
-// tocado se lee abajo en el detalle (renderCalDay). Semana = Lun→Dom de la semana
-// ancla; 3-días = 3 días desde la ancla.
-function renderCalStrip() {
+// Columnas por día (Semana / 3-días): cada día es una columna con el encabezado
+// (día de semana + número) y debajo los eventos como BLOQUES con el texto a la
+// vista (cliente + dato), sin tener que tocar para ver qué hay. Semana = Lun→Dom
+// con scroll horizontal (no entran 7 columnas legibles en el teléfono); 3-días =
+// 3 columnas que llenan el ancho. Debajo queda el alta de nota para el día tocado.
+function renderCalCols() {
   const grid = document.getElementById('agc-grid');
   const head = document.getElementById('agc-grid-head');
   const title = document.getElementById('agc-title');
@@ -13097,11 +13110,11 @@ function renderCalStrip() {
   const endD = new Date(gridStart.getFullYear(), gridStart.getMonth(), gridStart.getDate() + cells - 1);
   if (title) title.textContent = _calRangeLabel(gridStart, endD);
   if (head) head.hidden = true;
-  grid.classList.add('agc-strip');
+  grid.classList.add('agc-cols');
+  grid.classList.toggle('agc-cols-3', es3);             // 3-días: columnas que llenan el ancho
   grid.classList.remove('agc-grid-3');
 
-  // Mantener la selección dentro del rango visible: si _calSel quedó fuera (p. ej.
-  // al navegar de semana), elegir hoy si cae en el rango, o el primer día.
+  // Mantener la selección (para el alta de nota de abajo) dentro del rango visible.
   const hoy = today();
   const endISO = toLocalISODate(endD);
   if (!_calSel || _calSel < startISO || _calSel > endISO) {
@@ -13109,25 +13122,48 @@ function renderCalStrip() {
   }
 
   const idx = calBuildIndex();
-  const lim = es3 ? 6 : 4;
   let html = '';
   for (let i = 0; i < cells; i++) {
     const d = new Date(gridStart.getFullYear(), gridStart.getMonth(), gridStart.getDate() + i);
     const iso = toLocalISODate(d);
     const evs = idx[iso] || [];
-    let cls = 'agc-strip-day';
+    let cls = 'agc-col';
     if (iso === hoy) cls += ' is-today';
     if (iso === _calSel) cls += ' is-sel';
-    const dots = evs.length
-      ? `${evs.slice(0, lim).map(ev => `<i class="agc-dot agc-c-${ev.tipo}"></i>`).join('')}${evs.length > lim ? `<span class="agc-more">+${evs.length - lim}</span>` : ''}`
-      : '';
-    html += `<button type="button" class="${cls}" onclick="calSelectDay('${iso}')">`
-      + `<span class="agc-strip-wd">${CAL_WD_MON[(d.getDay() + 6) % 7]}</span>`
-      + `<span class="agc-strip-num">${d.getDate()}</span>`
-      + `<span class="agc-strip-dots">${dots}</span></button>`;
+    const nTrab = _calJobCount(evs);
+    const load = nTrab >= 2 ? `<span class="agc-load" title="${nTrab} trabajos agendados">${nTrab}</span>` : '';
+    const body = evs.length
+      ? evs.map(_calColEv).join('')
+      : `<div class="agc-col-empty">·</div>`;
+    html += `<div class="${cls}">`
+      + `<button type="button" class="agc-col-head" onclick="calSelectDay('${iso}')" title="Elegir este día para agregar una nota">`
+      + `<span class="agc-col-wd">${CAL_WD_MON[(d.getDay() + 6) % 7]}</span>`
+      + `<span class="agc-col-num">${d.getDate()}</span>${load}</button>`
+      + `<div class="agc-col-body">${body}</div></div>`;
   }
   grid.innerHTML = html;
-  renderCalDay();
+
+  // Semana: al abrir/navegar, traer a la vista la columna del día elegido (hoy por
+  // defecto) si quedó fuera del scroll horizontal — evita abrir en días vacíos.
+  const target = grid.querySelector('.agc-col.is-sel') || grid.querySelector('.agc-col.is-today');
+  if (target && grid.scrollWidth > grid.clientWidth + 1) {
+    const cr = grid.getBoundingClientRect(), tr = target.getBoundingClientRect();
+    if (tr.left < cr.left || tr.right > cr.right) grid.scrollLeft += (tr.left - cr.left) - 6;
+  }
+
+  renderCalDay(true);   // abajo: solo el alta de nota del día elegido (sin re-listar)
+}
+
+// Bloque de evento dentro de una columna de día: título (cliente/asunto) + sub
+// con el texto a la vista, envuelve si hace falta. Tocarlo abre el presupuesto o
+// alterna la nota. Barra de color por tipo (patrón `t-<tipo>`).
+function _calColEv(ev) {
+  const sub = ev.sub ? `<div class="agc-col-ev-sub">${esc(ev.sub)}</div>` : '';
+  let act = '';
+  if (ev.entryId != null) act = `onclick="goToHistoryEntry(${ev.entryId})" title="Ver el presupuesto"`;
+  else if (ev.noteId != null) act = `onclick="calToggleNote('${ev.noteId}')" title="${ev.done ? 'Marcar pendiente' : 'Marcar hecho'}"`;
+  return `<button type="button" class="agc-col-ev t-${ev.tipo}${ev.done ? ' done' : ''}" ${act}>`
+    + `<div class="agc-col-ev-title">${esc(ev.title)}</div>${sub}</button>`;
 }
 
 // Markup de una tarjeta de evento (reusado por el detalle del día y la lista de
@@ -13155,8 +13191,10 @@ function _calEvHTML(ev, dateLabel) {
   </div>`;
 }
 
-// ─── RENDER: DETALLE DEL DÍA SELECCIONADO (vista Mes) ────────
-function renderCalDay() {
+// ─── RENDER: DETALLE DEL DÍA SELECCIONADO ────────────────────
+// `noList` (Semana/3-días): los eventos ya se ven en las columnas, así que abajo
+// solo va el encabezado del día + el alta de nota (no se re-listan los eventos).
+function renderCalDay(noList) {
   const box = document.getElementById('agc-day');
   if (!box) return;
   const iso = _calSel;
@@ -13166,9 +13204,11 @@ function renderCalDay() {
   const nTrab = _calJobCount(evs);
   const loadChip = nTrab >= 2 ? ` <span class="agc-day-load">${nTrab} trabajos</span>` : '';
 
-  const list = evs.length
-    ? evs.map(ev => _calEvHTML(ev)).join('')
-    : `<div class="agc-day-empty">No hay nada agendado este día. Podés dejar una nota o recordatorio abajo.</div>`;
+  const list = noList
+    ? ''
+    : (evs.length
+      ? evs.map(ev => _calEvHTML(ev)).join('')
+      : `<div class="agc-day-empty">No hay nada agendado este día. Podés dejar una nota o recordatorio abajo.</div>`);
 
   box.innerHTML = `
     <div class="agc-day-head">
