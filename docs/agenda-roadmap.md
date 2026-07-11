@@ -41,22 +41,29 @@ extra por evento:
     (mismo criterio que `agendaGcalUrl`); fechas LOCAL (`YYYYMMDD`), texto escapado
     (`_icsEsc`), líneas plegadas (`_icsFold`) y UID único por evento (guarda anti-colisión).
     Vencimientos/seguimientos quedan afuera (son derivados y ruidosos).
-- **Fase 3 — Vistas Semana y 3 días** (v132, rediseñado en v133). Toggle de 4 vistas
-  (Mes · Semana · 3 días · Agenda). `renderCal()` es dispatcher: Mes → `renderCalGrid()`
-  (grilla 7×N), Semana/3-días → `renderCalStrip()`, Agenda → `renderCalList()`.
-  - **Tira de días (`renderCalStrip`).** En el teléfono una grilla de columnas dejaba
-    celdas altas vacías (Semana) y texto cortado (3 días). Por eso Semana y 3 días usan
-    una fila de **pastillas** compactas (`.agc-strip-day` = día de semana + número +
-    puntos por tipo) que hace de **selector**; el contenido completo del día tocado se
-    lee en el detalle de abajo (`renderCalDay`, con chip "N trabajos" cuando ≥2). Semana
-    = 7 pastillas Lun→Dom de la semana ancla; 3 días = 3 pastillas desde la ancla.
-    Mantiene `_calSel` dentro del rango visible al navegar (clamp a hoy o al primer día).
+- **Fase 3 — Vistas Semana y 3 días** (v132; tira de días v133; columnas v134). Toggle
+  de 4 vistas (Mes · Semana · 3 días · Agenda). `renderCal()` es dispatcher: Mes →
+  `renderCalGrid()` (grilla 7×N), Semana/3-días → `renderCalCols()`, Agenda → `renderCalList()`.
+  - **Columnas por día (`renderCalCols`).** Iteración final: el usuario quería ver el
+    contenido de cada día **a la vista, sin tocar** (referencia estilo Jobber). Cada día
+    es una **columna** (`.agc-col`) con encabezado (día de semana + número + badge de
+    carga) y los eventos como **bloques** (`_calColEv` → `.agc-col-ev`: título + sub con
+    el texto envolviendo, barra de color por tipo). Tocar un bloque abre el presupuesto
+    (`goToHistoryEntry`) o alterna la nota. **Semana** = 7 columnas con **scroll
+    horizontal** (no entran 7 legibles en el teléfono); al abrir/navegar auto-scrollea a
+    la columna del día elegido (hoy) para no arrancar en días vacíos. **3 días** = 3
+    columnas que **llenan el ancho** (`.agc-cols-3`). Debajo, `renderCalDay(true)` deja
+    **solo el alta de nota** del día elegido (sin re-listar los eventos: ya están en las
+    columnas). Historia previa: v132 fue grilla de columnas con chips cortados; v133 una
+    tira de pastillas selector (`renderCalStrip`) que obligaba a tocar para ver el día;
+    v134 volvió a columnas pero con el texto completo a la vista.
   - Fecha ancla `_calAnchor` (iso) para las vistas no mensuales; navegación unificada
     `calPrev`/`calNext` (`calStep`) que se mueve ±1 mes / ±7 / ±3 días según la vista.
-    `calToday` y `calSelectDay` compartidos; el detalle del día (`renderCalDay`) y el
-    alta de notas se reusan bajo las tres vistas de grilla/tira. Vista recordada en
+    `calToday` y `calSelectDay` compartidos; `renderCalDay(noList)` sirve el detalle
+    completo (Mes) o solo el alta de nota (Semana/3-días). Vista recordada en
     `LS.CAL_VIEW` (whitelist `CAL_VIEWS`). Toggle scrollable + padding reducido en móvil
-    para las 4 pestañas. Helpers nuevos: `_calDateFromISO`, `_calRangeLabel`.
+    para las 4 pestañas. Helpers nuevos: `_calDateFromISO`, `_calRangeLabel`, `_calColEv`.
+    `renderCalGrid` limpia las clases `agc-cols*` al volver a Mes.
 
 ## Ideas futuras (no comprometidas)
 - Botón "Hoy" también en la vista Agenda (scroll al grupo Hoy).
