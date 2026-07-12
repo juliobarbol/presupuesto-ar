@@ -1431,15 +1431,17 @@ input[type=number]{-moz-appearance:textfield}
 .agc-grid-head{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px}
 .agc-grid-head span{text-align:center;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
 .agc-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
-.agc-cell{position:relative;min-height:52px;display:flex;flex-direction:column;align-items:stretch;gap:3px;padding:5px 4px 4px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-field);cursor:pointer;overflow:hidden}
+.agc-cell{position:relative;min-height:56px;display:flex;flex-direction:column;align-items:stretch;gap:3px;padding:5px 4px 4px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-field);cursor:pointer;overflow:hidden}
 .agc-cell.is-other{opacity:.4}
 .agc-cell.is-empty{cursor:default;background:transparent;border-color:transparent}
-.agc-cell.is-today{border-color:var(--accent-fg);box-shadow:inset 0 0 0 1px var(--accent-fg)}
-.agc-cell.is-sel{background:var(--accent-light)}
+/* Mapa de trabajo: los días con poda agendada se tintan de fondo (concepto = color) */
+.agc-cell-work{background:var(--c-trabajo-bg)}
+.agc-cell.is-sel{background:var(--accent-light);border-color:var(--accent-fg)}
 .agc-daynum{font-size:12px;font-weight:600;color:var(--text);line-height:1}
-.agc-cell.is-today .agc-daynum{color:var(--accent-fg);font-weight:800}
-.agc-dots{display:flex;flex-wrap:wrap;gap:2px;margin-top:auto}
-.agc-dots .agc-dot{width:6px;height:6px}
+/* Hoy: el número va en un círculo relleno (marca inconfundible, distinta del día elegido) */
+.agc-cell.is-today .agc-daynum{align-self:flex-start;min-width:20px;height:20px;padding:0 4px;display:inline-flex;align-items:center;justify-content:center;background:var(--accent-fg);color:#fff;font-weight:800;border-radius:999px}
+.agc-dots{display:flex;flex-wrap:wrap;gap:3px;margin-top:auto}
+.agc-dots .agc-dot{width:7px;height:7px}
 .agc-more{font-size:9px;font-weight:700;color:var(--muted);line-height:1}
 /* Semana / 3 días: columnas por día con los eventos como bloques (texto a la
    vista, sin tener que tocar). Semana = scroll horizontal (no entran 7 columnas
@@ -1513,7 +1515,7 @@ input[type=number]{-moz-appearance:textfield}
 .agc-list-empty .ic{width:32px;height:32px;display:block;margin:0 auto 10px;color:var(--faint)}
 .agc-list-empty-sub{font-size:12.5px;color:var(--muted);opacity:.85}
 @media (max-width:420px){
-  .agc-cell{min-height:46px;padding:4px 3px 3px}
+  .agc-cell{min-height:50px;padding:4px 3px 3px}
   .agc-title{font-size:16px;min-width:120px}
   .agc-legend{font-size:11px;gap:5px 9px}
   .agc-vtab{padding:6px 10px;font-size:12px}
@@ -13040,9 +13042,10 @@ function renderCal() {
   if (typeof calUpdateDot === 'function') calUpdateDot();
 }
 
-// Grilla del mes (7×N celdas con puntos). Semana y 3-días usan la tira de días
-// (renderCalStrip): en un teléfono una grilla de columnas queda con celdas altas
-// vacías y texto cortado, así que ahí conviene una tira compacta + detalle.
+// Grilla del mes (7×N celdas). Panorama del mes: los días con poda se tintan de
+// fondo (mapa de trabajo) y los otros conceptos van como puntos. Semana y 3-días
+// usan columnas por día (renderCalCols). El encabezado Lun…Dom se muestra con
+// style.display (no `hidden`: el `[hidden]` lo pisa el `display:grid` del CSS).
 function renderCalGrid() {
   const grid = document.getElementById('agc-grid');
   const head = document.getElementById('agc-grid-head');
@@ -13053,6 +13056,7 @@ function renderCalGrid() {
   grid.classList.remove('agc-cols', 'agc-cols-3', 'agc-grid-3');
   grid.scrollLeft = 0;
   head.hidden = false;
+  head.style.display = '';
   head.innerHTML = CAL_WD_MON.map(d => `<span>${d}</span>`).join('');
   if (title) title.textContent = `${CAL_MESES[_calM]} ${_calY}`;
 
@@ -13075,9 +13079,12 @@ function renderCalGrid() {
     if (iso === hoy) cls += ' is-today';
     if (iso === _calSel) cls += ' is-sel';
     const nTrab = _calJobCount(evs);
+    if (nTrab > 0) cls += ' agc-cell-work';   // día con poda → fondo tintado (mapa de trabajo)
     const load = nTrab >= 2 ? `<span class="agc-load" title="${nTrab} trabajos agendados">${nTrab}</span>` : '';
-    const dots = evs.length
-      ? `<div class="agc-dots">${evs.slice(0, 4).map(ev => `<i class="agc-dot agc-c-${ev.tipo}"></i>`).join('')}${evs.length > 4 ? `<span class="agc-more">+${evs.length - 4}</span>` : ''}</div>`
+    // El trabajo se marca con el fondo; recontacto/vence/seguimiento/nota siguen como puntos.
+    const otras = evs.filter(ev => ev.tipo !== 'trabajo');
+    const dots = otras.length
+      ? `<div class="agc-dots">${otras.slice(0, 4).map(ev => `<i class="agc-dot agc-c-${ev.tipo}"></i>`).join('')}${otras.length > 4 ? `<span class="agc-more">+${otras.length - 4}</span>` : ''}</div>`
       : '';
     html += `<div class="${cls}" onclick="calSelectDay('${iso}')"><span class="agc-daynum">${d.getDate()}</span>${load}${dots}</div>`;
   }
@@ -13109,7 +13116,9 @@ function renderCalCols() {
   const startISO = toLocalISODate(gridStart);
   const endD = new Date(gridStart.getFullYear(), gridStart.getMonth(), gridStart.getDate() + cells - 1);
   if (title) title.textContent = _calRangeLabel(gridStart, endD);
-  if (head) head.hidden = true;
+  // Ocultar el encabezado Lun…Dom con style.display: `hidden` no alcanza porque el
+  // CSS le pone display:grid (cada columna ya trae su propio día de semana).
+  if (head) { head.hidden = true; head.style.display = 'none'; }
   grid.classList.add('agc-cols');
   grid.classList.toggle('agc-cols-3', es3);             // 3-días: columnas que llenan el ancho
   grid.classList.remove('agc-grid-3');

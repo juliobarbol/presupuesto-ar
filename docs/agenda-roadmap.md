@@ -64,6 +64,14 @@ extra por evento:
     `LS.CAL_VIEW` (whitelist `CAL_VIEWS`). Toggle scrollable + padding reducido en móvil
     para las 4 pestañas. Helpers nuevos: `_calDateFromISO`, `_calRangeLabel`, `_calColEv`.
     `renderCalGrid` limpia las clases `agc-cols*` al volver a Mes.
+  - **Mejora del Mes + fix (v135).** El Mes es un **mapa de trabajo**: los días con poda
+    se tintan de fondo (`.agc-cell-work` = `var(--c-trabajo-bg)`) y el trabajo ya NO se
+    muestra como punto (el fondo lo representa); recontacto/vence/seguimiento/nota siguen
+    como puntos (más grandes). **Hoy** pasa a ser un **círculo relleno** en el número
+    (marca inconfundible, distinta del día elegido que es fondo `--accent-light` + borde).
+    Celdas un toque más altas. **Fix:** el encabezado Lun…Dom (`#agc-grid-head`) se ocultaba
+    con `hidden` pero el `display:grid` del CSS lo pisaba y aparecía una fila fantasma en
+    Semana/3-días → ahora se controla con `style.display` (`none` en columnas, `''` en Mes).
 
 ## Ideas futuras (no comprometidas)
 - Botón "Hoy" también en la vista Agenda (scroll al grupo Hoy).
