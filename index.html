@@ -1488,7 +1488,7 @@ input[type=number]{-moz-appearance:textfield}
 .agc-ev-title{font-size:14px;font-weight:600;color:var(--text);line-height:1.35;word-break:break-word}
 .agc-ev-sub{font-size:12px;color:var(--muted);margin-top:2px;line-height:1.4;word-break:break-word}
 .agc-ev.done .agc-ev-title{text-decoration:line-through;opacity:.6}
-.agc-ev-acts{display:flex;flex-direction:column;gap:5px;flex-shrink:0}
+.agc-ev-acts{display:flex;flex-flow:row wrap;gap:5px;flex-shrink:0;width:65px;justify-content:flex-end;align-content:flex-start}
 .agc-ev-btn{width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-field);cursor:pointer;color:var(--muted);padding:0}
 .agc-ev-btn .ic{width:15px;height:15px}
 .agc-ev-btn:active{background:var(--accent-light)}
@@ -1500,11 +1500,29 @@ input[type=number]{-moz-appearance:textfield}
 .agc-note-contact>summary{list-style:none;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--muted);padding:4px 2px;user-select:none}
 .agc-note-contact>summary::-webkit-details-marker{display:none}
 .agc-note-contact>summary .ic{width:15px;height:15px}
-.agc-note-crow{display:flex;gap:7px;margin-top:7px}
-.agc-note-crow input{flex:1;min-width:0}
+.agc-note-crow{display:flex;flex-wrap:wrap;gap:7px;margin-top:7px;align-items:flex-start}
+.agc-note-crow>input{flex:1 1 140px;min-width:0}
+.agc-note-crow>.btn{flex:0 0 auto}
+.agc-cli-wrap{position:relative;flex:1 1 150px;min-width:0}
+.agc-cli-wrap>input{width:100%}
+/* Dropdown NATIVO de clientes (panel propio, no la barra de sugerencias del teclado) */
+.agc-cli-dd{position:absolute;z-index:9999;top:100%;left:0;right:0;margin-top:3px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-field);box-shadow:0 12px 32px rgba(0,0,0,.18);max-height:216px;overflow-y:auto}
+.agc-cli-opt{display:flex;flex-direction:column;gap:1px;padding:9px 12px;cursor:pointer;border-bottom:1px solid var(--surface-2)}
+.agc-cli-opt:last-child{border-bottom:none}
+.agc-cli-opt:active{background:var(--accent-light)}
+.agc-cli-opt-n{font-size:13px;font-weight:500;color:var(--text)}
+.agc-cli-opt-t{font-size:11px;color:var(--muted)}
 /* Botón de chat de la tarjeta de evento: verde WhatsApp para diferenciarlo */
 .agc-ev-btn.agc-ev-wa{color:var(--wa,#16a34a);border-color:color-mix(in srgb,var(--wa,#16a34a) 35%,var(--border))}
 .agc-ev-btn.agc-ev-wa .ic{color:var(--wa,#16a34a)}
+/* Modal de edición de nota */
+#note-edit-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2000;align-items:center;justify-content:center}
+#note-edit-overlay.open{display:flex}
+#note-edit-box{background:var(--card);border-radius:var(--radius-box);padding:22px;width:400px;max-width:92vw;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+#note-edit-box h4{font-family:'DM Serif Display',serif;font-size:17px;margin-bottom:14px;color:var(--text)}
+.ne-field{margin-bottom:14px}
+.ne-field>label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:5px}
+#note-edit-box .cbtns{display:flex;gap:8px;justify-content:flex-end;margin-top:4px}
 /* Segmentado Mes / Semana / 3 días / Agenda */
 .agc-viewtoggle{display:flex;max-width:100%;overflow-x:auto;background:var(--surface-2);border-radius:var(--radius-field);padding:3px;gap:3px;margin-bottom:12px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
 .agc-viewtoggle::-webkit-scrollbar{display:none}
@@ -1580,6 +1598,7 @@ input[type=number]{-moz-appearance:textfield}
   #app,
   #moverlay,
   #confirm-overlay,
+  #note-edit-overlay,
   #agenda-overlay,
   #share-overlay,
   #day-alert-overlay,
@@ -3629,6 +3648,31 @@ input[type=number]{-moz-appearance:textfield}
     <div class="cbtns">
       <button class="btn btn-s" id="confirm-cancel">Cancelar</button>
       <button class="btn btn-d" id="confirm-ok">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════ EDITAR NOTA / RECORDATORIO ════════════════════════
+     Modal para editar una nota ya creada: texto + contacto vinculado (cliente
+     con dropdown nativo + teléfono, con opción de importar del teléfono). -->
+<div id="note-edit-overlay" role="presentation" onclick="if(event.target===this)calCloseNoteEdit()">
+  <div id="note-edit-box" role="dialog" aria-modal="true" aria-labelledby="note-edit-title">
+    <h4 id="note-edit-title">Editar nota</h4>
+    <div class="ne-field">
+      <label for="agc-edit-text">Recordatorio</label>
+      <input type="text" id="agc-edit-text" maxlength="140" placeholder="Texto de la nota" onkeydown="if(event.key==='Enter'){calSaveNoteEdit();}">
+    </div>
+    <div class="ne-field">
+      <label>Contacto para chat directo (opcional)</label>
+      <div class="agc-note-crow">
+        <div class="agc-cli-wrap"><input type="text" id="agc-edit-cli" placeholder="Cliente" maxlength="80" autocomplete="off"></div>
+        <input type="tel" id="agc-edit-tel" placeholder="Teléfono / WhatsApp" maxlength="40" inputmode="tel" autocomplete="off">
+        <button type="button" id="agc-edit-import" class="btn btn-g btn-sm" onclick="importContactToNoteEdit()" style="display:none" title="Importar un contacto del teléfono"><svg class="ic"><use href="#i-idcard"></use></svg> Importar</button>
+      </div>
+    </div>
+    <div class="cbtns">
+      <button class="btn btn-s" id="note-edit-cancel" onclick="calCloseNoteEdit()">Cancelar</button>
+      <button class="btn btn-p" id="note-edit-save" onclick="calSaveNoteEdit()">Guardar</button>
     </div>
   </div>
 </div>
@@ -5921,6 +5965,87 @@ async function importFromContacts() {
     console.error('Contact Picker error:', err);
     toast('No se pudo importar el contacto. Probá de nuevo o cargalo a mano.', 'err', 3500);
   }
+}
+
+// ¿El dispositivo puede abrir el selector de contactos del teléfono?
+function contactPickerSupported() {
+  return ('contacts' in navigator) && ('ContactsManager' in window);
+}
+
+// Versión genérica del importador: vuelca nombre + teléfono del contacto elegido
+// en los dos inputs que se le pasen. La usan el alta de nota y el modal de
+// edición (los campos quedan editables, igual que en el editor).
+async function importContactToFields(nameInput, telInput) {
+  if (!contactPickerSupported()) {
+    toast('Tu dispositivo no permite importar contactos. Cargá los datos a mano.', 'info', 3500);
+    return;
+  }
+  try {
+    let props = ['name', 'tel'];
+    if (typeof navigator.contacts.getProperties === 'function') {
+      try {
+        const avail = await navigator.contacts.getProperties();
+        props = ['name', 'tel'].filter(p => avail.includes(p));
+        if (!props.length) props = ['name'];
+      } catch (e) { /* usar props por defecto */ }
+    }
+    const contacts = await navigator.contacts.select(props, { multiple: false });
+    if (!contacts || !contacts.length) return; // el usuario canceló
+    const c = contacts[0];
+    const nombre = (c.name && c.name.length) ? c.name[0] : '';
+    const tel    = (c.tel && c.tel.length)   ? c.tel[0]  : '';
+    if (nombre && nameInput) nameInput.value = nombre;
+    if (tel && telInput) telInput.value = tel;
+    toast('Contacto importado. Podés editarlo antes de guardar.', 'ok', 3000);
+  } catch (err) {
+    if (err && err.name === 'AbortError') return;
+    console.error('Contact Picker error:', err);
+    toast('No se pudo importar el contacto. Probá de nuevo o cargalo a mano.', 'err', 3500);
+  }
+}
+
+// Autocompletar de clientes con un dropdown NATIVO (panel propio anclado bajo el
+// input), en vez de un <datalist> (que en Android aparece como sugerencias sobre
+// el teclado). Al elegir un cliente completa el nombre y el teléfono. Genérico:
+// se le pasa el input de nombre y el de teléfono. Idempotente por input.
+function attachClientDropdown(nameInput, telInput) {
+  if (!nameInput || nameInput._clDropAttached) return;
+  nameInput._clDropAttached = true;
+  const host = nameInput.closest('.agc-cli-wrap') || nameInput.parentElement;
+  if (host && getComputedStyle(host).position === 'static') host.style.position = 'relative';
+  const dd = document.createElement('div');
+  dd.className = 'agc-cli-dd';
+  dd.style.display = 'none';
+  (host || nameInput.parentElement).appendChild(dd);
+
+  function render() {
+    const q = (nameInput.value || '').toLowerCase().trim();
+    const all = (typeof getClientDB === 'function') ? getClientDB() : [];
+    const list = (q
+      ? all.filter(e => e.name && (e.name.toLowerCase().includes(q)))
+      : all).slice(0, 8);
+    if (!list.length) { dd.style.display = 'none'; return; }
+    dd.innerHTML = list.map(e => `<div class="agc-cli-opt" data-name="${esc(e.name)}">
+        <span class="agc-cli-opt-n">${esc(e.name)}</span>
+        ${e.contact ? `<span class="agc-cli-opt-t">${esc(e.contact)}</span>` : ''}
+      </div>`).join('');
+    dd.style.display = 'block';
+    dd.querySelectorAll('.agc-cli-opt').forEach(el => {
+      const pick = (ev) => {
+        ev.preventDefault();
+        const rec = list.find(x => x.name === el.dataset.name);
+        if (!rec) return;
+        nameInput.value = rec.name;
+        if (telInput && rec.contact) telInput.value = rec.contact;
+        dd.style.display = 'none';
+      };
+      el.addEventListener('mousedown', pick);
+      el.addEventListener('touchend', pick);
+    });
+  }
+  nameInput.addEventListener('input', render);
+  nameInput.addEventListener('focus', render);
+  nameInput.addEventListener('blur', () => setTimeout(() => { dd.style.display = 'none'; }, 180));
 }
 
 // ===== js/phrases.js =====
@@ -13221,6 +13346,7 @@ function _calEvHTML(ev, dateLabel) {
     acts = chat + `<button class="agc-ev-btn" onclick="goToHistoryEntry(${ev.entryId})" title="Ver el presupuesto en el historial">${icon('book')}</button>`;
   } else if (ev.noteId != null) {
     acts = chat
+         + `<button class="agc-ev-btn" onclick="calEditNote('${ev.noteId}')" title="Editar la nota / agregar contacto">${icon('pencil')}</button>`
          + `<button class="agc-ev-btn" onclick="calToggleNote('${ev.noteId}')" title="${ev.done ? 'Marcar pendiente' : 'Marcar hecho'}">${icon('check')}</button>`
          + `<button class="agc-ev-btn" onclick="calDeleteNote('${ev.noteId}')" title="Borrar nota">${icon('trash')}</button>`;
   }
@@ -13254,14 +13380,6 @@ function renderCalDay(noList) {
       ? evs.map(ev => _calEvHTML(ev)).join('')
       : `<div class="agc-day-empty">No hay nada agendado este día. Podés dejar una nota o recordatorio abajo.</div>`);
 
-  // Datalist con los clientes guardados: al elegir uno se autocompleta el
-  // teléfono (calNoteFillTel). Sirve para "importar" un cliente existente a la
-  // nota; también se puede tipear un contacto nuevo (nombre + tel) que aún no
-  // tiene presupuesto y queda guardado para reusarlo.
-  const cliOpts = (typeof getClientDB === 'function')
-    ? getClientDB().filter(c => c && c.name).map(c => `<option value="${esc(c.name)}">${esc(c.contact || '')}</option>`).join('')
-    : '';
-
   box.innerHTML = `
     <div class="agc-day-head">
       <span class="agc-day-title">${esc(_calLongDate(iso))}${esHoy ? ' · hoy' : ''}${loadChip}</span>
@@ -13274,11 +13392,27 @@ function renderCalDay(noList) {
     <details class="agc-note-contact">
       <summary>${icon('message')} Vincular contacto (chat directo)</summary>
       <div class="agc-note-crow">
-        <input type="text" id="agc-note-cli" placeholder="Cliente" maxlength="80" list="agc-cli-dl" autocomplete="off" oninput="calNoteFillTel()">
+        <div class="agc-cli-wrap"><input type="text" id="agc-note-cli" placeholder="Cliente" maxlength="80" autocomplete="off"></div>
         <input type="tel" id="agc-note-tel" placeholder="Teléfono / WhatsApp" maxlength="40" inputmode="tel" autocomplete="off">
+        <button type="button" id="agc-note-import" class="btn btn-g btn-sm" onclick="importContactToNote()" style="display:none" title="Importar un contacto del teléfono">${icon('idcard')} Importar</button>
       </div>
-      <datalist id="agc-cli-dl">${cliOpts}</datalist>
     </details>`;
+  _calSetupNoteContact();
+}
+
+// Engancha el dropdown nativo de clientes al alta de nota y muestra el botón de
+// importar contacto si el dispositivo lo soporta. Se llama en cada render porque
+// renderCalDay recrea los inputs.
+function _calSetupNoteContact() {
+  const cli = document.getElementById('agc-note-cli');
+  const tel = document.getElementById('agc-note-tel');
+  if (cli) attachClientDropdown(cli, tel);
+  const imp = document.getElementById('agc-note-import');
+  if (imp) imp.style.display = (typeof contactPickerSupported === 'function' && contactPickerSupported()) ? 'inline-flex' : 'none';
+}
+// Importa un contacto del teléfono hacia los campos del alta de nota.
+function importContactToNote() {
+  importContactToFields(document.getElementById('agc-note-cli'), document.getElementById('agc-note-tel'));
 }
 
 // ─── RENDER: VISTA AGENDA (lista cronológica) ────────────────
@@ -13373,6 +13507,11 @@ function calSaveNote() {
   if (!tel && cliente && /^[\d\s()+.\-]+$/.test(cliente) && cliente.replace(/\D/g, '').length >= 6) {
     tel = cliente; cliente = '';
   }
+  // Si eligió/tipeó un cliente existente sin tocar el teléfono, lo tomamos de la DB.
+  if (cliente && !tel) {
+    const c = getClientDB().find(x => ((x.name || '') + '').trim().toLowerCase() === cliente.toLowerCase());
+    if (c && c.contact) tel = c.contact;
+  }
   const notes = getNotes();
   notes.push({
     id: 'n_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
@@ -13393,21 +13532,78 @@ function calSaveNote() {
   renderCal();
   toast('Nota agendada', 'ok');
 }
-// Autocompleta el teléfono al elegir/tipear un cliente ya guardado (datalist).
-function calNoteFillTel() {
-  const cliEl = document.getElementById('agc-note-cli');
-  const telEl = document.getElementById('agc-note-tel');
-  if (!cliEl || !telEl) return;
-  const name = (cliEl.value || '').trim().toLowerCase();
-  if (!name) return;
-  const c = getClientDB().find(x => ((x.name || '') + '').trim().toLowerCase() === name);
-  if (c && c.contact) telEl.value = c.contact;
-}
 // Abre el chat de WhatsApp del contacto vinculado a una nota.
 function calChatNote(id) {
   const n = getNotes().find(x => x.id === id);
   if (!n) { toast('No se encontró la nota', 'info', 2500); return; }
   chatWhatsappPhone(n.tel || '');
+}
+
+// ─── EDICIÓN DE NOTA (modal) ─────────────────────────────────
+// Permite editar el texto de una nota ya creada y agregarle/cambiar el contacto
+// (cliente + teléfono) para el chat directo.
+let _editNoteId = null;
+function calEditNote(id) {
+  const n = getNotes().find(x => x.id === id);
+  if (!n) return;
+  _editNoteId = id;
+  const ov  = document.getElementById('note-edit-overlay');
+  const txt = document.getElementById('agc-edit-text');
+  const cli = document.getElementById('agc-edit-cli');
+  const tel = document.getElementById('agc-edit-tel');
+  const imp = document.getElementById('agc-edit-import');
+  if (!ov || !txt) return;
+  txt.value = n.texto || '';
+  if (cli) cli.value = n.cliente || '';
+  if (tel) tel.value = n.tel || '';
+  if (cli) attachClientDropdown(cli, tel);
+  if (imp) imp.style.display = (typeof contactPickerSupported === 'function' && contactPickerSupported()) ? 'inline-flex' : 'none';
+  ov.classList.add('open');
+  document.addEventListener('keydown', _calNoteEditKey);
+  setTimeout(() => { txt.focus(); }, 50);
+}
+function _calNoteEditKey(e) { if (e.key === 'Escape') calCloseNoteEdit(); }
+function calCloseNoteEdit() {
+  const ov = document.getElementById('note-edit-overlay');
+  if (ov) ov.classList.remove('open');
+  document.removeEventListener('keydown', _calNoteEditKey);
+  _editNoteId = null;
+}
+// Importa un contacto del teléfono hacia los campos del modal de edición.
+function importContactToNoteEdit() {
+  importContactToFields(document.getElementById('agc-edit-cli'), document.getElementById('agc-edit-tel'));
+}
+function calSaveNoteEdit() {
+  if (!_editNoteId) { calCloseNoteEdit(); return; }
+  const txt = document.getElementById('agc-edit-text');
+  const cli = document.getElementById('agc-edit-cli');
+  const tel = document.getElementById('agc-edit-tel');
+  const texto = txt ? (txt.value || '').trim() : '';
+  if (!texto) { toast('La nota no puede quedar vacía', 'info', 2200); return; }
+  let cliente = cli ? (cli.value || '').trim() : '';
+  let telef   = tel ? (tel.value || '').trim() : '';
+  if (!telef && cliente && /^[\d\s()+.\-]+$/.test(cliente) && cliente.replace(/\D/g, '').length >= 6) {
+    telef = cliente; cliente = '';
+  }
+  if (cliente && !telef) {
+    const c = getClientDB().find(x => ((x.name || '') + '').trim().toLowerCase() === cliente.toLowerCase());
+    if (c && c.contact) telef = c.contact;
+  }
+  const notes = getNotes();
+  const n = notes.find(x => x.id === _editNoteId);
+  if (!n) { calCloseNoteEdit(); return; }
+  n.texto = texto;
+  n.cliente = cliente;
+  n.tel = telef;
+  setNotes(notes);
+  // Importar el contacto a la DB de clientes si es nuevo (nombre + teléfono).
+  if (cliente && telef && typeof saveClientToDB === 'function') {
+    const exists = getClientDB().some(x => ((x.name || '') + '').trim().toLowerCase() === cliente.toLowerCase());
+    if (!exists) saveClientToDB(cliente, telef);
+  }
+  calCloseNoteEdit();
+  renderCal();
+  toast('Nota actualizada', 'ok');
 }
 function calToggleNote(id) {
   const notes = getNotes();
