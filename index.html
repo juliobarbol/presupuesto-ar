@@ -1495,6 +1495,16 @@ input[type=number]{-moz-appearance:textfield}
 .agc-day-empty{font-size:13px;color:var(--muted);padding:6px 2px;line-height:1.5}
 .agc-note-form{display:flex;gap:7px;align-items:stretch;margin-top:8px}
 .agc-note-form input{flex:1;min-width:0}
+/* Contacto opcional de la nota (chat directo por WhatsApp) */
+.agc-note-contact{margin-top:8px}
+.agc-note-contact>summary{list-style:none;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--muted);padding:4px 2px;user-select:none}
+.agc-note-contact>summary::-webkit-details-marker{display:none}
+.agc-note-contact>summary .ic{width:15px;height:15px}
+.agc-note-crow{display:flex;gap:7px;margin-top:7px}
+.agc-note-crow input{flex:1;min-width:0}
+/* Botón de chat de la tarjeta de evento: verde WhatsApp para diferenciarlo */
+.agc-ev-btn.agc-ev-wa{color:var(--wa,#16a34a);border-color:color-mix(in srgb,var(--wa,#16a34a) 35%,var(--border))}
+.agc-ev-btn.agc-ev-wa .ic{color:var(--wa,#16a34a)}
 /* Segmentado Mes / Semana / 3 días / Agenda */
 .agc-viewtoggle{display:flex;max-width:100%;overflow-x:auto;background:var(--surface-2);border-radius:var(--radius-field);padding:3px;gap:3px;margin-bottom:12px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
 .agc-viewtoggle::-webkit-scrollbar{display:none}
@@ -9912,6 +9922,18 @@ function chatWhatsappHistory(id) {
   window.open(`https://wa.me/${phone}`, '_blank', 'noopener');
 }
 
+// Abre el chat de WhatsApp con un teléfono suelto (sin presupuesto asociado).
+// Lo usan las notas de la Agenda que llevan un contacto vinculado. Sin mensaje
+// prearmado: es para hablar/coordinar, no para reenviar un presupuesto.
+function chatWhatsappPhone(raw) {
+  const phone = normalizeArgPhone((raw || '') + '');
+  if (!phone) {
+    toast('Este contacto no tiene teléfono cargado', 'info', 3000);
+    return;
+  }
+  window.open(`https://wa.me/${phone}`, '_blank', 'noopener');
+}
+
 // Botón "Probar" del editor: abre en Maps lo que el usuario está cargando
 // ahora mismo (sin pasar por el historial), para verificar que el Plus Code /
 // link apunta al lugar correcto antes de guardar.
@@ -12923,6 +12945,9 @@ function calBuildIndex() {
     const est = e.estado || 'borrador';
     const quien = (e.clientName || '').trim() || '(sin nombre)';
     const num = e.quoteNumber ? `N° ${e.quoteNumber}` : '';
+    // Teléfono del cliente (para el botón de chat directo en la Agenda). Se
+    // deriva una sola vez por presupuesto; '' si no hay nada usable.
+    const tel = (typeof histClientPhone === 'function') ? histClientPhone(e) : '';
 
     // Trabajo(s): días ubicados de la agenda (multi-día soportado).
     const fechas = (typeof agFechas === 'function') ? agFechas(e) : (e.fechaTrabajo ? [e.fechaTrabajo] : []);
@@ -12930,7 +12955,7 @@ function calBuildIndex() {
       const total = (typeof agDiasEstimados === 'function') ? agDiasEstimados(e) : fechas.length;
       fechas.forEach((f, i) => {
         const dnum = total > 1 ? ` · día ${i + 1} de ${total}` : '';
-        push(f, { tipo: 'trabajo', title: quien, sub: (num ? num : '') + dnum, entryId: e.id });
+        push(f, { tipo: 'trabajo', title: quien, sub: (num ? num : '') + dnum, entryId: e.id, tel });
       });
     }
 
@@ -12938,7 +12963,7 @@ function calBuildIndex() {
     if (e.recontactoEn && est === 'aceptado') {
       push(e.recontactoEn, {
         tipo: 'recontacto', title: `Llamar a ${quien}`,
-        sub: (e.recontactoNota || '').trim() || num, entryId: e.id
+        sub: (e.recontactoNota || '').trim() || num, entryId: e.id, tel
       });
     }
 
@@ -12948,7 +12973,7 @@ function calBuildIndex() {
     if (estOk) {
       const exp = e.snapshot && e.snapshot.dateExpiry;
       if (cfg.expiryEnabled && exp) {
-        push(exp, { tipo: 'vencimiento', title: `Vence ${quien}`, sub: num, entryId: e.id });
+        push(exp, { tipo: 'vencimiento', title: `Vence ${quien}`, sub: num, entryId: e.id, tel });
       }
       if (e.enviadoEn) {
         // ¿Ya se hizo el seguimiento después del envío? Entonces no lo mostramos.
@@ -12961,16 +12986,20 @@ function calBuildIndex() {
         if (!hecho) {
           const base = _calTsToLocalISO(e.enviadoEn);
           const due = base ? _calAddDays(base, cfg.days || 0) : null;
-          if (due) push(due, { tipo: 'seguimiento', title: `Seguimiento ${quien}`, sub: num, entryId: e.id });
+          if (due) push(due, { tipo: 'seguimiento', title: `Seguimiento ${quien}`, sub: num, entryId: e.id, tel });
         }
       }
     }
   });
 
-  // Notas manuales.
+  // Notas manuales. Pueden llevar un contacto vinculado (cliente + tel) para el
+  // botón de chat directo; el nombre del contacto va como subtítulo.
   getNotes().forEach(n => {
     if (!n || !n.fecha) return;
-    push(n.fecha, { tipo: 'nota', title: n.texto || '(nota)', sub: '', noteId: n.id, done: !!n.hecho });
+    push(n.fecha, {
+      tipo: 'nota', title: n.texto || '(nota)', sub: (n.cliente || '').trim(),
+      noteId: n.id, done: !!n.hecho, tel: (n.tel || '').trim()
+    });
   });
 
   // Ordenar cada día por prioridad de tipo.
@@ -13183,10 +13212,16 @@ function _calEvHTML(ev, dateLabel) {
   const kindTxt = dateLabel ? `${kind} · ${esc(dateLabel)}` : kind;
   const sub = ev.sub ? `<div class="agc-ev-sub">${esc(ev.sub)}</div>` : '';
   let acts = '';
+  // Botón de chat directo por WhatsApp cuando el evento tiene un teléfono
+  // asociado (cliente del presupuesto, o el contacto vinculado a la nota).
+  const chat = ev.tel
+    ? `<button class="agc-ev-btn agc-ev-wa" onclick="${ev.entryId != null ? `chatWhatsappHistory(${ev.entryId})` : `calChatNote('${ev.noteId}')`}" title="Abrir el chat de WhatsApp con el cliente" aria-label="Chat de WhatsApp con el cliente">${icon('message')}</button>`
+    : '';
   if (ev.entryId != null) {
-    acts = `<button class="agc-ev-btn" onclick="goToHistoryEntry(${ev.entryId})" title="Ver el presupuesto en el historial">${icon('book')}</button>`;
+    acts = chat + `<button class="agc-ev-btn" onclick="goToHistoryEntry(${ev.entryId})" title="Ver el presupuesto en el historial">${icon('book')}</button>`;
   } else if (ev.noteId != null) {
-    acts = `<button class="agc-ev-btn" onclick="calToggleNote('${ev.noteId}')" title="${ev.done ? 'Marcar pendiente' : 'Marcar hecho'}">${icon('check')}</button>`
+    acts = chat
+         + `<button class="agc-ev-btn" onclick="calToggleNote('${ev.noteId}')" title="${ev.done ? 'Marcar pendiente' : 'Marcar hecho'}">${icon('check')}</button>`
          + `<button class="agc-ev-btn" onclick="calDeleteNote('${ev.noteId}')" title="Borrar nota">${icon('trash')}</button>`;
   }
   return `<div class="agc-ev t-${ev.tipo}${ev.done ? ' done' : ''}">
@@ -13219,6 +13254,14 @@ function renderCalDay(noList) {
       ? evs.map(ev => _calEvHTML(ev)).join('')
       : `<div class="agc-day-empty">No hay nada agendado este día. Podés dejar una nota o recordatorio abajo.</div>`);
 
+  // Datalist con los clientes guardados: al elegir uno se autocompleta el
+  // teléfono (calNoteFillTel). Sirve para "importar" un cliente existente a la
+  // nota; también se puede tipear un contacto nuevo (nombre + tel) que aún no
+  // tiene presupuesto y queda guardado para reusarlo.
+  const cliOpts = (typeof getClientDB === 'function')
+    ? getClientDB().filter(c => c && c.name).map(c => `<option value="${esc(c.name)}">${esc(c.contact || '')}</option>`).join('')
+    : '';
+
   box.innerHTML = `
     <div class="agc-day-head">
       <span class="agc-day-title">${esc(_calLongDate(iso))}${esHoy ? ' · hoy' : ''}${loadChip}</span>
@@ -13227,7 +13270,15 @@ function renderCalDay(noList) {
     <div class="agc-note-form">
       <input type="text" id="agc-note-input" placeholder="Anotá un recordatorio para este día…" maxlength="140" onkeydown="if(event.key==='Enter'){calSaveNote();}">
       <button class="btn btn-p btn-sm" onclick="calSaveNote()">${icon('plus')} Nota</button>
-    </div>`;
+    </div>
+    <details class="agc-note-contact">
+      <summary>${icon('message')} Vincular contacto (chat directo)</summary>
+      <div class="agc-note-crow">
+        <input type="text" id="agc-note-cli" placeholder="Cliente" maxlength="80" list="agc-cli-dl" autocomplete="off" oninput="calNoteFillTel()">
+        <input type="tel" id="agc-note-tel" placeholder="Teléfono / WhatsApp" maxlength="40" inputmode="tel" autocomplete="off">
+      </div>
+      <datalist id="agc-cli-dl">${cliOpts}</datalist>
+    </details>`;
 }
 
 // ─── RENDER: VISTA AGENDA (lista cronológica) ────────────────
@@ -13312,15 +13363,51 @@ function calSaveNote() {
   if (!inp || !_calSel) return;
   const texto = (inp.value || '').trim();
   if (!texto) { toast('Escribí algo para la nota', 'info', 2200); return; }
+  // Contacto opcional vinculado a la nota.
+  const cliEl = document.getElementById('agc-note-cli');
+  const telEl = document.getElementById('agc-note-tel');
+  let cliente = cliEl ? (cliEl.value || '').trim() : '';
+  let tel     = telEl ? (telEl.value || '').trim() : '';
+  // Si escribieron el teléfono en el campo del cliente (y el de tel quedó
+  // vacío), lo reubicamos para no perderlo.
+  if (!tel && cliente && /^[\d\s()+.\-]+$/.test(cliente) && cliente.replace(/\D/g, '').length >= 6) {
+    tel = cliente; cliente = '';
+  }
   const notes = getNotes();
   notes.push({
     id: 'n_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-    fecha: _calSel, texto: texto, hecho: false, creadoEn: new Date().toISOString()
+    fecha: _calSel, texto: texto, hecho: false, creadoEn: new Date().toISOString(),
+    cliente: cliente, tel: tel
   });
   setNotes(notes);
+  // Si es un contacto nuevo (nombre + teléfono) que todavía no está en la DB de
+  // clientes, lo guardamos para reusarlo — así "importás" a la app un cliente al
+  // que aún no le hiciste presupuesto pero tenés que contactar.
+  if (cliente && tel && typeof saveClientToDB === 'function') {
+    const exists = getClientDB().some(x => ((x.name || '') + '').trim().toLowerCase() === cliente.toLowerCase());
+    if (!exists) saveClientToDB(cliente, tel);
+  }
   inp.value = '';
+  if (cliEl) cliEl.value = '';
+  if (telEl) telEl.value = '';
   renderCal();
   toast('Nota agendada', 'ok');
+}
+// Autocompleta el teléfono al elegir/tipear un cliente ya guardado (datalist).
+function calNoteFillTel() {
+  const cliEl = document.getElementById('agc-note-cli');
+  const telEl = document.getElementById('agc-note-tel');
+  if (!cliEl || !telEl) return;
+  const name = (cliEl.value || '').trim().toLowerCase();
+  if (!name) return;
+  const c = getClientDB().find(x => ((x.name || '') + '').trim().toLowerCase() === name);
+  if (c && c.contact) telEl.value = c.contact;
+}
+// Abre el chat de WhatsApp del contacto vinculado a una nota.
+function calChatNote(id) {
+  const n = getNotes().find(x => x.id === id);
+  if (!n) { toast('No se encontró la nota', 'info', 2500); return; }
+  chatWhatsappPhone(n.tel || '');
 }
 function calToggleNote(id) {
   const notes = getNotes();
