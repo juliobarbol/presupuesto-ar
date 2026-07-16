@@ -3177,6 +3177,21 @@ input[type=number]{-moz-appearance:textfield}
               <button type="button" class="btn btn-g btn-sm" id="gdrive-disconnect" onclick="gdriveDisconnect()" style="display:none">Desconectar</button>
             </div>
           </div>
+
+          <!-- ── SINCRONIZAR CON GOOGLE CALENDAR ── -->
+          <!-- Oculta hasta que el dueño configure el Client ID (gcalUpdateUI). -->
+          <div class="fu-config" id="gcal-section" style="display:none">
+            <div class="fu-config-head">
+              <span class="st" style="margin:0;border:none;padding:0"><svg class="ic"><use href="#i-calendar"></use></svg> Sincronizar con Google Calendar</span>
+            </div>
+            <p class="fu-help" id="gcal-status">Creá los eventos de tu agenda automáticamente en un calendario propio de Google ("Presupuestos AR"). Sincroniza con la app abierta y con señal.</p>
+            <p class="fu-help" style="margin-top:-2px">Es de una sola vía (app → Google): la app maneja ese calendario, así que no edites esos eventos a mano en Google.</p>
+            <div class="arow" id="gcal-actions">
+              <button type="button" class="btn btn-p btn-sm" id="gcal-connect" onclick="gcalConnect()">Conectar Google Calendar</button>
+              <button type="button" class="btn btn-g btn-sm" id="gcal-sync" onclick="gcalSyncNow()" style="display:none">Sincronizar ahora</button>
+              <button type="button" class="btn btn-g btn-sm" id="gcal-disconnect" onclick="gcalDisconnect()" style="display:none">Desconectar</button>
+            </div>
+          </div>
         </div>
 
         <!-- ── SUB-TAB TEXTOS DEL PDF ── -->
@@ -3873,6 +3888,10 @@ const LS = {
   GDRIVE_ON:      'pq_gdrive_on',
   GDRIVE_LAST:    'pq_gdrive_last',
   GDRIVE_EMAIL:   'pq_gdrive_email',
+  GCAL_ON:        'pq_gcal_on',
+  GCAL_ID:        'pq_gcal_id',
+  GCAL_LAST:      'pq_gcal_last',
+  GCAL_EMAIL:     'pq_gcal_email',
   PDF_THEME:      'pq_pdf_theme',
   PUSH_DEVICE_ID: 'pq_push_device_id',
   THEME:          'pq_theme',
@@ -8214,7 +8233,7 @@ function getH() {
   } catch(e){ return []; }
 }
 
-function setH(h) { safeSetLS(LS.HISTORY, JSON.stringify(h)); }
+function setH(h) { safeSetLS(LS.HISTORY, JSON.stringify(h)); if (typeof scheduleGcalSync === 'function') scheduleGcalSync(); }
 
 // ─── AUTO-SAVE (silencioso) ───────────────────
 // Devuelve true si asentó el presupuesto en el historial, false si no
@@ -10556,6 +10575,10 @@ function buildBackupObject() {
     tope: tope,
     reciboSeq: (function(){ try { return localStorage.getItem(RECIBO_SEQ_KEY); } catch(_) { return null; } })(),
     notes: (typeof getNotes === 'function') ? getNotes() : [],
+    // Id del calendario "Presupuestos AR" (si se sincroniza con Google Calendar):
+    // así un restore en otro teléfono reusa el mismo calendario en vez de crear
+    // uno nuevo y duplicar eventos.
+    gcalId: (function(){ try { return localStorage.getItem(LS.GCAL_ID); } catch(_) { return null; } })(),
     photos: photos
   };
 }
@@ -10776,6 +10799,9 @@ function applyBackupObject(d) {
     // Notas/recordatorios manuales de la Agenda (calendario). Backups viejos no
     // los traen → se deja intacto lo que haya en localStorage.
     if (Array.isArray(d.notes)) safeSetLS(LS.NOTES, JSON.stringify(d.notes));
+    // Id del calendario "Presupuestos AR": reusar el mismo tras un restore para
+    // no duplicar el calendario ni sus eventos.
+    if (d.gcalId) { try { localStorage.setItem(LS.GCAL_ID, d.gcalId); } catch(_){} }
     if (!Array.isArray(S.itemsB)) S.itemsB = [];
     normalizeRiskData();
     // Backups viejos (v3-) traían las fotos embebidas en el estado: migrarlas.
@@ -11075,6 +11101,309 @@ function gdriveInitOnLoad(){
       }
     } catch(_){}
   }).catch(() => { /* no se pudo renovar callado: la UI ofrece reconectar */ });
+}
+
+// ═══════════════════════════════════════
+// GCAL.JS — Sincronización de la Agenda con Google Calendar
+// ═══════════════════════════════════════
+// Empuja (una sola vía: app → Google) TODO lo de la pestaña Agenda a un
+// calendario propio "Presupuestos AR". Reusa el OAuth de Google (mismo
+// CLIENT_ID y la misma loadGIS() que Drive), con su PROPIO token client y el
+// scope mínimo `calendar.app.created` (solo toca calendarios que la app creó;
+// nunca ve el resto de la agenda del usuario). Corre igual que el auto-backup
+// de Drive: al abrir la app y (con retardo) tras cada cambio, solo con señal.
+//
+// Idempotencia: el calendario es enteramente de la app. Cada evento lleva
+// extendedProperties.private.pqKey (clave estable, misma lógica que el UID del
+// .ics) y pqHash (hash del contenido). En cada sync listamos lo que hay,
+// reconstruimos el estado desde el servidor (auto-reparable entre dispositivos)
+// y hacemos el diff: insertar / patch (si cambió el hash) / borrar (lo que ya
+// no está en la agenda). NUNCA se pide token al abrir (regla de CLAUDE.md):
+// las syncs de fondo usan prompt:'none' (silenciosas).
+const GCAL = {
+  // `calendar.app.created` para crear/manejar el calendario propio; `openid
+  // email` para recordar la cuenta y renovar el token sin mostrar el selector.
+  SCOPE: 'https://www.googleapis.com/auth/calendar.app.created openid email',
+  CAL_NAME: 'Presupuestos AR',
+  _tokenClient: null, _token: null, _tokenExp: 0, _pending: null, _timer: null,
+  _dirty: false, _syncing: false,
+};
+
+function gcalConfigured(){ return !!(GDRIVE.CLIENT_ID && GDRIVE.CLIENT_ID.indexOf('.apps.googleusercontent.com') > 0); }
+function gcalConnected(){ try { return localStorage.getItem(LS.GCAL_ON) === '1'; } catch(_){ return false; } }
+
+// Token client propio (independiente del de Drive). Reusa loadGIS().
+async function gcalEnsureClient(){
+  await loadGIS();
+  if (!GCAL._tokenClient) {
+    GCAL._tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: GDRIVE.CLIENT_ID,
+      scope: GCAL.SCOPE,
+      callback: (resp) => {
+        const p = GCAL._pending; GCAL._pending = null;
+        if (resp && resp.access_token) {
+          GCAL._token = resp.access_token;
+          GCAL._tokenExp = Date.now() + ((resp.expires_in || 3500) * 1000);
+          if (p) p.resolve(resp.access_token);
+        } else if (p) { p.reject(new Error((resp && resp.error) || 'sin_token')); }
+      },
+    });
+  }
+}
+// Igual que gdriveGetToken: silencioso por defecto (hint = cuenta recordada),
+// interactivo solo desde el botón "Conectar".
+function gcalGetToken(opts){
+  opts = opts || {};
+  const interactive = !!opts.interactive;
+  return new Promise((resolve, reject) => {
+    if (GCAL._token && Date.now() < GCAL._tokenExp - 60000) { resolve(GCAL._token); return; }
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) { reject(new Error('offline')); return; }
+    gcalEnsureClient().then(() => {
+      GCAL._pending = { resolve, reject };
+      let hint = '';
+      try { hint = localStorage.getItem(LS.GCAL_EMAIL) || localStorage.getItem(LS.GDRIVE_EMAIL) || ''; } catch(_){}
+      const req = {};
+      if (hint) req.login_hint = hint;         // le decimos a Google qué cuenta usar
+      if (interactive) req.prompt = hint ? '' : 'consent';
+      else req.prompt = 'none';                // fondo: nunca mostrar UI
+      GCAL._tokenClient.requestAccessToken(req);
+    }).catch(reject);
+  });
+}
+// Recuerda el email de la cuenta conectada (para renovar callado). Requiere el
+// scope `email`. Nunca rompe si falla.
+async function gcalRememberEmail(token){
+  try {
+    const r = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { Authorization: 'Bearer ' + token } });
+    if (!r.ok) return;
+    const j = await r.json();
+    if (j && j.email) { try { localStorage.setItem(LS.GCAL_EMAIL, j.email); } catch(_){} }
+  } catch(_){}
+}
+
+// Asegura el calendario "Presupuestos AR": valida el id guardado, y si no
+// existe (o se borró) lo crea. Devuelve el calendarId.
+async function gcalEnsureCalendar(token){
+  let id = ''; try { id = localStorage.getItem(LS.GCAL_ID) || ''; } catch(_){}
+  if (id) {
+    const r = await fetch('https://www.googleapis.com/calendar/v3/calendars/' + encodeURIComponent(id),
+      { headers: { Authorization: 'Bearer ' + token } });
+    if (r.ok) return id;
+    if (r.status !== 404 && r.status !== 410) throw new Error('cal get ' + r.status);
+    // 404/410: el calendario ya no existe → recrear abajo.
+  }
+  let tz = 'America/Argentina/Cordoba';
+  try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || tz; } catch(_){}
+  const r = await fetch('https://www.googleapis.com/calendar/v3/calendars', {
+    method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ summary: GCAL.CAL_NAME, description: 'Agenda de Presupuestos AR: trabajos, recontactos, vencimientos, seguimientos y notas. Se sincroniza automáticamente desde la app.', timeZone: tz }),
+  });
+  if (!r.ok) throw new Error('cal create ' + r.status);
+  const j = await r.json();
+  id = j.id;
+  try { localStorage.setItem(LS.GCAL_ID, id); } catch(_){}
+  return id;
+}
+
+// timeMin (RFC3339) = medianoche local de hoy → solo lo que viene.
+function _gcalTimeMin(){
+  const t = today().split('-');
+  return new Date(+t[0], +t[1] - 1, +t[2]).toISOString();
+}
+// Hash corto (djb2) del contenido, para detectar cambios sin comparar campos.
+function _gcalHash(s){
+  let h = 5381; s = String(s);
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
+  return (h >>> 0).toString(36);
+}
+// Lista los eventos actuales del calendario (paginado) → { pqKey: {id, hash} }.
+async function gcalListEvents(token, calId){
+  const map = {};
+  let pageToken = '';
+  do {
+    const u = new URL('https://www.googleapis.com/calendar/v3/calendars/' + encodeURIComponent(calId) + '/events');
+    u.searchParams.set('maxResults', '2500');
+    u.searchParams.set('showDeleted', 'false');
+    u.searchParams.set('singleEvents', 'true');
+    u.searchParams.set('timeMin', _gcalTimeMin());
+    if (pageToken) u.searchParams.set('pageToken', pageToken);
+    const r = await fetch(u.toString(), { headers: { Authorization: 'Bearer ' + token } });
+    if (!r.ok) throw new Error('events list ' + r.status);
+    const j = await r.json();
+    (j.items || []).forEach(it => {
+      const pv = (it.extendedProperties && it.extendedProperties.private) || {};
+      if (pv.pqKey) map[pv.pqKey] = { id: it.id, hash: pv.pqHash || '' };
+    });
+    pageToken = j.nextPageToken || '';
+  } while (pageToken);
+  return map;
+}
+
+// Arma summary / description / location de un evento de la agenda según el tipo,
+// reusando la misma info que el .ics y el botón de Google Calendar per-evento.
+function _gcalEvInfo(ev, e){
+  let summary = '', loc = '';
+  const desc = [];
+  if (ev.tipo === 'trabajo')      summary = 'Trabajo: ' + ev.title + (ev.sub ? ' — ' + ev.sub : '');
+  else if (ev.tipo === 'nota')    summary = 'Nota: ' + ev.title;
+  else                            summary = ev.title;   // "Llamar a X" / "Vence X" / "Seguimiento X"
+  if (e) {
+    const snap = e.snapshot || {};
+    if (ev.tipo === 'recontacto' && e.recontactoNota) desc.push('Nota: ' + e.recontactoNota);
+    if (e.total > 0) desc.push('Presupuesto ' + (e.quoteNumber || '') + ': ' + fmtM(e.total, e.currency || 'ARS'));
+    if (snap.clientContact) desc.push('Contacto: ' + snap.clientContact);
+    if (ev.tipo === 'trabajo') { const a = (snap.workAddress || snap.workMapLink || '').trim(); if (a) loc = a; }
+  } else if (ev.sub) {
+    desc.push(ev.sub);   // nota: nombre del contacto vinculado
+  }
+  if (ev.tel) desc.push('Tel: ' + ev.tel);
+  if (ev.mapUrl) { desc.push('Ubicación: ' + ev.mapUrl); if (!loc) loc = ev.mapUrl; }
+  return { summary, desc: desc.join('\n'), loc };
+}
+// Construye el conjunto DESEADO desde calBuildIndex(): { pqKey: {body, hash} }.
+// Incluye los 5 tipos, solo de hoy en adelante; notas ya hechas no van.
+function _gcalBuildDesired(){
+  const idx = calBuildIndex();
+  const hoy = today();
+  const h = (typeof getH === 'function') ? getH() : [];
+  const byId = {}; h.forEach(e => { if (e && e.id != null) byId[e.id] = e; });
+  const desired = {};
+  const seen = {};
+  Object.keys(idx).sort().forEach(iso => {
+    if (iso < hoy) return;
+    idx[iso].forEach(ev => {
+      if (ev.tipo === 'nota' && ev.done) return;
+      const dstart = iso.replace(/-/g, '');
+      const dendISO = _calAddDays(iso, 1);
+      const info = _gcalEvInfo(ev, ev.entryId != null ? byId[ev.entryId] : null);
+      let key = (ev.entryId != null ? 'e' + ev.entryId + '-' + ev.tipo : 'n' + (ev.noteId || '')) + '-' + dstart;
+      const rep = (seen[key] = (seen[key] || 0) + 1);
+      const pqKey = key + (rep > 1 ? '-' + rep : '');
+      const hash = _gcalHash(info.summary + '|' + info.desc + '|' + info.loc + '|' + iso + '|' + dendISO);
+      const body = { summary: info.summary, start: { date: iso }, end: { date: dendISO },
+        extendedProperties: { private: { pqKey: pqKey, pqHash: hash } } };
+      if (info.desc) body.description = info.desc;
+      if (info.loc)  body.location = info.loc;
+      desired[pqKey] = { body, hash };
+    });
+  });
+  return desired;
+}
+
+// Sincroniza: list → diff → insert/patch/delete. Best-effort y secuencial
+// (serializa los pedidos, suave con la cuota).
+async function gcalSync(){
+  if (!gcalConfigured() || !gcalConnected()) return;
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+  if (GCAL._syncing) return;
+  GCAL._syncing = true;
+  try {
+    const token = await gcalGetToken();
+    const calId = await gcalEnsureCalendar(token);
+    const existing = await gcalListEvents(token, calId);
+    const desired = _gcalBuildDesired();
+    const base = 'https://www.googleapis.com/calendar/v3/calendars/' + encodeURIComponent(calId) + '/events';
+    const H = { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' };
+    // Insertar los nuevos y actualizar los que cambiaron.
+    for (const pk of Object.keys(desired)) {
+      const d = desired[pk], ex = existing[pk];
+      if (!ex) {
+        const r = await fetch(base, { method: 'POST', headers: H, body: JSON.stringify(d.body) });
+        if (!r.ok) throw new Error('event insert ' + r.status);
+      } else if (ex.hash !== d.hash) {
+        const r = await fetch(base + '/' + encodeURIComponent(ex.id), { method: 'PATCH', headers: H, body: JSON.stringify(d.body) });
+        if (!r.ok) throw new Error('event patch ' + r.status);
+      }
+    }
+    // Borrar lo que ya no está en la agenda (nota borrada, fecha cambiada, etc.).
+    for (const pk of Object.keys(existing)) {
+      if (!desired[pk]) {
+        await fetch(base + '/' + encodeURIComponent(existing[pk].id), { method: 'DELETE', headers: { Authorization: 'Bearer ' + token } });
+      }
+    }
+    GCAL._dirty = false;
+    try { localStorage.setItem(LS.GCAL_LAST, new Date().toISOString()); } catch(_){}
+  } finally { GCAL._syncing = false; }
+}
+
+// Sync automática con retardo tras cada cambio de agenda (espejo del auto-backup).
+function scheduleGcalSync(){
+  if (!gcalConfigured() || !gcalConnected()) return;
+  GCAL._dirty = true;
+  clearTimeout(GCAL._timer);
+  GCAL._timer = setTimeout(() => {
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+    gcalSync().then(gcalUpdateUI).catch(e => console.warn('auto-sync Calendar falló', e));
+  }, 45000);
+}
+
+// Botón "Conectar Google Calendar".
+async function gcalConnect(){
+  if (!gcalConfigured()) { toast('Google Calendar no está configurado todavía.', 'info', 5000); return; }
+  try {
+    toast('Conectando con Google Calendar…', 'info', 3000);
+    const token = await gcalGetToken({ interactive: true });
+    try { localStorage.setItem(LS.GCAL_ON, '1'); } catch(_){}
+    await gcalRememberEmail(token);
+    await gcalSync();
+    toast('Conectado. Tu agenda se sincroniza con el calendario "Presupuestos AR".', 'ok', 5000);
+  } catch(e){
+    console.error('gcalConnect', e);
+    try { localStorage.removeItem(LS.GCAL_ON); } catch(_){}
+    toast('No se pudo conectar con Google Calendar.', 'err', 5000);
+  }
+  gcalUpdateUI();
+}
+function gcalDisconnect(){
+  try { if (GCAL._token && window.google && google.accounts && google.accounts.oauth2) google.accounts.oauth2.revoke(GCAL._token, ()=>{}); } catch(_){}
+  GCAL._token = null; GCAL._tokenExp = 0;
+  try { localStorage.removeItem(LS.GCAL_ON); } catch(_){}
+  gcalUpdateUI();
+  toast('Google Calendar desconectado. El calendario "Presupuestos AR" queda en tu cuenta.', 'info', 5000);
+}
+async function gcalSyncNow(){
+  if (!gcalConnected()) return;
+  try {
+    toast('Sincronizando con Google Calendar…', 'info', 2500);
+    await gcalSync();
+    gcalUpdateUI();
+    toast('Agenda sincronizada ✓', 'ok', 2500);
+  } catch(e){ console.error('gcalSyncNow', e); toast('No se pudo sincronizar con Google Calendar.', 'err', 5000); }
+}
+// Al arrancar: si está conectado y hay señal, sync silenciosa. Nunca pide token
+// con UI (si no renueva callado, queda el botón "Conectar").
+function gcalInitOnLoad(){
+  if (!gcalConfigured()) { gcalUpdateUI(); return; }
+  gcalUpdateUI();
+  if (!gcalConnected()) return;
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+  gcalGetToken({ interactive: false })
+    .then(async () => { try { await gcalSync(); gcalUpdateUI(); } catch(_){} })
+    .catch(() => { /* no renovó callado: la UI ofrece reconectar */ });
+}
+// Refresca la sección de Calendar (pestaña Empresa).
+function gcalUpdateUI(){
+  const sec = document.getElementById('gcal-section'); if (!sec) return;
+  if (!gcalConfigured()) { sec.style.display = 'none'; return; }
+  sec.style.display = '';
+  const on = gcalConnected();
+  const cBtn = document.getElementById('gcal-connect');
+  const sBtn = document.getElementById('gcal-sync');
+  const dBtn = document.getElementById('gcal-disconnect');
+  const status = document.getElementById('gcal-status');
+  if (cBtn) cBtn.style.display = on ? 'none' : '';
+  if (sBtn) sBtn.style.display = on ? '' : 'none';
+  if (dBtn) dBtn.style.display = on ? '' : 'none';
+  if (status) {
+    if (on) {
+      let last = ''; try { last = localStorage.getItem(LS.GCAL_LAST) || ''; } catch(_){}
+      status.textContent = last
+        ? ('Conectado ✓ · Última sincronización: ' + _fmtBackupDate(last))
+        : 'Conectado ✓ · Tu agenda se sincroniza con el calendario "Presupuestos AR".';
+    } else {
+      status.textContent = 'Creá los eventos de tu agenda automáticamente en un calendario propio de Google ("Presupuestos AR"). Sincroniza con la app abierta y con señal.';
+    }
+  }
 }
 
 // ===== js/pdf.js =====
@@ -13048,7 +13377,7 @@ function getNotes() {
   try { const a = JSON.parse(localStorage.getItem(LS.NOTES) || '[]'); return Array.isArray(a) ? a : []; }
   catch (e) { return []; }
 }
-function setNotes(a) { safeSetLS(LS.NOTES, JSON.stringify(a || [])); }
+function setNotes(a) { safeSetLS(LS.NOTES, JSON.stringify(a || [])); if (typeof scheduleGcalSync === 'function') scheduleGcalSync(); }
 
 // ─── HELPERS DE FECHA (locales) ──────────────────────────────
 // Suma n días a una fecha ISO local y devuelve otra ISO local.
@@ -14127,6 +14456,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   // Copia de seguridad en Google Drive (inerte si no está configurada).
   if (typeof gdriveInitOnLoad === 'function') gdriveInitOnLoad();
+  if (typeof gcalInitOnLoad === 'function') gcalInitOnLoad();
   // Notificaciones push (inerte si no está configurado el Worker).
   if (typeof initPush === 'function') initPush();
   // Al pasar la app a segundo plano, subir cambios pendientes de inmediato
@@ -14170,6 +14500,12 @@ window.addEventListener('DOMContentLoaded', async () => {
         gdriveConfigured() && gdriveConnected()) {
       clearTimeout(GDRIVE._timer);
       gdriveUpload().then(gdriveUpdateUI).catch(() => {});
+    }
+    // Al volver la señal, subir la sync de Calendar que haya quedado pendiente.
+    if (typeof GCAL !== 'undefined' && GCAL._dirty &&
+        gcalConfigured() && gcalConnected()) {
+      clearTimeout(GCAL._timer);
+      gcalSync().then(gcalUpdateUI).catch(() => {});
     }
     // Al volver la señal, re-sincronizar los seguimientos del Worker de push.
     if (typeof syncPushFollowups === 'function' && S.pushEnabled) syncPushFollowups().catch(() => {});
