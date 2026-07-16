@@ -11147,6 +11147,12 @@ async function gcalEnsureClient(){
           if (p) p.resolve(resp.access_token);
         } else if (p) { p.reject(new Error((resp && resp.error) || 'sin_token')); }
       },
+      // Errores no-OAuth (popup cerrado, etc.): sin esto el Promise quedaría
+      // colgado y el botón "Conectar" no volvería nunca.
+      error_callback: (err) => {
+        const p = GCAL._pending; GCAL._pending = null;
+        if (p) p.reject(new Error((err && (err.type || err.message)) || 'popup'));
+      },
     });
   }
 }
@@ -11198,7 +11204,13 @@ async function gcalEnsureCalendar(token){
     method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
     body: JSON.stringify({ summary: GCAL.CAL_NAME, description: 'Agenda de Presupuestos AR: trabajos, recontactos, vencimientos, seguimientos y notas. Se sincroniza automáticamente desde la app.', timeZone: tz }),
   });
-  if (!r.ok) throw new Error('cal create ' + r.status);
+  if (!r.ok) {
+    // Guardamos el detalle para dar un mensaje útil (API sin habilitar, etc.).
+    let detail = ''; try { detail = await r.text(); } catch(_){}
+    const err = new Error('cal create ' + r.status);
+    err.status = r.status; err.detail = detail;
+    throw err;
+  }
   const j = await r.json();
   id = j.id;
   try { localStorage.setItem(LS.GCAL_ID, id); } catch(_){}
@@ -11338,6 +11350,26 @@ function scheduleGcalSync(){
 }
 
 // Botón "Conectar Google Calendar".
+// Traduce un error de conexión/sync a un mensaje accionable (para el toast).
+// Distingue: sin señal, permiso no otorgado / faltante, y API sin habilitar.
+function _gcalErrMsg(e){
+  const msg = ((e && e.message) || '') + '';
+  const detail = ((e && e.detail) || '') + '';
+  const status = e && e.status;
+  if (msg === 'offline') return 'Sin conexión. Conectá cuando tengas señal.';
+  // Errores del token de Google (GIS): permiso no dado o scope no configurado.
+  if (/access_denied|consent|scope|sin_token|popup|interaction_required|invalid/i.test(msg)) {
+    return 'Google no dio el permiso de Calendar. Revisá que el permiso "calendar.app.created" esté agregado en la pantalla de consentimiento, y aceptá el acceso al conectar.';
+  }
+  // Calendar API sin habilitar en el proyecto (403 con accessNotConfigured).
+  if (status === 403 && /accessNotConfigured|has not been used|is disabled|SERVICE_DISABLED|Calendar API/i.test(detail)) {
+    return 'Falta habilitar la Google Calendar API en tu proyecto de Google Cloud. Habilitala, esperá unos minutos y reintentá.';
+  }
+  if (status === 403) return 'Google rechazó el acceso (403). Revisá que la Calendar API esté habilitada y el permiso "calendar.app.created" agregado.';
+  if (status === 401) return 'La sesión de Google expiró. Reintentá conectar.';
+  return 'No se pudo conectar con Google Calendar. Revisá la Calendar API y el permiso en Google Cloud.';
+}
+
 async function gcalConnect(){
   if (!gcalConfigured()) { toast('Google Calendar no está configurado todavía.', 'info', 5000); return; }
   try {
@@ -11350,7 +11382,7 @@ async function gcalConnect(){
   } catch(e){
     console.error('gcalConnect', e);
     try { localStorage.removeItem(LS.GCAL_ON); } catch(_){}
-    toast('No se pudo conectar con Google Calendar.', 'err', 5000);
+    toast(_gcalErrMsg(e), 'err', 9000);
   }
   gcalUpdateUI();
 }
@@ -11368,7 +11400,7 @@ async function gcalSyncNow(){
     await gcalSync();
     gcalUpdateUI();
     toast('Agenda sincronizada ✓', 'ok', 2500);
-  } catch(e){ console.error('gcalSyncNow', e); toast('No se pudo sincronizar con Google Calendar.', 'err', 5000); }
+  } catch(e){ console.error('gcalSyncNow', e); toast(_gcalErrMsg(e), 'err', 9000); }
 }
 // Al arrancar: si está conectado y hay señal, sync silenciosa. Nunca pide token
 // con UI (si no renueva callado, queda el botón "Conectar").
