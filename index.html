@@ -11170,7 +11170,13 @@ function gcalGetToken(opts){
       try { hint = localStorage.getItem(LS.GCAL_EMAIL) || localStorage.getItem(LS.GDRIVE_EMAIL) || ''; } catch(_){}
       const req = {};
       if (hint) req.login_hint = hint;         // le decimos a Google qué cuenta usar
-      if (interactive) req.prompt = hint ? '' : 'consent';
+      // Interactivo (botón "Conectar"): forzar la pantalla de consentimiento.
+      // A diferencia de Drive, acá el scope de Calendar suele ser NUEVO aunque
+      // ya haya un `hint` (heredado de Drive): con prompt:'' Google lo rechaza
+      // sin mostrar UI (access_denied). 'consent' garantiza que aparezca el
+      // pedido de permiso la primera vez. Las renovaciones de fondo siguen
+      // silenciosas (prompt:'none') porque el scope ya quedó otorgado.
+      if (interactive) req.prompt = 'consent';
       else req.prompt = 'none';                // fondo: nunca mostrar UI
       GCAL._tokenClient.requestAccessToken(req);
     }).catch(reject);
