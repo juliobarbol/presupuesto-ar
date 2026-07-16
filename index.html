@@ -1515,6 +1515,9 @@ input[type=number]{-moz-appearance:textfield}
 /* Botón de chat de la tarjeta de evento: verde WhatsApp para diferenciarlo */
 .agc-ev-btn.agc-ev-wa{color:var(--wa,#16a34a);border-color:color-mix(in srgb,var(--wa,#16a34a) 35%,var(--border))}
 .agc-ev-btn.agc-ev-wa .ic{color:var(--wa,#16a34a)}
+/* Botón de compartir: tinte con la marca para diferenciarlo del resto */
+.agc-ev-btn.agc-ev-share{color:var(--accent-fg);border-color:color-mix(in srgb,var(--accent-fg) 32%,var(--border))}
+.agc-ev-btn.agc-ev-share .ic{color:var(--accent-fg)}
 /* Deslizar notas (estilo Gmail): la tarjeta se corre y deja ver la acción.
    Derecha → "Hecho" (verde); izquierda → "Eliminar" (rojo). Los fondos van
    detrás; la tarjeta (.agc-swipe-fg) es la que se traslada con el dedo. */
@@ -2573,6 +2576,7 @@ input[type=number]{-moz-appearance:textfield}
 <symbol id="i-save" viewBox="0 0 24 24"><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" /> <path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7" /> <path d="M7 3v4a1 1 0 0 0 1 1h7" /></symbol>
 <symbol id="i-bell" viewBox="0 0 24 24"><path d="M10.268 21a2 2 0 0 0 3.464 0" /> <path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326" /></symbol>
 <symbol id="i-message" viewBox="0 0 24 24"><path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719" /></symbol>
+<symbol id="i-share" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3" /> <circle cx="6" cy="12" r="3" /> <circle cx="18" cy="19" r="3" /> <path d="m8.7 10.7 6.6-3.4" /> <path d="m8.7 13.3 6.6 3.4" /></symbol>
 <symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /> <path d="m9 12 2 2 4-4" /></symbol>
 <symbol id="i-pin" viewBox="0 0 24 24"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0" /> <circle cx="12" cy="10" r="3" /></symbol>
 <symbol id="i-building" viewBox="0 0 24 24"><path d="M10 12h4" /> <path d="M10 8h4" /> <path d="M14 21v-3a2 2 0 0 0-4 0v3" /> <path d="M6 10H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2" /> <path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16" /></symbol>
@@ -13073,7 +13077,7 @@ function _calRangeLabel(a, b) {
 // Cada ev: { tipo, title, sub, entryId?, noteId?, done? }.
 function calBuildIndex() {
   const idx = {};
-  const push = (iso, ev) => { if (!iso) return; (idx[iso] || (idx[iso] = [])).push(ev); };
+  const push = (iso, ev) => { if (!iso) return; ev._iso = iso; (idx[iso] || (idx[iso] = [])).push(ev); };
   const h = (typeof getH === 'function') ? getH() : [];
   const cfg = (typeof getFollowupCfg === 'function') ? getFollowupCfg() : null;
 
@@ -13354,12 +13358,15 @@ function _calEvHTML(ev, dateLabel) {
   const chat = ev.tel
     ? `<button class="agc-ev-btn agc-ev-wa" onclick="${ev.entryId != null ? `chatWhatsappHistory(${ev.entryId})` : `calChatNote('${ev.noteId}')`}" title="Abrir el chat de WhatsApp con el cliente" aria-label="Chat de WhatsApp con el cliente">${icon('message')}</button>`
     : '';
+  // Compartir el recordatorio (nota / vencimiento / seguimiento / trabajo…) con un
+  // compañero: abre el menú nativo (WhatsApp, etc.) con el texto ya armado.
+  const share = `<button class="agc-ev-btn agc-ev-share" onclick="calShareEvent(this)" data-share="${esc(_calShareText(ev))}" title="Compartir este recordatorio" aria-label="Compartir">${icon('share')}</button>`;
   if (ev.entryId != null) {
-    acts = chat + `<button class="agc-ev-btn" onclick="goToHistoryEntry(${ev.entryId})" title="Ver el presupuesto en el historial">${icon('book')}</button>`;
+    acts = chat + share + `<button class="agc-ev-btn" onclick="goToHistoryEntry(${ev.entryId})" title="Ver el presupuesto en el historial">${icon('book')}</button>`;
   } else if (ev.noteId != null) {
     // "Hecho" y "Eliminar" se accionan deslizando la tarjeta (ver abajo); en el
-    // botonera quedan solo chat (si hay contacto) y editar, más grandes.
-    acts = chat
+    // botonera quedan chat (si hay contacto), compartir y editar, más grandes.
+    acts = chat + share
          + `<button class="agc-ev-btn" onclick="calEditNote('${ev.noteId}')" title="Editar la nota / agregar contacto">${icon('pencil')}</button>`;
   }
   const card = `<div class="agc-ev t-${ev.tipo}${ev.done ? ' done' : ''}">
@@ -13639,6 +13646,49 @@ function calDeleteNote(id) {
   setNotes(notes);
   renderCal();
   toast('Nota borrada', 'info', 2000);
+}
+
+// ─── COMPARTIR RECORDATORIOS ─────────────────────────────────
+// Arma el texto a compartir de un evento de la Agenda (nota, vencimiento,
+// seguimiento, recontacto o trabajo). Pensado para mandárselo a un compañero
+// por WhatsApp: encabezado con emoji + tipo + fecha, y el detalle abajo.
+function _calShareText(ev) {
+  const EMO = { trabajo: '🌳', recontacto: '📞', vencimiento: '⏰', seguimiento: '🔔', nota: '📝' };
+  const kind = CAL_TIPO_LBL[ev.tipo] || 'Recordatorio';
+  const emo = EMO[ev.tipo] || '📌';
+  let fecha = '';
+  if (ev._iso) {
+    const anio = String(ev._iso).split('-')[0] || '';
+    fecha = _calLongDate(ev._iso) + (anio ? ` de ${anio}` : '');
+  }
+  const lines = [`${emo} ${kind}${fecha ? ' · ' + fecha : ''}`];
+  if (ev.title) lines.push(ev.title);
+  if (ev.sub) lines.push(ev.sub);
+  return lines.join('\n');
+}
+// Comparte el texto guardado en el data-share del botón (se arma en el render).
+function calShareEvent(btn) {
+  const text = (btn && btn.dataset && btn.dataset.share) || '';
+  if (text) shareText(text);
+}
+// Compartir texto: usa el menú nativo del sistema (Web Share API) si existe —
+// así el usuario elige a quién mandárselo (WhatsApp, etc.). Si no, copia al
+// portapapeles; y como último recurso abre WhatsApp con el selector de contacto.
+async function shareText(text, title) {
+  const data = title ? { title, text } : { text };
+  if (navigator.share) {
+    try { await navigator.share(data); return; }
+    catch (e) { if (e && e.name === 'AbortError') return; /* si falla de verdad, seguimos con el fallback */ }
+  }
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(text);
+      toast('Copiado al portapapeles', 'ok', 2200);
+      return;
+    }
+  } catch (e) { /* sin portapapeles → WhatsApp */ }
+  try { window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank'); }
+  catch (e) { toast('No se pudo compartir', 'info', 2200); }
 }
 
 // Borrado con opción de deshacer (lo usa el deslizamiento, más fácil de gatillar
