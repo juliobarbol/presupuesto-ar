@@ -1488,9 +1488,9 @@ input[type=number]{-moz-appearance:textfield}
 .agc-ev-title{font-size:14px;font-weight:600;color:var(--text);line-height:1.35;word-break:break-word}
 .agc-ev-sub{font-size:12px;color:var(--muted);margin-top:2px;line-height:1.4;word-break:break-word}
 .agc-ev.done .agc-ev-title{text-decoration:line-through;opacity:.6}
-.agc-ev-acts{display:flex;flex-flow:row wrap;gap:5px;flex-shrink:0;width:65px;justify-content:flex-end;align-content:flex-start}
-.agc-ev-btn{width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-field);cursor:pointer;color:var(--muted);padding:0}
-.agc-ev-btn .ic{width:15px;height:15px}
+.agc-ev-acts{display:flex;flex-flow:row wrap;gap:7px;flex-shrink:0;justify-content:flex-end;align-content:flex-start}
+.agc-ev-btn{width:42px;height:42px;display:inline-flex;align-items:center;justify-content:center;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-field);cursor:pointer;color:var(--muted);padding:0}
+.agc-ev-btn .ic{width:19px;height:19px}
 .agc-ev-btn:active{background:var(--accent-light)}
 .agc-day-empty{font-size:13px;color:var(--muted);padding:6px 2px;line-height:1.5}
 .agc-note-form{display:flex;gap:7px;align-items:stretch;margin-top:8px}
@@ -1515,6 +1515,17 @@ input[type=number]{-moz-appearance:textfield}
 /* Botón de chat de la tarjeta de evento: verde WhatsApp para diferenciarlo */
 .agc-ev-btn.agc-ev-wa{color:var(--wa,#16a34a);border-color:color-mix(in srgb,var(--wa,#16a34a) 35%,var(--border))}
 .agc-ev-btn.agc-ev-wa .ic{color:var(--wa,#16a34a)}
+/* Deslizar notas (estilo Gmail): la tarjeta se corre y deja ver la acción.
+   Derecha → "Hecho" (verde); izquierda → "Eliminar" (rojo). Los fondos van
+   detrás; la tarjeta (.agc-swipe-fg) es la que se traslada con el dedo. */
+.agc-swipe{position:relative;margin-bottom:7px;overflow:hidden;border-radius:var(--radius-field)}
+.agc-swipe .agc-ev{margin-bottom:0}
+.agc-swipe-fg{position:relative;z-index:1;touch-action:pan-y;will-change:transform}
+.agc-swipe-bg{position:absolute;inset:0;display:flex;align-items:center;gap:9px;padding:0 22px;font-size:14.5px;font-weight:700;color:#fff;opacity:0;pointer-events:none;border-radius:var(--radius-field)}
+.agc-swipe-bg .ic{width:22px;height:22px;color:#fff}
+.agc-swipe-done{justify-content:flex-start;background:#16a34a}
+.agc-swipe-del{justify-content:flex-end;background:#dc2626}
+.agc-swipe.agc-swipe-ready .agc-swipe-bg .ic{transform:scale(1.18);transition:transform .12s ease}
 /* Modal de edición de nota */
 #note-edit-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2000;align-items:center;justify-content:center}
 #note-edit-overlay.open{display:flex}
@@ -13193,6 +13204,7 @@ function renderCal() {
   if (esAgenda) renderCalList();
   else if (_calView === 'semana' || _calView === '3dias') renderCalCols();
   else renderCalGrid();
+  _calInitSwipe();   // engancha el deslizamiento de notas (una sola vez)
   if (typeof calUpdateDot === 'function') calUpdateDot();
 }
 
@@ -13345,12 +13357,12 @@ function _calEvHTML(ev, dateLabel) {
   if (ev.entryId != null) {
     acts = chat + `<button class="agc-ev-btn" onclick="goToHistoryEntry(${ev.entryId})" title="Ver el presupuesto en el historial">${icon('book')}</button>`;
   } else if (ev.noteId != null) {
+    // "Hecho" y "Eliminar" se accionan deslizando la tarjeta (ver abajo); en el
+    // botonera quedan solo chat (si hay contacto) y editar, más grandes.
     acts = chat
-         + `<button class="agc-ev-btn" onclick="calEditNote('${ev.noteId}')" title="Editar la nota / agregar contacto">${icon('pencil')}</button>`
-         + `<button class="agc-ev-btn" onclick="calToggleNote('${ev.noteId}')" title="${ev.done ? 'Marcar pendiente' : 'Marcar hecho'}">${icon('check')}</button>`
-         + `<button class="agc-ev-btn" onclick="calDeleteNote('${ev.noteId}')" title="Borrar nota">${icon('trash')}</button>`;
+         + `<button class="agc-ev-btn" onclick="calEditNote('${ev.noteId}')" title="Editar la nota / agregar contacto">${icon('pencil')}</button>`;
   }
-  return `<div class="agc-ev t-${ev.tipo}${ev.done ? ' done' : ''}">
+  const card = `<div class="agc-ev t-${ev.tipo}${ev.done ? ' done' : ''}">
     <span class="agc-ev-bar"></span>
     <div class="agc-ev-body">
       <span class="agc-ev-kind">${kindTxt}</span>
@@ -13358,6 +13370,15 @@ function _calEvHTML(ev, dateLabel) {
       ${sub}
     </div>
     <div class="agc-ev-acts">${acts}</div>
+  </div>`;
+  // Solo las notas manuales se deslizan (son las que se marcan hechas o se
+  // borran). El resto de eventos (seguimiento, trabajo, vencimiento…) no.
+  if (ev.noteId == null) return card;
+  const doneLbl = ev.done ? 'Pendiente' : 'Hecho';
+  return `<div class="agc-swipe" data-note-id="${esc(String(ev.noteId))}">
+    <div class="agc-swipe-bg agc-swipe-done">${icon('check')}<span>${doneLbl}</span></div>
+    <div class="agc-swipe-bg agc-swipe-del"><span>Eliminar</span>${icon('trash')}</div>
+    <div class="agc-swipe-fg">${card}</div>
   </div>`;
 }
 
@@ -13618,6 +13639,128 @@ function calDeleteNote(id) {
   setNotes(notes);
   renderCal();
   toast('Nota borrada', 'info', 2000);
+}
+
+// Borrado con opción de deshacer (lo usa el deslizamiento, más fácil de gatillar
+// por accidente que un botón). Guarda la nota y ofrece restaurarla por unos
+// segundos con un toast accionable.
+function calDeleteNoteUndoable(id) {
+  const notes = getNotes();
+  const idx = notes.findIndex(x => x.id === id);
+  if (idx < 0) return;
+  const removed = notes[idx];
+  notes.splice(idx, 1);
+  setNotes(notes);
+  renderCal();
+  _toastUndo('Nota borrada', () => {
+    const cur = getNotes();
+    if (!cur.some(x => x.id === removed.id)) {
+      cur.push(removed);
+      setNotes(cur);
+      renderCal();
+      toast('Nota restaurada', 'ok', 1600);
+    }
+  });
+}
+
+// Toast con botón "Deshacer" (reusa el estilo de toast-action).
+function _toastUndo(msg, onUndo, dur = 6000) {
+  const c = document.getElementById('toast-container');
+  if (!c) { toast(msg, 'info', 2000); return; }
+  const el = document.createElement('div');
+  el.className = 'toast toast-info toast-action';
+  el.innerHTML = `<span>${esc(msg)}</span><button type="button" class="toast-btn">Deshacer</button>`;
+  c.appendChild(el);
+  requestAnimationFrame(() => { requestAnimationFrame(() => el.classList.add('show')); });
+  const close = () => { el.classList.remove('show'); setTimeout(() => el.remove(), 300); };
+  el.querySelector('.toast-btn').onclick = () => { try { onUndo && onUndo(); } finally { close(); } };
+  setTimeout(close, dur);
+}
+
+// ─── DESLIZAR NOTAS (estilo Gmail) ───────────────────────────
+// Deslizar una tarjeta de nota a la DERECHA la marca hecha/pendiente; a la
+// IZQUIERDA la elimina (con deshacer). Se engancha una sola vez a nivel de
+// documento (delegación) para sobrevivir a los re-render de renderCal.
+let _swState = null;
+function _calInitSwipe() {
+  if (_calInitSwipe._done) return;
+  _calInitSwipe._done = true;
+  document.addEventListener('pointerdown', _swDown, { passive: true });
+  document.addEventListener('pointermove', _swMove, { passive: false });
+  document.addEventListener('pointerup', _swUp, { passive: true });
+  document.addEventListener('pointercancel', _swEnd, { passive: true });
+}
+function _swReset(wrap, fg) {
+  if (fg) { fg.style.transition = ''; fg.style.transform = ''; }
+  if (wrap) {
+    wrap.classList.remove('agc-swipe-ready');
+    wrap.querySelectorAll('.agc-swipe-bg').forEach(b => { b.style.opacity = ''; });
+  }
+}
+function _swDown(e) {
+  if (e.pointerType === 'mouse' && e.button !== 0) return;
+  const fg = e.target.closest && e.target.closest('.agc-swipe-fg');
+  if (!fg) return;
+  const wrap = fg.parentNode;
+  _swState = {
+    fg, wrap, id: wrap.getAttribute('data-note-id'),
+    startX: e.clientX, startY: e.clientY, dx: 0, w: fg.offsetWidth,
+    commit: 0, swiping: false
+  };
+}
+function _swMove(e) {
+  const s = _swState;
+  if (!s) return;
+  const dx = e.clientX - s.startX;
+  const dy = e.clientY - s.startY;
+  if (!s.swiping) {
+    if (Math.abs(dx) < 10) return;
+    if (Math.abs(dx) <= Math.abs(dy)) { _swState = null; return; } // gesto vertical → dejar scrollear
+    s.swiping = true;
+    s.commit = Math.min(Math.max(s.w * 0.35, 72), 170);
+    s.fg.style.transition = '';
+  }
+  e.preventDefault();
+  s.dx = dx;
+  s.fg.style.transform = `translateX(${dx}px)`;
+  const ratio = Math.min(Math.abs(dx) / s.commit, 1);
+  const done = s.wrap.querySelector('.agc-swipe-done');
+  const del  = s.wrap.querySelector('.agc-swipe-del');
+  if (done) done.style.opacity = dx > 0 ? String(0.45 + 0.55 * ratio) : '0';
+  if (del)  del.style.opacity  = dx < 0 ? String(0.45 + 0.55 * ratio) : '0';
+  s.wrap.classList.toggle('agc-swipe-ready', Math.abs(dx) >= s.commit);
+}
+function _swUp() {
+  const s = _swState;
+  _swState = null;
+  if (!s || !s.swiping) return;
+  // Cancelar el "click" que dispara el navegador al soltar tras deslizar, para
+  // que no se abra por accidente el botón que quedó debajo del dedo.
+  const kill = ev => { ev.stopPropagation(); ev.preventDefault(); };
+  document.addEventListener('click', kill, { capture: true, once: true });
+  setTimeout(() => document.removeEventListener('click', kill, true), 400);
+  if (Math.abs(s.dx) >= s.commit) {
+    const dir = s.dx > 0 ? 1 : -1;
+    s.fg.style.transition = 'transform .18s ease';
+    s.fg.style.transform = `translateX(${dir * s.fg.offsetWidth}px)`;
+    const id = s.id;   // string 'n_...' — mismo formato que usan los onclick
+    setTimeout(() => {
+      if (dir > 0) calToggleNote(id);
+      else calDeleteNoteUndoable(id);
+    }, 160);
+  } else {
+    s.fg.style.transition = 'transform .18s ease';
+    s.fg.style.transform = 'translateX(0)';
+    setTimeout(() => _swReset(s.wrap, s.fg), 200);
+  }
+}
+function _swEnd() {
+  const s = _swState;
+  _swState = null;
+  if (!s || !s.swiping) return;
+  s.fg.style.transition = 'transform .18s ease';
+  s.fg.style.transform = 'translateX(0)';
+  setTimeout(() => _swReset(s.wrap, s.fg), 200);
 }
 
 // Cuenta cuántos eventos de tipo "trabajo" hay en un array de eventos del día.
