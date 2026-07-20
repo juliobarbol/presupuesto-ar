@@ -4009,10 +4009,12 @@ const LS = {
   GDRIVE_ON:      'pq_gdrive_on',
   GDRIVE_LAST:    'pq_gdrive_last',
   GDRIVE_EMAIL:   'pq_gdrive_email',
+  GDRIVE_TOK:     'pq_gdrive_tok',
   GCAL_ON:        'pq_gcal_on',
   GCAL_ID:        'pq_gcal_id',
   GCAL_LAST:      'pq_gcal_last',
   GCAL_EMAIL:     'pq_gcal_email',
+  GCAL_TOK:       'pq_gcal_tok',
   PDF_THEME:      'pq_pdf_theme',
   PUSH_DEVICE_ID: 'pq_push_device_id',
   THEME:          'pq_theme',
@@ -11170,6 +11172,30 @@ const GDRIVE = {
 function gdriveConfigured(){ return !!(GDRIVE.CLIENT_ID && GDRIVE.CLIENT_ID.indexOf('.apps.googleusercontent.com') > 0); }
 function gdriveConnected(){ try { return localStorage.getItem(LS.GDRIVE_ON) === '1'; } catch(_){ return false; } }
 
+// ─── Cache persistente del access token de Google ───
+// El token de acceso solo vivía en memoria (GDRIVE._token / GCAL._token), así
+// que CADA recarga de la pestaña (lo que hace el navegador del celular al
+// descartar una PWA/pestaña de fondo) lo perdía y había que volver a pedírselo
+// a Google — ese ida-y-vuelta es lo que se notaba como "recargar la cuenta" al
+// reabrir. Persistimos el token con su vencimiento para que una reapertura
+// rápida lo reuse y se saltee por completo el pedido a Google.
+// El token es de acceso (no refresh), de vida corta (~1 h), propio y guardado
+// en el dispositivo del usuario (sin login). Se borra al desconectar.
+function _gTokSave(key, token, exp){
+  try { localStorage.setItem(key, JSON.stringify({ t: token, e: exp })); } catch(_){}
+}
+function _gTokLoad(key){
+  try {
+    const raw = localStorage.getItem(key); if (!raw) return null;
+    const o = JSON.parse(raw);
+    // Mismo margen que la comprobación en memoria (60 s): si le queda menos de
+    // un minuto de vida, lo ignoramos y se renovará callado.
+    if (o && o.t && o.e && Date.now() < o.e - 60000) return o;
+  } catch(_){}
+  return null;
+}
+function _gTokClear(key){ try { localStorage.removeItem(key); } catch(_){} }
+
 // Carga la librería de Google Identity Services (una sola vez).
 function loadGIS(){
   if (window.google && google.accounts && google.accounts.oauth2) return Promise.resolve();
@@ -11195,6 +11221,7 @@ async function gdriveEnsureClient(){
         if (resp && resp.access_token) {
           GDRIVE._token = resp.access_token;
           GDRIVE._tokenExp = Date.now() + ((resp.expires_in || 3500) * 1000);
+          _gTokSave(LS.GDRIVE_TOK, GDRIVE._token, GDRIVE._tokenExp);
           if (p) p.resolve(resp.access_token);
         } else if (p) { p.reject(new Error((resp && resp.error) || 'sin_token')); }
       },
@@ -11212,6 +11239,9 @@ function gdriveGetToken(opts){
   opts = opts || {};
   const interactive = !!opts.interactive;
   return new Promise((resolve, reject) => {
+    // Rehidratar el token desde el cache persistente: si la pestaña se recargó
+    // (memoria perdida) pero el token sigue vigente, lo reusamos sin ir a Google.
+    if (!GDRIVE._token) { const c = _gTokLoad(LS.GDRIVE_TOK); if (c) { GDRIVE._token = c.t; GDRIVE._tokenExp = c.e; } }
     if (GDRIVE._token && Date.now() < GDRIVE._tokenExp - 60000) { resolve(GDRIVE._token); return; }
     // Sin señal no tiene sentido intentar (y rompería el modo offline).
     if (typeof navigator !== 'undefined' && navigator.onLine === false) { reject(new Error('offline')); return; }
@@ -11323,6 +11353,7 @@ async function gdriveConnect(){
 function gdriveDisconnect(){
   try { if (GDRIVE._token && window.google && google.accounts && google.accounts.oauth2) google.accounts.oauth2.revoke(GDRIVE._token, ()=>{}); } catch(_){}
   GDRIVE._token = null; GDRIVE._tokenExp = 0;
+  _gTokClear(LS.GDRIVE_TOK);
   try { localStorage.removeItem(LS.GDRIVE_ON); } catch(_){}
   try { localStorage.removeItem(LS.GDRIVE_EMAIL); } catch(_){}
   gdriveUpdateUI();
@@ -11461,6 +11492,7 @@ async function gcalEnsureClient(){
         if (resp && resp.access_token) {
           GCAL._token = resp.access_token;
           GCAL._tokenExp = Date.now() + ((resp.expires_in || 3500) * 1000);
+          _gTokSave(LS.GCAL_TOK, GCAL._token, GCAL._tokenExp);
           if (p) p.resolve(resp.access_token);
         } else if (p) { p.reject(new Error((resp && resp.error) || 'sin_token')); }
       },
@@ -11479,6 +11511,9 @@ function gcalGetToken(opts){
   opts = opts || {};
   const interactive = !!opts.interactive;
   return new Promise((resolve, reject) => {
+    // Rehidratar el token desde el cache persistente (sobrevive la recarga de
+    // la pestaña): reapertura rápida = sin ida-y-vuelta a Google.
+    if (!GCAL._token) { const c = _gTokLoad(LS.GCAL_TOK); if (c) { GCAL._token = c.t; GCAL._tokenExp = c.e; } }
     if (GCAL._token && Date.now() < GCAL._tokenExp - 60000) { resolve(GCAL._token); return; }
     if (typeof navigator !== 'undefined' && navigator.onLine === false) { reject(new Error('offline')); return; }
     gcalEnsureClient().then(() => {
@@ -11712,6 +11747,7 @@ async function gcalConnect(){
 function gcalDisconnect(){
   try { if (GCAL._token && window.google && google.accounts && google.accounts.oauth2) google.accounts.oauth2.revoke(GCAL._token, ()=>{}); } catch(_){}
   GCAL._token = null; GCAL._tokenExp = 0;
+  _gTokClear(LS.GCAL_TOK);
   try { localStorage.removeItem(LS.GCAL_ON); } catch(_){}
   gcalUpdateUI();
   toast('Google Calendar desconectado. El calendario "Presupuestos AR" queda en tu cuenta.', 'info', 5000);
