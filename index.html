@@ -6830,26 +6830,19 @@ function updateNotesButton() {
   if (btn) btn.classList.toggle('has-notes', n > 0);
 }
 
-// Abre el panel. Si se pasa `focusItem`, hace scroll y foco a su textarea.
+// Abre el panel. Si se pasa `focusItem`, hace scroll hasta su nota (sin
+// enfocarla). NO abrimos el teclado al abrir: la mayoría de las veces se
+// abre solo para leer; el usuario toca el campo si quiere escribir.
 function openNotesPanel(focusItem) {
   const ov = document.getElementById('notes-overlay'); if (!ov) return;
   renderNotesPanel();
   ov.classList.add('open');
-  // Foco: al ítem indicado, o a la nota general si no se pidió ninguno.
-  setTimeout(() => {
-    let target = null;
-    if (focusItem && focusItem.id != null) {
-      target = document.querySelector(`#notes-item-list .notes-item-ta[data-id="${focusItem.id}"]`);
-    }
-    if (!target) target = document.getElementById('notes-general-text');
-    if (target) {
-      try {
-        target.focus();
-        const n = target.value.length; target.setSelectionRange(n, n);
-        target.scrollIntoView({ block: 'center' });
-      } catch (_) {}
-    }
-  }, 60);
+  if (focusItem && focusItem.id != null) {
+    setTimeout(() => {
+      const target = document.querySelector(`#notes-item-list .notes-item-ta[data-id="${focusItem.id}"]`);
+      if (target) { try { target.scrollIntoView({ block: 'center' }); } catch (_) {} }
+    }, 60);
+  }
 }
 
 function closeNotesPanel() {
