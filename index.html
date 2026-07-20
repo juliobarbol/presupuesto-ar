@@ -532,6 +532,10 @@ details.scol[open]>summary .scol-chev{transform:rotate(180deg)}
 .notes-btn .ic{width:15px;height:15px}
 .notes-btn.has-notes{border-color:#e0a915;box-shadow:0 0 0 2px rgba(224,169,21,.12)}
 .notes-count{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#f5b301;color:#3d2c00;font-size:11px;font-weight:800;line-height:1}
+/* El display:inline-flex de arriba le gana a la regla [hidden] del navegador,
+   así que sin esto el contador nunca se ocultaba (quedaba pegado el número de
+   un presupuesto anterior al crear uno nuevo). */
+.notes-count[hidden]{display:none}
 /* Panel de Notas */
 #notes-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2000;align-items:center;justify-content:center;padding:16px}
 #notes-overlay.open{display:flex}
