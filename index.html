@@ -1957,9 +1957,9 @@ input[type=number]{-moz-appearance:textfield}
   .pplan{padding:14px var(--page-x) 0}
   .pplan-t{font-size:var(--fs-h3);font-weight:700;text-transform:uppercase;letter-spacing:var(--ls-label);color:var(--c-muted);margin-bottom:8px}
   .pplan-box{padding:13px 16px;background:var(--c-bg-soft);border-radius:var(--r-md);border-left:3pt solid currentColor}
-  .pplan-list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:8px 22px}
-  .pplan-list li{font-size:var(--fs-small);color:var(--c-text-2);line-height:1.5;padding-left:17px;position:relative}
-  .pplan-list li::before{content:'';position:absolute;left:0;top:.42em;width:7px;height:7px;border-radius:2px;background:currentColor;opacity:.55}
+  .pplan-list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:8px 22px;counter-reset:pplan}
+  .pplan-list li{font-size:var(--fs-small);color:var(--c-text-2);line-height:1.5;padding-left:22px;position:relative;counter-increment:pplan}
+  .pplan-list li::before{content:counter(pplan)'.';position:absolute;left:0;top:0;font-weight:700;color:currentColor;opacity:.7;font-variant-numeric:tabular-nums}
 
   /* ──────────────────────────────────────────────────────────────
      FIRMAS — más respiración, anti-corte
@@ -12069,7 +12069,7 @@ function _buildWorkPlanHTML(color){
     <div class="pplan">
       <div class="pplan-t">${esc(titleSrc || 'Plan de Trabajo')}</div>
       <div class="pplan-box" style="color:${color}">
-        <ul class="pplan-list">${items}</ul>
+        <ol class="pplan-list">${items}</ol>
       </div>
     </div>`;
 }
