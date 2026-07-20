@@ -1558,6 +1558,17 @@ input[type=number]{-moz-appearance:textfield}
 .agc-ev-title{font-size:14px;font-weight:600;color:var(--text);line-height:1.35;word-break:break-word}
 .agc-ev-sub{font-size:12px;color:var(--muted);margin-top:2px;line-height:1.4;word-break:break-word}
 .agc-ev.done .agc-ev-title{text-decoration:line-through;opacity:.6}
+/* Anotaciones internas dentro del evento de trabajo (Agenda). Privadas: solo
+   se ven acá, no salen a Google Calendar ni al .ics. */
+.agc-ev-notes{display:flex;flex-direction:column;gap:3px;margin-top:6px;padding:6px 8px;background:rgba(245,179,1,.13);border:1px solid rgba(245,179,1,.45);border-radius:8px}
+.agc-ev-note{display:flex;gap:5px;align-items:flex-start;font-size:11.5px;line-height:1.35;color:#6b4e00}
+.agc-ev-note>.ic{width:13px;height:13px;color:#c77800;flex-shrink:0;margin-top:1px}
+.agc-ev-note-tx{min-width:0;overflow-wrap:anywhere}
+.agc-ev-note b{font-weight:700;color:#5a4200}
+:root[data-theme="dark"] .agc-ev-notes{background:rgba(251,191,36,.1);border-color:rgba(251,191,36,.35)}
+:root[data-theme="dark"] .agc-ev-note{color:#fde68a}
+:root[data-theme="dark"] .agc-ev-note>.ic{color:#fbbf24}
+:root[data-theme="dark"] .agc-ev-note b{color:#fef3c7}
 .agc-ev-acts{display:flex;flex-flow:row wrap;gap:7px;flex-shrink:0;justify-content:flex-end;align-content:flex-start}
 .agc-ev-btn{width:42px;height:42px;display:inline-flex;align-items:center;justify-content:center;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-field);cursor:pointer;color:var(--muted);padding:0}
 .agc-ev-btn .ic{width:19px;height:19px}
@@ -13781,9 +13792,13 @@ function calBuildIndex() {
     const fechas = (typeof agFechas === 'function') ? agFechas(e) : (e.fechaTrabajo ? [e.fechaTrabajo] : []);
     if (fechas.length) {
       const total = (typeof agDiasEstimados === 'function') ? agDiasEstimados(e) : fechas.length;
+      // Anotaciones internas del presupuesto (memoria privada de quien edita):
+      // se adjuntan al evento de trabajo para verlas en la Agenda (in-app).
+      // NO se envían a Google Calendar ni al .ics (esos salen de la app).
+      const notas = (typeof snapshotIntNotes === 'function') ? snapshotIntNotes(e.snapshot) : [];
       fechas.forEach((f, i) => {
         const dnum = total > 1 ? ` · día ${i + 1} de ${total}` : '';
-        push(f, { tipo: 'trabajo', title: quien, sub: (num ? num : '') + dnum, entryId: e.id, tel, mapUrl });
+        push(f, { tipo: 'trabajo', title: quien, sub: (num ? num : '') + dnum, entryId: e.id, tel, mapUrl, notes: notas });
       });
     }
 
@@ -14064,12 +14079,20 @@ function _calEvHTML(ev, dateLabel) {
     acts = chat + mapBtn + share
          + `<button class="agc-ev-btn" onclick="calEditNote('${ev.noteId}')" title="Editar la nota / ubicación / contacto">${icon('pencil')}</button>`;
   }
+  // Anotaciones internas (solo en eventos de trabajo): memoria privada de
+  // quien edita, se muestra en la Agenda pero no sale del dispositivo.
+  const notesHtml = (ev.notes && ev.notes.length)
+    ? `<div class="agc-ev-notes">${ev.notes.map(nn =>
+        `<span class="agc-ev-note">${icon('bulb')}<span class="agc-ev-note-tx">${nn.label ? `<b>${esc(nn.label)}:</b> ` : ''}${esc(nn.text)}</span></span>`
+      ).join('')}</div>`
+    : '';
   const card = `<div class="agc-ev t-${ev.tipo}${ev.done ? ' done' : ''}">
     <span class="agc-ev-bar"></span>
     <div class="agc-ev-body">
       <span class="agc-ev-kind">${kindTxt}</span>
       <div class="agc-ev-title">${esc(ev.title)}</div>
       ${sub}
+      ${notesHtml}
     </div>
     <div class="agc-ev-acts">${acts}</div>
   </div>`;
