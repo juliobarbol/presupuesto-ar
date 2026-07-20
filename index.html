@@ -276,6 +276,17 @@ body{background-color:var(--bg)}
 .da-item-client{font-size:14px;font-weight:600;color:#064e3b}
 .da-item-meta{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:#059669}
 .da-item-meta .ic{width:13px;height:13px}
+/* Anotaciones internas enganchadas al aviso del día (privadas, memoria del
+   editor). Bloque ámbar dentro de la tarjeta del trabajo. */
+.da-item-notes{display:flex;gap:6px;align-items:flex-start;margin-top:7px;padding:7px 9px;background:rgba(245,179,1,.14);border:1px solid rgba(245,179,1,.5);border-radius:10px}
+.da-item-notes>.ic{width:14px;height:14px;color:#c77800;flex-shrink:0;margin-top:1px}
+.da-note-lines{display:flex;flex-direction:column;gap:3px;min-width:0}
+.da-note-line{font-size:12px;line-height:1.35;color:#6b4e00;white-space:normal;overflow-wrap:anywhere;text-align:left}
+.da-note-line b{font-weight:700;color:#5a4200}
+:root[data-theme="dark"] .da-item-notes{background:rgba(251,191,36,.12);border-color:rgba(251,191,36,.4)}
+:root[data-theme="dark"] .da-item-notes>.ic{color:#fbbf24}
+:root[data-theme="dark"] .da-note-line{color:#fde68a}
+:root[data-theme="dark"] .da-note-line b{color:#fef3c7}
 .da-btns{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
 .da-btns .da-go{flex:1;min-width:150px}
 :root[data-theme="dark"] #day-alert-box{background:linear-gradient(160deg,#0c2620,#0e2b22);border-color:#065f46;box-shadow:0 24px 70px rgba(0,0,0,.6)}
@@ -10104,6 +10115,37 @@ function _markDayAlertSeen() {
   try { localStorage.setItem(LS.DAY_ALERT_SEEN, today()); } catch (_) {}
 }
 
+// Junta las anotaciones internas de un snapshot (nota general + notas por
+// ítem de todos los sets: normal A/B y estimativo). Devuelve [{label, text}].
+// Se usa para engancharlas en la notificación del día del trabajo — memoria
+// privada de quien edita, no sale nunca en el PDF.
+function snapshotIntNotes(snap) {
+  if (!snap) return [];
+  const out = [];
+  if (snap.intNote && snap.intNote.trim()) out.push({ label: '', text: snap.intNote.trim() });
+  const collect = (arr) => {
+    if (!Array.isArray(arr)) return;
+    arr.forEach(it => {
+      if (it && it.intNote && it.intNote.trim())
+        out.push({ label: itemInoteLabel(it), text: it.intNote.trim() });
+    });
+  };
+  collect(snap.items);
+  collect(snap.itemsB);
+  collect(snap.estItems);
+  return out;
+}
+
+// HTML del bloque de notas internas para la tarjeta del day-alert.
+function _dayAlertNotesHTML(snap) {
+  const notes = snapshotIntNotes(snap);
+  if (!notes.length) return '';
+  const lines = notes.map(nn =>
+    `<span class="da-note-line">${nn.label ? `<b>${esc(nn.label)}:</b> ` : ''}${esc(nn.text)}</span>`
+  ).join('');
+  return `<span class="da-item-notes">${icon('bulb')}<span class="da-note-lines">${lines}</span></span>`;
+}
+
 function maybeShowDayAlert() {
   if (_dayAlertSeenToday()) return;
   // No pisar el modal de bienvenida (primer uso) u otro overlay abierto.
@@ -10139,6 +10181,7 @@ function renderDayAlert(hoy) {
           <span class="da-item-top"><span class="da-item-num">${esc(e.quoteNumber || '—')}</span> <span class="da-item-client">${esc(e.clientName || '(sin nombre)')}</span></span>
           ${dinfo ? `<span class="da-item-meta">${icon('calendar')} Día ${dinfo.idx} de ${dinfo.total}</span>` : ''}
           ${lugar ? `<span class="da-item-meta">${icon('pin')} ${esc(lugar)}</span>` : ''}
+          ${_dayAlertNotesHTML(snap)}
         </button>`;
       }).join('')}
     </div>
