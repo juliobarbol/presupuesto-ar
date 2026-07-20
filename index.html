@@ -508,29 +508,50 @@ details.scol[open]>summary .scol-chev{transform:rotate(180deg)}
 .ita:focus{border-color:var(--accent-fg);box-shadow:0 0 0 2px rgba(var(--accent-rgb),.08)}
 
 /* ANOTACIONES INTERNAS (memoria del editor — NO salen en el PDF).
-   Look "sticky note" ámbar para dejar claro que es privado. */
-.inote{margin-top:8px;border:1px dashed #f5c451;border-radius:var(--radius-field);background:linear-gradient(135deg,#fffbeb,#fef3c7)}
-.inote[open]{padding-bottom:8px}
-.inote-sum{list-style:none;cursor:pointer;display:flex;align-items:center;gap:6px;padding:7px 10px;font-size:11.5px;font-weight:600;color:#92600a;user-select:none}
-.inote-sum::-webkit-details-marker{display:none}
-.inote-sum .ic{width:14px;height:14px;color:#d19a00}
-.inote-hint{font-weight:500;color:#b07d17;opacity:.85}
-.inote-dot{color:#d19a00;font-size:9px;margin-left:auto}
-.inote-f{margin:0 8px;width:calc(100% - 16px);background:#fffdf5;border-color:#f0d488;min-height:46px}
-.inote-f:focus{border-color:#e0a915;box-shadow:0 0 0 2px rgba(224,169,21,.15)}
-/* Sección de anotación interna del presupuesto (nivel general) */
-#section-int-note .int-note-wrap{border:1px dashed #f5c451;border-radius:var(--radius-card,10px);background:linear-gradient(135deg,#fffbeb,#fef3c7);padding:10px 12px}
-#section-int-note .int-note-badge{float:right;font-size:10px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:#92600a;background:#fde9a9;border-radius:999px;padding:2px 8px}
-#section-int-note textarea{width:100%;padding:8px 10px;border:1px solid #f0d488;border-radius:var(--radius-field);font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:#fffdf5;outline:none;resize:none;min-height:60px;margin-top:6px;-webkit-appearance:none;appearance:none;transition:.15s}
-#section-int-note textarea:focus{border-color:#e0a915;box-shadow:0 0 0 2px rgba(224,169,21,.15)}
-:root[data-theme="dark"] .inote{border-color:#6b5416;background:linear-gradient(135deg,#2a2410,#332b12)}
-:root[data-theme="dark"] .inote-sum{color:#fcd34d}
-:root[data-theme="dark"] .inote-sum .ic,:root[data-theme="dark"] .inote-dot{color:#fbbf24}
-:root[data-theme="dark"] .inote-hint{color:#e0b84f}
-:root[data-theme="dark"] .inote-f{background:#221d0c;border-color:#6b5416;color:var(--text)}
-:root[data-theme="dark"] #section-int-note .int-note-wrap{border-color:#6b5416;background:linear-gradient(135deg,#2a2410,#332b12)}
-:root[data-theme="dark"] #section-int-note .int-note-badge{color:#fcd34d;background:#4a3a12}
-:root[data-theme="dark"] #section-int-note textarea{background:#221d0c;border-color:#6b5416;color:var(--text)}
+   Un botón único "Notas" abre el panel; cada tarjeta con nota lleva un punto
+   amarillo arriba a la derecha. */
+/* Punto amarillo indicador en la esquina sup. der. de la tarjeta del ítem */
+.card-note-dot{position:absolute;top:8px;right:8px;width:12px;height:12px;padding:0;border:2px solid var(--surface);border-radius:50%;background:#f5b301;box-shadow:0 0 0 1px rgba(0,0,0,.06),0 1px 3px rgba(180,120,0,.5);cursor:pointer;z-index:2;transition:transform .12s}
+.card-note-dot:hover{transform:scale(1.25)}
+.card-note-dot:focus-visible{outline:2px solid #e0a915;outline-offset:2px}
+/* Botón "Notas" arriba del editor */
+.notes-bar{display:flex;justify-content:flex-end;margin:2px 0 10px}
+.notes-btn{display:inline-flex;align-items:center;gap:6px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;color:#92600a;background:linear-gradient(135deg,#fffbeb,#fef3c7);border:1px solid #f5c451;border-radius:999px;padding:6px 12px;cursor:pointer;transition:.15s}
+.notes-btn:hover{background:linear-gradient(135deg,#fef3c7,#fde68a);border-color:#e0a915}
+.notes-btn .ic{width:15px;height:15px}
+.notes-btn.has-notes{border-color:#e0a915;box-shadow:0 0 0 2px rgba(224,169,21,.12)}
+.notes-count{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#f5b301;color:#3d2c00;font-size:11px;font-weight:800;line-height:1}
+/* Panel de Notas */
+#notes-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2000;align-items:center;justify-content:center;padding:16px}
+#notes-overlay.open{display:flex}
+#notes-box{background:var(--card);border-radius:var(--radius-box);width:460px;max-width:100%;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.28)}
+.notes-head{display:flex;align-items:center;gap:10px;padding:18px 20px 4px}
+#notes-box h4{font-family:'DM Serif Display',serif;font-size:18px;margin:0;color:var(--text);display:flex;align-items:center;gap:8px;flex:1}
+.inote-badge{font-size:9.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#92600a;background:#fde9a9;border-radius:999px;padding:2px 8px}
+.notes-close{background:transparent;border:none;font-size:18px;color:var(--muted);cursor:pointer;line-height:1;padding:4px 6px;border-radius:6px}
+.notes-close:hover{background:var(--surface-2);color:var(--text)}
+.notes-sub{margin:0;padding:0 20px 12px;font-size:12px;color:var(--muted);line-height:1.5}
+.notes-scroll{overflow-y:auto;padding:4px 20px 8px;flex:1}
+.notes-block{margin-bottom:14px}
+.notes-block-label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:5px}
+#notes-general-text,.notes-item-ta{width:100%;padding:8px 10px;border:1px solid #f0d488;border-radius:var(--radius-field);font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:#fffdf5;outline:none;resize:vertical;min-height:48px;-webkit-appearance:none;appearance:none;transition:.15s}
+#notes-general-text:focus,.notes-item-ta:focus{border-color:#e0a915;box-shadow:0 0 0 2px rgba(224,169,21,.15)}
+.notes-items-head{font-size:11px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--muted);margin:6px 0 8px;padding-top:10px;border-top:1px solid var(--surface-2)}
+.notes-item{margin-bottom:12px}
+.notes-item-hd{display:flex;align-items:center;gap:6px;margin-bottom:4px}
+.notes-item-ic .ic{width:14px;height:14px;color:var(--muted)}
+.notes-item-name{font-size:12.5px;font-weight:600;color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.notes-item-dot{width:9px;height:9px;border-radius:50%;background:transparent;flex-shrink:0}
+.notes-item-dot.on{background:#f5b301;box-shadow:0 0 0 1px rgba(180,120,0,.35)}
+.notes-empty{font-size:12.5px;color:var(--muted);text-align:center;padding:18px 8px;line-height:1.5}
+#notes-box .cbtns{display:flex;gap:8px;justify-content:flex-end;padding:8px 20px 18px}
+:root[data-theme="dark"] .card-note-dot{background:#fbbf24;border-color:var(--surface)}
+:root[data-theme="dark"] .notes-btn{color:#fcd34d;background:linear-gradient(135deg,#2a2410,#332b12);border-color:#6b5416}
+:root[data-theme="dark"] .notes-btn:hover{background:linear-gradient(135deg,#332b12,#3d3316)}
+:root[data-theme="dark"] .notes-count{background:#fbbf24;color:#241d08}
+:root[data-theme="dark"] .inote-badge{color:#fcd34d;background:#4a3a12}
+:root[data-theme="dark"] #notes-general-text,:root[data-theme="dark"] .notes-item-ta{background:#221d0c;border-color:#6b5416;color:var(--text)}
+:root[data-theme="dark"] .notes-item-dot.on{background:#fbbf24}
 
 /* TOGGLE */
 .trow{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--surface-2)}
@@ -990,7 +1011,8 @@ input[type=number]{-moz-appearance:textfield}
   .arow{flex-direction:column}
   .arow .btn{width:100%;justify-content:center;padding:11px 14px;font-size:14px}
   .fg input,.fg textarea,.fg select{font-size:16px;padding:10px 12px}
-  #section-int-note textarea{font-size:16px;padding:10px 12px}
+  #notes-general-text,.notes-item-ta{font-size:16px;padding:10px 12px}
+  #notes-box{width:100%}
   .ii{font-size:16px;padding:9px 10px}
   .ita{font-size:16px;padding:9px 10px;min-height:64px}
   .hsearch{font-size:16px}
@@ -1651,6 +1673,7 @@ input[type=number]{-moz-appearance:textfield}
   #day-alert-overlay,
   #photo-viewer-overlay,
   #phrases-overlay,
+  #notes-overlay,
   #sticky-totals,
   #toast-container{display:none!important}
   #print-zone{display:block!important}
@@ -2706,6 +2729,15 @@ input[type=number]{-moz-appearance:textfield}
           </div>
         </div>
 
+        <!-- Botón único de Notas: abre el panel con la nota general del
+             presupuesto + las notas de cada ítem, todo en un solo lugar.
+             Privadas: no salen en el PDF. El contador muestra cuántas hay. -->
+        <div class="notes-bar">
+          <button type="button" id="btn-notes-panel" class="notes-btn" onclick="openNotesPanel()" title="Anotaciones internas — privadas, no salen en el PDF">
+            <svg class="ic ic-c-amber" aria-hidden="true"><use href="#i-bulb"></use></svg> Notas<span class="notes-count" id="notes-count" hidden>0</span>
+          </button>
+        </div>
+
         <div class="st">Identificación</div>
         <div class="r4">
           <div class="fg"><label>N° Presupuesto</label><input type="text" id="quote-number" readonly style="color:var(--accent-fg);font-weight:700"></div>
@@ -2947,18 +2979,6 @@ input[type=number]{-moz-appearance:textfield}
             <button class="btn btn-p btn-sm" onclick="addEstItem()"><svg class="ic"><use href="#i-tree"></use></svg> + Trabajo estimado</button>
             <button class="btn btn-s btn-sm" onclick="addEstService()"><svg class="ic"><use href="#i-truck"></use></svg> + Servicio con costo fijo</button>
             <button class="btn btn-g btn-sm" onclick="addEstNote()">+ Nota</button>
-          </div>
-        </div>
-
-        <!-- ══ ANOTACIONES INTERNAS DEL PRESUPUESTO ══
-             Memoria privada para quien edita (cómo calcular costos, acceso,
-             materiales, lo que sea). NO aparece en el PDF/documento del
-             cliente. Visible en todos los modos (no se togglea en applyMode). -->
-        <div id="section-int-note">
-          <div class="st"><svg class="ic ic-c-amber"><use href="#i-bulb"></use></svg> Anotaciones internas <span class="int-note-badge">privado</span></div>
-          <div class="int-note-wrap">
-            <div class="hint" style="margin:0 0 2px">Recordatorios para vos al armar el presupuesto (cálculo de costos, acceso, materiales, lo que quieras). <strong>No se muestran en el presupuesto final que ve el cliente.</strong></div>
-            <textarea id="int-note" rows="3" placeholder="Ej: Confirmar precio del camión con el proveedor. Acceso complicado por el fondo, sumar tiempo. Cliente pidió descuento…"></textarea>
           </div>
         </div>
 
@@ -3756,6 +3776,32 @@ input[type=number]{-moz-appearance:textfield}
     <div class="cbtns">
       <button class="btn btn-s" id="note-edit-cancel" onclick="calCloseNoteEdit()">Cancelar</button>
       <button class="btn btn-p" id="note-edit-save" onclick="calSaveNoteEdit()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════ PANEL DE NOTAS (memoria del editor) ════════════════
+     Panel único con la nota general del presupuesto + las notas de cada ítem.
+     Memoria privada de quien edita: NO se refleja en el PDF/documento del
+     cliente. Se abre desde el botón "Notas" del editor o el punto amarillo de
+     una tarjeta. La lista de ítems la arma renderNotesPanel(). -->
+<div id="notes-overlay" role="presentation" onclick="if(event.target===this)closeNotesPanel()">
+  <div id="notes-box" role="dialog" aria-modal="true" aria-labelledby="notes-title">
+    <div class="notes-head">
+      <h4 id="notes-title"><svg class="ic ic-c-amber" aria-hidden="true"><use href="#i-bulb"></use></svg> Notas del presupuesto <span class="inote-badge">privado</span></h4>
+      <button class="notes-close" onclick="closeNotesPanel()" aria-label="Cerrar" title="Cerrar">✕</button>
+    </div>
+    <p class="notes-sub">Memoria para vos al armar el presupuesto (costos, acceso, materiales…). <strong>No aparecen en el presupuesto que ve el cliente.</strong></p>
+    <div class="notes-scroll">
+      <div class="notes-block">
+        <label class="notes-block-label" for="notes-general-text">Nota general del presupuesto</label>
+        <textarea id="notes-general-text" rows="3" placeholder="Recordatorios de todo el presupuesto: precios a confirmar, condiciones, lo que sea…"></textarea>
+      </div>
+      <div class="notes-items-head" id="notes-items-head">Notas por ítem</div>
+      <div id="notes-item-list"></div>
+    </div>
+    <div class="cbtns">
+      <button class="btn btn-p" onclick="closeNotesPanel()">Listo</button>
     </div>
   </div>
 </div>
@@ -6628,13 +6674,12 @@ function renderItems() {
         <textarea class="ita ds-f" placeholder="Nota informativa...">${esc(item.desc||'')}</textarea>`;
     }
 
-    // Anotación interna por ítem: recordatorio privado (NO sale en el PDF).
-    const _hasNote = !!(item.intNote && item.intNote.trim());
-    inner += `
-      <details class="inote" ${_hasNote ? 'open' : ''}>
-        <summary class="inote-sum">${icon('bulb')} Anotación interna <span class="inote-hint">(no sale en el presupuesto)</span>${_hasNote ? '<span class="inote-dot">●</span>' : ''}</summary>
-        <textarea class="ita inote-f" placeholder="Recordatorio para vos: qué tener en cuenta al cotizar, acceso, materiales, riesgos… No lo ve el cliente.">${esc(item.intNote||'')}</textarea>
-      </details>`;
+    // Punto amarillo (esquina sup. der.) cuando el ítem tiene una anotación
+    // interna. Es indicador + acceso directo: al tocarlo abre el panel de
+    // Notas enfocado en este ítem. Agregar/editar se hace desde el panel
+    // unificado "Notas" (arriba del editor). No ocupa espacio propio.
+    if(item.intNote && item.intNote.trim())
+      inner = `<button class="card-note-dot" title="Tiene una anotación interna — tocá para verla" aria-label="Anotación interna"></button>` + inner;
 
     inner += `<div class="iactions">
       <button class="btn btn-g btn-sm ia-up" ${idx===0?'disabled':''} title="Subir">↑</button>
@@ -6689,9 +6734,10 @@ function renderItems() {
       attachSpeciesAutocomplete(sf, idx);
     }
 
-    // Anotación interna del ítem (privada, no sale en el PDF)
-    const nf = card.querySelector('.inote-f');
-    if(nf) nf.addEventListener('input', ()=>setItemField(idx,'intNote',nf.value));
+    // Punto de anotación interna → abre el panel de Notas enfocado en el ítem.
+    // Se pasa el objeto `item` (referencia real) para sobrevivir reordenamientos.
+    const noteDot = card.querySelector('.card-note-dot');
+    if(noteDot) noteDot.addEventListener('click', (e)=>{ e.stopPropagation(); openNotesPanel(item); });
 
     const dupBtn = card.querySelector('.ia-dup');
     const delBtn = card.querySelector('.ia-del');
@@ -6723,6 +6769,7 @@ function renderItems() {
     });
     list.appendChild(card);
   });
+  updateNotesButton();
 }
 
 // Actualiza el preview "3 × $X = $Y" en el card sin re-renderizar todo
@@ -6735,6 +6782,131 @@ function _refreshQtyPreview(card, idx) {
   if(span) span.textContent = (qty > 1 && hasPrice)
     ? `${qty} × ${fmtM(item.price, S.currency||'ARS')} = ${fmtM(total, S.currency||'ARS')}`
     : '';
+}
+
+// ─── PANEL DE NOTAS (memoria interna del editor) ──────────────────────────
+// Anotaciones privadas que NO salen en el PDF. Un único panel reúne la nota
+// general del presupuesto y una nota por cada ítem. El botón "Notas" del
+// editor muestra el total y cada tarjeta con nota lleva un punto amarillo.
+
+// Los ítems que muestra el panel = los que se están editando en pantalla
+// (escenario activo en normal/riesgo; estItems en estimativo).
+function currentEditorItems() {
+  if (S.isEstimative) return Array.isArray(S.estItems) ? S.estItems : [];
+  return activeItemsArr();
+}
+
+// Etiqueta legible de un ítem para el panel / accesibilidad.
+function itemInoteLabel(item) {
+  if (!item) return 'Ítem';
+  if (item.type === 'service') return (item.desc || '').trim() || 'Servicio';
+  if (item.type === 'note')    return (item.desc || '').trim() || 'Nota';
+  // tree (normal) / work (estimativo)
+  return (item.species || '').trim() || (item.desc || '').trim() || 'Árbol / Trabajo';
+}
+
+function itemInoteIcon(item) {
+  if (!item) return icon('clipboard');
+  if (item.type === 'service') return icon('truck');
+  if (item.type === 'note')    return icon('pencil');
+  return icon('tree');
+}
+
+// Cantidad total de notas cargadas (general + ítems del set activo).
+function notesCount() {
+  let n = (S.intNote && S.intNote.trim()) ? 1 : 0;
+  currentEditorItems().forEach(it => { if (it && it.intNote && it.intNote.trim()) n++; });
+  return n;
+}
+
+// Refresca el contador del botón "Notas" del editor.
+function updateNotesButton() {
+  const badge = document.getElementById('notes-count');
+  if (!badge) return;
+  const n = notesCount();
+  if (n > 0) { badge.textContent = n; badge.hidden = false; }
+  else       { badge.hidden = true; }
+  const btn = document.getElementById('btn-notes-panel');
+  if (btn) btn.classList.toggle('has-notes', n > 0);
+}
+
+// Abre el panel. Si se pasa `focusItem`, hace scroll y foco a su textarea.
+function openNotesPanel(focusItem) {
+  const ov = document.getElementById('notes-overlay'); if (!ov) return;
+  renderNotesPanel();
+  ov.classList.add('open');
+  // Foco: al ítem indicado, o a la nota general si no se pidió ninguno.
+  setTimeout(() => {
+    let target = null;
+    if (focusItem && focusItem.id != null) {
+      target = document.querySelector(`#notes-item-list .notes-item-ta[data-id="${focusItem.id}"]`);
+    }
+    if (!target) target = document.getElementById('notes-general-text');
+    if (target) {
+      try {
+        target.focus();
+        const n = target.value.length; target.setSelectionRange(n, n);
+        target.scrollIntoView({ block: 'center' });
+      } catch (_) {}
+    }
+  }, 60);
+}
+
+function closeNotesPanel() {
+  const ov = document.getElementById('notes-overlay'); if (ov) ov.classList.remove('open');
+  // Re-render de los ítems para reflejar los puntos amarillos actualizados.
+  if (S.isEstimative) { if (typeof renderEstItems === 'function') renderEstItems(); }
+  else { if (typeof renderItems === 'function') renderItems(); }
+  updateNotesButton();
+}
+
+// Arma el contenido del panel: nota general (con su valor + listener) y la
+// lista de ítems, cada uno con su textarea de nota vinculada al objeto real.
+function renderNotesPanel() {
+  const gen = document.getElementById('notes-general-text');
+  if (gen) {
+    gen.value = S.intNote || '';
+    if (!gen._wired) {
+      gen.addEventListener('input', () => {
+        S.intNote = gen.value;
+        updateNotesButton();
+        sched();
+      });
+      gen._wired = true;
+    }
+  }
+
+  const list = document.getElementById('notes-item-list');
+  const head = document.getElementById('notes-items-head');
+  if (!list) return;
+  const items = currentEditorItems();
+  list.innerHTML = '';
+  if (head) head.style.display = items.length ? '' : 'none';
+
+  if (!items.length) {
+    list.innerHTML = `<div class="notes-empty">Todavía no hay árboles ni servicios cargados. Agregalos en el editor para poder anotarles algo.</div>`;
+    return;
+  }
+
+  items.forEach(item => {
+    const row = document.createElement('div');
+    row.className = 'notes-item';
+    const has = !!(item.intNote && item.intNote.trim());
+    row.innerHTML =
+      `<div class="notes-item-hd"><span class="notes-item-ic">${itemInoteIcon(item)}</span>` +
+      `<span class="notes-item-name">${esc(itemInoteLabel(item))}</span>` +
+      `<span class="notes-item-dot${has ? ' on' : ''}" aria-hidden="true"></span></div>` +
+      `<textarea class="notes-item-ta" data-id="${esc(String(item.id))}" rows="2" placeholder="Anotación para este ítem…">${esc(item.intNote || '')}</textarea>`;
+    const ta = row.querySelector('.notes-item-ta');
+    ta.addEventListener('input', () => {
+      item.intNote = ta.value;
+      const dot = row.querySelector('.notes-item-dot');
+      if (dot) dot.classList.toggle('on', !!ta.value.trim());
+      updateNotesButton();
+      sched();
+    });
+    list.appendChild(row);
+  });
 }
 
 // ─── SURCHARGE ───────────────────────────────
@@ -6952,19 +7124,14 @@ function renderEstItems() {
         </div>`;
     }
 
-    // Anotación interna del ítem estimado (privada, NO sale en el PDF).
-    // Se inyecta antes de la barra de acciones para reusar los tres bloques
-    // de innerHTML sin duplicar el markup en cada tipo.
-    const _actions = card.querySelector('.iactions');
-    if (_actions) {
-      const _hasNote = !!(item.intNote && item.intNote.trim());
-      const _det = document.createElement('details');
-      _det.className = 'inote';
-      if (_hasNote) _det.open = true;
-      _det.innerHTML =
-        `<summary class="inote-sum">${icon('bulb')} Anotación interna <span class="inote-hint">(no sale en el presupuesto)</span>${_hasNote ? '<span class="inote-dot">●</span>' : ''}</summary>` +
-        `<textarea class="ita inote-f" placeholder="Recordatorio para vos: qué tener en cuenta al cotizar, acceso, materiales, riesgos… No lo ve el cliente.">${esc(item.intNote||'')}</textarea>`;
-      _actions.parentNode.insertBefore(_det, _actions);
+    // Punto amarillo (esquina sup. der.) cuando el ítem estimado tiene una
+    // anotación interna. Indicador + acceso directo al panel de Notas.
+    if (item.intNote && item.intNote.trim()) {
+      const _nd = document.createElement('button');
+      _nd.className = 'card-note-dot';
+      _nd.title = 'Tiene una anotación interna — tocá para verla';
+      _nd.setAttribute('aria-label', 'Anotación interna');
+      card.appendChild(_nd);
     }
 
     const df = card.querySelector('.est-desc-f');
@@ -6977,9 +7144,9 @@ function renderEstItems() {
       }
     }
 
-    // Anotación interna del ítem estimado (privada, no sale en el PDF)
-    const nf = card.querySelector('.inote-f');
-    if(nf) nf.addEventListener('input', ()=>setEstItemField(idx,'intNote',nf.value));
+    // Punto de anotación interna → abre el panel de Notas enfocado en el ítem.
+    const noteDot = card.querySelector('.card-note-dot');
+    if(noteDot) noteDot.addEventListener('click', (e)=>{ e.stopPropagation(); openNotesPanel(item); });
 
     const pf = card.querySelector('.est-pr-f');
     if(pf) pf.addEventListener('input', ()=>{
@@ -7029,6 +7196,7 @@ function renderEstItems() {
 
     list.appendChild(card);
   });
+  updateNotesButton();
 }
 
 function _refreshEstQtyPreview(card, idx) {
@@ -7308,7 +7476,7 @@ function restoreUI() {
   sv('surcharge-pct', S.surcharge||0);
   sv('payment-conditions', S.paymentConditions);
   sv('observations', S.observations);
-  sv('int-note', S.intNote || '');
+  updateNotesButton();
   sc('show-work-plan', S.showWorkPlan !== false);
   sc('wp-override', !!S.workPlanOverride);
   sv('wp-custom-title', S.workPlanCustomTitle);
@@ -7410,7 +7578,6 @@ function syncFromUI() {
   S.discount          = parseFloat(gv('discount')) || 0;
   S.paymentConditions = gv('payment-conditions');
   S.observations      = gv('observations');
-  S.intNote           = gv('int-note');
   S.showWorkPlan      = gc('show-work-plan');
   S.workPlanOverride    = gc('wp-override');
   S.workPlanCustomTitle = gv('wp-custom-title');
