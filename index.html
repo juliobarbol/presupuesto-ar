@@ -11196,6 +11196,20 @@ function _gTokLoad(key){
 }
 function _gTokClear(key){ try { localStorage.removeItem(key); } catch(_){} }
 
+// ─── Reintento silencioso ante token inválido (401) ───
+// Un token reusado desde el cache podría estar revocado en el servidor (raro:
+// solo si el usuario quitó el acceso desde su cuenta de Google). En ese caso la
+// llamada a la API lanza Error('… 401'). Detectamos ese caso, invalidamos el
+// token (memoria + cache) y reintentamos UNA vez: getToken pedirá uno nuevo con
+// prompt:'none' (callado), sin que el usuario note nada.
+function _gIsAuthErr(e){ return /\b401\b/.test(String((e && e.message) || e || '')); }
+function gdriveInvalidateToken(){ GDRIVE._token = null; GDRIVE._tokenExp = 0; _gTokClear(LS.GDRIVE_TOK); }
+function gcalInvalidateToken(){ GCAL._token = null; GCAL._tokenExp = 0; _gTokClear(LS.GCAL_TOK); }
+async function _gWithAuthRetry(invalidate, op){
+  try { return await op(); }
+  catch(e){ if (_gIsAuthErr(e)) { invalidate(); return await op(); } throw e; }
+}
+
 // Carga la librería de Google Identity Services (una sola vez).
 function loadGIS(){
   if (window.google && google.accounts && google.accounts.oauth2) return Promise.resolve();
@@ -11384,7 +11398,7 @@ function scheduleGdriveBackup(){
   GDRIVE._timer = setTimeout(() => {
     // Sin señal: dejamos el cambio pendiente; se sube al volver la conexión.
     if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
-    gdriveUpload().then(gdriveUpdateUI).catch(e => console.warn('auto-backup Drive falló', e));
+    _gWithAuthRetry(gdriveInvalidateToken, gdriveUpload).then(gdriveUpdateUI).catch(e => console.warn('auto-backup Drive falló', e));
   }, 45000);
 }
 
@@ -11442,7 +11456,7 @@ function gdriveInitOnLoad(){
     gdriveUpdateUI();
     try {
       await gdriveRememberEmail(token);
-      const d = await gdriveDownload();
+      const d = await _gWithAuthRetry(gdriveInvalidateToken, gdriveDownload);
       if (d && d.history && d.history.length) {
         const ok = await confirmDlg('Recuperar datos', 'Encontramos una copia en tu Google Drive. ¿Querés recuperar tus presupuestos en este dispositivo?', 'Recuperar', 'btn-p');
         if (ok && applyBackupObject(d)) toast('Datos recuperados desde Drive.', 'ok', 4000);
@@ -11703,7 +11717,7 @@ function scheduleGcalSync(){
   clearTimeout(GCAL._timer);
   GCAL._timer = setTimeout(() => {
     if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
-    gcalSync().then(gcalUpdateUI).catch(e => console.warn('auto-sync Calendar falló', e));
+    _gWithAuthRetry(gcalInvalidateToken, gcalSync).then(gcalUpdateUI).catch(e => console.warn('auto-sync Calendar falló', e));
   }, 45000);
 }
 
@@ -11769,7 +11783,7 @@ function gcalInitOnLoad(){
   if (!gcalConnected()) return;
   if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
   gcalGetToken({ interactive: false })
-    .then(async () => { try { await gcalSync(); gcalUpdateUI(); } catch(_){} })
+    .then(async () => { try { await _gWithAuthRetry(gcalInvalidateToken, gcalSync); gcalUpdateUI(); } catch(_){} })
     .catch(() => { /* no renovó callado: la UI ofrece reconectar */ });
 }
 // Refresca la sección de Calendar (pestaña Empresa).
@@ -14857,9 +14871,18 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (_h.length) requestPersistentStorage();
   }
 
-  // Copia de seguridad en Google Drive (inerte si no está configurada).
-  if (typeof gdriveInitOnLoad === 'function') gdriveInitOnLoad();
-  if (typeof gcalInitOnLoad === 'function') gcalInitOnLoad();
+  // Copia de seguridad en Google Drive / sync de Calendar (inertes si no están
+  // configuradas). Se DIFIEREN para que no compitan con el primer render: la
+  // app queda usable al instante y Google se acomoda cuando el hilo principal
+  // está libre. Así, aun cuando la pestaña se recargó al volver de segundo
+  // plano, la reapertura se siente inmediata y el sync ocurre invisible detrás.
+  const _deferIdle = (typeof requestIdleCallback === 'function')
+    ? (fn) => requestIdleCallback(fn, { timeout: 3000 })
+    : (fn) => setTimeout(fn, 800);
+  _deferIdle(() => {
+    if (typeof gdriveInitOnLoad === 'function') gdriveInitOnLoad();
+    if (typeof gcalInitOnLoad === 'function') gcalInitOnLoad();
+  });
   // Notificaciones push (inerte si no está configurado el Worker).
   if (typeof initPush === 'function') initPush();
   // Al pasar la app a segundo plano, subir cambios pendientes de inmediato
@@ -14890,7 +14913,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         GDRIVE._dirty && navigator.onLine !== false &&
         gdriveConfigured() && gdriveConnected()) {
       clearTimeout(GDRIVE._timer);
-      gdriveUpload().catch(() => {});
+      _gWithAuthRetry(gdriveInvalidateToken, gdriveUpload).catch(() => {});
     }
   });
   // pagehide cubre el cierre real de la pestaña/app (y el bfcache), donde
@@ -14902,13 +14925,13 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (typeof GDRIVE !== 'undefined' && GDRIVE._dirty &&
         gdriveConfigured() && gdriveConnected()) {
       clearTimeout(GDRIVE._timer);
-      gdriveUpload().then(gdriveUpdateUI).catch(() => {});
+      _gWithAuthRetry(gdriveInvalidateToken, gdriveUpload).then(gdriveUpdateUI).catch(() => {});
     }
     // Al volver la señal, subir la sync de Calendar que haya quedado pendiente.
     if (typeof GCAL !== 'undefined' && GCAL._dirty &&
         gcalConfigured() && gcalConnected()) {
       clearTimeout(GCAL._timer);
-      gcalSync().then(gcalUpdateUI).catch(() => {});
+      _gWithAuthRetry(gcalInvalidateToken, gcalSync).then(gcalUpdateUI).catch(() => {});
     }
     // Al volver la señal, re-sincronizar los seguimientos del Worker de push.
     if (typeof syncPushFollowups === 'function' && S.pushEnabled) syncPushFollowups().catch(() => {});
