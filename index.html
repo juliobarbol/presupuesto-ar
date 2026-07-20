@@ -507,6 +507,31 @@ details.scol[open]>summary .scol-chev{transform:rotate(180deg)}
 .ita{width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius-field);font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--card);outline:none;resize:none;min-height:52px;transition:.15s;-webkit-appearance:none;appearance:none}
 .ita:focus{border-color:var(--accent-fg);box-shadow:0 0 0 2px rgba(var(--accent-rgb),.08)}
 
+/* ANOTACIONES INTERNAS (memoria del editor — NO salen en el PDF).
+   Look "sticky note" ámbar para dejar claro que es privado. */
+.inote{margin-top:8px;border:1px dashed #f5c451;border-radius:var(--radius-field);background:linear-gradient(135deg,#fffbeb,#fef3c7)}
+.inote[open]{padding-bottom:8px}
+.inote-sum{list-style:none;cursor:pointer;display:flex;align-items:center;gap:6px;padding:7px 10px;font-size:11.5px;font-weight:600;color:#92600a;user-select:none}
+.inote-sum::-webkit-details-marker{display:none}
+.inote-sum .ic{width:14px;height:14px;color:#d19a00}
+.inote-hint{font-weight:500;color:#b07d17;opacity:.85}
+.inote-dot{color:#d19a00;font-size:9px;margin-left:auto}
+.inote-f{margin:0 8px;width:calc(100% - 16px);background:#fffdf5;border-color:#f0d488;min-height:46px}
+.inote-f:focus{border-color:#e0a915;box-shadow:0 0 0 2px rgba(224,169,21,.15)}
+/* Sección de anotación interna del presupuesto (nivel general) */
+#section-int-note .int-note-wrap{border:1px dashed #f5c451;border-radius:var(--radius-card,10px);background:linear-gradient(135deg,#fffbeb,#fef3c7);padding:10px 12px}
+#section-int-note .int-note-badge{float:right;font-size:10px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:#92600a;background:#fde9a9;border-radius:999px;padding:2px 8px}
+#section-int-note textarea{width:100%;padding:8px 10px;border:1px solid #f0d488;border-radius:var(--radius-field);font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:#fffdf5;outline:none;resize:none;min-height:60px;margin-top:6px;-webkit-appearance:none;appearance:none;transition:.15s}
+#section-int-note textarea:focus{border-color:#e0a915;box-shadow:0 0 0 2px rgba(224,169,21,.15)}
+:root[data-theme="dark"] .inote{border-color:#6b5416;background:linear-gradient(135deg,#2a2410,#332b12)}
+:root[data-theme="dark"] .inote-sum{color:#fcd34d}
+:root[data-theme="dark"] .inote-sum .ic,:root[data-theme="dark"] .inote-dot{color:#fbbf24}
+:root[data-theme="dark"] .inote-hint{color:#e0b84f}
+:root[data-theme="dark"] .inote-f{background:#221d0c;border-color:#6b5416;color:var(--text)}
+:root[data-theme="dark"] #section-int-note .int-note-wrap{border-color:#6b5416;background:linear-gradient(135deg,#2a2410,#332b12)}
+:root[data-theme="dark"] #section-int-note .int-note-badge{color:#fcd34d;background:#4a3a12}
+:root[data-theme="dark"] #section-int-note textarea{background:#221d0c;border-color:#6b5416;color:var(--text)}
+
 /* TOGGLE */
 .trow{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--surface-2)}
 .trow:last-child{border-bottom:none}
@@ -965,6 +990,7 @@ input[type=number]{-moz-appearance:textfield}
   .arow{flex-direction:column}
   .arow .btn{width:100%;justify-content:center;padding:11px 14px;font-size:14px}
   .fg input,.fg textarea,.fg select{font-size:16px;padding:10px 12px}
+  #section-int-note textarea{font-size:16px;padding:10px 12px}
   .ii{font-size:16px;padding:9px 10px}
   .ita{font-size:16px;padding:9px 10px;min-height:64px}
   .hsearch{font-size:16px}
@@ -2924,6 +2950,18 @@ input[type=number]{-moz-appearance:textfield}
           </div>
         </div>
 
+        <!-- ══ ANOTACIONES INTERNAS DEL PRESUPUESTO ══
+             Memoria privada para quien edita (cómo calcular costos, acceso,
+             materiales, lo que sea). NO aparece en el PDF/documento del
+             cliente. Visible en todos los modos (no se togglea en applyMode). -->
+        <div id="section-int-note">
+          <div class="st"><svg class="ic ic-c-amber"><use href="#i-bulb"></use></svg> Anotaciones internas <span class="int-note-badge">privado</span></div>
+          <div class="int-note-wrap">
+            <div class="hint" style="margin:0 0 2px">Recordatorios para vos al armar el presupuesto (cálculo de costos, acceso, materiales, lo que quieras). <strong>No se muestran en el presupuesto final que ve el cliente.</strong></div>
+            <textarea id="int-note" rows="3" placeholder="Ej: Confirmar precio del camión con el proveedor. Acceso complicado por el fondo, sumar tiempo. Cliente pidió descuento…"></textarea>
+          </div>
+        </div>
+
         <div id="section-conditions">
           <div class="st">Condiciones y Observaciones</div>
           <div class="r2">
@@ -3912,6 +3950,12 @@ const DEF = {
   clientName:'', clientContact:'', workAddress:'', workMapLink:'', workDuration:'',
   currency:'ARS', discount:0, surcharge:0, items:[],
   paymentConditions:'', observations:'',
+  // Anotación interna del presupuesto: recordatorio privado para quien edita
+  // (cómo calcular costos, acceso, materiales, etc.). NUNCA se muestra en el
+  // PDF/documento que ve el cliente. Viaja en el snapshot del historial y en
+  // el backup como parte de S. A nivel ítem, cada objeto puede llevar su
+  // propio `intNote` (ver renderItems).
+  intNote:'',
   // Scenarios A/B mode — permite presupuestar dos alternativas paralelas
   // sobre el mismo conjunto (ej: extraer todo vs podar todo). Cuando está
   // apagado, todo funciona normal con S.items. Cuando está prendido, B
@@ -6584,6 +6628,14 @@ function renderItems() {
         <textarea class="ita ds-f" placeholder="Nota informativa...">${esc(item.desc||'')}</textarea>`;
     }
 
+    // Anotación interna por ítem: recordatorio privado (NO sale en el PDF).
+    const _hasNote = !!(item.intNote && item.intNote.trim());
+    inner += `
+      <details class="inote" ${_hasNote ? 'open' : ''}>
+        <summary class="inote-sum">${icon('bulb')} Anotación interna <span class="inote-hint">(no sale en el presupuesto)</span>${_hasNote ? '<span class="inote-dot">●</span>' : ''}</summary>
+        <textarea class="ita inote-f" placeholder="Recordatorio para vos: qué tener en cuenta al cotizar, acceso, materiales, riesgos… No lo ve el cliente.">${esc(item.intNote||'')}</textarea>
+      </details>`;
+
     inner += `<div class="iactions">
       <button class="btn btn-g btn-sm ia-up" ${idx===0?'disabled':''} title="Subir">↑</button>
       <button class="btn btn-g btn-sm ia-down" ${idx===arr.length-1?'disabled':''} title="Bajar">↓</button>
@@ -6636,6 +6688,10 @@ function renderItems() {
       sf.addEventListener('input', ()=>setItemField(idx,'species',sf.value));
       attachSpeciesAutocomplete(sf, idx);
     }
+
+    // Anotación interna del ítem (privada, no sale en el PDF)
+    const nf = card.querySelector('.inote-f');
+    if(nf) nf.addEventListener('input', ()=>setItemField(idx,'intNote',nf.value));
 
     const dupBtn = card.querySelector('.ia-dup');
     const delBtn = card.querySelector('.ia-del');
@@ -6896,6 +6952,21 @@ function renderEstItems() {
         </div>`;
     }
 
+    // Anotación interna del ítem estimado (privada, NO sale en el PDF).
+    // Se inyecta antes de la barra de acciones para reusar los tres bloques
+    // de innerHTML sin duplicar el markup en cada tipo.
+    const _actions = card.querySelector('.iactions');
+    if (_actions) {
+      const _hasNote = !!(item.intNote && item.intNote.trim());
+      const _det = document.createElement('details');
+      _det.className = 'inote';
+      if (_hasNote) _det.open = true;
+      _det.innerHTML =
+        `<summary class="inote-sum">${icon('bulb')} Anotación interna <span class="inote-hint">(no sale en el presupuesto)</span>${_hasNote ? '<span class="inote-dot">●</span>' : ''}</summary>` +
+        `<textarea class="ita inote-f" placeholder="Recordatorio para vos: qué tener en cuenta al cotizar, acceso, materiales, riesgos… No lo ve el cliente.">${esc(item.intNote||'')}</textarea>`;
+      _actions.parentNode.insertBefore(_det, _actions);
+    }
+
     const df = card.querySelector('.est-desc-f');
     if(df) {
       df.addEventListener('input', ()=>setEstItemField(idx,'desc',df.value));
@@ -6905,6 +6976,10 @@ function renderEstItems() {
         attachServiceAutocomplete(df, 'est-' + idx);
       }
     }
+
+    // Anotación interna del ítem estimado (privada, no sale en el PDF)
+    const nf = card.querySelector('.inote-f');
+    if(nf) nf.addEventListener('input', ()=>setEstItemField(idx,'intNote',nf.value));
 
     const pf = card.querySelector('.est-pr-f');
     if(pf) pf.addEventListener('input', ()=>{
@@ -7233,6 +7308,7 @@ function restoreUI() {
   sv('surcharge-pct', S.surcharge||0);
   sv('payment-conditions', S.paymentConditions);
   sv('observations', S.observations);
+  sv('int-note', S.intNote || '');
   sc('show-work-plan', S.showWorkPlan !== false);
   sc('wp-override', !!S.workPlanOverride);
   sv('wp-custom-title', S.workPlanCustomTitle);
@@ -7334,6 +7410,7 @@ function syncFromUI() {
   S.discount          = parseFloat(gv('discount')) || 0;
   S.paymentConditions = gv('payment-conditions');
   S.observations      = gv('observations');
+  S.intNote           = gv('int-note');
   S.showWorkPlan      = gc('show-work-plan');
   S.workPlanOverride    = gc('wp-override');
   S.workPlanCustomTitle = gv('wp-custom-title');
@@ -10469,7 +10546,7 @@ function resetToNewQuote() {
   // no solo S.numNext (que puede estar atrás si se cargaron viejos).
   S.numNext = calcNextNumFromHistory();
   S.items=[]; S.estItems=[]; S.itemsB=[]; S.clientName=''; S.clientContact=''; S.workAddress=''; S.workMapLink=''; S.workDuration='';
-  S.discount=0; S.surcharge=0; S.paymentConditions=''; S.observations=''; S.estObservations='';
+  S.discount=0; S.surcharge=0; S.paymentConditions=''; S.observations=''; S.estObservations=''; S.intNote='';
   // El plan de trabajo a medida es excepcional por presupuesto: se descarta al
   // crear uno nuevo para volver a usar el default global.
   S.workPlanOverride=false; S.workPlanCustom=''; S.workPlanCustomTitle='';
