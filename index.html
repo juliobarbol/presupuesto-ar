@@ -537,7 +537,18 @@ details.scol[open]>summary .scol-chev{transform:rotate(180deg)}
 #notes-general-text,.notes-item-ta{width:100%;padding:8px 10px;border:1px solid #f0d488;border-radius:var(--radius-field);font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:#fffdf5;outline:none;resize:vertical;min-height:48px;-webkit-appearance:none;appearance:none;transition:.15s}
 #notes-general-text:focus,.notes-item-ta:focus{border-color:#e0a915;box-shadow:0 0 0 2px rgba(224,169,21,.15)}
 .notes-items-head{font-size:11px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--muted);margin:6px 0 8px;padding-top:10px;border-top:1px solid var(--surface-2)}
-.notes-item{margin-bottom:12px}
+.notes-item{margin-bottom:12px;border-radius:var(--radius-field);padding:6px 8px;margin-left:-8px;margin-right:-8px;transition:background .4s,box-shadow .4s}
+/* Flash al abrir desde el punto de una tarjeta: resalta la nota unos segundos */
+.notes-item-flash{animation:noteFlash 2.6s ease-out}
+@keyframes noteFlash{
+  0%,55%{background:rgba(245,179,1,.22);box-shadow:0 0 0 2px rgba(245,179,1,.55)}
+  100%{background:transparent;box-shadow:0 0 0 2px transparent}
+}
+:root[data-theme="dark"] .notes-item-flash{animation:noteFlashDark 2.6s ease-out}
+@keyframes noteFlashDark{
+  0%,55%{background:rgba(251,191,36,.16);box-shadow:0 0 0 2px rgba(251,191,36,.5)}
+  100%{background:transparent;box-shadow:0 0 0 2px transparent}
+}
 .notes-item-hd{display:flex;align-items:center;gap:6px;margin-bottom:4px}
 .notes-item-ic .ic{width:14px;height:14px;color:var(--muted)}
 .notes-item-name{font-size:12.5px;font-weight:600;color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -6840,7 +6851,18 @@ function openNotesPanel(focusItem) {
   if (focusItem && focusItem.id != null) {
     setTimeout(() => {
       const target = document.querySelector(`#notes-item-list .notes-item-ta[data-id="${focusItem.id}"]`);
-      if (target) { try { target.scrollIntoView({ block: 'center' }); } catch (_) {} }
+      if (target) {
+        try { target.scrollIntoView({ block: 'center' }); } catch (_) {}
+        // Resaltar la nota unos segundos para ubicarla fácil (sin abrir el
+        // teclado: es solo un flash visual, no un foco).
+        const row = target.closest('.notes-item');
+        if (row) {
+          row.classList.remove('notes-item-flash');
+          void row.offsetWidth;            // reinicia la animación si se repite
+          row.classList.add('notes-item-flash');
+          setTimeout(() => row.classList.remove('notes-item-flash'), 2600);
+        }
+      }
     }, 60);
   }
 }
