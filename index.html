@@ -207,6 +207,16 @@ body{background-color:var(--bg)}
    Un único observador (setupModalScrollLock) pone/saca esta clase. */
 body.modal-open #main{overflow:hidden}
 
+/* Animación de entrada al navegar entre pestañas con swipe (feedback del gesto).
+   Se aplica al panel entrante; la dirección indica hacia dónde se fue el dedo. */
+@keyframes tabSlideNext{from{opacity:.35;transform:translateX(26px)}to{opacity:1;transform:none}}
+@keyframes tabSlidePrev{from{opacity:.35;transform:translateX(-26px)}to{opacity:1;transform:none}}
+.tab-panel.tab-slide-next{animation:tabSlideNext .22s ease}
+.tab-panel.tab-slide-prev{animation:tabSlidePrev .22s ease}
+@media (prefers-reduced-motion:reduce){
+  .tab-panel.tab-slide-next,.tab-panel.tab-slide-prev{animation:none}
+}
+
 /* PRINT ZONE */
 #print-zone{display:none}
 
@@ -2807,8 +2817,8 @@ input[type=number]{-moz-appearance:textfield}
   <div id="tabs">
     <button class="tab-btn active" onclick="switchTab('editor')"><svg class="ic"><use href="#i-pencil"></use></svg> Editor</button>
     <button class="tab-btn" onclick="switchTab('historial')"><svg class="ic"><use href="#i-book"></use></svg> Historial<span class="tab-dot" id="tab-hist-dot" hidden></span></button>
-    <button class="tab-btn" onclick="switchTab('mapa')"><svg class="ic"><use href="#i-pin"></use></svg> Mapa</button>
     <button class="tab-btn" onclick="switchTab('agenda')"><svg class="ic"><use href="#i-calendar"></use></svg> Agenda<span class="tab-dot" id="tab-agenda-dot" hidden></span></button>
+    <button class="tab-btn" onclick="switchTab('mapa')"><svg class="ic"><use href="#i-pin"></use></svg> Mapa</button>
     <button class="tab-btn" onclick="switchTab('facturacion')"><svg class="ic ic-c-amber"><use href="#i-money"></use></svg> Facturas</button>
   </div>
 
@@ -7853,7 +7863,7 @@ function switchTab(name) {
   if (_main && _prev) _tabScroll[_prev.id] = _main.scrollTop;
   // Empresa y Estilo ya no tienen botón en la barra (viven en el engranaje ⚙);
   // este array debe coincidir en orden con los .tab-btn que SÍ quedan en #tabs.
-  const names = ['editor','historial','mapa','agenda','facturacion'];
+  const names = ['editor','historial','agenda','mapa','facturacion'];
   document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active', names[i]===name));
   // Resaltar el engranaje cuando estamos en una pantalla de Configuración
   // (esos paneles no tienen botón de pestaña que se marque activo).
@@ -7915,6 +7925,31 @@ function reserveStickySpace() {
 function scrollMainToTop() {
   const main = document.getElementById('main');
   if (main) main.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// Orden de las pestañas de la barra (para navegar con swipe). Debe coincidir
+// con el orden de los .tab-btn y con el array `names` de switchTab. 'empresa'
+// (Configuración) no está: se llega por el engranaje, no por swipe.
+const TAB_ORDER = ['editor', 'historial', 'agenda', 'mapa', 'facturacion'];
+
+// Navega a la pestaña vecina (dir: +1 siguiente, -1 anterior) con una animación
+// de entrada. Usada por el gesto de swipe. En los bordes no hace nada.
+function _navTab(dir) {
+  const cur = document.querySelector('.tab-panel.active');
+  if (!cur) return;
+  const i = TAB_ORDER.indexOf(cur.id.replace('panel-', ''));
+  if (i < 0) return;                 // p. ej. Configuración: sin swipe-nav
+  const j = i + dir;
+  if (j < 0 || j >= TAB_ORDER.length) return;   // borde: sin wrap
+  switchTab(TAB_ORDER[j]);
+  const p = document.getElementById('panel-' + TAB_ORDER[j]);
+  if (p) {
+    const cls = dir > 0 ? 'tab-slide-next' : 'tab-slide-prev';
+    p.classList.remove('tab-slide-next', 'tab-slide-prev');
+    void p.offsetWidth;              // reflow: reinicia la animación
+    p.classList.add(cls);
+    p.addEventListener('animationend', () => p.classList.remove(cls), { once: true });
+  }
 }
 
 // ─── MODE ────────────────────────────────────
@@ -15575,6 +15610,47 @@ window.addEventListener('DOMContentLoaded', async () => {
       if (!ticking) { ticking = true; requestAnimationFrame(update); }
     }, { passive: true });
     update();
+  })();
+
+  // Navegación por swipe entre pestañas. Detector liviano sobre #main con LOCK
+  // DE EJE: solo actúa si el gesto es claramente horizontal, así no interfiere
+  // con el scroll vertical. Guardas: no navega con un modal abierto, ni cuando
+  // el gesto arranca sobre un elemento que ya es dueño del deslizamiento
+  // horizontal (mapa, columnas del calendario, tiras, filas con swipe-acción,
+  // color picker, inputs/selects/dropdowns). Listeners pasivos → no bloquea el
+  // scroll nativo. El feedback visual lo da la animación de _navTab.
+  (function setupTabSwipe(){
+    const main = document.getElementById('main');
+    if (!main) return;
+    const BLOCK = '#map-canvas,.leaflet-container,.agc-cols,.agc-viewtoggle,' +
+      '.agenda-clima-strip,.agc-swipe,.cpk-sv,.cpk-hue,input,textarea,select,' +
+      '.csel-pop,.cal-pop';
+    let x0 = 0, y0 = 0, tracking = false, axis = 0;  // axis: 0 indeciso, 1 horiz, 2 vert
+    main.addEventListener('touchstart', (e) => {
+      tracking = false; axis = 0;
+      if (e.touches.length !== 1) return;
+      if (document.body.classList.contains('modal-open')) return;
+      const cur = document.querySelector('.tab-panel.active');
+      if (!cur || TAB_ORDER.indexOf(cur.id.replace('panel-', '')) < 0) return;
+      if (e.target.closest && e.target.closest(BLOCK)) return;
+      const t = e.touches[0]; x0 = t.clientX; y0 = t.clientY; tracking = true;
+    }, { passive: true });
+    main.addEventListener('touchmove', (e) => {
+      if (!tracking || axis !== 0) return;
+      const t = e.touches[0], dx = t.clientX - x0, dy = t.clientY - y0;
+      if (Math.abs(dx) < 12 && Math.abs(dy) < 12) return;   // aún indeciso
+      // Se bloquea en horizontal solo si domina claramente; si no, es scroll.
+      axis = (Math.abs(dx) > Math.abs(dy) * 1.4) ? 1 : 2;
+      if (axis === 2) tracking = false;                     // scroll vertical: abandonar
+    }, { passive: true });
+    main.addEventListener('touchend', (e) => {
+      if (!tracking || axis !== 1) { tracking = false; return; }
+      tracking = false;
+      const t = e.changedTouches[0], dx = t.clientX - x0, dy = t.clientY - y0;
+      if (Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+        _navTab(dx < 0 ? 1 : -1);     // dedo a la izquierda → siguiente
+      }
+    }, { passive: true });
   })();
 
   // Lock de scroll unificado para modales: un único observador vigila la clase
