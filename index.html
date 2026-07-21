@@ -1020,6 +1020,11 @@ input[type=number]{-moz-appearance:textfield}
 .toast-action{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:12px;white-space:normal;pointer-events:auto}
 .toast-action .toast-btn{font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;color:#fff;background:var(--accent);border:none;border-radius:var(--radius-field);padding:6px 12px;cursor:pointer;white-space:nowrap}
 .toast-action .toast-btn:active{opacity:.85}
+/* Aviso de lluvia (clima): mensaje largo → texto a la izquierda que envuelve,
+   botón "Ver" al final, toda la tarjeta tocable. Botón blanco sobre el rojo. */
+.clima-toast{width:min(92vw,430px);max-width:92vw;text-align:left;justify-content:flex-start;flex-wrap:nowrap;cursor:pointer}
+.clima-toast>span{flex:1 1 auto;min-width:0;line-height:1.4}
+.clima-toast .toast-btn{flex:0 0 auto;background:rgba(255,255,255,.22)}
 
 /* MISC */
 .divider{height:1px;background:var(--border);margin:16px 0}
@@ -14072,8 +14077,38 @@ function climaChipHTML(d) {
        + `<span class="clima-emoji">${emoji}</span>${esc(desc)}${temp}${lluviaTxt}${esc(uvTxt)}</span>`;
 }
 
-// Aviso de lluvia para trabajos de HOY o MAÑANA: toast prominente, una vez
-// por día por trabajo (gate en LS.CLIMA_WARN = { "entryId|fecha": "avisadoEl" }).
+// Toast accionable (multi-línea, tocable) para el aviso de lluvia. El toast()
+// plano tiene white-space:nowrap y trunca los mensajes largos; este usa
+// .toast-action (envuelve el texto) y toda la tarjeta —además del botón—
+// dispara onTap para llevar al presupuesto / la Agenda.
+function _climaToast(html, onTap) {
+  const c = document.getElementById('toast-container');
+  if (!c) return;
+  const el = document.createElement('div');
+  el.className = 'toast toast-err toast-action clima-toast';
+  el.innerHTML = html;
+  c.appendChild(el);
+  requestAnimationFrame(() => { requestAnimationFrame(() => el.classList.add('show')); });
+  const close = () => { el.classList.remove('show'); setTimeout(() => el.remove(), 300); };
+  const go = (ev) => { if (ev) ev.stopPropagation(); try { onTap(); } finally { close(); } };
+  el.onclick = go;
+  setTimeout(close, 13000);
+}
+
+// Detalle corto (probabilidad · mm) de un pronóstico, para el aviso. '' si no
+// hay ninguno de los dos datos.
+function _climaDet(d) {
+  const partes = [];
+  if (d.pp != null) partes.push(`${Math.round(d.pp)}% prob.`);
+  if (d.mm) partes.push(`${Math.round(d.mm)} mm`);
+  return partes.join(' · ');
+}
+
+// Aviso de lluvia para trabajos de HOY o MAÑANA. Junta todos los avisos nuevos
+// (no mostrados hoy) y notifica UNA vez: si es uno solo, un toast que lleva al
+// presupuesto; si son varios, un único toast consolidado que lleva a la Agenda
+// (evita apilar varios carteles largos que se pisaban y truncaban). Gate diario
+// por trabajo en LS.CLIMA_WARN = { "entryId|fecha": "avisadoEl" }.
 function _climaAvisarLluvia() {
   const hoy = today();
   const man = _calAddDays(hoy, 1);
@@ -14083,6 +14118,7 @@ function _climaAvisarLluvia() {
   // Podar avisos de fechas ya pasadas.
   Object.keys(gate).forEach(k => { if ((k.split('|')[1] || '') < hoy) { delete gate[k]; cambio = true; } });
 
+  const avisos = [];
   _climaProximosTrabajos().forEach(t => {
     t.fechas.filter(f => f === hoy || f === man).forEach(f => {
       const d = climaDe(t.e, f);
@@ -14090,13 +14126,31 @@ function _climaAvisarLluvia() {
       const k = `${t.e.id}|${f}`;
       if (gate[k] === hoy) return;         // ya avisado hoy
       gate[k] = hoy; cambio = true;
-      const quien = (t.e.clientName || '').trim() || 'sin nombre';
-      const cuando = f === hoy ? 'HOY' : 'MAÑANA';
-      const det = `${d.pp != null ? `${Math.round(d.pp)}% prob.` : ''}${d.mm ? ` · ${Math.round(d.mm)} mm` : ''}`;
-      toast(`⛈️ Ojo: pronostican lluvia para ${cuando} y tenés la poda de ${quien}${det ? ` (${det})` : ''}. Revisá la Agenda por si hay que reprogramar.`, 'err', 9000);
+      avisos.push({ e: t.e, cuando: f === hoy ? 'hoy' : 'mañana', d });
     });
   });
   if (cambio) { try { localStorage.setItem(LS.CLIMA_WARN, JSON.stringify(gate)); } catch (_) {} }
+  if (!avisos.length) return;
+
+  if (avisos.length === 1) {
+    const a = avisos[0];
+    const quien = (a.e.clientName || '').trim() || 'sin nombre';
+    const det = _climaDet(a.d);
+    _climaToast(
+      `<span>⛈️ <b>Lluvia ${a.cuando}</b> y tenés la poda de ${esc(quien)}${det ? ` (${esc(det)})` : ''}. Tocá para verla y reprogramar si hace falta.</span>`
+      + `<button type="button" class="toast-btn">Ver</button>`,
+      () => goToHistoryEntry(a.e.id)
+    );
+  } else {
+    const nHoy = avisos.filter(a => a.cuando === 'hoy').length;
+    const nMan = avisos.length - nHoy;
+    const cuandoTxt = nHoy && nMan ? 'hoy y mañana' : (nHoy ? 'hoy' : 'mañana');
+    _climaToast(
+      `<span>⛈️ <b>Lluvia pronosticada</b> para ${avisos.length} podas (${cuandoTxt}). Tocá para ver la Agenda y reprogramar.</span>`
+      + `<button type="button" class="toast-btn">Ver Agenda</button>`,
+      () => switchTab('agenda')
+    );
+  }
 }
 
 // ===== js/calendar.js =====
