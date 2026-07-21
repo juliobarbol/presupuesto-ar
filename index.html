@@ -8020,6 +8020,25 @@ function onDateChange() {
   sched();
 }
 
+// Auto-actualiza la fecha de emisión al día de hoy SOLO si no hay nada en
+// edición (presupuesto en blanco). La fecha vive en localStorage y quedaba
+// congelada en el día en que se creó el borrador vacío: si el usuario abría la
+// app días después sin tocar "Nuevo", el presupuesto arrancaba con una fecha
+// pasada. Cuando ya hay datos cargados NO se toca (esa fecha es intencional).
+// Devuelve true si actualizó algo. Se llama al abrir la app y al volver del
+// segundo plano (visibilitychange). `noSync` evita disparar un guardado
+// espurio: la fecha de un borrador vacío no vale la pena persistir sola.
+function refreshIssueDateIfBlank() {
+  if (typeof isBlankQuote !== 'function' || !isBlankQuote()) return false;
+  const hoy = today();
+  if (S.dateIssue === hoy) return false;
+  S.dateIssue = hoy;
+  sv('date-issue', S.dateIssue);
+  { const e = document.getElementById('date-issue'); if (e && e._cdateBtn) syncCdate(e); }
+  calcExpiry();
+  return true;
+}
+
 function onValidityChange() {
   S.validityDays = parseInt(gv('validity-days')) || 30;
   calcExpiry();
@@ -8525,6 +8544,32 @@ function getH() {
 
 function setH(h) { safeSetLS(LS.HISTORY, JSON.stringify(h)); if (typeof scheduleGcalSync === 'function') scheduleGcalSync(); }
 
+// Devuelve true si el presupuesto ACTUAL (estado en memoria `S`) está en
+// blanco: sin cliente, sin items, sin total, sin observaciones ni condiciones
+// de pago, ni datos del informe de riesgo. Es "no hay nada en edición": el
+// usuario abrió la app, se asignó un N° automático, y nunca cargó nada.
+// Se usa para no ensuciar el historial con borradores vacíos y para saber si
+// es seguro auto-actualizar la fecha de emisión al día de hoy.
+function isBlankQuote() {
+  const itemCount = S.isEstimative
+    ? (S.estItems||[]).filter(i=>i.type==='work'||i.type==='service').length
+    : (S.items||[]).length;
+
+  let total = 0;
+  if (S.isEstimative) {
+    (S.estItems||[]).forEach(i=>{ if((i.type==='work'||i.type==='service')&&i.price) total+=parseFloat(i.price)||0; });
+  } else {
+    total = calcTotals().total;
+  }
+
+  return !S.clientName?.trim()
+      && itemCount === 0
+      && total === 0
+      && !S.observations?.trim()
+      && !S.paymentConditions?.trim()
+      && !(S.isRisk && S.riskData?.species);
+}
+
 // ─── AUTO-SAVE (silencioso) ───────────────────
 // Devuelve true si asentó el presupuesto en el historial, false si no
 // había nada que guardar (sin N° o borrador vacío).
@@ -8549,13 +8594,7 @@ function autoSaveToHistory() {
   // sin total, sin observaciones. Eso es ruido — el usuario abrió la
   // app, se asignó un N° automático, y nunca cargó nada. Antes esos
   // borradores ensuciaban el historial con líneas "Sin cliente · $0".
-  const isEmptyDraft = !S.clientName?.trim()
-                    && itemCount === 0
-                    && total === 0
-                    && !S.observations?.trim()
-                    && !S.paymentConditions?.trim()
-                    && !(S.isRisk && S.riskData?.species);
-  if (isEmptyDraft) return false;
+  if (isBlankQuote()) return false;
 
   // Snapshot del estado, pero SIN el logo. El logo es config global de
   // empresa (vive en S.logo y se exporta a nivel raíz del backup). No
@@ -14888,6 +14927,11 @@ window.addEventListener('DOMContentLoaded', async () => {
   // Calendario propio para los <input type="date"> editables.
   enhanceDateInputs(document);
 
+  // Si el presupuesto cargado está en blanco (nada en edición), poner la fecha
+  // de emisión en HOY. Evita que un borrador vacío arrastre la fecha vieja del
+  // día en que se creó. Con datos cargados no se toca (la fecha es intencional).
+  refreshIssueDateIfBlank();
+
   renderItems();
   renderEstItems();
 
@@ -14982,6 +15026,13 @@ window.addEventListener('DOMContentLoaded', async () => {
       clearTimeout(GDRIVE._timer);
       _gWithAuthRetry(gdriveInvalidateToken, gdriveUpload).catch(() => {});
     }
+  });
+  // Al volver del segundo plano (p. ej. la app quedó abierta de un día para
+  // otro): si no hay nada en edición, poner la fecha de emisión en HOY para
+  // que un borrador vacío no arranque con la fecha de ayer.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') return;
+    refreshIssueDateIfBlank();
   });
   // pagehide cubre el cierre real de la pestaña/app (y el bfcache), donde
   // visibilitychange a veces no llega a tiempo.
