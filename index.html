@@ -7939,8 +7939,9 @@ function _navTab(dir) {
   if (!cur) return;
   const i = TAB_ORDER.indexOf(cur.id.replace('panel-', ''));
   if (i < 0) return;                 // p. ej. Configuración: sin swipe-nav
-  const j = i + dir;
-  if (j < 0 || j >= TAB_ORDER.length) return;   // borde: sin wrap
+  // Wrap circular: desde Facturas (última) el swipe sigue a Editor (primera) y
+  // viceversa. El +len antes del módulo evita el negativo con dir=-1.
+  const j = (i + dir + TAB_ORDER.length) % TAB_ORDER.length;
   switchTab(TAB_ORDER[j]);
   const p = document.getElementById('panel-' + TAB_ORDER[j]);
   if (p) {
