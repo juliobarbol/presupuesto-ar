@@ -276,6 +276,17 @@ body{background-color:var(--bg)}
 .da-item-client{font-size:14px;font-weight:600;color:#064e3b}
 .da-item-meta{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:#059669}
 .da-item-meta .ic{width:13px;height:13px}
+/* Anotaciones internas enganchadas al aviso del día (privadas, memoria del
+   editor). Bloque ámbar dentro de la tarjeta del trabajo. */
+.da-item-notes{display:flex;gap:6px;align-items:flex-start;margin-top:7px;padding:7px 9px;background:rgba(245,179,1,.14);border:1px solid rgba(245,179,1,.5);border-radius:10px}
+.da-item-notes>.ic{width:14px;height:14px;color:#c77800;flex-shrink:0;margin-top:1px}
+.da-note-lines{display:flex;flex-direction:column;gap:3px;min-width:0}
+.da-note-line{font-size:12px;line-height:1.35;color:#6b4e00;white-space:normal;overflow-wrap:anywhere;text-align:left}
+.da-note-line b{font-weight:700;color:#5a4200}
+:root[data-theme="dark"] .da-item-notes{background:rgba(251,191,36,.12);border-color:rgba(251,191,36,.4)}
+:root[data-theme="dark"] .da-item-notes>.ic{color:#fbbf24}
+:root[data-theme="dark"] .da-note-line{color:#fde68a}
+:root[data-theme="dark"] .da-note-line b{color:#fef3c7}
 .da-btns{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
 .da-btns .da-go{flex:1;min-width:150px}
 :root[data-theme="dark"] #day-alert-box{background:linear-gradient(160deg,#0c2620,#0e2b22);border-color:#065f46;box-shadow:0 24px 70px rgba(0,0,0,.6)}
@@ -480,6 +491,9 @@ details.scol[open]>summary .scol-chev{transform:rotate(180deg)}
 .btn-s{background:var(--surface-2);color:var(--text);border:1px solid var(--border)}.btn-s:hover{background:var(--surface-hover)}
 .btn-d{background:var(--red-light);color:var(--red);border:1px solid #fca5a5}.btn-d:hover{background:#fecaca}
 .btn-g{background:transparent;color:var(--muted);padding:5px 9px}.btn-g:hover{background:var(--surface-2);color:var(--text)}
+/* Estado "imagen lista para enviar" (flujo de dos toques de Compartir imagen):
+   relleno de marca para que se note que hay que tocar de nuevo para compartir. */
+.btn.btn-ready{background:var(--accent);color:#fff}.btn.btn-ready:hover{background:var(--accent-dark);color:#fff}
 .btn-sm{padding:5px 10px;font-size:12px}
 .btn-bl{width:100%;justify-content:center;margin-bottom:8px}
 .arow{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
@@ -506,6 +520,67 @@ details.scol[open]>summary .scol-chev{transform:rotate(180deg)}
 .ii:focus{border-color:var(--accent-fg);box-shadow:0 0 0 2px rgba(var(--accent-rgb),.08)}
 .ita{width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius-field);font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--card);outline:none;resize:none;min-height:52px;transition:.15s;-webkit-appearance:none;appearance:none}
 .ita:focus{border-color:var(--accent-fg);box-shadow:0 0 0 2px rgba(var(--accent-rgb),.08)}
+
+/* ANOTACIONES INTERNAS (memoria del editor — NO salen en el PDF).
+   Un botón único "Notas" abre el panel; cada tarjeta con nota lleva un punto
+   amarillo arriba a la derecha. */
+/* Punto amarillo indicador en la esquina sup. der. de la tarjeta del ítem */
+.card-note-dot{position:absolute;top:8px;right:8px;width:12px;height:12px;padding:0;border:2px solid var(--surface);border-radius:50%;background:#f5b301;box-shadow:0 0 0 1px rgba(0,0,0,.06),0 1px 3px rgba(180,120,0,.5);cursor:pointer;z-index:2;transition:transform .12s}
+.card-note-dot:hover{transform:scale(1.25)}
+.card-note-dot:focus-visible{outline:2px solid #e0a915;outline-offset:2px}
+/* Botón "Notas" arriba del editor */
+.notes-bar{display:flex;justify-content:flex-end;margin:2px 0 10px}
+.notes-btn{display:inline-flex;align-items:center;gap:6px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;color:#92600a;background:linear-gradient(135deg,#fffbeb,#fef3c7);border:1px solid #f5c451;border-radius:999px;padding:6px 12px;cursor:pointer;transition:.15s}
+.notes-btn:hover{background:linear-gradient(135deg,#fef3c7,#fde68a);border-color:#e0a915}
+.notes-btn .ic{width:15px;height:15px}
+.notes-btn.has-notes{border-color:#e0a915;box-shadow:0 0 0 2px rgba(224,169,21,.12)}
+.notes-count{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#f5b301;color:#3d2c00;font-size:11px;font-weight:800;line-height:1}
+/* El display:inline-flex de arriba le gana a la regla [hidden] del navegador,
+   así que sin esto el contador nunca se ocultaba (quedaba pegado el número de
+   un presupuesto anterior al crear uno nuevo). */
+.notes-count[hidden]{display:none}
+/* Panel de Notas */
+#notes-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2000;align-items:center;justify-content:center;padding:16px}
+#notes-overlay.open{display:flex}
+#notes-box{background:var(--card);border-radius:var(--radius-box);width:460px;max-width:100%;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.28)}
+.notes-head{display:flex;align-items:center;gap:10px;padding:18px 20px 4px}
+#notes-box h4{font-family:'DM Serif Display',serif;font-size:18px;margin:0;color:var(--text);display:flex;align-items:center;gap:8px;flex:1}
+.inote-badge{font-size:9.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#92600a;background:#fde9a9;border-radius:999px;padding:2px 8px}
+.notes-close{background:transparent;border:none;font-size:18px;color:var(--muted);cursor:pointer;line-height:1;padding:4px 6px;border-radius:6px}
+.notes-close:hover{background:var(--surface-2);color:var(--text)}
+.notes-sub{margin:0;padding:0 20px 12px;font-size:12px;color:var(--muted);line-height:1.5}
+.notes-scroll{overflow-y:auto;padding:4px 20px 8px;flex:1}
+.notes-block{margin-bottom:14px}
+.notes-block-label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:5px}
+#notes-general-text,.notes-item-ta{width:100%;padding:8px 10px;border:1px solid #f0d488;border-radius:var(--radius-field);font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:#fffdf5;outline:none;resize:vertical;min-height:48px;-webkit-appearance:none;appearance:none;transition:.15s}
+#notes-general-text:focus,.notes-item-ta:focus{border-color:#e0a915;box-shadow:0 0 0 2px rgba(224,169,21,.15)}
+.notes-items-head{font-size:11px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--muted);margin:6px 0 8px;padding-top:10px;border-top:1px solid var(--surface-2)}
+.notes-item{margin-bottom:12px;border-radius:var(--radius-field);padding:6px 8px;margin-left:-8px;margin-right:-8px;transition:background .4s,box-shadow .4s}
+/* Flash al abrir desde el punto de una tarjeta: resalta la nota unos segundos */
+.notes-item-flash{animation:noteFlash 2.6s ease-out}
+@keyframes noteFlash{
+  0%,55%{background:rgba(245,179,1,.22);box-shadow:0 0 0 2px rgba(245,179,1,.55)}
+  100%{background:transparent;box-shadow:0 0 0 2px transparent}
+}
+:root[data-theme="dark"] .notes-item-flash{animation:noteFlashDark 2.6s ease-out}
+@keyframes noteFlashDark{
+  0%,55%{background:rgba(251,191,36,.16);box-shadow:0 0 0 2px rgba(251,191,36,.5)}
+  100%{background:transparent;box-shadow:0 0 0 2px transparent}
+}
+.notes-item-hd{display:flex;align-items:center;gap:6px;margin-bottom:4px}
+.notes-item-ic .ic{width:14px;height:14px;color:var(--muted)}
+.notes-item-name{font-size:12.5px;font-weight:600;color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.notes-item-dot{width:9px;height:9px;border-radius:50%;background:transparent;flex-shrink:0}
+.notes-item-dot.on{background:#f5b301;box-shadow:0 0 0 1px rgba(180,120,0,.35)}
+.notes-empty{font-size:12.5px;color:var(--muted);text-align:center;padding:18px 8px;line-height:1.5}
+#notes-box .cbtns{display:flex;gap:8px;justify-content:flex-end;padding:8px 20px 18px}
+:root[data-theme="dark"] .card-note-dot{background:#fbbf24;border-color:var(--surface)}
+:root[data-theme="dark"] .notes-btn{color:#fcd34d;background:linear-gradient(135deg,#2a2410,#332b12);border-color:#6b5416}
+:root[data-theme="dark"] .notes-btn:hover{background:linear-gradient(135deg,#332b12,#3d3316)}
+:root[data-theme="dark"] .notes-count{background:#fbbf24;color:#241d08}
+:root[data-theme="dark"] .inote-badge{color:#fcd34d;background:#4a3a12}
+:root[data-theme="dark"] #notes-general-text,:root[data-theme="dark"] .notes-item-ta{background:#221d0c;border-color:#6b5416;color:var(--text)}
+:root[data-theme="dark"] .notes-item-dot.on{background:#fbbf24}
 
 /* TOGGLE */
 .trow{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--surface-2)}
@@ -965,6 +1040,8 @@ input[type=number]{-moz-appearance:textfield}
   .arow{flex-direction:column}
   .arow .btn{width:100%;justify-content:center;padding:11px 14px;font-size:14px}
   .fg input,.fg textarea,.fg select{font-size:16px;padding:10px 12px}
+  #notes-general-text,.notes-item-ta{font-size:16px;padding:10px 12px}
+  #notes-box{width:100%}
   .ii{font-size:16px;padding:9px 10px}
   .ita{font-size:16px;padding:9px 10px;min-height:64px}
   .hsearch{font-size:16px}
@@ -1488,13 +1565,73 @@ input[type=number]{-moz-appearance:textfield}
 .agc-ev-title{font-size:14px;font-weight:600;color:var(--text);line-height:1.35;word-break:break-word}
 .agc-ev-sub{font-size:12px;color:var(--muted);margin-top:2px;line-height:1.4;word-break:break-word}
 .agc-ev.done .agc-ev-title{text-decoration:line-through;opacity:.6}
-.agc-ev-acts{display:flex;flex-direction:column;gap:5px;flex-shrink:0}
-.agc-ev-btn{width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-field);cursor:pointer;color:var(--muted);padding:0}
-.agc-ev-btn .ic{width:15px;height:15px}
+/* Anotaciones internas dentro del evento de trabajo (Agenda). Privadas: solo
+   se ven acá, no salen a Google Calendar ni al .ics. */
+.agc-ev-notes{display:flex;flex-direction:column;gap:3px;margin-top:6px;padding:6px 8px;background:rgba(245,179,1,.13);border:1px solid rgba(245,179,1,.45);border-radius:8px}
+.agc-ev-note{display:flex;gap:5px;align-items:flex-start;font-size:11.5px;line-height:1.35;color:#6b4e00}
+.agc-ev-note>.ic{width:13px;height:13px;color:#c77800;flex-shrink:0;margin-top:1px}
+.agc-ev-note-tx{min-width:0;overflow-wrap:anywhere}
+.agc-ev-note b{font-weight:700;color:#5a4200}
+:root[data-theme="dark"] .agc-ev-notes{background:rgba(251,191,36,.1);border-color:rgba(251,191,36,.35)}
+:root[data-theme="dark"] .agc-ev-note{color:#fde68a}
+:root[data-theme="dark"] .agc-ev-note>.ic{color:#fbbf24}
+:root[data-theme="dark"] .agc-ev-note b{color:#fef3c7}
+.agc-ev-acts{display:flex;flex-flow:row wrap;gap:7px;flex-shrink:0;justify-content:flex-end;align-content:flex-start}
+.agc-ev-btn{width:42px;height:42px;display:inline-flex;align-items:center;justify-content:center;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-field);cursor:pointer;color:var(--muted);padding:0}
+.agc-ev-btn .ic{width:19px;height:19px}
 .agc-ev-btn:active{background:var(--accent-light)}
 .agc-day-empty{font-size:13px;color:var(--muted);padding:6px 2px;line-height:1.5}
 .agc-note-form{display:flex;gap:7px;align-items:stretch;margin-top:8px}
 .agc-note-form input{flex:1;min-width:0}
+/* Contacto opcional de la nota (chat directo por WhatsApp) */
+.agc-note-contact{margin-top:8px}
+.agc-note-contact>summary{list-style:none;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--muted);padding:4px 2px;user-select:none}
+.agc-note-contact>summary::-webkit-details-marker{display:none}
+.agc-note-contact>summary .ic{width:15px;height:15px}
+.agc-note-crow{display:flex;flex-wrap:wrap;gap:7px;margin-top:7px;align-items:flex-start}
+.agc-note-crow>input{flex:1 1 140px;min-width:0}
+.agc-note-crow>.btn{flex:0 0 auto}
+.agc-cli-wrap{position:relative;flex:1 1 150px;min-width:0}
+.agc-cli-wrap>input{width:100%}
+/* Inputs de las notas (alta, contacto, ubicación) y del modal de edición: look
+   consistente con la app (el default del navegador variaba entre Android y
+   escritorio). */
+.agc-note-form>input,.agc-note-crow>input,.agc-cli-wrap>input,#agc-note-ubic,#agc-edit-ubic,#agc-edit-text{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-field);font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--card);outline:none;-webkit-appearance:none;appearance:none}
+.agc-note-form>input:focus,.agc-note-crow>input:focus,.agc-cli-wrap>input:focus,#agc-note-ubic:focus,#agc-edit-ubic:focus,#agc-edit-text:focus{border-color:var(--accent-fg)}
+.agc-ubic-btns{display:flex;gap:7px;flex-wrap:wrap;margin-top:7px}
+.ne-hint{font-weight:400;font-size:11px;color:var(--muted)}
+/* Dropdown NATIVO de clientes (panel propio, no la barra de sugerencias del teclado) */
+.agc-cli-dd{position:absolute;z-index:9999;top:100%;left:0;right:0;margin-top:3px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-field);box-shadow:0 12px 32px rgba(0,0,0,.18);max-height:216px;overflow-y:auto}
+.agc-cli-opt{display:flex;flex-direction:column;gap:1px;padding:9px 12px;cursor:pointer;border-bottom:1px solid var(--surface-2)}
+.agc-cli-opt:last-child{border-bottom:none}
+.agc-cli-opt:active{background:var(--accent-light)}
+.agc-cli-opt-n{font-size:13px;font-weight:500;color:var(--text)}
+.agc-cli-opt-t{font-size:11px;color:var(--muted)}
+/* Botón de chat de la tarjeta de evento: verde WhatsApp para diferenciarlo */
+.agc-ev-btn.agc-ev-wa{color:var(--wa,#16a34a);border-color:color-mix(in srgb,var(--wa,#16a34a) 35%,var(--border))}
+.agc-ev-btn.agc-ev-wa .ic{color:var(--wa,#16a34a)}
+/* Botón de compartir: tinte con la marca para diferenciarlo del resto */
+.agc-ev-btn.agc-ev-share{color:var(--accent-fg);border-color:color-mix(in srgb,var(--accent-fg) 32%,var(--border))}
+.agc-ev-btn.agc-ev-share .ic{color:var(--accent-fg)}
+/* Deslizar notas (estilo Gmail): la tarjeta se corre y deja ver la acción.
+   Derecha → "Hecho" (verde); izquierda → "Eliminar" (rojo). Los fondos van
+   detrás; la tarjeta (.agc-swipe-fg) es la que se traslada con el dedo. */
+.agc-swipe{position:relative;margin-bottom:7px;overflow:hidden;border-radius:var(--radius-field)}
+.agc-swipe .agc-ev{margin-bottom:0}
+.agc-swipe-fg{position:relative;z-index:1;touch-action:pan-y;will-change:transform}
+.agc-swipe-bg{position:absolute;inset:0;display:flex;align-items:center;gap:9px;padding:0 22px;font-size:14.5px;font-weight:700;color:#fff;opacity:0;pointer-events:none;border-radius:var(--radius-field)}
+.agc-swipe-bg .ic{width:22px;height:22px;color:#fff}
+.agc-swipe-done{justify-content:flex-start;background:#16a34a}
+.agc-swipe-del{justify-content:flex-end;background:#dc2626}
+.agc-swipe.agc-swipe-ready .agc-swipe-bg .ic{transform:scale(1.18);transition:transform .12s ease}
+/* Modal de edición de nota */
+#note-edit-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2000;align-items:center;justify-content:center}
+#note-edit-overlay.open{display:flex}
+#note-edit-box{background:var(--card);border-radius:var(--radius-box);padding:22px;width:400px;max-width:92vw;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+#note-edit-box h4{font-family:'DM Serif Display',serif;font-size:17px;margin-bottom:14px;color:var(--text)}
+.ne-field{margin-bottom:14px}
+.ne-field>label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:5px}
+#note-edit-box .cbtns{display:flex;gap:8px;justify-content:flex-end;margin-top:4px}
 /* Segmentado Mes / Semana / 3 días / Agenda */
 .agc-viewtoggle{display:flex;max-width:100%;overflow-x:auto;background:var(--surface-2);border-radius:var(--radius-field);padding:3px;gap:3px;margin-bottom:12px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
 .agc-viewtoggle::-webkit-scrollbar{display:none}
@@ -1570,11 +1707,13 @@ input[type=number]{-moz-appearance:textfield}
   #app,
   #moverlay,
   #confirm-overlay,
+  #note-edit-overlay,
   #agenda-overlay,
   #share-overlay,
   #day-alert-overlay,
   #photo-viewer-overlay,
   #phrases-overlay,
+  #notes-overlay,
   #sticky-totals,
   #toast-container{display:none!important}
   #print-zone{display:block!important}
@@ -1821,9 +1960,9 @@ input[type=number]{-moz-appearance:textfield}
   .pplan{padding:14px var(--page-x) 0}
   .pplan-t{font-size:var(--fs-h3);font-weight:700;text-transform:uppercase;letter-spacing:var(--ls-label);color:var(--c-muted);margin-bottom:8px}
   .pplan-box{padding:13px 16px;background:var(--c-bg-soft);border-radius:var(--r-md);border-left:3pt solid currentColor}
-  .pplan-list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:8px 22px}
-  .pplan-list li{font-size:var(--fs-small);color:var(--c-text-2);line-height:1.5;padding-left:17px;position:relative}
-  .pplan-list li::before{content:'';position:absolute;left:0;top:.42em;width:7px;height:7px;border-radius:2px;background:currentColor;opacity:.55}
+  .pplan-list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:8px 22px;counter-reset:pplan}
+  .pplan-list li{font-size:var(--fs-small);color:var(--c-text-2);line-height:1.5;padding-left:22px;position:relative;counter-increment:pplan}
+  .pplan-list li::before{content:counter(pplan)'.';position:absolute;left:0;top:0;font-weight:700;color:currentColor;opacity:.7;font-variant-numeric:tabular-nums}
 
   /* ──────────────────────────────────────────────────────────────
      FIRMAS — más respiración, anti-corte
@@ -2533,6 +2672,7 @@ input[type=number]{-moz-appearance:textfield}
 <symbol id="i-save" viewBox="0 0 24 24"><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" /> <path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7" /> <path d="M7 3v4a1 1 0 0 0 1 1h7" /></symbol>
 <symbol id="i-bell" viewBox="0 0 24 24"><path d="M10.268 21a2 2 0 0 0 3.464 0" /> <path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326" /></symbol>
 <symbol id="i-message" viewBox="0 0 24 24"><path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719" /></symbol>
+<symbol id="i-share" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3" /> <circle cx="6" cy="12" r="3" /> <circle cx="18" cy="19" r="3" /> <path d="m8.7 10.7 6.6-3.4" /> <path d="m8.7 13.3 6.6 3.4" /></symbol>
 <symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /> <path d="m9 12 2 2 4-4" /></symbol>
 <symbol id="i-pin" viewBox="0 0 24 24"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0" /> <circle cx="12" cy="10" r="3" /></symbol>
 <symbol id="i-building" viewBox="0 0 24 24"><path d="M10 12h4" /> <path d="M10 8h4" /> <path d="M14 21v-3a2 2 0 0 0-4 0v3" /> <path d="M6 10H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2" /> <path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16" /></symbol>
@@ -2627,6 +2767,15 @@ input[type=number]{-moz-appearance:textfield}
             <div class="est-banner-title">Modo Estimativo activo</div>
             <div class="est-banner-desc">El documento generado indicará que el presupuesto se basa en fotos/videos y que el valor final puede ajustarse tras una inspección presencial.</div>
           </div>
+        </div>
+
+        <!-- Botón único de Notas: abre el panel con la nota general del
+             presupuesto + las notas de cada ítem, todo en un solo lugar.
+             Privadas: no salen en el PDF. El contador muestra cuántas hay. -->
+        <div class="notes-bar">
+          <button type="button" id="btn-notes-panel" class="notes-btn" onclick="openNotesPanel()" title="Anotaciones internas — privadas, no salen en el PDF">
+            <svg class="ic ic-c-amber" aria-hidden="true"><use href="#i-bulb"></use></svg> Notas<span class="notes-count" id="notes-count" hidden>0</span>
+          </button>
         </div>
 
         <div class="st">Identificación</div>
@@ -3126,6 +3275,21 @@ input[type=number]{-moz-appearance:textfield}
               <button type="button" class="btn btn-g btn-sm" id="gdrive-disconnect" onclick="gdriveDisconnect()" style="display:none">Desconectar</button>
             </div>
           </div>
+
+          <!-- ── SINCRONIZAR CON GOOGLE CALENDAR ── -->
+          <!-- Oculta hasta que el dueño configure el Client ID (gcalUpdateUI). -->
+          <div class="fu-config" id="gcal-section" style="display:none">
+            <div class="fu-config-head">
+              <span class="st" style="margin:0;border:none;padding:0"><svg class="ic"><use href="#i-calendar"></use></svg> Sincronizar con Google Calendar</span>
+            </div>
+            <p class="fu-help" id="gcal-status">Creá los eventos de tu agenda automáticamente en un calendario propio de Google ("Presupuestos AR"). Sincroniza con la app abierta y con señal.</p>
+            <p class="fu-help" style="margin-top:-2px">Es de una sola vía (app → Google): la app maneja ese calendario, así que no edites esos eventos a mano en Google.</p>
+            <div class="arow" id="gcal-actions">
+              <button type="button" class="btn btn-p btn-sm" id="gcal-connect" onclick="gcalConnect()">Conectar Google Calendar</button>
+              <button type="button" class="btn btn-g btn-sm" id="gcal-sync" onclick="gcalSyncNow()" style="display:none">Sincronizar ahora</button>
+              <button type="button" class="btn btn-g btn-sm" id="gcal-disconnect" onclick="gcalDisconnect()" style="display:none">Desconectar</button>
+            </div>
+          </div>
         </div>
 
         <!-- ── SUB-TAB TEXTOS DEL PDF ── -->
@@ -3623,6 +3787,65 @@ input[type=number]{-moz-appearance:textfield}
   </div>
 </div>
 
+<!-- ════════════════════ EDITAR NOTA / RECORDATORIO ════════════════════════
+     Modal para editar una nota ya creada: texto + contacto vinculado (cliente
+     con dropdown nativo + teléfono, con opción de importar del teléfono). -->
+<div id="note-edit-overlay" role="presentation" onclick="if(event.target===this)calCloseNoteEdit()">
+  <div id="note-edit-box" role="dialog" aria-modal="true" aria-labelledby="note-edit-title">
+    <h4 id="note-edit-title">Editar nota</h4>
+    <div class="ne-field">
+      <label for="agc-edit-text">Recordatorio</label>
+      <input type="text" id="agc-edit-text" maxlength="140" placeholder="Texto de la nota" onkeydown="if(event.key==='Enter'){calSaveNoteEdit();}">
+    </div>
+    <div class="ne-field">
+      <label>Contacto para chat directo (opcional)</label>
+      <div class="agc-note-crow">
+        <div class="agc-cli-wrap"><input type="text" id="agc-edit-cli" placeholder="Cliente" maxlength="80" autocomplete="off"></div>
+        <input type="tel" id="agc-edit-tel" placeholder="Teléfono / WhatsApp" maxlength="40" inputmode="tel" autocomplete="off">
+        <button type="button" id="agc-edit-import" class="btn btn-g btn-sm" onclick="importContactToNoteEdit()" style="display:none" title="Importar un contacto del teléfono"><svg class="ic"><use href="#i-idcard"></use></svg> Importar</button>
+      </div>
+    </div>
+    <div class="ne-field">
+      <label for="agc-edit-ubic">Ubicación (opcional) <span class="ne-hint">se comparte como link de Maps</span></label>
+      <input type="text" id="agc-edit-ubic" maxlength="200" placeholder="Coordenadas, Plus Code o link de Maps" autocomplete="off">
+      <div class="agc-ubic-btns">
+        <button type="button" class="btn btn-g btn-sm" onclick="usarMiUbicacionInput('agc-edit-ubic', this)" title="Detectar dónde estoy ahora"><svg class="ic"><use href="#i-pin"></use></svg> Mi ubicación</button>
+        <button type="button" class="btn btn-g btn-sm" onclick="probarUbicacionInput('agc-edit-ubic')" title="Abrir en Maps para verificar"><svg class="ic"><use href="#i-pin"></use></svg> Ver en Maps</button>
+      </div>
+    </div>
+    <div class="cbtns">
+      <button class="btn btn-s" id="note-edit-cancel" onclick="calCloseNoteEdit()">Cancelar</button>
+      <button class="btn btn-p" id="note-edit-save" onclick="calSaveNoteEdit()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════ PANEL DE NOTAS (memoria del editor) ════════════════
+     Panel único con la nota general del presupuesto + las notas de cada ítem.
+     Memoria privada de quien edita: NO se refleja en el PDF/documento del
+     cliente. Se abre desde el botón "Notas" del editor o el punto amarillo de
+     una tarjeta. La lista de ítems la arma renderNotesPanel(). -->
+<div id="notes-overlay" role="presentation" onclick="if(event.target===this)closeNotesPanel()">
+  <div id="notes-box" role="dialog" aria-modal="true" aria-labelledby="notes-title">
+    <div class="notes-head">
+      <h4 id="notes-title"><svg class="ic ic-c-amber" aria-hidden="true"><use href="#i-bulb"></use></svg> Notas del presupuesto <span class="inote-badge">privado</span></h4>
+      <button class="notes-close" onclick="closeNotesPanel()" aria-label="Cerrar" title="Cerrar">✕</button>
+    </div>
+    <p class="notes-sub">Memoria para vos al armar el presupuesto (costos, acceso, materiales…). <strong>No aparecen en el presupuesto que ve el cliente.</strong></p>
+    <div class="notes-scroll">
+      <div class="notes-block">
+        <label class="notes-block-label" for="notes-general-text">Nota general del presupuesto</label>
+        <textarea id="notes-general-text" rows="3" placeholder="Recordatorios de todo el presupuesto: precios a confirmar, condiciones, lo que sea…"></textarea>
+      </div>
+      <div class="notes-items-head" id="notes-items-head">Notas por ítem</div>
+      <div id="notes-item-list"></div>
+    </div>
+    <div class="cbtns">
+      <button class="btn btn-p" onclick="closeNotesPanel()">Listo</button>
+    </div>
+  </div>
+</div>
+
 <!-- ════════════════════ AGENDA: FECHA DEL TRABAJO / RECONTACTO ════════════
      Se abre al marcar un presupuesto como "Aceptado" (salteable) o al tocar
      un chip de agenda en la tarjeta del historial. Dos modos:
@@ -3789,6 +4012,12 @@ const LS = {
   GDRIVE_ON:      'pq_gdrive_on',
   GDRIVE_LAST:    'pq_gdrive_last',
   GDRIVE_EMAIL:   'pq_gdrive_email',
+  GDRIVE_TOK:     'pq_gdrive_tok',
+  GCAL_ON:        'pq_gcal_on',
+  GCAL_ID:        'pq_gcal_id',
+  GCAL_LAST:      'pq_gcal_last',
+  GCAL_EMAIL:     'pq_gcal_email',
+  GCAL_TOK:       'pq_gcal_tok',
   PDF_THEME:      'pq_pdf_theme',
   PUSH_DEVICE_ID: 'pq_push_device_id',
   THEME:          'pq_theme',
@@ -3809,6 +4038,12 @@ const DEF = {
   clientName:'', clientContact:'', workAddress:'', workMapLink:'', workDuration:'',
   currency:'ARS', discount:0, surcharge:0, items:[],
   paymentConditions:'', observations:'',
+  // Anotación interna del presupuesto: recordatorio privado para quien edita
+  // (cómo calcular costos, acceso, materiales, etc.). NUNCA se muestra en el
+  // PDF/documento que ve el cliente. Viaja en el snapshot del historial y en
+  // el backup como parte de S. A nivel ítem, cada objeto puede llevar su
+  // propio `intNote` (ver renderItems).
+  intNote:'',
   // Scenarios A/B mode — permite presupuestar dos alternativas paralelas
   // sobre el mismo conjunto (ej: extraer todo vs podar todo). Cuando está
   // apagado, todo funciona normal con S.items. Cuando está prendido, B
@@ -5913,6 +6148,87 @@ async function importFromContacts() {
   }
 }
 
+// ¿El dispositivo puede abrir el selector de contactos del teléfono?
+function contactPickerSupported() {
+  return ('contacts' in navigator) && ('ContactsManager' in window);
+}
+
+// Versión genérica del importador: vuelca nombre + teléfono del contacto elegido
+// en los dos inputs que se le pasen. La usan el alta de nota y el modal de
+// edición (los campos quedan editables, igual que en el editor).
+async function importContactToFields(nameInput, telInput) {
+  if (!contactPickerSupported()) {
+    toast('Tu dispositivo no permite importar contactos. Cargá los datos a mano.', 'info', 3500);
+    return;
+  }
+  try {
+    let props = ['name', 'tel'];
+    if (typeof navigator.contacts.getProperties === 'function') {
+      try {
+        const avail = await navigator.contacts.getProperties();
+        props = ['name', 'tel'].filter(p => avail.includes(p));
+        if (!props.length) props = ['name'];
+      } catch (e) { /* usar props por defecto */ }
+    }
+    const contacts = await navigator.contacts.select(props, { multiple: false });
+    if (!contacts || !contacts.length) return; // el usuario canceló
+    const c = contacts[0];
+    const nombre = (c.name && c.name.length) ? c.name[0] : '';
+    const tel    = (c.tel && c.tel.length)   ? c.tel[0]  : '';
+    if (nombre && nameInput) nameInput.value = nombre;
+    if (tel && telInput) telInput.value = tel;
+    toast('Contacto importado. Podés editarlo antes de guardar.', 'ok', 3000);
+  } catch (err) {
+    if (err && err.name === 'AbortError') return;
+    console.error('Contact Picker error:', err);
+    toast('No se pudo importar el contacto. Probá de nuevo o cargalo a mano.', 'err', 3500);
+  }
+}
+
+// Autocompletar de clientes con un dropdown NATIVO (panel propio anclado bajo el
+// input), en vez de un <datalist> (que en Android aparece como sugerencias sobre
+// el teclado). Al elegir un cliente completa el nombre y el teléfono. Genérico:
+// se le pasa el input de nombre y el de teléfono. Idempotente por input.
+function attachClientDropdown(nameInput, telInput) {
+  if (!nameInput || nameInput._clDropAttached) return;
+  nameInput._clDropAttached = true;
+  const host = nameInput.closest('.agc-cli-wrap') || nameInput.parentElement;
+  if (host && getComputedStyle(host).position === 'static') host.style.position = 'relative';
+  const dd = document.createElement('div');
+  dd.className = 'agc-cli-dd';
+  dd.style.display = 'none';
+  (host || nameInput.parentElement).appendChild(dd);
+
+  function render() {
+    const q = (nameInput.value || '').toLowerCase().trim();
+    const all = (typeof getClientDB === 'function') ? getClientDB() : [];
+    const list = (q
+      ? all.filter(e => e.name && (e.name.toLowerCase().includes(q)))
+      : all).slice(0, 8);
+    if (!list.length) { dd.style.display = 'none'; return; }
+    dd.innerHTML = list.map(e => `<div class="agc-cli-opt" data-name="${esc(e.name)}">
+        <span class="agc-cli-opt-n">${esc(e.name)}</span>
+        ${e.contact ? `<span class="agc-cli-opt-t">${esc(e.contact)}</span>` : ''}
+      </div>`).join('');
+    dd.style.display = 'block';
+    dd.querySelectorAll('.agc-cli-opt').forEach(el => {
+      const pick = (ev) => {
+        ev.preventDefault();
+        const rec = list.find(x => x.name === el.dataset.name);
+        if (!rec) return;
+        nameInput.value = rec.name;
+        if (telInput && rec.contact) telInput.value = rec.contact;
+        dd.style.display = 'none';
+      };
+      el.addEventListener('mousedown', pick);
+      el.addEventListener('touchend', pick);
+    });
+  }
+  nameInput.addEventListener('input', render);
+  nameInput.addEventListener('focus', render);
+  nameInput.addEventListener('blur', () => setTimeout(() => { dd.style.display = 'none'; }, 180));
+}
+
 // ===== js/phrases.js =====
 // ═══════════════════════════════════════
 // FRASES RÁPIDAS — biblioteca de frases reusables para insertar en
@@ -6400,6 +6716,13 @@ function renderItems() {
         <textarea class="ita ds-f" placeholder="Nota informativa...">${esc(item.desc||'')}</textarea>`;
     }
 
+    // Punto amarillo (esquina sup. der.) cuando el ítem tiene una anotación
+    // interna. Es indicador + acceso directo: al tocarlo abre el panel de
+    // Notas enfocado en este ítem. Agregar/editar se hace desde el panel
+    // unificado "Notas" (arriba del editor). No ocupa espacio propio.
+    if(item.intNote && item.intNote.trim())
+      inner = `<button class="card-note-dot" title="Tiene una anotación interna — tocá para verla" aria-label="Anotación interna"></button>` + inner;
+
     inner += `<div class="iactions">
       <button class="btn btn-g btn-sm ia-up" ${idx===0?'disabled':''} title="Subir">↑</button>
       <button class="btn btn-g btn-sm ia-down" ${idx===arr.length-1?'disabled':''} title="Bajar">↓</button>
@@ -6453,6 +6776,11 @@ function renderItems() {
       attachSpeciesAutocomplete(sf, idx);
     }
 
+    // Punto de anotación interna → abre el panel de Notas enfocado en el ítem.
+    // Se pasa el objeto `item` (referencia real) para sobrevivir reordenamientos.
+    const noteDot = card.querySelector('.card-note-dot');
+    if(noteDot) noteDot.addEventListener('click', (e)=>{ e.stopPropagation(); openNotesPanel(item); });
+
     const dupBtn = card.querySelector('.ia-dup');
     const delBtn = card.querySelector('.ia-del');
     const upBtn = card.querySelector('.ia-up');
@@ -6483,6 +6811,7 @@ function renderItems() {
     });
     list.appendChild(card);
   });
+  updateNotesButton();
 }
 
 // Actualiza el preview "3 × $X = $Y" en el card sin re-renderizar todo
@@ -6495,6 +6824,135 @@ function _refreshQtyPreview(card, idx) {
   if(span) span.textContent = (qty > 1 && hasPrice)
     ? `${qty} × ${fmtM(item.price, S.currency||'ARS')} = ${fmtM(total, S.currency||'ARS')}`
     : '';
+}
+
+// ─── PANEL DE NOTAS (memoria interna del editor) ──────────────────────────
+// Anotaciones privadas que NO salen en el PDF. Un único panel reúne la nota
+// general del presupuesto y una nota por cada ítem. El botón "Notas" del
+// editor muestra el total y cada tarjeta con nota lleva un punto amarillo.
+
+// Los ítems que muestra el panel = los que se están editando en pantalla
+// (escenario activo en normal/riesgo; estItems en estimativo).
+function currentEditorItems() {
+  if (S.isEstimative) return Array.isArray(S.estItems) ? S.estItems : [];
+  return activeItemsArr();
+}
+
+// Etiqueta legible de un ítem para el panel / accesibilidad.
+function itemInoteLabel(item) {
+  if (!item) return 'Ítem';
+  if (item.type === 'service') return (item.desc || '').trim() || 'Servicio';
+  if (item.type === 'note')    return (item.desc || '').trim() || 'Nota';
+  // tree (normal) / work (estimativo)
+  return (item.species || '').trim() || (item.desc || '').trim() || 'Árbol / Trabajo';
+}
+
+function itemInoteIcon(item) {
+  if (!item) return icon('clipboard');
+  if (item.type === 'service') return icon('truck');
+  if (item.type === 'note')    return icon('pencil');
+  return icon('tree');
+}
+
+// Cantidad total de notas cargadas (general + ítems del set activo).
+function notesCount() {
+  let n = (S.intNote && S.intNote.trim()) ? 1 : 0;
+  currentEditorItems().forEach(it => { if (it && it.intNote && it.intNote.trim()) n++; });
+  return n;
+}
+
+// Refresca el contador del botón "Notas" del editor.
+function updateNotesButton() {
+  const badge = document.getElementById('notes-count');
+  if (!badge) return;
+  const n = notesCount();
+  if (n > 0) { badge.textContent = n; badge.hidden = false; }
+  else       { badge.hidden = true; }
+  const btn = document.getElementById('btn-notes-panel');
+  if (btn) btn.classList.toggle('has-notes', n > 0);
+}
+
+// Abre el panel. Si se pasa `focusItem`, hace scroll hasta su nota (sin
+// enfocarla). NO abrimos el teclado al abrir: la mayoría de las veces se
+// abre solo para leer; el usuario toca el campo si quiere escribir.
+function openNotesPanel(focusItem) {
+  const ov = document.getElementById('notes-overlay'); if (!ov) return;
+  renderNotesPanel();
+  ov.classList.add('open');
+  if (focusItem && focusItem.id != null) {
+    setTimeout(() => {
+      const target = document.querySelector(`#notes-item-list .notes-item-ta[data-id="${focusItem.id}"]`);
+      if (target) {
+        try { target.scrollIntoView({ block: 'center' }); } catch (_) {}
+        // Resaltar la nota unos segundos para ubicarla fácil (sin abrir el
+        // teclado: es solo un flash visual, no un foco).
+        const row = target.closest('.notes-item');
+        if (row) {
+          row.classList.remove('notes-item-flash');
+          void row.offsetWidth;            // reinicia la animación si se repite
+          row.classList.add('notes-item-flash');
+          setTimeout(() => row.classList.remove('notes-item-flash'), 2600);
+        }
+      }
+    }, 60);
+  }
+}
+
+function closeNotesPanel() {
+  const ov = document.getElementById('notes-overlay'); if (ov) ov.classList.remove('open');
+  // Re-render de los ítems para reflejar los puntos amarillos actualizados.
+  if (S.isEstimative) { if (typeof renderEstItems === 'function') renderEstItems(); }
+  else { if (typeof renderItems === 'function') renderItems(); }
+  updateNotesButton();
+}
+
+// Arma el contenido del panel: nota general (con su valor + listener) y la
+// lista de ítems, cada uno con su textarea de nota vinculada al objeto real.
+function renderNotesPanel() {
+  const gen = document.getElementById('notes-general-text');
+  if (gen) {
+    gen.value = S.intNote || '';
+    if (!gen._wired) {
+      gen.addEventListener('input', () => {
+        S.intNote = gen.value;
+        updateNotesButton();
+        sched();
+      });
+      gen._wired = true;
+    }
+  }
+
+  const list = document.getElementById('notes-item-list');
+  const head = document.getElementById('notes-items-head');
+  if (!list) return;
+  const items = currentEditorItems();
+  list.innerHTML = '';
+  if (head) head.style.display = items.length ? '' : 'none';
+
+  if (!items.length) {
+    list.innerHTML = `<div class="notes-empty">Todavía no hay árboles ni servicios cargados. Agregalos en el editor para poder anotarles algo.</div>`;
+    return;
+  }
+
+  items.forEach(item => {
+    const row = document.createElement('div');
+    row.className = 'notes-item';
+    const has = !!(item.intNote && item.intNote.trim());
+    row.innerHTML =
+      `<div class="notes-item-hd"><span class="notes-item-ic">${itemInoteIcon(item)}</span>` +
+      `<span class="notes-item-name">${esc(itemInoteLabel(item))}</span>` +
+      `<span class="notes-item-dot${has ? ' on' : ''}" aria-hidden="true"></span></div>` +
+      `<textarea class="notes-item-ta" data-id="${esc(String(item.id))}" rows="2" placeholder="Anotación para este ítem…">${esc(item.intNote || '')}</textarea>`;
+    const ta = row.querySelector('.notes-item-ta');
+    ta.addEventListener('input', () => {
+      item.intNote = ta.value;
+      const dot = row.querySelector('.notes-item-dot');
+      if (dot) dot.classList.toggle('on', !!ta.value.trim());
+      updateNotesButton();
+      sched();
+    });
+    list.appendChild(row);
+  });
 }
 
 // ─── SURCHARGE ───────────────────────────────
@@ -6712,6 +7170,16 @@ function renderEstItems() {
         </div>`;
     }
 
+    // Punto amarillo (esquina sup. der.) cuando el ítem estimado tiene una
+    // anotación interna. Indicador + acceso directo al panel de Notas.
+    if (item.intNote && item.intNote.trim()) {
+      const _nd = document.createElement('button');
+      _nd.className = 'card-note-dot';
+      _nd.title = 'Tiene una anotación interna — tocá para verla';
+      _nd.setAttribute('aria-label', 'Anotación interna');
+      card.appendChild(_nd);
+    }
+
     const df = card.querySelector('.est-desc-f');
     if(df) {
       df.addEventListener('input', ()=>setEstItemField(idx,'desc',df.value));
@@ -6721,6 +7189,10 @@ function renderEstItems() {
         attachServiceAutocomplete(df, 'est-' + idx);
       }
     }
+
+    // Punto de anotación interna → abre el panel de Notas enfocado en el ítem.
+    const noteDot = card.querySelector('.card-note-dot');
+    if(noteDot) noteDot.addEventListener('click', (e)=>{ e.stopPropagation(); openNotesPanel(item); });
 
     const pf = card.querySelector('.est-pr-f');
     if(pf) pf.addEventListener('input', ()=>{
@@ -6770,6 +7242,7 @@ function renderEstItems() {
 
     list.appendChild(card);
   });
+  updateNotesButton();
 }
 
 function _refreshEstQtyPreview(card, idx) {
@@ -7049,6 +7522,7 @@ function restoreUI() {
   sv('surcharge-pct', S.surcharge||0);
   sv('payment-conditions', S.paymentConditions);
   sv('observations', S.observations);
+  updateNotesButton();
   sc('show-work-plan', S.showWorkPlan !== false);
   sc('wp-override', !!S.workPlanOverride);
   sv('wp-custom-title', S.workPlanCustomTitle);
@@ -8049,7 +8523,7 @@ function getH() {
   } catch(e){ return []; }
 }
 
-function setH(h) { safeSetLS(LS.HISTORY, JSON.stringify(h)); }
+function setH(h) { safeSetLS(LS.HISTORY, JSON.stringify(h)); if (typeof scheduleGcalSync === 'function') scheduleGcalSync(); }
 
 // ─── AUTO-SAVE (silencioso) ───────────────────
 // Devuelve true si asentó el presupuesto en el historial, false si no
@@ -9004,24 +9478,9 @@ function _awaitDocImages(root, timeoutMs = 8000) {
   return Promise.race([settle, guard]);
 }
 
-// Comparte un File por la bandeja nativa del sistema (navigator.share). Si el
-// dispositivo no soporta compartir archivos (típicamente escritorio), cae al
-// flujo manual: descarga el archivo y abre WhatsApp con texto.
-async function _shareFileOrFallback(file, e) {
-  if (navigator.canShare && navigator.share && navigator.canShare({ files: [file] })) {
-    const empresa = ((e.snapshot && e.snapshot.coName) || S.coName || '').trim();
-    const txt = `Presupuesto ${e.quoteNumber || ''}${empresa ? ' — ' + empresa : ''}`.trim();
-    try {
-      await navigator.share({ files: [file], title: file.name, text: txt });
-    } catch (err) {
-      if (err && err.name !== 'AbortError') { // AbortError = el usuario canceló la bandeja
-        console.error('navigator.share falló', err);
-        toast('No se pudo compartir el archivo', 'err');
-      }
-    }
-    return;
-  }
-  // Fallback escritorio / sin soporte de compartir-archivos.
+// Fallback manual (escritorio o cuando navigator.share falla): descarga la
+// imagen y abre WhatsApp con un texto, para que el usuario la adjunte a mano.
+function _downloadAndWhatsApp(file, e) {
   const url = URL.createObjectURL(file);
   const a = document.createElement('a');
   a.href = url; a.download = file.name;
@@ -9031,7 +9490,30 @@ async function _shareFileOrFallback(file, e) {
     ? normalizeArgPhone((e.snapshot && e.snapshot.clientContact) || '') : '';
   const base = phone ? `https://wa.me/${phone}` : 'https://wa.me/';
   window.open(`${base}?text=${encodeURIComponent('Te paso el presupuesto ' + (e.quoteNumber || ''))}`, '_blank', 'noopener');
-  toast('Archivo descargado. Adjuntalo en WhatsApp.', 'info', 6000);
+  toast('Imagen descargada. Adjuntala en WhatsApp.', 'info', 6000);
+}
+
+// Comparte un File por la bandeja nativa del sistema (navigator.share). Debe
+// llamarse DENTRO del gesto del usuario (ver sharePngFromHistory: el envío va
+// en un segundo toque fresco) para no perder la activación transitoria. Si el
+// dispositivo no soporta compartir archivos, o si navigator.share falla de
+// verdad (p. ej. la activación ya venció → NotAllowedError), cae al flujo
+// manual (descargar + WhatsApp) para no dejar al usuario sin nada.
+async function _shareFileOrFallback(file, e) {
+  if (navigator.canShare && navigator.share && navigator.canShare({ files: [file] })) {
+    const empresa = ((e.snapshot && e.snapshot.coName) || S.coName || '').trim();
+    const txt = `Presupuesto ${e.quoteNumber || ''}${empresa ? ' — ' + empresa : ''}`.trim();
+    try {
+      await navigator.share({ files: [file], title: file.name, text: txt });
+      return;
+    } catch (err) {
+      if (err && err.name === 'AbortError') return; // el usuario canceló la bandeja
+      // Falló de verdad → en vez de un error sin salida, caemos al camino manual.
+      console.error('navigator.share falló; uso descarga + WhatsApp como fallback', err);
+    }
+  }
+  // Fallback escritorio / sin soporte de compartir-archivos / share falló.
+  _downloadAndWhatsApp(file, e);
 }
 
 // Calcula el factor de escala (≈ DPI) más alto posible para rasterizar el
@@ -9049,24 +9531,68 @@ function _bestRasterScale(cssW, cssH) {
   return Math.max(1.5, Math.round(s * 100) / 100); // piso 1.5×
 }
 
+// Imagen ya generada y lista para enviar (flujo de DOS TOQUES, ver abajo).
+// Guardamos solo UNA a la vez para no retener memoria. Se limpia al re-render
+// del historial (renderHistory) y tras enviarla.
+let _pngShareReady = null; // { id, file, btn }
+
+// Deja un botón "Compartir" en su estado base (por si quedó en "Enviar imagen").
+function _resetShareBtn(btn) {
+  if (!btn || !btn.isConnected) return;
+  btn.disabled = false;
+  btn.classList.remove('btn-ready');
+  btn.innerHTML = `${icon('image')} Compartir`;
+}
+
+// Descarta cualquier imagen lista pendiente y restaura su botón.
+function _clearPngShareReady() {
+  if (_pngShareReady) { _resetShareBtn(_pngShareReady.btn); _pngShareReady = null; }
+}
+
 // Compartir como imagen PNG del presupuesto COMPLETO (una sola imagen larga).
 // Usa html2canvas (vía html2pdf) para rasterizar el documento y lo exporta como
 // PNG SIN PÉRDIDA. Calidad máxima: esperamos a que las fuentes estén cargadas
 // (texto nítido, sin fallback) y rasterizamos al mayor DPI que el dispositivo
 // banque. Es la opción para quien prefiera mandar una imagen; el PDF vectorial
 // de máxima calidad sigue estando en el botón Imprimir/PDF de siempre.
-async function sharePngFromHistory(id) {
+//
+// FLUJO DE DOS TOQUES (importante): navigator.share exige "activación
+// transitoria" (estar todavía dentro del gesto del usuario, ventana de ~5 s en
+// Android). Como rasterizar puede tardar más que eso (documentos largos, fotos,
+// celu lento), si compartiéramos en el mismo toque la activación ya habría
+// vencido → NotAllowedError → "no se pudo compartir". Por eso separamos:
+//   1er toque → genera la imagen (trabajo pesado) y deja el botón en "Enviar".
+//   2do toque → comparte YA, dentro de un gesto fresco (share nunca falla por
+//               activación vencida).
+async function sharePngFromHistory(id, btn) {
   const e = getH().find(x => x.id === id);
   if (!e || !e.snapshot) { toast('No se pudo abrir el presupuesto', 'err'); return; }
+
+  // SEGUNDO TOQUE: ya hay una imagen lista para ESTE presupuesto → compartir
+  // ahora mismo, sin ningún await previo, para conservar la activación del gesto.
+  if (_pngShareReady && _pngShareReady.id === id && _pngShareReady.file) {
+    const file = _pngShareReady.file;
+    _resetShareBtn(_pngShareReady.btn);
+    if (btn && btn !== _pngShareReady.btn) _resetShareBtn(btn);
+    _pngShareReady = null;
+    await _shareFileOrFallback(file, e);
+    return;
+  }
+
+  // Si había una imagen lista de OTRO presupuesto, descartarla y resetear su botón.
+  _clearPngShareReady();
+
+  // PRIMER TOQUE: generar la imagen (trabajo pesado). NO compartimos acá.
+  if (btn) { btn.disabled = true; btn.innerHTML = `${icon('image')} Generando…`; }
   toast('Generando imagen para compartir…', 'info', 4000);
   let h2p;
   try { h2p = await ensureHtml2Pdf(); }
-  catch (err) { toast('⚠️ No se pudo cargar el generador de imagen. La primera vez necesita conexión.', 'err', 6000); return; }
+  catch (err) { _resetShareBtn(btn); toast('⚠️ No se pudo cargar el generador de imagen. La primera vez necesita conexión.', 'err', 6000); return; }
   // Fuentes listas antes de rasterizar: si html2canvas captura mientras la
   // tipografía de marca aún no cargó, el texto sale con la fuente de respaldo.
   try { if (document.fonts && document.fonts.ready) await document.fonts.ready; } catch (_) {}
   const od = _offscreenDoc(e);
-  if (!od) { toast('No se pudo generar el documento', 'err'); return; }
+  if (!od) { _resetShareBtn(btn); toast('No se pudo generar el documento', 'err'); return; }
   try {
     // Esperar a que las fotos carguen ANTES de medir/rasterizar (ver
     // _awaitDocImages): evita el espacio en blanco entre secciones.
@@ -9086,10 +9612,19 @@ async function sharePngFromHistory(id) {
     }).from(od.inner).toCanvas().get('canvas');
     // toBlob('image/png') es sin pérdida; el 2º arg (calidad) no aplica a PNG.
     const blob = await new Promise((res) => canvas.toBlob(res, 'image/png'));
-    if (!blob) { toast('No se pudo generar la imagen', 'err'); return; }
-    await _shareFileOrFallback(new File([blob], _entryFileBase(e) + '.png', { type: 'image/png' }), e);
+    if (!blob) { _resetShareBtn(btn); toast('No se pudo generar la imagen', 'err'); return; }
+    const file = new File([blob], _entryFileBase(e) + '.png', { type: 'image/png' });
+    // Imagen lista: el botón queda en modo "Enviar" y esperamos el 2º toque.
+    _pngShareReady = { id, file, btn };
+    if (btn && btn.isConnected) {
+      btn.disabled = false;
+      btn.classList.add('btn-ready');
+      btn.innerHTML = `${icon('share')} Enviar imagen`;
+    }
+    toast('✅ Imagen lista — tocá "Enviar imagen" para compartir', 'ok', 5000);
   } catch (err) {
     console.error('Error generando la imagen para compartir', err);
+    _resetShareBtn(btn);
     toast('⚠️ No se pudo generar la imagen', 'err', 5000);
   } finally {
     od.host.remove();
@@ -9661,6 +10196,37 @@ function _markDayAlertSeen() {
   try { localStorage.setItem(LS.DAY_ALERT_SEEN, today()); } catch (_) {}
 }
 
+// Junta las anotaciones internas de un snapshot (nota general + notas por
+// ítem de todos los sets: normal A/B y estimativo). Devuelve [{label, text}].
+// Se usa para engancharlas en la notificación del día del trabajo — memoria
+// privada de quien edita, no sale nunca en el PDF.
+function snapshotIntNotes(snap) {
+  if (!snap) return [];
+  const out = [];
+  if (snap.intNote && snap.intNote.trim()) out.push({ label: '', text: snap.intNote.trim() });
+  const collect = (arr) => {
+    if (!Array.isArray(arr)) return;
+    arr.forEach(it => {
+      if (it && it.intNote && it.intNote.trim())
+        out.push({ label: itemInoteLabel(it), text: it.intNote.trim() });
+    });
+  };
+  collect(snap.items);
+  collect(snap.itemsB);
+  collect(snap.estItems);
+  return out;
+}
+
+// HTML del bloque de notas internas para la tarjeta del day-alert.
+function _dayAlertNotesHTML(snap) {
+  const notes = snapshotIntNotes(snap);
+  if (!notes.length) return '';
+  const lines = notes.map(nn =>
+    `<span class="da-note-line">${nn.label ? `<b>${esc(nn.label)}:</b> ` : ''}${esc(nn.text)}</span>`
+  ).join('');
+  return `<span class="da-item-notes">${icon('bulb')}<span class="da-note-lines">${lines}</span></span>`;
+}
+
 function maybeShowDayAlert() {
   if (_dayAlertSeenToday()) return;
   // No pisar el modal de bienvenida (primer uso) u otro overlay abierto.
@@ -9696,6 +10262,7 @@ function renderDayAlert(hoy) {
           <span class="da-item-top"><span class="da-item-num">${esc(e.quoteNumber || '—')}</span> <span class="da-item-client">${esc(e.clientName || '(sin nombre)')}</span></span>
           ${dinfo ? `<span class="da-item-meta">${icon('calendar')} Día ${dinfo.idx} de ${dinfo.total}</span>` : ''}
           ${lugar ? `<span class="da-item-meta">${icon('pin')} ${esc(lugar)}</span>` : ''}
+          ${_dayAlertNotesHTML(snap)}
         </button>`;
       }).join('')}
     </div>
@@ -9912,6 +10479,18 @@ function chatWhatsappHistory(id) {
   window.open(`https://wa.me/${phone}`, '_blank', 'noopener');
 }
 
+// Abre el chat de WhatsApp con un teléfono suelto (sin presupuesto asociado).
+// Lo usan las notas de la Agenda que llevan un contacto vinculado. Sin mensaje
+// prearmado: es para hablar/coordinar, no para reenviar un presupuesto.
+function chatWhatsappPhone(raw) {
+  const phone = normalizeArgPhone((raw || '') + '');
+  if (!phone) {
+    toast('Este contacto no tiene teléfono cargado', 'info', 3000);
+    return;
+  }
+  window.open(`https://wa.me/${phone}`, '_blank', 'noopener');
+}
+
 // Botón "Probar" del editor: abre en Maps lo que el usuario está cargando
 // ahora mismo (sin pasar por el historial), para verificar que el Plus Code /
 // link apunta al lugar correcto antes de guardar.
@@ -10018,6 +10597,9 @@ function clearHistSearch(){
 
 function renderHistory() {
   const list     = document.getElementById('history-list');     if(!list) return;
+  // Re-render → los botones se recrean: descartar cualquier imagen lista
+  // pendiente (su botón y su referencia quedaron obsoletos).
+  _pngShareReady = null;
   const searchEl = document.getElementById('hist-search');
   const filterEl = document.getElementById('hist-client-filter');
   const countEl  = document.getElementById('hist-count');
@@ -10146,7 +10728,7 @@ function renderHistory() {
         <select class="hestado-sel" style="color:${txtCol};background-color:${bgCol};border-color:${bgCol}" onchange="setEstadoHistory(${e.id}, this.value)" title="Cambiar estado" aria-label="Estado del presupuesto">${estadoOpts}</select>
         ${agendaChipFor(e)}
         <button class="btn btn-g btn-sm" onclick="previewFromHistory(${e.id})">${icon('eye')} Ver</button>
-        <button class="btn btn-g btn-sm" onclick="sharePngFromHistory(${e.id})" title="Generar una imagen del presupuesto y compartirla (WhatsApp, etc.)">${icon('image')} Compartir</button>
+        <button class="btn btn-g btn-sm" onclick="sharePngFromHistory(${e.id}, this)" title="Generar una imagen del presupuesto y compartirla (WhatsApp, etc.)">${icon('image')} Compartir</button>
         ${tieneTel ? `<button class="btn btn-g btn-sm" onclick="chatWhatsappHistory(${e.id})" title="Abrir el chat de WhatsApp con el cliente" aria-label="Chat de WhatsApp con el cliente">${icon('message')} Chat</button>` : ''}
         ${tieneDir ? `<button class="btn btn-g btn-sm" onclick="comoLlegar(${e.id})" title="Cómo llegar a la dirección del trabajo" aria-label="Cómo llegar">${icon('pin')} Llegar</button>` : ''}
         <button class="btn-icon-del" onclick="delFromHistory(${e.id})" title="Eliminar presupuesto" aria-label="Eliminar presupuesto">${icon('trash')}</button>
@@ -10273,7 +10855,7 @@ function resetToNewQuote() {
   // no solo S.numNext (que puede estar atrás si se cargaron viejos).
   S.numNext = calcNextNumFromHistory();
   S.items=[]; S.estItems=[]; S.itemsB=[]; S.clientName=''; S.clientContact=''; S.workAddress=''; S.workMapLink=''; S.workDuration='';
-  S.discount=0; S.surcharge=0; S.paymentConditions=''; S.observations=''; S.estObservations='';
+  S.discount=0; S.surcharge=0; S.paymentConditions=''; S.observations=''; S.estObservations=''; S.intNote='';
   // El plan de trabajo a medida es excepcional por presupuesto: se descarta al
   // crear uno nuevo para volver a usar el default global.
   S.workPlanOverride=false; S.workPlanCustom=''; S.workPlanCustomTitle='';
@@ -10379,6 +10961,10 @@ function buildBackupObject() {
     tope: tope,
     reciboSeq: (function(){ try { return localStorage.getItem(RECIBO_SEQ_KEY); } catch(_) { return null; } })(),
     notes: (typeof getNotes === 'function') ? getNotes() : [],
+    // Id del calendario "Presupuestos AR" (si se sincroniza con Google Calendar):
+    // así un restore en otro teléfono reusa el mismo calendario en vez de crear
+    // uno nuevo y duplicar eventos.
+    gcalId: (function(){ try { return localStorage.getItem(LS.GCAL_ID); } catch(_) { return null; } })(),
     photos: photos
   };
 }
@@ -10599,6 +11185,9 @@ function applyBackupObject(d) {
     // Notas/recordatorios manuales de la Agenda (calendario). Backups viejos no
     // los traen → se deja intacto lo que haya en localStorage.
     if (Array.isArray(d.notes)) safeSetLS(LS.NOTES, JSON.stringify(d.notes));
+    // Id del calendario "Presupuestos AR": reusar el mismo tras un restore para
+    // no duplicar el calendario ni sus eventos.
+    if (d.gcalId) { try { localStorage.setItem(LS.GCAL_ID, d.gcalId); } catch(_){} }
     if (!Array.isArray(S.itemsB)) S.itemsB = [];
     normalizeRiskData();
     // Backups viejos (v3-) traían las fotos embebidas en el estado: migrarlas.
@@ -10650,6 +11239,44 @@ const GDRIVE = {
 function gdriveConfigured(){ return !!(GDRIVE.CLIENT_ID && GDRIVE.CLIENT_ID.indexOf('.apps.googleusercontent.com') > 0); }
 function gdriveConnected(){ try { return localStorage.getItem(LS.GDRIVE_ON) === '1'; } catch(_){ return false; } }
 
+// ─── Cache persistente del access token de Google ───
+// El token de acceso solo vivía en memoria (GDRIVE._token / GCAL._token), así
+// que CADA recarga de la pestaña (lo que hace el navegador del celular al
+// descartar una PWA/pestaña de fondo) lo perdía y había que volver a pedírselo
+// a Google — ese ida-y-vuelta es lo que se notaba como "recargar la cuenta" al
+// reabrir. Persistimos el token con su vencimiento para que una reapertura
+// rápida lo reuse y se saltee por completo el pedido a Google.
+// El token es de acceso (no refresh), de vida corta (~1 h), propio y guardado
+// en el dispositivo del usuario (sin login). Se borra al desconectar.
+function _gTokSave(key, token, exp){
+  try { localStorage.setItem(key, JSON.stringify({ t: token, e: exp })); } catch(_){}
+}
+function _gTokLoad(key){
+  try {
+    const raw = localStorage.getItem(key); if (!raw) return null;
+    const o = JSON.parse(raw);
+    // Mismo margen que la comprobación en memoria (60 s): si le queda menos de
+    // un minuto de vida, lo ignoramos y se renovará callado.
+    if (o && o.t && o.e && Date.now() < o.e - 60000) return o;
+  } catch(_){}
+  return null;
+}
+function _gTokClear(key){ try { localStorage.removeItem(key); } catch(_){} }
+
+// ─── Reintento silencioso ante token inválido (401) ───
+// Un token reusado desde el cache podría estar revocado en el servidor (raro:
+// solo si el usuario quitó el acceso desde su cuenta de Google). En ese caso la
+// llamada a la API lanza Error('… 401'). Detectamos ese caso, invalidamos el
+// token (memoria + cache) y reintentamos UNA vez: getToken pedirá uno nuevo con
+// prompt:'none' (callado), sin que el usuario note nada.
+function _gIsAuthErr(e){ return /\b401\b/.test(String((e && e.message) || e || '')); }
+function gdriveInvalidateToken(){ GDRIVE._token = null; GDRIVE._tokenExp = 0; _gTokClear(LS.GDRIVE_TOK); }
+function gcalInvalidateToken(){ GCAL._token = null; GCAL._tokenExp = 0; _gTokClear(LS.GCAL_TOK); }
+async function _gWithAuthRetry(invalidate, op){
+  try { return await op(); }
+  catch(e){ if (_gIsAuthErr(e)) { invalidate(); return await op(); } throw e; }
+}
+
 // Carga la librería de Google Identity Services (una sola vez).
 function loadGIS(){
   if (window.google && google.accounts && google.accounts.oauth2) return Promise.resolve();
@@ -10675,6 +11302,7 @@ async function gdriveEnsureClient(){
         if (resp && resp.access_token) {
           GDRIVE._token = resp.access_token;
           GDRIVE._tokenExp = Date.now() + ((resp.expires_in || 3500) * 1000);
+          _gTokSave(LS.GDRIVE_TOK, GDRIVE._token, GDRIVE._tokenExp);
           if (p) p.resolve(resp.access_token);
         } else if (p) { p.reject(new Error((resp && resp.error) || 'sin_token')); }
       },
@@ -10692,6 +11320,9 @@ function gdriveGetToken(opts){
   opts = opts || {};
   const interactive = !!opts.interactive;
   return new Promise((resolve, reject) => {
+    // Rehidratar el token desde el cache persistente: si la pestaña se recargó
+    // (memoria perdida) pero el token sigue vigente, lo reusamos sin ir a Google.
+    if (!GDRIVE._token) { const c = _gTokLoad(LS.GDRIVE_TOK); if (c) { GDRIVE._token = c.t; GDRIVE._tokenExp = c.e; } }
     if (GDRIVE._token && Date.now() < GDRIVE._tokenExp - 60000) { resolve(GDRIVE._token); return; }
     // Sin señal no tiene sentido intentar (y rompería el modo offline).
     if (typeof navigator !== 'undefined' && navigator.onLine === false) { reject(new Error('offline')); return; }
@@ -10803,6 +11434,7 @@ async function gdriveConnect(){
 function gdriveDisconnect(){
   try { if (GDRIVE._token && window.google && google.accounts && google.accounts.oauth2) google.accounts.oauth2.revoke(GDRIVE._token, ()=>{}); } catch(_){}
   GDRIVE._token = null; GDRIVE._tokenExp = 0;
+  _gTokClear(LS.GDRIVE_TOK);
   try { localStorage.removeItem(LS.GDRIVE_ON); } catch(_){}
   try { localStorage.removeItem(LS.GDRIVE_EMAIL); } catch(_){}
   gdriveUpdateUI();
@@ -10833,7 +11465,7 @@ function scheduleGdriveBackup(){
   GDRIVE._timer = setTimeout(() => {
     // Sin señal: dejamos el cambio pendiente; se sube al volver la conexión.
     if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
-    gdriveUpload().then(gdriveUpdateUI).catch(e => console.warn('auto-backup Drive falló', e));
+    _gWithAuthRetry(gdriveInvalidateToken, gdriveUpload).then(gdriveUpdateUI).catch(e => console.warn('auto-backup Drive falló', e));
   }, 45000);
 }
 
@@ -10891,13 +11523,359 @@ function gdriveInitOnLoad(){
     gdriveUpdateUI();
     try {
       await gdriveRememberEmail(token);
-      const d = await gdriveDownload();
+      const d = await _gWithAuthRetry(gdriveInvalidateToken, gdriveDownload);
       if (d && d.history && d.history.length) {
         const ok = await confirmDlg('Recuperar datos', 'Encontramos una copia en tu Google Drive. ¿Querés recuperar tus presupuestos en este dispositivo?', 'Recuperar', 'btn-p');
         if (ok && applyBackupObject(d)) toast('Datos recuperados desde Drive.', 'ok', 4000);
       }
     } catch(_){}
   }).catch(() => { /* no se pudo renovar callado: la UI ofrece reconectar */ });
+}
+
+// ═══════════════════════════════════════
+// GCAL.JS — Sincronización de la Agenda con Google Calendar
+// ═══════════════════════════════════════
+// Empuja (una sola vía: app → Google) TODO lo de la pestaña Agenda a un
+// calendario propio "Presupuestos AR". Reusa el OAuth de Google (mismo
+// CLIENT_ID y la misma loadGIS() que Drive), con su PROPIO token client y el
+// scope mínimo `calendar.app.created` (solo toca calendarios que la app creó;
+// nunca ve el resto de la agenda del usuario). Corre igual que el auto-backup
+// de Drive: al abrir la app y (con retardo) tras cada cambio, solo con señal.
+//
+// Idempotencia: el calendario es enteramente de la app. Cada evento lleva
+// extendedProperties.private.pqKey (clave estable, misma lógica que el UID del
+// .ics) y pqHash (hash del contenido). En cada sync listamos lo que hay,
+// reconstruimos el estado desde el servidor (auto-reparable entre dispositivos)
+// y hacemos el diff: insertar / patch (si cambió el hash) / borrar (lo que ya
+// no está en la agenda). NUNCA se pide token al abrir (regla de CLAUDE.md):
+// las syncs de fondo usan prompt:'none' (silenciosas).
+const GCAL = {
+  // `calendar.app.created` para crear/manejar el calendario propio; `openid
+  // email` para recordar la cuenta y renovar el token sin mostrar el selector.
+  SCOPE: 'https://www.googleapis.com/auth/calendar.app.created openid email',
+  CAL_NAME: 'Presupuestos AR',
+  _tokenClient: null, _token: null, _tokenExp: 0, _pending: null, _timer: null,
+  _dirty: false, _syncing: false,
+};
+
+function gcalConfigured(){ return !!(GDRIVE.CLIENT_ID && GDRIVE.CLIENT_ID.indexOf('.apps.googleusercontent.com') > 0); }
+function gcalConnected(){ try { return localStorage.getItem(LS.GCAL_ON) === '1'; } catch(_){ return false; } }
+
+// Token client propio (independiente del de Drive). Reusa loadGIS().
+async function gcalEnsureClient(){
+  await loadGIS();
+  if (!GCAL._tokenClient) {
+    GCAL._tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: GDRIVE.CLIENT_ID,
+      scope: GCAL.SCOPE,
+      callback: (resp) => {
+        const p = GCAL._pending; GCAL._pending = null;
+        if (resp && resp.access_token) {
+          GCAL._token = resp.access_token;
+          GCAL._tokenExp = Date.now() + ((resp.expires_in || 3500) * 1000);
+          _gTokSave(LS.GCAL_TOK, GCAL._token, GCAL._tokenExp);
+          if (p) p.resolve(resp.access_token);
+        } else if (p) { p.reject(new Error((resp && resp.error) || 'sin_token')); }
+      },
+      // Errores no-OAuth (popup cerrado, etc.): sin esto el Promise quedaría
+      // colgado y el botón "Conectar" no volvería nunca.
+      error_callback: (err) => {
+        const p = GCAL._pending; GCAL._pending = null;
+        if (p) p.reject(new Error((err && (err.type || err.message)) || 'popup'));
+      },
+    });
+  }
+}
+// Igual que gdriveGetToken: silencioso por defecto (hint = cuenta recordada),
+// interactivo solo desde el botón "Conectar".
+function gcalGetToken(opts){
+  opts = opts || {};
+  const interactive = !!opts.interactive;
+  return new Promise((resolve, reject) => {
+    // Rehidratar el token desde el cache persistente (sobrevive la recarga de
+    // la pestaña): reapertura rápida = sin ida-y-vuelta a Google.
+    if (!GCAL._token) { const c = _gTokLoad(LS.GCAL_TOK); if (c) { GCAL._token = c.t; GCAL._tokenExp = c.e; } }
+    if (GCAL._token && Date.now() < GCAL._tokenExp - 60000) { resolve(GCAL._token); return; }
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) { reject(new Error('offline')); return; }
+    gcalEnsureClient().then(() => {
+      GCAL._pending = { resolve, reject };
+      let hint = '';
+      try { hint = localStorage.getItem(LS.GCAL_EMAIL) || localStorage.getItem(LS.GDRIVE_EMAIL) || ''; } catch(_){}
+      const req = {};
+      if (hint) req.login_hint = hint;         // le decimos a Google qué cuenta usar
+      // Interactivo (botón "Conectar"): forzar la pantalla de consentimiento.
+      // A diferencia de Drive, acá el scope de Calendar suele ser NUEVO aunque
+      // ya haya un `hint` (heredado de Drive): con prompt:'' Google lo rechaza
+      // sin mostrar UI (access_denied). 'consent' garantiza que aparezca el
+      // pedido de permiso la primera vez. Las renovaciones de fondo siguen
+      // silenciosas (prompt:'none') porque el scope ya quedó otorgado.
+      if (interactive) req.prompt = 'consent';
+      else req.prompt = 'none';                // fondo: nunca mostrar UI
+      GCAL._tokenClient.requestAccessToken(req);
+    }).catch(reject);
+  });
+}
+// Recuerda el email de la cuenta conectada (para renovar callado). Requiere el
+// scope `email`. Nunca rompe si falla.
+async function gcalRememberEmail(token){
+  try {
+    const r = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { Authorization: 'Bearer ' + token } });
+    if (!r.ok) return;
+    const j = await r.json();
+    if (j && j.email) { try { localStorage.setItem(LS.GCAL_EMAIL, j.email); } catch(_){} }
+  } catch(_){}
+}
+
+// Asegura el calendario "Presupuestos AR": valida el id guardado, y si no
+// existe (o se borró) lo crea. Devuelve el calendarId.
+async function gcalEnsureCalendar(token){
+  let id = ''; try { id = localStorage.getItem(LS.GCAL_ID) || ''; } catch(_){}
+  if (id) {
+    const r = await fetch('https://www.googleapis.com/calendar/v3/calendars/' + encodeURIComponent(id),
+      { headers: { Authorization: 'Bearer ' + token } });
+    if (r.ok) return id;
+    if (r.status !== 404 && r.status !== 410) throw new Error('cal get ' + r.status);
+    // 404/410: el calendario ya no existe → recrear abajo.
+  }
+  let tz = 'America/Argentina/Cordoba';
+  try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || tz; } catch(_){}
+  const r = await fetch('https://www.googleapis.com/calendar/v3/calendars', {
+    method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ summary: GCAL.CAL_NAME, description: 'Agenda de Presupuestos AR: trabajos, recontactos, vencimientos, seguimientos y notas. Se sincroniza automáticamente desde la app.', timeZone: tz }),
+  });
+  if (!r.ok) {
+    // Guardamos el detalle para dar un mensaje útil (API sin habilitar, etc.).
+    let detail = ''; try { detail = await r.text(); } catch(_){}
+    const err = new Error('cal create ' + r.status);
+    err.status = r.status; err.detail = detail;
+    throw err;
+  }
+  const j = await r.json();
+  id = j.id;
+  try { localStorage.setItem(LS.GCAL_ID, id); } catch(_){}
+  return id;
+}
+
+// timeMin (RFC3339) = medianoche local de hoy → solo lo que viene.
+function _gcalTimeMin(){
+  const t = today().split('-');
+  return new Date(+t[0], +t[1] - 1, +t[2]).toISOString();
+}
+// Hash corto (djb2) del contenido, para detectar cambios sin comparar campos.
+function _gcalHash(s){
+  let h = 5381; s = String(s);
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
+  return (h >>> 0).toString(36);
+}
+// Lista los eventos actuales del calendario (paginado) → { pqKey: {id, hash} }.
+async function gcalListEvents(token, calId){
+  const map = {};
+  let pageToken = '';
+  do {
+    const u = new URL('https://www.googleapis.com/calendar/v3/calendars/' + encodeURIComponent(calId) + '/events');
+    u.searchParams.set('maxResults', '2500');
+    u.searchParams.set('showDeleted', 'false');
+    u.searchParams.set('singleEvents', 'true');
+    u.searchParams.set('timeMin', _gcalTimeMin());
+    if (pageToken) u.searchParams.set('pageToken', pageToken);
+    const r = await fetch(u.toString(), { headers: { Authorization: 'Bearer ' + token } });
+    if (!r.ok) throw new Error('events list ' + r.status);
+    const j = await r.json();
+    (j.items || []).forEach(it => {
+      const pv = (it.extendedProperties && it.extendedProperties.private) || {};
+      if (pv.pqKey) map[pv.pqKey] = { id: it.id, hash: pv.pqHash || '' };
+    });
+    pageToken = j.nextPageToken || '';
+  } while (pageToken);
+  return map;
+}
+
+// Arma summary / description / location de un evento de la agenda según el tipo,
+// reusando la misma info que el .ics y el botón de Google Calendar per-evento.
+function _gcalEvInfo(ev, e){
+  let summary = '', loc = '';
+  const desc = [];
+  if (ev.tipo === 'trabajo')      summary = 'Trabajo: ' + ev.title + (ev.sub ? ' — ' + ev.sub : '');
+  else if (ev.tipo === 'nota')    summary = 'Nota: ' + ev.title;
+  else                            summary = ev.title;   // "Llamar a X" / "Vence X" / "Seguimiento X"
+  if (e) {
+    const snap = e.snapshot || {};
+    if (ev.tipo === 'recontacto' && e.recontactoNota) desc.push('Nota: ' + e.recontactoNota);
+    if (e.total > 0) desc.push('Presupuesto ' + (e.quoteNumber || '') + ': ' + fmtM(e.total, e.currency || 'ARS'));
+    if (snap.clientContact) desc.push('Contacto: ' + snap.clientContact);
+    if (ev.tipo === 'trabajo') { const a = (snap.workAddress || snap.workMapLink || '').trim(); if (a) loc = a; }
+  } else if (ev.sub) {
+    desc.push(ev.sub);   // nota: nombre del contacto vinculado
+  }
+  if (ev.tel) desc.push('Tel: ' + ev.tel);
+  if (ev.mapUrl) { desc.push('Ubicación: ' + ev.mapUrl); if (!loc) loc = ev.mapUrl; }
+  return { summary, desc: desc.join('\n'), loc };
+}
+// Construye el conjunto DESEADO desde calBuildIndex(): { pqKey: {body, hash} }.
+// Incluye los 5 tipos, solo de hoy en adelante; notas ya hechas no van.
+function _gcalBuildDesired(){
+  const idx = calBuildIndex();
+  const hoy = today();
+  const h = (typeof getH === 'function') ? getH() : [];
+  const byId = {}; h.forEach(e => { if (e && e.id != null) byId[e.id] = e; });
+  const desired = {};
+  const seen = {};
+  Object.keys(idx).sort().forEach(iso => {
+    if (iso < hoy) return;
+    idx[iso].forEach(ev => {
+      if (ev.tipo === 'nota' && ev.done) return;
+      const dstart = iso.replace(/-/g, '');
+      const dendISO = _calAddDays(iso, 1);
+      const info = _gcalEvInfo(ev, ev.entryId != null ? byId[ev.entryId] : null);
+      let key = (ev.entryId != null ? 'e' + ev.entryId + '-' + ev.tipo : 'n' + (ev.noteId || '')) + '-' + dstart;
+      const rep = (seen[key] = (seen[key] || 0) + 1);
+      const pqKey = key + (rep > 1 ? '-' + rep : '');
+      const hash = _gcalHash(info.summary + '|' + info.desc + '|' + info.loc + '|' + iso + '|' + dendISO);
+      const body = { summary: info.summary, start: { date: iso }, end: { date: dendISO },
+        extendedProperties: { private: { pqKey: pqKey, pqHash: hash } } };
+      if (info.desc) body.description = info.desc;
+      if (info.loc)  body.location = info.loc;
+      desired[pqKey] = { body, hash };
+    });
+  });
+  return desired;
+}
+
+// Sincroniza: list → diff → insert/patch/delete. Best-effort y secuencial
+// (serializa los pedidos, suave con la cuota).
+async function gcalSync(){
+  if (!gcalConfigured() || !gcalConnected()) return;
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+  if (GCAL._syncing) return;
+  GCAL._syncing = true;
+  try {
+    const token = await gcalGetToken();
+    const calId = await gcalEnsureCalendar(token);
+    const existing = await gcalListEvents(token, calId);
+    const desired = _gcalBuildDesired();
+    const base = 'https://www.googleapis.com/calendar/v3/calendars/' + encodeURIComponent(calId) + '/events';
+    const H = { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' };
+    // Insertar los nuevos y actualizar los que cambiaron.
+    for (const pk of Object.keys(desired)) {
+      const d = desired[pk], ex = existing[pk];
+      if (!ex) {
+        const r = await fetch(base, { method: 'POST', headers: H, body: JSON.stringify(d.body) });
+        if (!r.ok) throw new Error('event insert ' + r.status);
+      } else if (ex.hash !== d.hash) {
+        const r = await fetch(base + '/' + encodeURIComponent(ex.id), { method: 'PATCH', headers: H, body: JSON.stringify(d.body) });
+        if (!r.ok) throw new Error('event patch ' + r.status);
+      }
+    }
+    // Borrar lo que ya no está en la agenda (nota borrada, fecha cambiada, etc.).
+    for (const pk of Object.keys(existing)) {
+      if (!desired[pk]) {
+        await fetch(base + '/' + encodeURIComponent(existing[pk].id), { method: 'DELETE', headers: { Authorization: 'Bearer ' + token } });
+      }
+    }
+    GCAL._dirty = false;
+    try { localStorage.setItem(LS.GCAL_LAST, new Date().toISOString()); } catch(_){}
+  } finally { GCAL._syncing = false; }
+}
+
+// Sync automática con retardo tras cada cambio de agenda (espejo del auto-backup).
+function scheduleGcalSync(){
+  if (!gcalConfigured() || !gcalConnected()) return;
+  GCAL._dirty = true;
+  clearTimeout(GCAL._timer);
+  GCAL._timer = setTimeout(() => {
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+    _gWithAuthRetry(gcalInvalidateToken, gcalSync).then(gcalUpdateUI).catch(e => console.warn('auto-sync Calendar falló', e));
+  }, 45000);
+}
+
+// Botón "Conectar Google Calendar".
+// Traduce un error de conexión/sync a un mensaje accionable (para el toast).
+// Distingue: sin señal, permiso no otorgado / faltante, y API sin habilitar.
+function _gcalErrMsg(e){
+  const msg = ((e && e.message) || '') + '';
+  const detail = ((e && e.detail) || '') + '';
+  const status = e && e.status;
+  if (msg === 'offline') return 'Sin conexión. Conectá cuando tengas señal.';
+  // Errores del token de Google (GIS): permiso no dado o scope no configurado.
+  if (/access_denied|consent|scope|sin_token|popup|interaction_required|invalid/i.test(msg)) {
+    return 'Google no dio el permiso de Calendar. Revisá que el permiso "calendar.app.created" esté agregado en la pantalla de consentimiento, y aceptá el acceso al conectar.';
+  }
+  // Calendar API sin habilitar en el proyecto (403 con accessNotConfigured).
+  if (status === 403 && /accessNotConfigured|has not been used|is disabled|SERVICE_DISABLED|Calendar API/i.test(detail)) {
+    return 'Falta habilitar la Google Calendar API en tu proyecto de Google Cloud. Habilitala, esperá unos minutos y reintentá.';
+  }
+  if (status === 403) return 'Google rechazó el acceso (403). Revisá que la Calendar API esté habilitada y el permiso "calendar.app.created" agregado.';
+  if (status === 401) return 'La sesión de Google expiró. Reintentá conectar.';
+  return 'No se pudo conectar con Google Calendar. Revisá la Calendar API y el permiso en Google Cloud.';
+}
+
+async function gcalConnect(){
+  if (!gcalConfigured()) { toast('Google Calendar no está configurado todavía.', 'info', 5000); return; }
+  try {
+    toast('Conectando con Google Calendar…', 'info', 3000);
+    const token = await gcalGetToken({ interactive: true });
+    try { localStorage.setItem(LS.GCAL_ON, '1'); } catch(_){}
+    await gcalRememberEmail(token);
+    await gcalSync();
+    toast('Conectado. Tu agenda se sincroniza con el calendario "Presupuestos AR".', 'ok', 5000);
+  } catch(e){
+    console.error('gcalConnect', e);
+    try { localStorage.removeItem(LS.GCAL_ON); } catch(_){}
+    toast(_gcalErrMsg(e), 'err', 9000);
+  }
+  gcalUpdateUI();
+}
+function gcalDisconnect(){
+  try { if (GCAL._token && window.google && google.accounts && google.accounts.oauth2) google.accounts.oauth2.revoke(GCAL._token, ()=>{}); } catch(_){}
+  GCAL._token = null; GCAL._tokenExp = 0;
+  _gTokClear(LS.GCAL_TOK);
+  try { localStorage.removeItem(LS.GCAL_ON); } catch(_){}
+  gcalUpdateUI();
+  toast('Google Calendar desconectado. El calendario "Presupuestos AR" queda en tu cuenta.', 'info', 5000);
+}
+async function gcalSyncNow(){
+  if (!gcalConnected()) return;
+  try {
+    toast('Sincronizando con Google Calendar…', 'info', 2500);
+    await gcalSync();
+    gcalUpdateUI();
+    toast('Agenda sincronizada ✓', 'ok', 2500);
+  } catch(e){ console.error('gcalSyncNow', e); toast(_gcalErrMsg(e), 'err', 9000); }
+}
+// Al arrancar: si está conectado y hay señal, sync silenciosa. Nunca pide token
+// con UI (si no renueva callado, queda el botón "Conectar").
+function gcalInitOnLoad(){
+  if (!gcalConfigured()) { gcalUpdateUI(); return; }
+  gcalUpdateUI();
+  if (!gcalConnected()) return;
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+  gcalGetToken({ interactive: false })
+    .then(async () => { try { await _gWithAuthRetry(gcalInvalidateToken, gcalSync); gcalUpdateUI(); } catch(_){} })
+    .catch(() => { /* no renovó callado: la UI ofrece reconectar */ });
+}
+// Refresca la sección de Calendar (pestaña Empresa).
+function gcalUpdateUI(){
+  const sec = document.getElementById('gcal-section'); if (!sec) return;
+  if (!gcalConfigured()) { sec.style.display = 'none'; return; }
+  sec.style.display = '';
+  const on = gcalConnected();
+  const cBtn = document.getElementById('gcal-connect');
+  const sBtn = document.getElementById('gcal-sync');
+  const dBtn = document.getElementById('gcal-disconnect');
+  const status = document.getElementById('gcal-status');
+  if (cBtn) cBtn.style.display = on ? 'none' : '';
+  if (sBtn) sBtn.style.display = on ? '' : 'none';
+  if (dBtn) dBtn.style.display = on ? '' : 'none';
+  if (status) {
+    if (on) {
+      let last = ''; try { last = localStorage.getItem(LS.GCAL_LAST) || ''; } catch(_){}
+      status.textContent = last
+        ? ('Conectado ✓ · Última sincronización: ' + _fmtBackupDate(last))
+        : 'Conectado ✓ · Tu agenda se sincroniza con el calendario "Presupuestos AR".';
+    } else {
+      status.textContent = 'Creá los eventos de tu agenda automáticamente en un calendario propio de Google ("Presupuestos AR"). Sincroniza con la app abierta y con señal.';
+    }
+  }
 }
 
 // ===== js/pdf.js =====
@@ -11208,7 +12186,7 @@ function _buildWorkPlanHTML(color){
     <div class="pplan">
       <div class="pplan-t">${esc(titleSrc || 'Plan de Trabajo')}</div>
       <div class="pplan-box" style="color:${color}">
-        <ul class="pplan-list">${items}</ul>
+        <ol class="pplan-list">${items}</ol>
       </div>
     </div>`;
 }
@@ -12871,7 +13849,7 @@ function getNotes() {
   try { const a = JSON.parse(localStorage.getItem(LS.NOTES) || '[]'); return Array.isArray(a) ? a : []; }
   catch (e) { return []; }
 }
-function setNotes(a) { safeSetLS(LS.NOTES, JSON.stringify(a || [])); }
+function setNotes(a) { safeSetLS(LS.NOTES, JSON.stringify(a || [])); if (typeof scheduleGcalSync === 'function') scheduleGcalSync(); }
 
 // ─── HELPERS DE FECHA (locales) ──────────────────────────────
 // Suma n días a una fecha ISO local y devuelve otra ISO local.
@@ -12915,7 +13893,7 @@ function _calRangeLabel(a, b) {
 // Cada ev: { tipo, title, sub, entryId?, noteId?, done? }.
 function calBuildIndex() {
   const idx = {};
-  const push = (iso, ev) => { if (!iso) return; (idx[iso] || (idx[iso] = [])).push(ev); };
+  const push = (iso, ev) => { if (!iso) return; ev._iso = iso; (idx[iso] || (idx[iso] = [])).push(ev); };
   const h = (typeof getH === 'function') ? getH() : [];
   const cfg = (typeof getFollowupCfg === 'function') ? getFollowupCfg() : null;
 
@@ -12923,14 +13901,25 @@ function calBuildIndex() {
     const est = e.estado || 'borrador';
     const quien = (e.clientName || '').trim() || '(sin nombre)';
     const num = e.quoteNumber ? `N° ${e.quoteNumber}` : '';
+    // Teléfono del cliente (para el botón de chat directo en la Agenda). Se
+    // deriva una sola vez por presupuesto; '' si no hay nada usable.
+    const tel = (typeof histClientPhone === 'function') ? histClientPhone(e) : '';
+    // URL de Maps del trabajo (ubicación exacta o dirección del snapshot), para
+    // el botón "Llegar" y para adjuntarla al compartir. '' si no hay ubicación.
+    const mapUrl = (typeof mapsUrlFor === 'function')
+      ? mapsUrlFor(e.snapshot && e.snapshot.workMapLink, e.snapshot && e.snapshot.workAddress) : '';
 
     // Trabajo(s): días ubicados de la agenda (multi-día soportado).
     const fechas = (typeof agFechas === 'function') ? agFechas(e) : (e.fechaTrabajo ? [e.fechaTrabajo] : []);
     if (fechas.length) {
       const total = (typeof agDiasEstimados === 'function') ? agDiasEstimados(e) : fechas.length;
+      // Anotaciones internas del presupuesto (memoria privada de quien edita):
+      // se adjuntan al evento de trabajo para verlas en la Agenda (in-app).
+      // NO se envían a Google Calendar ni al .ics (esos salen de la app).
+      const notas = (typeof snapshotIntNotes === 'function') ? snapshotIntNotes(e.snapshot) : [];
       fechas.forEach((f, i) => {
         const dnum = total > 1 ? ` · día ${i + 1} de ${total}` : '';
-        push(f, { tipo: 'trabajo', title: quien, sub: (num ? num : '') + dnum, entryId: e.id });
+        push(f, { tipo: 'trabajo', title: quien, sub: (num ? num : '') + dnum, entryId: e.id, tel, mapUrl, notes: notas });
       });
     }
 
@@ -12938,7 +13927,7 @@ function calBuildIndex() {
     if (e.recontactoEn && est === 'aceptado') {
       push(e.recontactoEn, {
         tipo: 'recontacto', title: `Llamar a ${quien}`,
-        sub: (e.recontactoNota || '').trim() || num, entryId: e.id
+        sub: (e.recontactoNota || '').trim() || num, entryId: e.id, tel, mapUrl
       });
     }
 
@@ -12948,7 +13937,7 @@ function calBuildIndex() {
     if (estOk) {
       const exp = e.snapshot && e.snapshot.dateExpiry;
       if (cfg.expiryEnabled && exp) {
-        push(exp, { tipo: 'vencimiento', title: `Vence ${quien}`, sub: num, entryId: e.id });
+        push(exp, { tipo: 'vencimiento', title: `Vence ${quien}`, sub: num, entryId: e.id, tel, mapUrl });
       }
       if (e.enviadoEn) {
         // ¿Ya se hizo el seguimiento después del envío? Entonces no lo mostramos.
@@ -12961,16 +13950,23 @@ function calBuildIndex() {
         if (!hecho) {
           const base = _calTsToLocalISO(e.enviadoEn);
           const due = base ? _calAddDays(base, cfg.days || 0) : null;
-          if (due) push(due, { tipo: 'seguimiento', title: `Seguimiento ${quien}`, sub: num, entryId: e.id });
+          if (due) push(due, { tipo: 'seguimiento', title: `Seguimiento ${quien}`, sub: num, entryId: e.id, tel, mapUrl });
         }
       }
     }
   });
 
-  // Notas manuales.
+  // Notas manuales. Pueden llevar un contacto vinculado (cliente + tel) para el
+  // botón de chat directo, y una ubicación (coordenadas / Plus Code / link de
+  // Maps) para navegar y compartir. El nombre del contacto va como subtítulo.
   getNotes().forEach(n => {
     if (!n || !n.fecha) return;
-    push(n.fecha, { tipo: 'nota', title: n.texto || '(nota)', sub: '', noteId: n.id, done: !!n.hecho });
+    const ubic = (n.ubic || '').trim();
+    push(n.fecha, {
+      tipo: 'nota', title: n.texto || '(nota)', sub: (n.cliente || '').trim(),
+      noteId: n.id, done: !!n.hecho, tel: (n.tel || '').trim(),
+      ubic, mapUrl: ubic && typeof mapsUrlFor === 'function' ? mapsUrlFor(ubic, '') : ''
+    });
   });
 
   // Ordenar cada día por prioridad de tipo.
@@ -13039,6 +14035,7 @@ function renderCal() {
   if (esAgenda) renderCalList();
   else if (_calView === 'semana' || _calView === '3dias') renderCalCols();
   else renderCalGrid();
+  _calInitSwipe();   // engancha el deslizamiento de notas (una sola vez)
   if (typeof calUpdateDot === 'function') calUpdateDot();
 }
 
@@ -13183,20 +14180,51 @@ function _calEvHTML(ev, dateLabel) {
   const kindTxt = dateLabel ? `${kind} · ${esc(dateLabel)}` : kind;
   const sub = ev.sub ? `<div class="agc-ev-sub">${esc(ev.sub)}</div>` : '';
   let acts = '';
+  // Botón de chat directo por WhatsApp cuando el evento tiene un teléfono
+  // asociado (cliente del presupuesto, o el contacto vinculado a la nota).
+  const chat = ev.tel
+    ? `<button class="agc-ev-btn agc-ev-wa" onclick="${ev.entryId != null ? `chatWhatsappHistory(${ev.entryId})` : `calChatNote('${ev.noteId}')`}" title="Abrir el chat de WhatsApp con el cliente" aria-label="Chat de WhatsApp con el cliente">${icon('message')}</button>`
+    : '';
+  // Compartir el recordatorio (nota / vencimiento / seguimiento / trabajo…) con un
+  // compañero: abre el menú nativo (WhatsApp, etc.) con el texto ya armado.
+  const share = `<button class="agc-ev-btn agc-ev-share" onclick="calShareEvent(this)" data-share="${esc(_calShareText(ev))}" title="Compartir este recordatorio" aria-label="Compartir">${icon('share')}</button>`;
   if (ev.entryId != null) {
-    acts = `<button class="agc-ev-btn" onclick="goToHistoryEntry(${ev.entryId})" title="Ver el presupuesto en el historial">${icon('book')}</button>`;
+    acts = chat + share + `<button class="agc-ev-btn" onclick="goToHistoryEntry(${ev.entryId})" title="Ver el presupuesto en el historial">${icon('book')}</button>`;
   } else if (ev.noteId != null) {
-    acts = `<button class="agc-ev-btn" onclick="calToggleNote('${ev.noteId}')" title="${ev.done ? 'Marcar pendiente' : 'Marcar hecho'}">${icon('check')}</button>`
-         + `<button class="agc-ev-btn" onclick="calDeleteNote('${ev.noteId}')" title="Borrar nota">${icon('trash')}</button>`;
+    // "Hecho" y "Eliminar" se accionan deslizando la tarjeta (ver abajo); en el
+    // botonera quedan chat (si hay contacto), Maps (si hay ubicación),
+    // compartir y editar, más grandes.
+    const mapBtn = ev.mapUrl
+      ? `<button class="agc-ev-btn agc-ev-map" onclick="calOpenNoteMap('${ev.noteId}')" title="Abrir la ubicación en Maps" aria-label="Ver ubicación en Maps">${icon('pin')}</button>`
+      : '';
+    acts = chat + mapBtn + share
+         + `<button class="agc-ev-btn" onclick="calEditNote('${ev.noteId}')" title="Editar la nota / ubicación / contacto">${icon('pencil')}</button>`;
   }
-  return `<div class="agc-ev t-${ev.tipo}${ev.done ? ' done' : ''}">
+  // Anotaciones internas (solo en eventos de trabajo): memoria privada de
+  // quien edita, se muestra en la Agenda pero no sale del dispositivo.
+  const notesHtml = (ev.notes && ev.notes.length)
+    ? `<div class="agc-ev-notes">${ev.notes.map(nn =>
+        `<span class="agc-ev-note">${icon('bulb')}<span class="agc-ev-note-tx">${nn.label ? `<b>${esc(nn.label)}:</b> ` : ''}${esc(nn.text)}</span></span>`
+      ).join('')}</div>`
+    : '';
+  const card = `<div class="agc-ev t-${ev.tipo}${ev.done ? ' done' : ''}">
     <span class="agc-ev-bar"></span>
     <div class="agc-ev-body">
       <span class="agc-ev-kind">${kindTxt}</span>
       <div class="agc-ev-title">${esc(ev.title)}</div>
       ${sub}
+      ${notesHtml}
     </div>
     <div class="agc-ev-acts">${acts}</div>
+  </div>`;
+  // Solo las notas manuales se deslizan (son las que se marcan hechas o se
+  // borran). El resto de eventos (seguimiento, trabajo, vencimiento…) no.
+  if (ev.noteId == null) return card;
+  const doneLbl = ev.done ? 'Pendiente' : 'Hecho';
+  return `<div class="agc-swipe" data-note-id="${esc(String(ev.noteId))}">
+    <div class="agc-swipe-bg agc-swipe-done">${icon('check')}<span>${doneLbl}</span></div>
+    <div class="agc-swipe-bg agc-swipe-del"><span>Eliminar</span>${icon('trash')}</div>
+    <div class="agc-swipe-fg">${card}</div>
   </div>`;
 }
 
@@ -13227,7 +14255,39 @@ function renderCalDay(noList) {
     <div class="agc-note-form">
       <input type="text" id="agc-note-input" placeholder="Anotá un recordatorio para este día…" maxlength="140" onkeydown="if(event.key==='Enter'){calSaveNote();}">
       <button class="btn btn-p btn-sm" onclick="calSaveNote()">${icon('plus')} Nota</button>
-    </div>`;
+    </div>
+    <details class="agc-note-contact">
+      <summary>${icon('message')} Vincular contacto (chat directo)</summary>
+      <div class="agc-note-crow">
+        <div class="agc-cli-wrap"><input type="text" id="agc-note-cli" placeholder="Cliente" maxlength="80" autocomplete="off"></div>
+        <input type="tel" id="agc-note-tel" placeholder="Teléfono / WhatsApp" maxlength="40" inputmode="tel" autocomplete="off">
+        <button type="button" id="agc-note-import" class="btn btn-g btn-sm" onclick="importContactToNote()" style="display:none" title="Importar un contacto del teléfono">${icon('idcard')} Importar</button>
+      </div>
+    </details>
+    <details class="agc-note-contact">
+      <summary>${icon('pin')} Agregar ubicación (para compartir en Maps)</summary>
+      <input type="text" id="agc-note-ubic" placeholder="Coordenadas, Plus Code o link de Maps" maxlength="200" autocomplete="off">
+      <div class="agc-ubic-btns">
+        <button type="button" class="btn btn-g btn-sm" onclick="usarMiUbicacionInput('agc-note-ubic', this)" title="Detectar dónde estoy ahora">${icon('pin')} Mi ubicación</button>
+        <button type="button" class="btn btn-g btn-sm" onclick="probarUbicacionInput('agc-note-ubic')" title="Abrir en Maps para verificar">${icon('pin')} Ver en Maps</button>
+      </div>
+    </details>`;
+  _calSetupNoteContact();
+}
+
+// Engancha el dropdown nativo de clientes al alta de nota y muestra el botón de
+// importar contacto si el dispositivo lo soporta. Se llama en cada render porque
+// renderCalDay recrea los inputs.
+function _calSetupNoteContact() {
+  const cli = document.getElementById('agc-note-cli');
+  const tel = document.getElementById('agc-note-tel');
+  if (cli) attachClientDropdown(cli, tel);
+  const imp = document.getElementById('agc-note-import');
+  if (imp) imp.style.display = (typeof contactPickerSupported === 'function' && contactPickerSupported()) ? 'inline-flex' : 'none';
+}
+// Importa un contacto del teléfono hacia los campos del alta de nota.
+function importContactToNote() {
+  importContactToFields(document.getElementById('agc-note-cli'), document.getElementById('agc-note-tel'));
 }
 
 // ─── RENDER: VISTA AGENDA (lista cronológica) ────────────────
@@ -13312,15 +14372,123 @@ function calSaveNote() {
   if (!inp || !_calSel) return;
   const texto = (inp.value || '').trim();
   if (!texto) { toast('Escribí algo para la nota', 'info', 2200); return; }
+  // Contacto opcional vinculado a la nota.
+  const cliEl = document.getElementById('agc-note-cli');
+  const telEl = document.getElementById('agc-note-tel');
+  let cliente = cliEl ? (cliEl.value || '').trim() : '';
+  let tel     = telEl ? (telEl.value || '').trim() : '';
+  // Si escribieron el teléfono en el campo del cliente (y el de tel quedó
+  // vacío), lo reubicamos para no perderlo.
+  if (!tel && cliente && /^[\d\s()+.\-]+$/.test(cliente) && cliente.replace(/\D/g, '').length >= 6) {
+    tel = cliente; cliente = '';
+  }
+  // Si eligió/tipeó un cliente existente sin tocar el teléfono, lo tomamos de la DB.
+  if (cliente && !tel) {
+    const c = getClientDB().find(x => ((x.name || '') + '').trim().toLowerCase() === cliente.toLowerCase());
+    if (c && c.contact) tel = c.contact;
+  }
+  const ubicEl = document.getElementById('agc-note-ubic');
+  const ubic = ubicEl ? (ubicEl.value || '').trim() : '';
   const notes = getNotes();
-  notes.push({
+  const nueva = {
     id: 'n_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-    fecha: _calSel, texto: texto, hecho: false, creadoEn: new Date().toISOString()
-  });
+    fecha: _calSel, texto: texto, hecho: false, creadoEn: new Date().toISOString(),
+    cliente: cliente, tel: tel
+  };
+  if (ubic) nueva.ubic = ubic;
+  notes.push(nueva);
   setNotes(notes);
+  // Si es un contacto nuevo (nombre + teléfono) que todavía no está en la DB de
+  // clientes, lo guardamos para reusarlo — así "importás" a la app un cliente al
+  // que aún no le hiciste presupuesto pero tenés que contactar.
+  if (cliente && tel && typeof saveClientToDB === 'function') {
+    const exists = getClientDB().some(x => ((x.name || '') + '').trim().toLowerCase() === cliente.toLowerCase());
+    if (!exists) saveClientToDB(cliente, tel);
+  }
   inp.value = '';
+  if (cliEl) cliEl.value = '';
+  if (telEl) telEl.value = '';
+  if (ubicEl) ubicEl.value = '';
   renderCal();
   toast('Nota agendada', 'ok');
+}
+// Abre el chat de WhatsApp del contacto vinculado a una nota.
+function calChatNote(id) {
+  const n = getNotes().find(x => x.id === id);
+  if (!n) { toast('No se encontró la nota', 'info', 2500); return; }
+  chatWhatsappPhone(n.tel || '');
+}
+
+// ─── EDICIÓN DE NOTA (modal) ─────────────────────────────────
+// Permite editar el texto de una nota ya creada y agregarle/cambiar el contacto
+// (cliente + teléfono) para el chat directo.
+let _editNoteId = null;
+function calEditNote(id) {
+  const n = getNotes().find(x => x.id === id);
+  if (!n) return;
+  _editNoteId = id;
+  const ov  = document.getElementById('note-edit-overlay');
+  const txt = document.getElementById('agc-edit-text');
+  const cli = document.getElementById('agc-edit-cli');
+  const tel = document.getElementById('agc-edit-tel');
+  const imp = document.getElementById('agc-edit-import');
+  if (!ov || !txt) return;
+  txt.value = n.texto || '';
+  if (cli) cli.value = n.cliente || '';
+  if (tel) tel.value = n.tel || '';
+  const ubicEl = document.getElementById('agc-edit-ubic');
+  if (ubicEl) ubicEl.value = n.ubic || '';
+  if (cli) attachClientDropdown(cli, tel);
+  if (imp) imp.style.display = (typeof contactPickerSupported === 'function' && contactPickerSupported()) ? 'inline-flex' : 'none';
+  ov.classList.add('open');
+  document.addEventListener('keydown', _calNoteEditKey);
+  setTimeout(() => { txt.focus(); }, 50);
+}
+function _calNoteEditKey(e) { if (e.key === 'Escape') calCloseNoteEdit(); }
+function calCloseNoteEdit() {
+  const ov = document.getElementById('note-edit-overlay');
+  if (ov) ov.classList.remove('open');
+  document.removeEventListener('keydown', _calNoteEditKey);
+  _editNoteId = null;
+}
+// Importa un contacto del teléfono hacia los campos del modal de edición.
+function importContactToNoteEdit() {
+  importContactToFields(document.getElementById('agc-edit-cli'), document.getElementById('agc-edit-tel'));
+}
+function calSaveNoteEdit() {
+  if (!_editNoteId) { calCloseNoteEdit(); return; }
+  const txt = document.getElementById('agc-edit-text');
+  const cli = document.getElementById('agc-edit-cli');
+  const tel = document.getElementById('agc-edit-tel');
+  const texto = txt ? (txt.value || '').trim() : '';
+  if (!texto) { toast('La nota no puede quedar vacía', 'info', 2200); return; }
+  let cliente = cli ? (cli.value || '').trim() : '';
+  let telef   = tel ? (tel.value || '').trim() : '';
+  if (!telef && cliente && /^[\d\s()+.\-]+$/.test(cliente) && cliente.replace(/\D/g, '').length >= 6) {
+    telef = cliente; cliente = '';
+  }
+  if (cliente && !telef) {
+    const c = getClientDB().find(x => ((x.name || '') + '').trim().toLowerCase() === cliente.toLowerCase());
+    if (c && c.contact) telef = c.contact;
+  }
+  const ubicEl = document.getElementById('agc-edit-ubic');
+  const ubic = ubicEl ? (ubicEl.value || '').trim() : '';
+  const notes = getNotes();
+  const n = notes.find(x => x.id === _editNoteId);
+  if (!n) { calCloseNoteEdit(); return; }
+  n.texto = texto;
+  n.cliente = cliente;
+  n.tel = telef;
+  if (ubic) n.ubic = ubic; else delete n.ubic;
+  setNotes(notes);
+  // Importar el contacto a la DB de clientes si es nuevo (nombre + teléfono).
+  if (cliente && telef && typeof saveClientToDB === 'function') {
+    const exists = getClientDB().some(x => ((x.name || '') + '').trim().toLowerCase() === cliente.toLowerCase());
+    if (!exists) saveClientToDB(cliente, telef);
+  }
+  calCloseNoteEdit();
+  renderCal();
+  toast('Nota actualizada', 'ok');
 }
 function calToggleNote(id) {
   const notes = getNotes();
@@ -13335,6 +14503,220 @@ function calDeleteNote(id) {
   setNotes(notes);
   renderCal();
   toast('Nota borrada', 'info', 2000);
+}
+
+// ─── COMPARTIR RECORDATORIOS ─────────────────────────────────
+// Arma el texto a compartir de un evento de la Agenda (nota, vencimiento,
+// seguimiento, recontacto o trabajo). Pensado para mandárselo a un compañero
+// por WhatsApp: encabezado con emoji + tipo + fecha, y el detalle abajo.
+function _calShareText(ev) {
+  const EMO = { trabajo: '🌳', recontacto: '📞', vencimiento: '⏰', seguimiento: '🔔', nota: '📝' };
+  const kind = CAL_TIPO_LBL[ev.tipo] || 'Recordatorio';
+  const emo = EMO[ev.tipo] || '📌';
+  let fecha = '';
+  if (ev._iso) {
+    const anio = String(ev._iso).split('-')[0] || '';
+    fecha = _calLongDate(ev._iso) + (anio ? ` de ${anio}` : '');
+  }
+  const lines = [`${emo} ${kind}${fecha ? ' · ' + fecha : ''}`];
+  if (ev.title) lines.push(ev.title);
+  if (ev.sub) lines.push(ev.sub);
+  // Ubicación: si el recordatorio tiene un punto en Maps, se adjunta el link
+  // para que el compañero pueda abrirlo y llegar.
+  if (ev.mapUrl) lines.push(`📍 Ubicación: ${ev.mapUrl}`);
+  return lines.join('\n');
+}
+// Comparte el texto guardado en el data-share del botón (se arma en el render).
+function calShareEvent(btn) {
+  const text = (btn && btn.dataset && btn.dataset.share) || '';
+  if (text) shareText(text);
+}
+// Compartir texto: usa el menú nativo del sistema (Web Share API) si existe —
+// así el usuario elige a quién mandárselo (WhatsApp, etc.). Si no, copia al
+// portapapeles; y como último recurso abre WhatsApp con el selector de contacto.
+async function shareText(text, title) {
+  const data = title ? { title, text } : { text };
+  if (navigator.share) {
+    try { await navigator.share(data); return; }
+    catch (e) { if (e && e.name === 'AbortError') return; /* si falla de verdad, seguimos con el fallback */ }
+  }
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(text);
+      toast('Copiado al portapapeles', 'ok', 2200);
+      return;
+    }
+  } catch (e) { /* sin portapapeles → WhatsApp */ }
+  try { window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank'); }
+  catch (e) { toast('No se pudo compartir', 'info', 2200); }
+}
+
+// ─── UBICACIÓN DE NOTAS ──────────────────────────────────────
+// Mensaje de error de geolocalización según el código (reusable).
+function _geoErrMsg(err) {
+  if (err && err.code === 1) return 'Permiso de ubicación denegado. Activalo en los ajustes del navegador.';
+  if (err && err.code === 2) return 'Ubicación no disponible. Probá al aire libre o con el GPS activado.';
+  if (err && err.code === 3) return 'La búsqueda de ubicación tardó demasiado. Reintentá.';
+  return 'No se pudo obtener la ubicación';
+}
+// GPS → completa el input indicado con las coordenadas actuales (lat,lng).
+// Genérico: lo usan el alta y la edición de notas. Las coordenadas se
+// interpretan igual que un Plus Code en Maps.
+function usarMiUbicacionInput(inputId, btn) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  if (!('geolocation' in navigator)) { toast('Este dispositivo no permite detectar la ubicación', 'err', 4000); return; }
+  const original = btn ? btn.innerHTML : '';
+  if (btn) { btn.disabled = true; btn.innerHTML = '<svg class="ic"><use href="#i-pin"></use></svg> Buscando…'; }
+  const restore = () => { if (btn) { btn.disabled = false; btn.innerHTML = original; } };
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      const lat = pos.coords.latitude.toFixed(6);
+      const lng = pos.coords.longitude.toFixed(6);
+      input.value = `${lat},${lng}`;
+      const exacta = pos.coords.accuracy ? ` (±${Math.round(pos.coords.accuracy)} m)` : '';
+      toast(`Ubicación detectada${exacta}.`, 'ok', 4000);
+      restore();
+    },
+    (err) => { restore(); toast(_geoErrMsg(err), 'err', 5000); },
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+  );
+}
+// Abre en Maps lo que hay cargado en el input de ubicación (para verificar).
+function probarUbicacionInput(inputId) {
+  const v = (document.getElementById(inputId) || {}).value || '';
+  const url = (typeof mapsUrlFor === 'function') ? mapsUrlFor(v, '') : '';
+  if (!url) { toast('Cargá una ubicación para verla en Maps', 'info', 3000); return; }
+  window.open(url, '_blank', 'noopener');
+}
+// Botón de Maps de la tarjeta de nota: abre la ubicación guardada de la nota.
+function calOpenNoteMap(id) {
+  const n = getNotes().find(x => x.id === id);
+  const url = (n && typeof mapsUrlFor === 'function') ? mapsUrlFor((n.ubic || '').trim(), '') : '';
+  if (!url) { toast('Esta nota no tiene ubicación cargada', 'info', 3000); return; }
+  window.open(url, '_blank', 'noopener');
+}
+
+// Borrado con opción de deshacer (lo usa el deslizamiento, más fácil de gatillar
+// por accidente que un botón). Guarda la nota y ofrece restaurarla por unos
+// segundos con un toast accionable.
+function calDeleteNoteUndoable(id) {
+  const notes = getNotes();
+  const idx = notes.findIndex(x => x.id === id);
+  if (idx < 0) return;
+  const removed = notes[idx];
+  notes.splice(idx, 1);
+  setNotes(notes);
+  renderCal();
+  _toastUndo('Nota borrada', () => {
+    const cur = getNotes();
+    if (!cur.some(x => x.id === removed.id)) {
+      cur.push(removed);
+      setNotes(cur);
+      renderCal();
+      toast('Nota restaurada', 'ok', 1600);
+    }
+  });
+}
+
+// Toast con botón "Deshacer" (reusa el estilo de toast-action).
+function _toastUndo(msg, onUndo, dur = 6000) {
+  const c = document.getElementById('toast-container');
+  if (!c) { toast(msg, 'info', 2000); return; }
+  const el = document.createElement('div');
+  el.className = 'toast toast-info toast-action';
+  el.innerHTML = `<span>${esc(msg)}</span><button type="button" class="toast-btn">Deshacer</button>`;
+  c.appendChild(el);
+  requestAnimationFrame(() => { requestAnimationFrame(() => el.classList.add('show')); });
+  const close = () => { el.classList.remove('show'); setTimeout(() => el.remove(), 300); };
+  el.querySelector('.toast-btn').onclick = () => { try { onUndo && onUndo(); } finally { close(); } };
+  setTimeout(close, dur);
+}
+
+// ─── DESLIZAR NOTAS (estilo Gmail) ───────────────────────────
+// Deslizar una tarjeta de nota a la DERECHA la marca hecha/pendiente; a la
+// IZQUIERDA la elimina (con deshacer). Se engancha una sola vez a nivel de
+// documento (delegación) para sobrevivir a los re-render de renderCal.
+let _swState = null;
+function _calInitSwipe() {
+  if (_calInitSwipe._done) return;
+  _calInitSwipe._done = true;
+  document.addEventListener('pointerdown', _swDown, { passive: true });
+  document.addEventListener('pointermove', _swMove, { passive: false });
+  document.addEventListener('pointerup', _swUp, { passive: true });
+  document.addEventListener('pointercancel', _swEnd, { passive: true });
+}
+function _swReset(wrap, fg) {
+  if (fg) { fg.style.transition = ''; fg.style.transform = ''; }
+  if (wrap) {
+    wrap.classList.remove('agc-swipe-ready');
+    wrap.querySelectorAll('.agc-swipe-bg').forEach(b => { b.style.opacity = ''; });
+  }
+}
+function _swDown(e) {
+  if (e.pointerType === 'mouse' && e.button !== 0) return;
+  const fg = e.target.closest && e.target.closest('.agc-swipe-fg');
+  if (!fg) return;
+  const wrap = fg.parentNode;
+  _swState = {
+    fg, wrap, id: wrap.getAttribute('data-note-id'),
+    startX: e.clientX, startY: e.clientY, dx: 0, w: fg.offsetWidth,
+    commit: 0, swiping: false
+  };
+}
+function _swMove(e) {
+  const s = _swState;
+  if (!s) return;
+  const dx = e.clientX - s.startX;
+  const dy = e.clientY - s.startY;
+  if (!s.swiping) {
+    if (Math.abs(dx) < 10) return;
+    if (Math.abs(dx) <= Math.abs(dy)) { _swState = null; return; } // gesto vertical → dejar scrollear
+    s.swiping = true;
+    s.commit = Math.min(Math.max(s.w * 0.35, 72), 170);
+    s.fg.style.transition = '';
+  }
+  e.preventDefault();
+  s.dx = dx;
+  s.fg.style.transform = `translateX(${dx}px)`;
+  const ratio = Math.min(Math.abs(dx) / s.commit, 1);
+  const done = s.wrap.querySelector('.agc-swipe-done');
+  const del  = s.wrap.querySelector('.agc-swipe-del');
+  if (done) done.style.opacity = dx > 0 ? String(0.45 + 0.55 * ratio) : '0';
+  if (del)  del.style.opacity  = dx < 0 ? String(0.45 + 0.55 * ratio) : '0';
+  s.wrap.classList.toggle('agc-swipe-ready', Math.abs(dx) >= s.commit);
+}
+function _swUp() {
+  const s = _swState;
+  _swState = null;
+  if (!s || !s.swiping) return;
+  // Cancelar el "click" que dispara el navegador al soltar tras deslizar, para
+  // que no se abra por accidente el botón que quedó debajo del dedo.
+  const kill = ev => { ev.stopPropagation(); ev.preventDefault(); };
+  document.addEventListener('click', kill, { capture: true, once: true });
+  setTimeout(() => document.removeEventListener('click', kill, true), 400);
+  if (Math.abs(s.dx) >= s.commit) {
+    const dir = s.dx > 0 ? 1 : -1;
+    s.fg.style.transition = 'transform .18s ease';
+    s.fg.style.transform = `translateX(${dir * s.fg.offsetWidth}px)`;
+    const id = s.id;   // string 'n_...' — mismo formato que usan los onclick
+    setTimeout(() => {
+      if (dir > 0) calToggleNote(id);
+      else calDeleteNoteUndoable(id);
+    }, 160);
+  } else {
+    s.fg.style.transition = 'transform .18s ease';
+    s.fg.style.transform = 'translateX(0)';
+    setTimeout(() => _swReset(s.wrap, s.fg), 200);
+  }
+}
+function _swEnd() {
+  const s = _swState;
+  _swState = null;
+  if (!s || !s.swiping) return;
+  s.fg.style.transition = 'transform .18s ease';
+  s.fg.style.transform = 'translateX(0)';
+  setTimeout(() => _swReset(s.wrap, s.fg), 200);
 }
 
 // Cuenta cuántos eventos de tipo "trabajo" hay en un array de eventos del día.
@@ -13556,8 +14938,18 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (_h.length) requestPersistentStorage();
   }
 
-  // Copia de seguridad en Google Drive (inerte si no está configurada).
-  if (typeof gdriveInitOnLoad === 'function') gdriveInitOnLoad();
+  // Copia de seguridad en Google Drive / sync de Calendar (inertes si no están
+  // configuradas). Se DIFIEREN para que no compitan con el primer render: la
+  // app queda usable al instante y Google se acomoda cuando el hilo principal
+  // está libre. Así, aun cuando la pestaña se recargó al volver de segundo
+  // plano, la reapertura se siente inmediata y el sync ocurre invisible detrás.
+  const _deferIdle = (typeof requestIdleCallback === 'function')
+    ? (fn) => requestIdleCallback(fn, { timeout: 3000 })
+    : (fn) => setTimeout(fn, 800);
+  _deferIdle(() => {
+    if (typeof gdriveInitOnLoad === 'function') gdriveInitOnLoad();
+    if (typeof gcalInitOnLoad === 'function') gcalInitOnLoad();
+  });
   // Notificaciones push (inerte si no está configurado el Worker).
   if (typeof initPush === 'function') initPush();
   // Al pasar la app a segundo plano, subir cambios pendientes de inmediato
@@ -13588,7 +14980,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         GDRIVE._dirty && navigator.onLine !== false &&
         gdriveConfigured() && gdriveConnected()) {
       clearTimeout(GDRIVE._timer);
-      gdriveUpload().catch(() => {});
+      _gWithAuthRetry(gdriveInvalidateToken, gdriveUpload).catch(() => {});
     }
   });
   // pagehide cubre el cierre real de la pestaña/app (y el bfcache), donde
@@ -13600,7 +14992,13 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (typeof GDRIVE !== 'undefined' && GDRIVE._dirty &&
         gdriveConfigured() && gdriveConnected()) {
       clearTimeout(GDRIVE._timer);
-      gdriveUpload().then(gdriveUpdateUI).catch(() => {});
+      _gWithAuthRetry(gdriveInvalidateToken, gdriveUpload).then(gdriveUpdateUI).catch(() => {});
+    }
+    // Al volver la señal, subir la sync de Calendar que haya quedado pendiente.
+    if (typeof GCAL !== 'undefined' && GCAL._dirty &&
+        gcalConfigured() && gcalConnected()) {
+      clearTimeout(GCAL._timer);
+      _gWithAuthRetry(gcalInvalidateToken, gcalSync).then(gcalUpdateUI).catch(() => {});
     }
     // Al volver la señal, re-sincronizar los seguimientos del Worker de push.
     if (typeof syncPushFollowups === 'function' && S.pushEnabled) syncPushFollowups().catch(() => {});

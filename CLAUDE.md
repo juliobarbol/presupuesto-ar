@@ -15,7 +15,7 @@
 
 ## Estructura de archivos
 - `index.html` — **toda la app** (markup + `<style>` + `<script>`).
-- `sw.js` — Service Worker (offline + actualizaciones). **`CACHE_VERSION` actual: `presupuesto-v135`**.
+- `sw.js` — Service Worker (offline + actualizaciones). **`CACHE_VERSION` actual: `presupuesto-v154`**.
 - `manifest.webmanifest`, `*.png` — PWA (instalación, iconos).
 - `push-worker/` — Cloudflare Worker **opcional** para notificaciones push de seguimiento (avisos con la app cerrada). No es parte del PWA shell; se despliega aparte. Ver `docs/push-setup.md`. La app es inerte a esto hasta rellenar `PUSH_WORKER_URL` / `PUSH_VAPID_KEY` en `index.html`.
 
@@ -63,6 +63,12 @@ El CSS vive en el `<style>` (líneas ~16–1711). Hay dos bloques de estilos del
 - El listener `window.addEventListener('online', …)` sube lo pendiente al volver la conexión.
 - Al desconectar (`gdriveDisconnect`) se borra también `LS.GDRIVE_EMAIL`.
 
+## Módulo GCAL (sincronizar la Agenda con Google Calendar)
+- Empuja **una sola vía** (app → Google) todo lo de `calBuildIndex()` (los 5 tipos, de hoy en adelante) a un calendario propio **"Presupuestos AR"**. Reusa el OAuth de Google (mismo `GDRIVE.CLIENT_ID` y `loadGIS()`) con **su propio token client** y el scope mínimo **`calendar.app.created`** (+ `openid email` para recordar la cuenta). Corre como el auto-backup de Drive: al abrir (`gcalInitOnLoad`, silencioso) y con retardo tras cada cambio (`scheduleGcalSync`, enganchado en `setH` y `setNotes`), solo con señal. **Nunca pide token al abrir con UI.**
+- **Idempotencia:** cada evento lleva `extendedProperties.private.pqKey` (clave estable estilo UID del `.ics`) + `pqHash`. `gcalSync()` lista lo que hay, reconstruye el estado desde el servidor y hace el diff (insert / patch si cambió el hash / delete si ya no está). Sin ledger local frágil → auto-reparable entre dispositivos.
+- `LS.GCAL_ID` (el calendarId) va en el backup (`buildBackupObject`/`applyBackupObject`) para no duplicar el calendario tras un restore.
+- **Prerequisito del dueño (una vez):** habilitar la **Google Calendar API** en el proyecto del Client ID y agregar el scope `calendar.app.created` a la pantalla de consentimiento. Sin eso, "Conectar" da error.
+
 ## Flujo de despliegue (SEGUIR SIEMPRE)
 
 > **Para desplegar cualquier cambio a producción: mergear la rama de trabajo a
@@ -71,7 +77,7 @@ El CSS vive en el `<style>` (líneas ~16–1711). Hay dos bloques de estilos del
 > versión nueva la próxima vez que abran la app con conexión.
 
 1. Desarrollar en la rama de trabajo (`claude/...`), no en `main`.
-2. **Subir `CACHE_VERSION` en `sw.js`** en cada cambio que se despliegue (si no, los dispositivos siguen con la versión vieja en caché). Formato: `presupuesto-vNN`. **Versión actual: v135**.
+2. **Subir `CACHE_VERSION` en `sw.js`** en cada cambio que se despliegue (si no, los dispositivos siguen con la versión vieja en caché). Formato: `presupuesto-vNN`. **Versión actual: v154**.
 3. Si agregás un archivo nuevo (ej. otro `.js` o `.css`), **agregarlo a `APP_SHELL` en `sw.js`** o se rompe el offline.
 4. **Mergear a `main`** → Cloudflare despliega solo.
 
