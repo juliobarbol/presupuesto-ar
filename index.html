@@ -1576,6 +1576,15 @@ input[type=number]{-moz-appearance:textfield}
 :root[data-theme="dark"] .agc-ev-note{color:#fde68a}
 :root[data-theme="dark"] .agc-ev-note>.ic{color:#fbbf24}
 :root[data-theme="dark"] .agc-ev-note b{color:#fef3c7}
+/* Chip de clima (pronóstico del día del trabajo): en la tarjeta de evento de
+   la Agenda, el banner de podas de hoy y el pop-up del día. La variante -rain
+   se pinta en ámbar/rojo para que el aviso de lluvia salte a la vista. */
+.clima-chip{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:600;color:var(--muted);background:var(--surface-2);border:1px solid var(--border);border-radius:99px;padding:2px 8px;line-height:1.35;white-space:nowrap;max-width:100%}
+.clima-chip .clima-emoji{font-size:13px;line-height:1}
+.clima-chip.clima-rain{color:#b45309;background:#fef3c7;border-color:#fcd34d}
+:root[data-theme="dark"] .clima-chip.clima-rain{color:#fcd34d;background:rgba(251,191,36,.12);border-color:rgba(251,191,36,.4)}
+.agc-ev-body .clima-chip{margin-top:4px}
+.da-item .clima-chip{align-self:flex-start}
 .agc-ev-acts{display:flex;flex-flow:row wrap;gap:7px;flex-shrink:0;justify-content:flex-end;align-content:flex-start}
 .agc-ev-btn{width:42px;height:42px;display:inline-flex;align-items:center;justify-content:center;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-field);cursor:pointer;color:var(--muted);padding:0}
 .agc-ev-btn .ic{width:19px;height:19px}
@@ -4024,6 +4033,8 @@ const LS = {
   DAY_ALERT_SEEN: 'pq_day_alert_seen',
   NOTES:          'pq_agenda_notes',
   CAL_VIEW:       'pq_cal_view',
+  CLIMA:          'pq_clima',
+  CLIMA_WARN:     'pq_clima_warn',
 };
 
 // Notificaciones push (avisos de seguimiento con la app cerrada). Ambos se
@@ -9130,6 +9141,9 @@ function agendaSave() {
   if (!e) return;
   if (rec) toast(e.recontactoEn ? `Recontacto agendado: ${fmtDiaCorto(e.recontactoEn)}` : 'Recontacto quitado', 'ok');
   else     toast(_agendaTrabajoToast(e), 'ok');
+  // Trabajo recién agendado: bajar el pronóstico ya (y avisar si viene lluvia)
+  // sin esperar la próxima apertura de la app.
+  if (!rec && typeof climaRefresh === 'function') climaRefresh();
 }
 
 // "Quitar fecha" (visible solo en recontacto): vacía el recontacto y guarda.
@@ -10176,11 +10190,13 @@ function renderMorningBanner() {
         const tieneTel  = !!histClientPhone(e);
         const lugar = (snap.workAddress || '').trim();
         const dinfo = agDiaDeHoyInfo(e); // "Día 2 de 4" en trabajos multi-día
+        const clima = (typeof climaDe === 'function') ? climaChipHTML(climaDe(e, today())) : '';
         return `<div class="fub-item">
           <div class="fub-item-info" onclick="goToHistoryEntry(${e.id})" role="button" tabindex="0" title="Ver este presupuesto en el historial">
             <span><span class="fub-item-num">${esc(e.quoteNumber||'—')}</span> <span class="fub-item-client">${esc(e.clientName||'(sin nombre)')}</span></span>
             ${dinfo ? `<span class="fub-item-days">${icon('calendar')} Día ${dinfo.idx} de ${dinfo.total}</span>` : ''}
             ${lugar ? `<span class="fub-item-days">${icon('pin')} ${esc(lugar)}</span>` : ''}
+            ${clima ? `<span>${clima}</span>` : ''}
           </div>
           <div class="mb-acts">
             ${tieneUbic ? `<button type="button" class="mb-act mb-act-map" onclick="comoLlegar(${e.id})">${icon('pin')} Cómo llegar</button>` : ''}
@@ -10297,10 +10313,12 @@ function renderDayAlert(hoy) {
         const snap = e.snapshot || {};
         const lugar = (snap.workAddress || '').trim();
         const dinfo = agDiaDeHoyInfo(e);
+        const clima = (typeof climaDe === 'function') ? climaChipHTML(climaDe(e, today())) : '';
         return `<button type="button" class="da-item" onclick="dayAlertGoTo(${e.id})">
           <span class="da-item-top"><span class="da-item-num">${esc(e.quoteNumber || '—')}</span> <span class="da-item-client">${esc(e.clientName || '(sin nombre)')}</span></span>
           ${dinfo ? `<span class="da-item-meta">${icon('calendar')} Día ${dinfo.idx} de ${dinfo.total}</span>` : ''}
           ${lugar ? `<span class="da-item-meta">${icon('pin')} ${esc(lugar)}</span>` : ''}
+          ${clima}
           ${_dayAlertNotesHTML(snap)}
         </button>`;
       }).join('')}
@@ -13855,6 +13873,209 @@ function mapaArmarRuta() {
   window.open(url, '_blank', 'noopener');
 }
 
+// ===== js/clima.js =====
+// ═══════════════════════════════════════════════════════════════════════════
+// CLIMA.JS — Pronóstico del tiempo para los trabajos agendados.
+//
+// Fuente: Open-Meteo (https://open-meteo.com) — gratuita, sin API key, con
+// CORS abierto. Se pide el pronóstico DIARIO (código de tiempo, probabilidad
+// y milímetros de lluvia, temperaturas y viento) para la ubicación de cada
+// trabajo agendado de los próximos días.
+//
+// Coordenadas: se resuelven con la misma plomería del mapa (entryLatLng:
+// pin manual → "lat,lng" → Plus Code). Si el trabajo no tiene ubicación, se
+// usa el centroide de la zona del usuario (_mapaComputeGeoRef). Como el
+// pronóstico es a escala de ciudad, las ubicaciones se agrupan redondeando
+// a ~1 km: en la práctica es UNA sola llamada por refresco.
+//
+// Cache en LS.CLIMA (pq_clima): { "lat,lng": { at, days: { iso: {...} } } }.
+// TTL 3 h. Sin conexión no se intenta nada y se sirve lo último cacheado
+// (offline-first: el chip muestra el pronóstico viejo antes que nada).
+//
+// Aviso de lluvia: al refrescar, si hay lluvia pronosticada para un trabajo
+// de HOY o MAÑANA salta un toast bien visible. Se avisa una vez por día por
+// trabajo (gate en LS.CLIMA_WARN) para no ser pesado.
+
+const CLIMA = {
+  TTL_MS: 3 * 60 * 60 * 1000,  // refrescar como mucho cada 3 h
+  MAX_DAYS: 14,                // horizonte útil del pronóstico diario
+  _fetching: false,
+};
+
+function _climaCache() {
+  try { return JSON.parse(localStorage.getItem(LS.CLIMA) || '{}') || {}; }
+  catch (_) { return {}; }
+}
+
+// Agrupar ubicaciones a ~1 km (2 decimales): el pronóstico no cambia a esa
+// escala y así casi siempre alcanza con una sola llamada a la API.
+function _climaKey(ll) { return ll[0].toFixed(2) + ',' + ll[1].toFixed(2); }
+
+// Coordenadas para el clima de un trabajo: las del trabajo si las tiene,
+// si no el centroide de la zona (todos los trabajos de un podador caen en
+// la misma zona). null si no hay forma de ubicar nada todavía.
+function _climaLatLngDe(e) {
+  const propia = (typeof entryLatLng === 'function') ? entryLatLng(e) : null;
+  if (propia) return propia;
+  if (!_mapaGeoRef && typeof _mapaComputeGeoRef === 'function') _mapaGeoRef = _mapaComputeGeoRef();
+  return _mapaGeoRef;
+}
+
+// Trabajos agendados (aceptados) con días dentro del horizonte del
+// pronóstico: [{ e, fechas: [iso...] }].
+function _climaProximosTrabajos() {
+  const hoy = today();
+  const lim = _calAddDays(hoy, CLIMA.MAX_DAYS);
+  const out = [];
+  getH().forEach(e => {
+    if ((e.estado || '') !== 'aceptado') return;
+    const fechas = agFechas(e).filter(f => f >= hoy && f <= lim);
+    if (fechas.length) out.push({ e, fechas });
+  });
+  return out;
+}
+
+// Refresco (silencioso): baja el pronóstico de las zonas con trabajos
+// agendados que no estén frescas en cache, avisa si viene lluvia y repinta
+// lo que muestra clima. No hace nada sin conexión o sin trabajos próximos.
+async function climaRefresh() {
+  if (CLIMA._fetching || navigator.onLine === false) return;
+  const trabajos = _climaProximosTrabajos();
+  if (!trabajos.length) return;
+
+  const cache = _climaCache();
+  const keys = {};
+  trabajos.forEach(t => {
+    const ll = _climaLatLngDe(t.e);
+    if (ll) keys[_climaKey(ll)] = ll;
+  });
+  const ahora = Date.now();
+  const pendientes = Object.keys(keys)
+    .filter(k => !cache[k] || !cache[k].at || (ahora - cache[k].at) > CLIMA.TTL_MS);
+  if (!pendientes.length) { _climaAvisarLluvia(); return; }
+
+  CLIMA._fetching = true;
+  let cambio = false;
+  try {
+    for (const k of pendientes) {
+      const [lat, lng] = keys[k];
+      try {
+        const url = 'https://api.open-meteo.com/v1/forecast'
+          + `?latitude=${lat.toFixed(4)}&longitude=${lng.toFixed(4)}`
+          + '&daily=weather_code,precipitation_probability_max,precipitation_sum,temperature_2m_max,temperature_2m_min,wind_speed_10m_max'
+          + '&timezone=auto&forecast_days=16';
+        const res = await fetch(url);
+        if (!res.ok) continue;
+        const j = await res.json();
+        const d = j && j.daily;
+        if (!d || !Array.isArray(d.time)) continue;
+        const days = {};
+        d.time.forEach((iso, i) => {
+          days[iso] = {
+            code: d.weather_code?.[i] ?? null,
+            pp:   d.precipitation_probability_max?.[i] ?? null, // % probabilidad
+            mm:   d.precipitation_sum?.[i] ?? null,             // milímetros
+            tmax: d.temperature_2m_max?.[i] ?? null,
+            tmin: d.temperature_2m_min?.[i] ?? null,
+            wind: d.wind_speed_10m_max?.[i] ?? null,            // km/h
+          };
+        });
+        cache[k] = { at: ahora, days };
+        cambio = true;
+      } catch (_) { /* sin señal o API caída: se sirve lo cacheado */ }
+    }
+    // Podar zonas que ya no tienen trabajos (no acumular basura en la cuota).
+    Object.keys(cache).forEach(k => { if (!keys[k]) { delete cache[k]; cambio = true; } });
+    if (cambio) safeSetLS(LS.CLIMA, JSON.stringify(cache));
+  } finally {
+    CLIMA._fetching = false;
+  }
+
+  _climaAvisarLluvia();
+  if (cambio) {
+    // Repintar lo que muestra clima con el dato fresco.
+    try { if (typeof renderCal === 'function') renderCal(); } catch (_) {}
+    try { if (typeof renderMorningBanner === 'function') renderMorningBanner(); } catch (_) {}
+  }
+}
+
+// Pronóstico cacheado para un trabajo en una fecha, o null si no hay.
+function climaDe(e, iso) {
+  const ll = _climaLatLngDe(e);
+  if (!ll) return null;
+  const z = _climaCache()[_climaKey(ll)];
+  return (z && z.days && z.days[iso]) || null;
+}
+
+// ¿El pronóstico amerita aviso de lluvia? Probabilidad alta, milímetros
+// apreciables o código WMO de lluvia/chaparrón/tormenta.
+function climaEsLluvia(d) {
+  if (!d) return false;
+  const c = d.code;
+  const codLluvia = c != null && ((c >= 51 && c <= 67) || (c >= 80 && c <= 82) || c >= 95);
+  return (d.pp != null && d.pp >= 50) || (d.mm != null && d.mm >= 2) || codLluvia;
+}
+
+// Código WMO → emoji + descripción corta (es-AR).
+function _climaEmojiDesc(c) {
+  if (c == null)          return ['🌡️', 'Pronóstico'];
+  if (c === 0)            return ['☀️', 'Despejado'];
+  if (c <= 2)             return ['🌤️', 'Algo nublado'];
+  if (c === 3)            return ['☁️', 'Nublado'];
+  if (c === 45 || c === 48) return ['🌫️', 'Niebla'];
+  if (c <= 57)            return ['🌦️', 'Llovizna'];
+  if (c <= 67)            return ['🌧️', 'Lluvia'];
+  if (c <= 77)            return ['🌨️', 'Nieve'];
+  if (c <= 82)            return ['🌧️', 'Chaparrones'];
+  if (c <= 86)            return ['🌨️', 'Nieve'];
+  return ['⛈️', 'Tormenta'];
+}
+
+// Chip HTML con el pronóstico de un día (para la Agenda / banners), '' si
+// no hay dato cacheado. Con lluvia se pinta en ámbar y muestra prob. y mm.
+function climaChipHTML(d) {
+  if (!d) return '';
+  const [emoji, desc] = _climaEmojiDesc(d.code);
+  const lluvia = climaEsLluvia(d);
+  const temp = (d.tmax != null) ? ` ${Math.round(d.tmax)}°` : '';
+  const lluviaTxt = lluvia
+    ? ` · lluvia${d.pp != null ? ` ${Math.round(d.pp)}%` : ''}${d.mm ? ` (${Math.round(d.mm)} mm)` : ''}`
+    : '';
+  const title = `${desc}${temp ? `, máx${temp}` : ''}`
+    + `${d.tmin != null ? ` / mín ${Math.round(d.tmin)}°` : ''}`
+    + `${d.pp != null ? ` · prob. de lluvia ${Math.round(d.pp)}%` : ''}`
+    + `${d.wind != null ? ` · viento ${Math.round(d.wind)} km/h` : ''}`;
+  return `<span class="clima-chip${lluvia ? ' clima-rain' : ''}" title="${esc(title)}">`
+       + `<span class="clima-emoji">${emoji}</span>${esc(desc)}${temp}${lluviaTxt}</span>`;
+}
+
+// Aviso de lluvia para trabajos de HOY o MAÑANA: toast prominente, una vez
+// por día por trabajo (gate en LS.CLIMA_WARN = { "entryId|fecha": "avisadoEl" }).
+function _climaAvisarLluvia() {
+  const hoy = today();
+  const man = _calAddDays(hoy, 1);
+  let gate = {};
+  try { gate = JSON.parse(localStorage.getItem(LS.CLIMA_WARN) || '{}') || {}; } catch (_) {}
+  let cambio = false;
+  // Podar avisos de fechas ya pasadas.
+  Object.keys(gate).forEach(k => { if ((k.split('|')[1] || '') < hoy) { delete gate[k]; cambio = true; } });
+
+  _climaProximosTrabajos().forEach(t => {
+    t.fechas.filter(f => f === hoy || f === man).forEach(f => {
+      const d = climaDe(t.e, f);
+      if (!climaEsLluvia(d)) return;
+      const k = `${t.e.id}|${f}`;
+      if (gate[k] === hoy) return;         // ya avisado hoy
+      gate[k] = hoy; cambio = true;
+      const quien = (t.e.clientName || '').trim() || 'sin nombre';
+      const cuando = f === hoy ? 'HOY' : 'MAÑANA';
+      const det = `${d.pp != null ? `${Math.round(d.pp)}% prob.` : ''}${d.mm ? ` · ${Math.round(d.mm)} mm` : ''}`;
+      toast(`⛈️ Ojo: pronostican lluvia para ${cuando} y tenés la poda de ${quien}${det ? ` (${det})` : ''}. Revisá la Agenda por si hay que reprogramar.`, 'err', 9000);
+    });
+  });
+  if (cambio) { try { localStorage.setItem(LS.CLIMA_WARN, JSON.stringify(gate)); } catch (_) {} }
+}
+
 // ===== js/calendar.js =====
 // ═══════════════════════════════════════════════════════════════════════════
 // CALENDAR.JS — Pestaña "Agenda": vista de calendario (mes) que superpone TODO
@@ -13958,7 +14179,9 @@ function calBuildIndex() {
       const notas = (typeof snapshotIntNotes === 'function') ? snapshotIntNotes(e.snapshot) : [];
       fechas.forEach((f, i) => {
         const dnum = total > 1 ? ` · día ${i + 1} de ${total}` : '';
-        push(f, { tipo: 'trabajo', title: quien, sub: (num ? num : '') + dnum, entryId: e.id, tel, mapUrl, notes: notas });
+        // Pronóstico del día del trabajo (cache local; null si no hay dato).
+        const clima = (typeof climaDe === 'function') ? climaDe(e, f) : null;
+        push(f, { tipo: 'trabajo', title: quien, sub: (num ? num : '') + dnum, entryId: e.id, tel, mapUrl, notes: notas, clima });
       });
     }
 
@@ -14246,12 +14469,15 @@ function _calEvHTML(ev, dateLabel) {
         `<span class="agc-ev-note">${icon('bulb')}<span class="agc-ev-note-tx">${nn.label ? `<b>${esc(nn.label)}:</b> ` : ''}${esc(nn.text)}</span></span>`
       ).join('')}</div>`
     : '';
+  // Pronóstico del día (solo eventos de trabajo con dato cacheado).
+  const climaHtml = (ev.clima && typeof climaChipHTML === 'function') ? climaChipHTML(ev.clima) : '';
   const card = `<div class="agc-ev t-${ev.tipo}${ev.done ? ' done' : ''}">
     <span class="agc-ev-bar"></span>
     <div class="agc-ev-body">
       <span class="agc-ev-kind">${kindTxt}</span>
       <div class="agc-ev-title">${esc(ev.title)}</div>
       ${sub}
+      ${climaHtml}
       ${notesHtml}
     </div>
     <div class="agc-ev-acts">${acts}</div>
@@ -14967,6 +15193,10 @@ window.addEventListener('DOMContentLoaded', async () => {
   // día al abrir, si hay trabajos agendados para hoy.
   if (typeof maybeShowMorningBanner === 'function') maybeShowMorningBanner();
 
+  // Clima: bajar el pronóstico de los días con trabajos agendados (silencioso,
+  // solo con señal) y avisar si viene lluvia para una poda de hoy o mañana.
+  if (typeof climaRefresh === 'function') climaRefresh();
+
   // Importar de contactos: mostrar el botón solo si el dispositivo soporta
   // la Contact Picker API (Chrome Android sobre HTTPS).
   if (typeof initContactPicker === 'function') initContactPicker();
@@ -15029,10 +15259,12 @@ window.addEventListener('DOMContentLoaded', async () => {
   });
   // Al volver del segundo plano (p. ej. la app quedó abierta de un día para
   // otro): si no hay nada en edición, poner la fecha de emisión en HOY para
-  // que un borrador vacío no arranque con la fecha de ayer.
+  // que un borrador vacío no arranque con la fecha de ayer. Y refrescar el
+  // pronóstico (tiene TTL propio: no golpea la API en cada vuelta).
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState !== 'visible') return;
     refreshIssueDateIfBlank();
+    if (typeof climaRefresh === 'function') climaRefresh();
   });
   // pagehide cubre el cierre real de la pestaña/app (y el bfcache), donde
   // visibilitychange a veces no llega a tiempo.
