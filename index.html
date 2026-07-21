@@ -1358,6 +1358,10 @@ input[type=number]{-moz-appearance:textfield}
 .mb-stat{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:#065f46;background:var(--card);border:1px solid #a7f3d0;border-radius:var(--radius-field);padding:6px 11px}
 .mb-stat b{font-weight:800}
 .mb-stat .ic{width:15px;height:15px}
+/* Recomendaciones del día (clima): chips ámbar arriba del banner de hoy. */
+.mb-recos{display:flex;flex-wrap:wrap;gap:8px;margin:2px 0 12px}
+.mb-reco{display:inline-flex;align-items:center;font-size:12.5px;font-weight:600;color:#b45309;background:#fef3c7;border:1px solid #fcd34d;border-radius:var(--radius-field);padding:6px 11px;line-height:1.3}
+:root[data-theme="dark"] .mb-reco{color:#fcd34d;background:rgba(251,191,36,.12);border-color:rgba(251,191,36,.4)}
 .mb-close{flex-shrink:0;width:30px;height:30px;border-radius:var(--radius-field);border:none;background:transparent;color:#047857;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
 .mb-close:active{background:rgba(4,120,87,.12)}
 .mb-close .ic{width:16px;height:16px}
@@ -1592,6 +1596,26 @@ input[type=number]{-moz-appearance:textfield}
    gana el ámbar de lluvia (el UV igual queda en el texto del chip). */
 .clima-chip.clima-uv{color:#c2410c;background:#ffedd5;border-color:#fdba74}
 :root[data-theme="dark"] .clima-chip.clima-uv{color:#fdba74;background:rgba(251,146,60,.12);border-color:rgba(251,146,60,.4)}
+/* Viento fuerte (ráfaga ≥ umbral): rosa/rojo "peligro en altura". Solo pinta
+   el chip si no llueve (la lluvia gana el color; el viento queda en el texto). */
+.clima-chip.clima-wind{color:#be123c;background:#ffe4e6;border-color:#fda4af}
+:root[data-theme="dark"] .clima-chip.clima-wind{color:#fda4af;background:rgba(244,63,94,.12);border-color:rgba(244,63,94,.4)}
+/* Tira de pronóstico de 7 días en el diálogo de agendar (idea: elegir un buen
+   día). Cada celda = día tocable con emoji + temperatura; los días con lluvia
+   o viento fuerte se tiñen de ámbar. */
+.agenda-clima-strip{display:flex;gap:6px;overflow-x:auto;padding:2px 0 4px;-webkit-overflow-scrolling:touch}
+.agenda-clima-day{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:46px;padding:6px 4px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-field);cursor:pointer;font-family:'DM Sans',sans-serif}
+.agenda-clima-day .acd-wd{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase}
+.agenda-clima-day .acd-em{font-size:17px;line-height:1}
+.agenda-clima-day .acd-t{font-size:11px;font-weight:600;color:var(--text)}
+.agenda-clima-day.mal{background:#fef3c7;border-color:#fcd34d}
+.agenda-clima-day.mal .acd-wd{color:#b45309}
+:root[data-theme="dark"] .agenda-clima-day.mal{background:rgba(251,191,36,.12);border-color:rgba(251,191,36,.4)}
+.agenda-clima-day.sel{outline:2px solid var(--accent);outline-offset:0}
+.agenda-clima-day.elegido{border-color:var(--accent);border-width:2px}
+.agenda-clima-sel{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;margin-top:2px;font-size:12px}
+.agenda-clima-sel .acd-warn{color:var(--muted);line-height:1.35}
+.agenda-clima-hint{font-size:11.5px;color:var(--muted);margin:0 0 4px}
 .agc-ev-body .clima-chip{margin-top:4px}
 .da-item .clima-chip{align-self:flex-start}
 .agc-ev-acts{display:flex;flex-flow:row wrap;gap:7px;flex-shrink:0;justify-content:flex-end;align-content:flex-start}
@@ -3902,6 +3926,14 @@ input[type=number]{-moz-appearance:textfield}
         <input type="date" id="agenda-fecha" aria-label="Fecha" oninput="agendaOnDateChange()">
         <button type="button" class="btn btn-g btn-sm" id="agenda-add-dia" onclick="agendaAddDia()" hidden>Agregar día</button>
       </div>
+    </div>
+    <!-- Pronóstico de los próximos días (idea 1): elegir un buen día antes de
+         agendar. Solo en modo trabajo y si hay datos; lo rellena agendaClimaRender. -->
+    <div class="fg" id="agenda-clima-wrap" hidden>
+      <label>Pronóstico de la zona</label>
+      <p class="agenda-clima-hint">Tocá un día para elegirlo. Los días en ámbar tienen lluvia o viento fuerte.</p>
+      <div class="agenda-clima-strip" id="agenda-clima-strip"></div>
+      <p class="agenda-clima-sel" id="agenda-clima-sel" hidden></p>
     </div>
     <div class="fg" id="agenda-nota-wrap" hidden>
       <label for="agenda-nota">Nota (opcional)</label>
@@ -8941,6 +8973,9 @@ function openAgendaDlg(id, opts) {
   if (ca) ca.textContent = _agendaFromAccept ? 'Todavía no sé' : 'Cancelar';
   setAgendaMode((opts && opts.mode) || 'trabajo');
   ov.classList.add('open');
+  // Pronóstico de la zona para elegir un buen día (idea 1): baja el clima de
+  // este trabajo aunque no esté aceptado y repinta la tira al terminar.
+  if (typeof climaEnsureZona === 'function') climaEnsureZona(e, () => { try { agendaClimaRender(); } catch (_) {} });
 }
 
 // Alterna entre "Fecha del trabajo" (multi-día) y "Recontactar": actualiza
@@ -9084,6 +9119,8 @@ function agendaOnDateChange() {
   } else {
     warn.hidden = true;
   }
+  // Repintar la tira de clima (resalta el día elegido + su detalle).
+  if (typeof agendaClimaRender === 'function') agendaClimaRender();
 }
 
 // Persiste el modo activo en el entry. En trabajo escribe e.fechasTrabajo
@@ -10184,6 +10221,15 @@ function renderMorningBanner() {
 
   const { summaryHtml: summary } = _resumenDelDia(hoy);
 
+  // Recomendaciones del día (idea 6): lluvia/viento/UV/temperatura. Todos los
+  // trabajos de hoy caen en la misma zona → alcanza con el pronóstico del
+  // primero para hoy.
+  let recosHtml = '';
+  if (typeof climaRecomendaciones === 'function') {
+    const recos = climaRecomendaciones(climaDe(hoy[0], today()));
+    if (recos.length) recosHtml = `<div class="mb-recos">${recos.map(r => `<span class="mb-reco">${esc(r)}</span>`).join('')}</div>`;
+  }
+
   el.style.display = 'block';
   el.innerHTML = `
     <div class="fub-head">
@@ -10192,6 +10238,7 @@ function renderMorningBanner() {
     </div>
     <div class="fub-sub">${subtitulo}</div>
     ${summary}
+    ${recosHtml}
     <div class="fub-list">
       ${hoy.map(e => {
         const snap = e.snapshot || {};
@@ -10793,6 +10840,7 @@ function renderHistory() {
       <div class="hacts">
         <select class="hestado-sel" style="color:${txtCol};background-color:${bgCol};border-color:${bgCol}" onchange="setEstadoHistory(${e.id}, this.value)" title="Cambiar estado" aria-label="Estado del presupuesto">${estadoOpts}</select>
         ${agendaChipFor(e)}
+        ${typeof climaChipForEntry === 'function' ? climaChipForEntry(e) : ''}
         <button class="btn btn-g btn-sm" onclick="previewFromHistory(${e.id})">${icon('eye')} Ver</button>
         <button class="btn btn-g btn-sm" onclick="sharePngFromHistory(${e.id}, this)" title="Generar una imagen del presupuesto y compartirla (WhatsApp, etc.)">${icon('image')} Compartir</button>
         ${tieneTel ? `<button class="btn btn-g btn-sm" onclick="chatWhatsappHistory(${e.id})" title="Abrir el chat de WhatsApp con el cliente" aria-label="Chat de WhatsApp con el cliente">${icon('message')} Chat</button>` : ''}
@@ -13888,8 +13936,8 @@ function mapaArmarRuta() {
 //
 // Fuente: Open-Meteo (https://open-meteo.com) — gratuita, sin API key, con
 // CORS abierto. Se pide el pronóstico DIARIO (código de tiempo, probabilidad
-// y milímetros de lluvia, temperaturas y viento) para la ubicación de cada
-// trabajo agendado de los próximos días.
+// y milímetros de lluvia, temperaturas, viento sostenido + ráfaga, e índice
+// UV) para la ubicación de cada trabajo agendado de los próximos días.
 //
 // Coordenadas: se resuelven con la misma plomería del mapa (entryLatLng:
 // pin manual → "lat,lng" → Plus Code). Si el trabajo no tiene ubicación, se
@@ -13897,19 +13945,24 @@ function mapaArmarRuta() {
 // pronóstico es a escala de ciudad, las ubicaciones se agrupan redondeando
 // a ~1 km: en la práctica es UNA sola llamada por refresco.
 //
-// Cache en LS.CLIMA (pq_clima): { "lat,lng": { at, days: { iso: {...} } } }.
+// Cache en LS.CLIMA (pq_clima): { "lat,lng": { at, v, days: { iso: {...} } } }.
 // TTL 3 h. Sin conexión no se intenta nada y se sirve lo último cacheado
 // (offline-first: el chip muestra el pronóstico viejo antes que nada).
 //
-// Aviso de lluvia: al refrescar, si hay lluvia pronosticada para un trabajo
-// de HOY o MAÑANA salta un toast bien visible. Se avisa una vez por día por
-// trabajo (gate en LS.CLIMA_WARN) para no ser pesado.
+// Se usa en: chip de clima (Agenda, banner de hoy, pop-up, Historial), tira
+// de 7 días al agendar (elegir un buen día), recomendaciones del día, y aviso
+// accionable de lluvia/viento para trabajos de HOY o MAÑANA (toast que lleva
+// al presupuesto y ofrece reprogramar por WhatsApp; una vez por día por
+// trabajo, gate en LS.CLIMA_WARN).
 
 const CLIMA = {
   TTL_MS: 3 * 60 * 60 * 1000,  // refrescar como mucho cada 3 h
   MAX_DAYS: 14,                // horizonte útil del pronóstico diario
-  VER: 2,                      // versión del formato cacheado (v2: + índice UV);
+  VER: 3,                      // versión del formato cacheado (v2: +UV, v3: +ráfaga);
                                // subirla invalida el cache viejo en el próximo refresh
+  WIND_WARN: 45,               // km/h de ráfaga: aviso "peligro en altura"
+  WIND_CHIP: 35,               // km/h de ráfaga: mostrar el viento en el chip
+  UV_CHIP: 6,                  // índice UV: mostrar el UV en el chip (escala OMS: "alto")
   _fetching: false,
 };
 
@@ -13946,35 +13999,28 @@ function _climaProximosTrabajos() {
   return out;
 }
 
-// Refresco (silencioso): baja el pronóstico de las zonas con trabajos
-// agendados que no estén frescas en cache, avisa si viene lluvia y repinta
-// lo que muestra clima. No hace nada sin conexión o sin trabajos próximos.
-async function climaRefresh() {
-  if (CLIMA._fetching || navigator.onLine === false) return;
-  const trabajos = _climaProximosTrabajos();
-  if (!trabajos.length) return;
-
+// Baja y cachea el pronóstico de las zonas indicadas (map key→[lat,lng]) que
+// no estén frescas (por TTL o versión de formato vieja). Persiste el cache y
+// devuelve true si algo cambió. NO poda zonas (de eso se encarga climaRefresh
+// con las zonas de los trabajos). No hace nada sin conexión.
+async function _climaFetchZonas(zonas) {
+  if (CLIMA._fetching || navigator.onLine === false) return false;
   const cache = _climaCache();
-  const keys = {};
-  trabajos.forEach(t => {
-    const ll = _climaLatLngDe(t.e);
-    if (ll) keys[_climaKey(ll)] = ll;
-  });
   const ahora = Date.now();
-  const pendientes = Object.keys(keys)
+  const pendientes = Object.keys(zonas)
     .filter(k => !cache[k] || !cache[k].at || cache[k].v !== CLIMA.VER
               || (ahora - cache[k].at) > CLIMA.TTL_MS);
-  if (!pendientes.length) { _climaAvisarLluvia(); return; }
+  if (!pendientes.length) return false;
 
   CLIMA._fetching = true;
   let cambio = false;
   try {
     for (const k of pendientes) {
-      const [lat, lng] = keys[k];
+      const [lat, lng] = zonas[k];
       try {
         const url = 'https://api.open-meteo.com/v1/forecast'
           + `?latitude=${lat.toFixed(4)}&longitude=${lng.toFixed(4)}`
-          + '&daily=weather_code,precipitation_probability_max,precipitation_sum,temperature_2m_max,temperature_2m_min,wind_speed_10m_max,uv_index_max'
+          + '&daily=weather_code,precipitation_probability_max,precipitation_sum,temperature_2m_max,temperature_2m_min,wind_speed_10m_max,wind_gusts_10m_max,uv_index_max'
           + '&timezone=auto&forecast_days=16';
         const res = await fetch(url);
         if (!res.ok) continue;
@@ -13989,7 +14035,8 @@ async function climaRefresh() {
             mm:   d.precipitation_sum?.[i] ?? null,             // milímetros
             tmax: d.temperature_2m_max?.[i] ?? null,
             tmin: d.temperature_2m_min?.[i] ?? null,
-            wind: d.wind_speed_10m_max?.[i] ?? null,            // km/h
+            wind: d.wind_speed_10m_max?.[i] ?? null,            // km/h sostenido
+            gust: d.wind_gusts_10m_max?.[i] ?? null,            // km/h ráfaga (peligro en altura)
             uv:   d.uv_index_max?.[i] ?? null,                  // índice UV máx
           };
         });
@@ -13997,19 +14044,50 @@ async function climaRefresh() {
         cambio = true;
       } catch (_) { /* sin señal o API caída: se sirve lo cacheado */ }
     }
-    // Podar zonas que ya no tienen trabajos (no acumular basura en la cuota).
-    Object.keys(cache).forEach(k => { if (!keys[k]) { delete cache[k]; cambio = true; } });
     if (cambio) safeSetLS(LS.CLIMA, JSON.stringify(cache));
   } finally {
     CLIMA._fetching = false;
   }
+  return cambio;
+}
 
-  _climaAvisarLluvia();
+// Refresco (silencioso): baja el pronóstico de las zonas con trabajos
+// agendados que no estén frescas, poda las que ya no tienen trabajos, avisa si
+// viene lluvia/viento y repinta lo que muestra clima. No hace nada sin
+// conexión o sin trabajos próximos.
+async function climaRefresh() {
+  if (navigator.onLine === false) return;
+  const trabajos = _climaProximosTrabajos();
+  if (!trabajos.length) return;
+
+  const zonas = {};
+  trabajos.forEach(t => { const ll = _climaLatLngDe(t.e); if (ll) zonas[_climaKey(ll)] = ll; });
+  const cambio = await _climaFetchZonas(zonas);
+
+  // Podar zonas que ya no corresponden a ningún trabajo (limpiar la cuota).
+  const cache = _climaCache();
+  let podado = false;
+  Object.keys(cache).forEach(k => { if (!zonas[k]) { delete cache[k]; podado = true; } });
+  if (podado) { try { safeSetLS(LS.CLIMA, JSON.stringify(cache)); } catch (_) {} }
+
+  _climaAvisar();
   if (cambio) {
     // Repintar lo que muestra clima con el dato fresco.
     try { if (typeof renderCal === 'function') renderCal(); } catch (_) {}
     try { if (typeof renderMorningBanner === 'function') renderMorningBanner(); } catch (_) {}
+    try { if (typeof renderHistory === 'function') renderHistory(); } catch (_) {}
   }
+}
+
+// Asegura el pronóstico de la zona de UN trabajo puntual (aunque todavía no
+// esté aceptado): lo usa el diálogo de agendar para mostrar el clima al elegir
+// el día. Baja si hace falta y llama a cb() al terminar (haya cambiado o no).
+async function climaEnsureZona(e, cb) {
+  const ll = _climaLatLngDe(e);
+  if (!ll) { if (cb) cb(); return; }
+  const zonas = {}; zonas[_climaKey(ll)] = ll;
+  try { await _climaFetchZonas(zonas); } catch (_) {}
+  if (cb) cb();
 }
 
 // Pronóstico cacheado para un trabajo en una fecha, o null si no hay.
@@ -14027,6 +14105,30 @@ function climaEsLluvia(d) {
   const c = d.code;
   const codLluvia = c != null && ((c >= 51 && c <= 67) || (c >= 80 && c <= 82) || c >= 95);
   return (d.pp != null && d.pp >= 50) || (d.mm != null && d.mm >= 2) || codLluvia;
+}
+
+// Ráfaga máxima estimada (km/h): la ráfaga si está, si no el viento sostenido.
+// Es lo que importa para trabajar en altura (lo que te sacude en el árbol).
+function _climaRafaga(d) {
+  if (!d) return null;
+  return (d.gust != null) ? d.gust : (d.wind != null ? d.wind : null);
+}
+
+// ¿Viento fuerte? Ráfaga por encima del umbral de "peligro en altura".
+function climaEsViento(d) {
+  const g = _climaRafaga(d);
+  return g != null && g >= CLIMA.WIND_WARN;
+}
+
+// Motivo de riesgo climático de un día para los avisos: { lluvia, viento, txt }.
+// txt combina ambos ("lluvia y viento fuerte") o queda '' si el día está bien.
+function _climaMotivo(d) {
+  const l = climaEsLluvia(d), v = climaEsViento(d);
+  let txt = '';
+  if (l && v) txt = 'lluvia y viento fuerte';
+  else if (l) txt = 'lluvia';
+  else if (v) txt = 'viento fuerte';
+  return { lluvia: l, viento: v, txt };
 }
 
 // Código WMO → emoji + descripción corta (es-AR).
@@ -14054,62 +14156,120 @@ function _climaUvLabel(uv) {
   return 'bajo';
 }
 
-// Chip HTML con el pronóstico de un día (para la Agenda / banners), '' si
-// no hay dato cacheado. Con lluvia se pinta en ámbar y muestra prob. y mm.
-// El índice UV se muestra en el chip a partir de "alto" (≥6, cuando hay que
-// protegerse en serio para trabajar al sol); en el detalle va siempre.
+// Chip HTML con el pronóstico de un día (para la Agenda / banners / Historial),
+// '' si no hay dato cacheado. Color según prioridad: lluvia (ámbar) > viento
+// fuerte (rosa, peligro en altura) > UV alto (naranja). El viento se muestra en
+// el texto a partir de ráfaga ≥ WIND_CHIP y el UV a partir de ≥ UV_CHIP; en el
+// detalle (title) va todo siempre.
 function climaChipHTML(d) {
   if (!d) return '';
   const [emoji, desc] = _climaEmojiDesc(d.code);
   const lluvia = climaEsLluvia(d);
-  const uvAlto = d.uv != null && d.uv >= 6;
+  const g = _climaRafaga(d);
+  const vientoWarn = g != null && g >= CLIMA.WIND_WARN;
+  const vientoChip = g != null && g >= CLIMA.WIND_CHIP;
+  const uvAlto = d.uv != null && d.uv >= CLIMA.UV_CHIP;
   const temp = (d.tmax != null) ? ` ${Math.round(d.tmax)}°` : '';
   const lluviaTxt = lluvia
     ? ` · lluvia${d.pp != null ? ` ${Math.round(d.pp)}%` : ''}${d.mm ? ` (${Math.round(d.mm)} mm)` : ''}`
     : '';
+  const vientoTxt = vientoChip ? ` · 💨 ${Math.round(g)} km/h` : '';
   const uvTxt = uvAlto ? ` · UV ${Math.round(d.uv)} ${_climaUvLabel(d.uv)}` : '';
+  const cls = lluvia ? ' clima-rain' : (vientoWarn ? ' clima-wind' : (uvAlto ? ' clima-uv' : ''));
   const title = `${desc}${temp ? `, máx${temp}` : ''}`
     + `${d.tmin != null ? ` / mín ${Math.round(d.tmin)}°` : ''}`
     + `${d.pp != null ? ` · prob. de lluvia ${Math.round(d.pp)}%` : ''}`
-    + `${d.wind != null ? ` · viento ${Math.round(d.wind)} km/h` : ''}`
+    + `${g != null ? ` · viento ${Math.round(g)} km/h` : ''}`
     + `${d.uv != null ? ` · UV ${Math.round(d.uv)} (${_climaUvLabel(d.uv)})` : ''}`;
-  return `<span class="clima-chip${lluvia ? ' clima-rain' : ''}${uvAlto && !lluvia ? ' clima-uv' : ''}" title="${esc(title)}">`
-       + `<span class="clima-emoji">${emoji}</span>${esc(desc)}${temp}${lluviaTxt}${esc(uvTxt)}</span>`;
+  return `<span class="clima-chip${cls}" title="${esc(title)}">`
+       + `<span class="clima-emoji">${emoji}</span>${esc(desc)}${temp}${esc(lluviaTxt)}${esc(vientoTxt)}${esc(uvTxt)}</span>`;
 }
 
-// Toast accionable (multi-línea, tocable) para el aviso de lluvia. El toast()
+// Recomendaciones prácticas del día (para el banner de "podas de hoy"): lista
+// corta de avisos según lluvia, viento, UV y temperatura. Vacía si el día
+// está tranquilo.
+function climaRecomendaciones(d) {
+  if (!d) return [];
+  const out = [];
+  if (climaEsLluvia(d)) out.push('🌧️ Puede llover — fijate si conviene reprogramar');
+  const g = _climaRafaga(d);
+  if (g != null && g >= CLIMA.WIND_WARN) out.push(`💨 Viento fuerte (${Math.round(g)} km/h) — cuidado con el trabajo en altura`);
+  if (d.uv != null && d.uv >= 8)      out.push('🧴 UV muy alto — protector, gorra y sombra al mediodía');
+  else if (d.uv != null && d.uv >= 6) out.push('🧴 UV alto — protector solar y gorra');
+  if (d.tmax != null && d.tmax >= 32)     out.push('🥵 Va a hacer calor — llevá agua e hidratate seguido');
+  else if (d.tmax != null && d.tmax <= 7) out.push('🥶 Va a hacer frío — abrigate bien');
+  return out;
+}
+
+// Chip de clima para una tarjeta del Historial (idea 5): solo para trabajos
+// aceptados con un día próximo (hoy o futuro) dentro del horizonte. '' si no
+// aplica o no hay pronóstico cacheado.
+function climaChipForEntry(e) {
+  if (!e || (e.estado || '') !== 'aceptado') return '';
+  const hoy = today();
+  const ref = (typeof agFechas === 'function' ? agFechas(e) : []).find(f => f >= hoy);
+  if (!ref) return '';
+  return climaChipHTML(climaDe(e, ref));
+}
+
+// Abre WhatsApp con un mensaje ya redactado para reprogramar el trabajo por
+// mal clima (idea 3). `motivo` = texto del _climaMotivo ("lluvia" / "viento
+// fuerte" / "lluvia y viento fuerte"); si viene vacío, mensaje genérico.
+function climaReprogramarWhatsApp(id, motivo) {
+  const e = getH().find(x => x.id === id);
+  if (!e) return;
+  const phone = (typeof normalizeArgPhone === 'function' && typeof histClientPhone === 'function')
+    ? normalizeArgPhone(histClientPhone(e)) : '';
+  const cliente = (e.clientName || '').trim();
+  const empresa = (S.coName || '').trim();
+  const saludo = cliente ? `Hola ${cliente}` : 'Hola';
+  const firma = empresa ? ` Te escribo de ${empresa}.` : '';
+  const porque = motivo ? `pronostican ${motivo}` : 'el pronóstico no viene bueno';
+  const msg = `${saludo}, ¿cómo estás?${firma} Para el día que teníamos pactado el trabajo de poda ${porque}. ¿Te parece si lo reprogramamos para otro día con mejor clima?`;
+  const base = phone ? `https://wa.me/${phone}` : 'https://wa.me/';
+  window.open(`${base}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
+}
+
+// Toast accionable (multi-línea, tocable) para el aviso de clima. El toast()
 // plano tiene white-space:nowrap y trunca los mensajes largos; este usa
-// .toast-action (envuelve el texto) y toda la tarjeta —además del botón—
-// dispara onTap para llevar al presupuesto / la Agenda.
-function _climaToast(html, onTap) {
+// .toast-action (envuelve el texto). Toda la tarjeta dispara onCardTap (ir al
+// presupuesto / la Agenda); `botones` son acciones extra ({label, on}) — p. ej.
+// "Reprogramar" por WhatsApp — que se muestran como botones propios.
+function _climaToast(msgHtml, onCardTap, botones) {
   const c = document.getElementById('toast-container');
   if (!c) return;
   const el = document.createElement('div');
   el.className = 'toast toast-err toast-action clima-toast';
-  el.innerHTML = html;
+  el.innerHTML = `<span>${msgHtml}</span>`
+    + (botones || []).map((b, i) => `<button type="button" class="toast-btn" data-i="${i}">${esc(b.label)}</button>`).join('');
   c.appendChild(el);
   requestAnimationFrame(() => { requestAnimationFrame(() => el.classList.add('show')); });
   const close = () => { el.classList.remove('show'); setTimeout(() => el.remove(), 300); };
-  const go = (ev) => { if (ev) ev.stopPropagation(); try { onTap(); } finally { close(); } };
-  el.onclick = go;
+  el.querySelectorAll('.toast-btn').forEach(btn => {
+    btn.onclick = (ev) => { ev.stopPropagation(); const b = (botones || [])[+btn.dataset.i]; try { b && b.on(); } finally { close(); } };
+  });
+  if (onCardTap) el.onclick = () => { try { onCardTap(); } finally { close(); } };
   setTimeout(close, 13000);
 }
 
-// Detalle corto (probabilidad · mm) de un pronóstico, para el aviso. '' si no
-// hay ninguno de los dos datos.
+// Detalle corto (probabilidad · mm · ráfaga) de un pronóstico, para el aviso.
+// '' si no hay ningún dato.
 function _climaDet(d) {
   const partes = [];
   if (d.pp != null) partes.push(`${Math.round(d.pp)}% prob.`);
   if (d.mm) partes.push(`${Math.round(d.mm)} mm`);
+  const g = _climaRafaga(d);
+  if (climaEsViento(d) && g != null) partes.push(`ráfagas ${Math.round(g)} km/h`);
   return partes.join(' · ');
 }
 
-// Aviso de lluvia para trabajos de HOY o MAÑANA. Junta todos los avisos nuevos
-// (no mostrados hoy) y notifica UNA vez: si es uno solo, un toast que lleva al
-// presupuesto; si son varios, un único toast consolidado que lleva a la Agenda
-// (evita apilar varios carteles largos que se pisaban y truncaban). Gate diario
-// por trabajo en LS.CLIMA_WARN = { "entryId|fecha": "avisadoEl" }.
-function _climaAvisarLluvia() {
+// Aviso de lluvia O viento fuerte para trabajos de HOY o MAÑANA. Junta todos
+// los avisos nuevos (no mostrados hoy) y notifica UNA vez: si es uno solo, un
+// toast que lleva al presupuesto y ofrece reprogramar por WhatsApp; si son
+// varios, un único toast consolidado que lleva a la Agenda (evita apilar varios
+// carteles largos que se pisaban). Gate diario por trabajo en LS.CLIMA_WARN =
+// { "entryId|fecha": "avisadoEl" }.
+function _climaAvisar() {
   const hoy = today();
   const man = _calAddDays(hoy, 1);
   let gate = {};
@@ -14122,11 +14282,12 @@ function _climaAvisarLluvia() {
   _climaProximosTrabajos().forEach(t => {
     t.fechas.filter(f => f === hoy || f === man).forEach(f => {
       const d = climaDe(t.e, f);
-      if (!climaEsLluvia(d)) return;
+      const motivo = _climaMotivo(d);
+      if (!motivo.txt) return;             // día sin lluvia ni viento fuerte
       const k = `${t.e.id}|${f}`;
       if (gate[k] === hoy) return;         // ya avisado hoy
       gate[k] = hoy; cambio = true;
-      avisos.push({ e: t.e, cuando: f === hoy ? 'hoy' : 'mañana', d });
+      avisos.push({ e: t.e, cuando: f === hoy ? 'hoy' : 'mañana', d, motivo });
     });
   });
   if (cambio) { try { localStorage.setItem(LS.CLIMA_WARN, JSON.stringify(gate)); } catch (_) {} }
@@ -14136,21 +14297,90 @@ function _climaAvisarLluvia() {
     const a = avisos[0];
     const quien = (a.e.clientName || '').trim() || 'sin nombre';
     const det = _climaDet(a.d);
+    // Emoji e intro según el motivo (lluvia / viento / ambos).
+    const emoji = a.motivo.viento && !a.motivo.lluvia ? '💨' : '⛈️';
+    const enAltura = a.motivo.viento ? ' Ojo con el trabajo en altura.' : '';
+    const tieneTel = typeof histClientPhone === 'function' && !!histClientPhone(a.e);
+    const botones = [];
+    if (tieneTel) botones.push({ label: 'Reprogramar', on: () => climaReprogramarWhatsApp(a.e.id, a.motivo.txt) });
+    botones.push({ label: 'Ver', on: () => goToHistoryEntry(a.e.id) });
     _climaToast(
-      `<span>⛈️ <b>Lluvia ${a.cuando}</b> y tenés la poda de ${esc(quien)}${det ? ` (${esc(det)})` : ''}. Tocá para verla y reprogramar si hace falta.</span>`
-      + `<button type="button" class="toast-btn">Ver</button>`,
-      () => goToHistoryEntry(a.e.id)
+      `${emoji} <b>${_cap(a.motivo.txt)} ${a.cuando}</b> y tenés la poda de ${esc(quien)}${det ? ` (${esc(det)})` : ''}.${enAltura} Tocá para ver el presupuesto.`,
+      () => goToHistoryEntry(a.e.id),
+      botones
     );
   } else {
     const nHoy = avisos.filter(a => a.cuando === 'hoy').length;
     const nMan = avisos.length - nHoy;
     const cuandoTxt = nHoy && nMan ? 'hoy y mañana' : (nHoy ? 'hoy' : 'mañana');
     _climaToast(
-      `<span>⛈️ <b>Lluvia pronosticada</b> para ${avisos.length} podas (${cuandoTxt}). Tocá para ver la Agenda y reprogramar.</span>`
-      + `<button type="button" class="toast-btn">Ver Agenda</button>`,
-      () => switchTab('agenda')
+      `⛈️ <b>Mal clima pronosticado</b> para ${avisos.length} podas (${cuandoTxt}). Tocá para ver la Agenda y reprogramar.`,
+      () => switchTab('agenda'),
+      [{ label: 'Ver Agenda', on: () => switchTab('agenda') }]
     );
   }
+}
+
+// Primera letra en mayúscula (para el motivo al arrancar el aviso).
+function _cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
+
+// ─── PRONÓSTICO EN EL DIÁLOGO DE AGENDAR (idea 1) ────────────
+// Tira de 7 días (hoy → +6) con emoji + temperatura para ayudar a elegir un
+// buen día antes de fijar la fecha. Solo en modo trabajo y si hay pronóstico
+// cacheado de la zona del trabajo. Debajo, el detalle + recomendación del día
+// que esté seleccionado en el input. La llama openAgendaDlg (tras asegurar la
+// zona), setAgendaMode y agendaOnDateChange.
+function agendaClimaRender() {
+  const wrap = document.getElementById('agenda-clima-wrap');
+  const strip = document.getElementById('agenda-clima-strip');
+  const selEl = document.getElementById('agenda-clima-sel');
+  if (!wrap || !strip) return;
+  const e = (typeof getH === 'function') ? getH().find(x => x.id === _agendaId) : null;
+  if (!e || _agendaMode === 'recontacto') { wrap.hidden = true; return; }
+
+  const hoy = today();
+  const dias = [];
+  for (let i = 0; i < 7; i++) { const iso = _calAddDays(hoy, i); dias.push({ iso, d: climaDe(e, iso) }); }
+  if (!dias.some(x => x.d)) { wrap.hidden = true; return; }  // sin pronóstico → no mostrar nada
+
+  wrap.hidden = false;
+  const sel = (document.getElementById('agenda-fecha') || {}).value || '';
+  strip.innerHTML = dias.map(({ iso, d }, i) => {
+    const [emoji] = d ? _climaEmojiDesc(d.code) : ['·', ''];
+    const mal = d && (climaEsLluvia(d) || climaEsViento(d));
+    const yaElegido = _agendaFechas.includes(iso);
+    const esSel = iso === sel;
+    const p = iso.split('-');
+    const dt = new Date(+p[0], +p[1] - 1, +p[2]);
+    const wd = i === 0 ? 'Hoy' : AGENDA_WD[dt.getDay()];
+    const temp = d && d.tmax != null ? `${Math.round(d.tmax)}°` : '';
+    return `<button type="button" class="agenda-clima-day${mal ? ' mal' : ''}${esSel ? ' sel' : ''}${yaElegido ? ' elegido' : ''}" onclick="agendaClimaPick('${iso}')" title="${esc(dt.getDate() + '/' + (dt.getMonth() + 1))}">
+      <span class="acd-wd">${esc(wd)}</span>
+      <span class="acd-em">${emoji}</span>
+      <span class="acd-t">${esc(temp)}</span>
+    </button>`;
+  }).join('');
+
+  // Detalle + primera recomendación del día seleccionado (si hay uno elegido).
+  const dSel = sel ? climaDe(e, sel) : null;
+  if (dSel && selEl) {
+    const recs = climaRecomendaciones(dSel);
+    selEl.innerHTML = climaChipHTML(dSel)
+      + (recs.length ? `<span class="acd-warn">${esc(recs.join(' · '))}</span>` : '');
+    selEl.hidden = false;
+  } else if (selEl) {
+    selEl.hidden = true; selEl.innerHTML = '';
+  }
+}
+
+// Tocar un día de la tira: lo pone en el campo de fecha (staging para "Agregar
+// día" o Guardar) y refresca warning + pronóstico.
+function agendaClimaPick(iso) {
+  const inp = document.getElementById('agenda-fecha');
+  if (!inp) return;
+  inp.value = iso;
+  if (typeof syncCdate === 'function') syncCdate(inp);
+  agendaOnDateChange();
 }
 
 // ===== js/calendar.js =====
