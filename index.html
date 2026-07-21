@@ -1583,6 +1583,10 @@ input[type=number]{-moz-appearance:textfield}
 .clima-chip .clima-emoji{font-size:13px;line-height:1}
 .clima-chip.clima-rain{color:#b45309;background:#fef3c7;border-color:#fcd34d}
 :root[data-theme="dark"] .clima-chip.clima-rain{color:#fcd34d;background:rgba(251,191,36,.12);border-color:rgba(251,191,36,.4)}
+/* UV alto (≥6) sin lluvia: naranja "protegete del sol". Si además llueve,
+   gana el ámbar de lluvia (el UV igual queda en el texto del chip). */
+.clima-chip.clima-uv{color:#c2410c;background:#ffedd5;border-color:#fdba74}
+:root[data-theme="dark"] .clima-chip.clima-uv{color:#fdba74;background:rgba(251,146,60,.12);border-color:rgba(251,146,60,.4)}
 .agc-ev-body .clima-chip{margin-top:4px}
 .da-item .clima-chip{align-self:flex-start}
 .agc-ev-acts{display:flex;flex-flow:row wrap;gap:7px;flex-shrink:0;justify-content:flex-end;align-content:flex-start}
@@ -13899,6 +13903,8 @@ function mapaArmarRuta() {
 const CLIMA = {
   TTL_MS: 3 * 60 * 60 * 1000,  // refrescar como mucho cada 3 h
   MAX_DAYS: 14,                // horizonte útil del pronóstico diario
+  VER: 2,                      // versión del formato cacheado (v2: + índice UV);
+                               // subirla invalida el cache viejo en el próximo refresh
   _fetching: false,
 };
 
@@ -13951,7 +13957,8 @@ async function climaRefresh() {
   });
   const ahora = Date.now();
   const pendientes = Object.keys(keys)
-    .filter(k => !cache[k] || !cache[k].at || (ahora - cache[k].at) > CLIMA.TTL_MS);
+    .filter(k => !cache[k] || !cache[k].at || cache[k].v !== CLIMA.VER
+              || (ahora - cache[k].at) > CLIMA.TTL_MS);
   if (!pendientes.length) { _climaAvisarLluvia(); return; }
 
   CLIMA._fetching = true;
@@ -13962,7 +13969,7 @@ async function climaRefresh() {
       try {
         const url = 'https://api.open-meteo.com/v1/forecast'
           + `?latitude=${lat.toFixed(4)}&longitude=${lng.toFixed(4)}`
-          + '&daily=weather_code,precipitation_probability_max,precipitation_sum,temperature_2m_max,temperature_2m_min,wind_speed_10m_max'
+          + '&daily=weather_code,precipitation_probability_max,precipitation_sum,temperature_2m_max,temperature_2m_min,wind_speed_10m_max,uv_index_max'
           + '&timezone=auto&forecast_days=16';
         const res = await fetch(url);
         if (!res.ok) continue;
@@ -13978,9 +13985,10 @@ async function climaRefresh() {
             tmax: d.temperature_2m_max?.[i] ?? null,
             tmin: d.temperature_2m_min?.[i] ?? null,
             wind: d.wind_speed_10m_max?.[i] ?? null,            // km/h
+            uv:   d.uv_index_max?.[i] ?? null,                  // índice UV máx
           };
         });
-        cache[k] = { at: ahora, days };
+        cache[k] = { at: ahora, v: CLIMA.VER, days };
         cambio = true;
       } catch (_) { /* sin señal o API caída: se sirve lo cacheado */ }
     }
@@ -14031,22 +14039,37 @@ function _climaEmojiDesc(c) {
   return ['⛈️', 'Tormenta'];
 }
 
+// Etiqueta corta del índice UV (escala OMS). '' si no hay dato.
+function _climaUvLabel(uv) {
+  if (uv == null) return '';
+  if (uv >= 11) return 'extremo';
+  if (uv >= 8)  return 'muy alto';
+  if (uv >= 6)  return 'alto';
+  if (uv >= 3)  return 'moderado';
+  return 'bajo';
+}
+
 // Chip HTML con el pronóstico de un día (para la Agenda / banners), '' si
 // no hay dato cacheado. Con lluvia se pinta en ámbar y muestra prob. y mm.
+// El índice UV se muestra en el chip a partir de "alto" (≥6, cuando hay que
+// protegerse en serio para trabajar al sol); en el detalle va siempre.
 function climaChipHTML(d) {
   if (!d) return '';
   const [emoji, desc] = _climaEmojiDesc(d.code);
   const lluvia = climaEsLluvia(d);
+  const uvAlto = d.uv != null && d.uv >= 6;
   const temp = (d.tmax != null) ? ` ${Math.round(d.tmax)}°` : '';
   const lluviaTxt = lluvia
     ? ` · lluvia${d.pp != null ? ` ${Math.round(d.pp)}%` : ''}${d.mm ? ` (${Math.round(d.mm)} mm)` : ''}`
     : '';
+  const uvTxt = uvAlto ? ` · UV ${Math.round(d.uv)} ${_climaUvLabel(d.uv)}` : '';
   const title = `${desc}${temp ? `, máx${temp}` : ''}`
     + `${d.tmin != null ? ` / mín ${Math.round(d.tmin)}°` : ''}`
     + `${d.pp != null ? ` · prob. de lluvia ${Math.round(d.pp)}%` : ''}`
-    + `${d.wind != null ? ` · viento ${Math.round(d.wind)} km/h` : ''}`;
-  return `<span class="clima-chip${lluvia ? ' clima-rain' : ''}" title="${esc(title)}">`
-       + `<span class="clima-emoji">${emoji}</span>${esc(desc)}${temp}${lluviaTxt}</span>`;
+    + `${d.wind != null ? ` · viento ${Math.round(d.wind)} km/h` : ''}`
+    + `${d.uv != null ? ` · UV ${Math.round(d.uv)} (${_climaUvLabel(d.uv)})` : ''}`;
+  return `<span class="clima-chip${lluvia ? ' clima-rain' : ''}${uvAlto && !lluvia ? ' clima-uv' : ''}" title="${esc(title)}">`
+       + `<span class="clima-emoji">${emoji}</span>${esc(desc)}${temp}${lluviaTxt}${esc(uvTxt)}</span>`;
 }
 
 // Aviso de lluvia para trabajos de HOY o MAÑANA: toast prominente, una vez
