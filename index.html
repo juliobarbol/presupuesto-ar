@@ -1734,6 +1734,14 @@ input[type=number]{-moz-appearance:textfield}
 .ne-field{margin-bottom:14px}
 .ne-field>label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:5px}
 #note-edit-box .cbtns{display:flex;gap:8px;justify-content:flex-end;margin-top:4px}
+/* Selector de tipo (Nota / Visita): segmentado de dos botones en vez de un
+   <select> nativo, que dentro del modal abría su lista detrás del overlay. Cada
+   opción se tiñe con el color de su concepto cuando está activa. */
+.ne-segment{display:flex;gap:8px}
+.ne-seg-btn{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 12px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;color:var(--text-2);background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-field);cursor:pointer}
+.ne-seg-btn .ic{width:16px;height:16px}
+.ne-seg-btn[data-tipo=""].is-active{border-color:var(--c-nota);background:var(--c-nota-bg);color:var(--c-nota-fg)}
+.ne-seg-btn[data-tipo="visita"].is-active{border-color:var(--c-visita);background:var(--c-visita-bg);color:var(--c-visita-fg)}
 /* Segmentado Mes / Semana / 3 días / Agenda */
 .agc-viewtoggle{display:flex;max-width:100%;overflow-x:auto;background:var(--surface-2);border-radius:var(--radius-field);padding:3px;gap:3px;margin-bottom:12px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
 .agc-viewtoggle::-webkit-scrollbar{display:none}
@@ -3902,11 +3910,11 @@ input[type=number]{-moz-appearance:textfield}
       <input type="text" id="agc-edit-text" maxlength="140" placeholder="Texto de la nota" onkeydown="if(event.key==='Enter'){calSaveNoteEdit();}">
     </div>
     <div class="ne-field">
-      <label for="agc-edit-tipo">Tipo</label>
-      <select id="agc-edit-tipo">
-        <option value="">Nota (recordatorio común)</option>
-        <option value="visita">Visita (evaluación / ir a presupuestar)</option>
-      </select>
+      <label>Tipo</label>
+      <div class="ne-segment" id="agc-edit-tipo" role="radiogroup" aria-label="Tipo de recordatorio">
+        <button type="button" class="ne-seg-btn is-active" data-tipo="" role="radio" aria-checked="true" onclick="_neSelTipo(this)" title="Recordatorio común"><svg class="ic" aria-hidden="true"><use href="#i-pencil"></use></svg> Nota</button>
+        <button type="button" class="ne-seg-btn" data-tipo="visita" role="radio" aria-checked="false" onclick="_neSelTipo(this)" title="Evaluación presencial / ir a presupuestar"><svg class="ic" aria-hidden="true"><use href="#i-clipboard"></use></svg> Visita</button>
+      </div>
     </div>
     <div class="ne-field">
       <label>Contacto para chat directo (opcional)</label>
@@ -15300,8 +15308,7 @@ function calEditNote(id) {
   txt.value = n.texto || '';
   if (cli) cli.value = n.cliente || '';
   if (tel) tel.value = n.tel || '';
-  const tipoEl = document.getElementById('agc-edit-tipo');
-  if (tipoEl) tipoEl.value = (n.tipo === 'visita') ? 'visita' : '';
+  _neSetTipo(n.tipo === 'visita' ? 'visita' : '');
   const ubicEl = document.getElementById('agc-edit-ubic');
   if (ubicEl) ubicEl.value = n.ubic || '';
   if (cli) attachClientDropdown(cli, tel);
@@ -15321,6 +15328,21 @@ function calCloseNoteEdit() {
 function importContactToNoteEdit() {
   importContactToFields(document.getElementById('agc-edit-cli'), document.getElementById('agc-edit-tel'));
 }
+// ─── SELECTOR DE TIPO (segmentado Nota/Visita del modal de edición) ──────────
+// Segmentado de dos botones en vez de un <select> nativo: dentro del modal el
+// popup del select abría detrás del overlay. Marca activo el botón elegido.
+function _neSetTipo(v) {
+  document.querySelectorAll('#agc-edit-tipo .ne-seg-btn').forEach(b => {
+    const on = (b.dataset.tipo || '') === (v || '');
+    b.classList.toggle('is-active', on);
+    b.setAttribute('aria-checked', on ? 'true' : 'false');
+  });
+}
+function _neGetTipo() {
+  const b = document.querySelector('#agc-edit-tipo .ne-seg-btn.is-active');
+  return b ? (b.dataset.tipo || '') : '';
+}
+function _neSelTipo(btn) { _neSetTipo(btn.dataset.tipo || ''); }
 function calSaveNoteEdit() {
   if (!_editNoteId) { calCloseNoteEdit(); return; }
   const txt = document.getElementById('agc-edit-text');
@@ -15346,8 +15368,7 @@ function calSaveNoteEdit() {
   n.cliente = cliente;
   n.tel = telef;
   if (ubic) n.ubic = ubic; else delete n.ubic;
-  const tipoEl = document.getElementById('agc-edit-tipo');
-  if (tipoEl) { if (tipoEl.value === 'visita') n.tipo = 'visita'; else delete n.tipo; }
+  if (_neGetTipo() === 'visita') n.tipo = 'visita'; else delete n.tipo;
   setNotes(notes);
   // Importar el contacto a la DB de clientes si es nuevo (nombre + teléfono).
   if (cliente && telef && typeof saveClientToDB === 'function') {
