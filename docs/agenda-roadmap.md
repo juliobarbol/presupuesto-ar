@@ -83,7 +83,11 @@ extra por evento:
   visitas de hoy en el banner del día (`getVisitasDeHoy`, con "Cómo llegar" /
   WhatsApp / Hecha) y botón **"Crear presupuesto"** (`calCrearPresupuestoDesdeVisita`:
   precarga cliente/tel/ubicación + texto como nota interna y marca la visita hecha).
-  Sale a Google Calendar ("Visita: …") y al `.ics` (pendientes).
+  Sale a Google Calendar ("Visita: …") y al `.ics` (pendientes). El selector de
+  tipo en el modal de edición es un **segmentado de dos botones** (`.ne-segment`,
+  `_neSetTipo`/`_neGetTipo`/`_neSelTipo`), no un `<select>`: dentro del modal
+  (`z-index:2000`) el popup del select personalizado (`.csel-pop`, `z-index:1201`)
+  abría detrás del overlay (v166).
 
 ## Ideas futuras (no comprometidas)
 - Botón "Hoy" también en la vista Agenda (scroll al grupo Hoy).
