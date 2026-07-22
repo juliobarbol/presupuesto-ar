@@ -87,7 +87,11 @@ extra por evento:
   tipo en el modal de edición es un **segmentado de dos botones** (`.ne-segment`,
   `_neSetTipo`/`_neGetTipo`/`_neSelTipo`), no un `<select>`: dentro del modal
   (`z-index:2000`) el popup del select personalizado (`.csel-pop`, `z-index:1201`)
-  abría detrás del overlay (v166).
+  abría detrás del overlay (v166). Al guardar una nota/visita con cliente + datos,
+  se guarda/enriquece la **ficha del cliente** en la DB (`saveNoteClientToDB`):
+  teléfono + ubicación (la `ubic` de la nota → `maplink` del cliente); crea el
+  cliente si no existe y completa solo los campos vacíos si ya existe, sin pisar
+  lo ya cargado (v167).
 
 ## Ideas futuras (no comprometidas)
 - Botón "Hoy" también en la vista Agenda (scroll al grupo Hoy).

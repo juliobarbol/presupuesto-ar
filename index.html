@@ -6063,6 +6063,28 @@ function deleteClientFromDB(name) {
   safeSetLS(CLIENT_KEY, JSON.stringify(db));
 }
 
+// Guarda o enriquece un cliente en la DB a partir de lo anotado en una nota o
+// visita de la Agenda: nombre + teléfono + ubicación (la ubicación de la nota se
+// guarda como el `maplink` del cliente — misma semántica: dónde queda el
+// trabajo, y así al hacerle el presupuesto ya viene cargada). Si el cliente no
+// existe, lo crea; si ya existe, completa SOLO los campos vacíos (nunca pisa un
+// teléfono o una ubicación que ya tenías guardados). Sirve tanto para un cliente
+// tipeado a mano como para uno importado de los contactos del teléfono.
+function saveNoteClientToDB(cliente, tel, ubic) {
+  cliente = (cliente || '').trim();
+  tel = (tel || '').trim();
+  ubic = (ubic || '').trim();
+  if (!cliente || (!tel && !ubic) || typeof saveClientToDB !== 'function') return;
+  const existente = getClientDB().find(x => ((x.name || '') + '').trim().toLowerCase() === cliente.toLowerCase());
+  if (!existente) {
+    saveClientToDB(cliente, tel, '', ubic);
+  } else {
+    const nuevoTel  = existente.contact ? '' : tel;
+    const nuevaUbic = existente.maplink ? '' : ubic;
+    if (nuevoTel || nuevaUbic) saveClientToDB(cliente, nuevoTel, '', nuevaUbic);
+  }
+}
+
 async function confirmDeleteClient(name) {
   const ok = await confirmDlg(
     'Eliminar cliente',
@@ -15237,13 +15259,12 @@ function calSaveNote(tipo) {
   if (esVisita) nueva.tipo = 'visita';
   notes.push(nueva);
   setNotes(notes);
-  // Si es un contacto nuevo (nombre + teléfono) que todavía no está en la DB de
-  // clientes, lo guardamos para reusarlo — así "importás" a la app un cliente al
-  // que aún no le hiciste presupuesto pero tenés que contactar.
-  if (cliente && tel && typeof saveClientToDB === 'function') {
-    const exists = getClientDB().some(x => ((x.name || '') + '').trim().toLowerCase() === cliente.toLowerCase());
-    if (!exists) saveClientToDB(cliente, tel);
-  }
+  // Guardar/enriquecer el cliente en la DB con lo que se anotó (teléfono +
+  // ubicación): si no existe lo crea, si existe completa los campos vacíos. Así
+  // "importás" a la app un cliente al que todavía no le hiciste presupuesto —con
+  // su ubicación ya cargada para cuando se lo hagas— tanto si lo tipeaste como
+  // si lo trajiste de los contactos del teléfono.
+  saveNoteClientToDB(cliente, tel, ubic);
   inp.value = '';
   if (cliEl) cliEl.value = '';
   if (telEl) telEl.value = '';
@@ -15370,11 +15391,9 @@ function calSaveNoteEdit() {
   if (ubic) n.ubic = ubic; else delete n.ubic;
   if (_neGetTipo() === 'visita') n.tipo = 'visita'; else delete n.tipo;
   setNotes(notes);
-  // Importar el contacto a la DB de clientes si es nuevo (nombre + teléfono).
-  if (cliente && telef && typeof saveClientToDB === 'function') {
-    const exists = getClientDB().some(x => ((x.name || '') + '').trim().toLowerCase() === cliente.toLowerCase());
-    if (!exists) saveClientToDB(cliente, telef);
-  }
+  // Guardar/enriquecer el cliente en la DB con lo editado (teléfono + ubicación):
+  // si no existe lo crea, si existe completa los campos vacíos sin pisar nada.
+  saveNoteClientToDB(cliente, telef, ubic);
   calCloseNoteEdit();
   renderCal();
   toast('Nota actualizada', 'ok');
