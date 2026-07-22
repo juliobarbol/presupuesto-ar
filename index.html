@@ -75,6 +75,7 @@ a{-webkit-tap-highlight-color:transparent}
   --c-seguimiento:#d97706; --c-seguimiento-bg:#fef3c7; --c-seguimiento-fg:#92400e;
   --c-vence:#dc2626;       --c-vence-bg:#fee2e2; --c-vence-fg:#991b1b;
   --c-nota:#ec4899;        --c-nota-bg:#fce7f3; --c-nota-fg:#9d174e;
+  --c-visita:#2563eb;      --c-visita-bg:#dbeafe; --c-visita-fg:#1e40af;
 }
 
 /* ═══ MODO OSCURO ═══════════════════════════════════════════════════
@@ -118,6 +119,7 @@ a{-webkit-tap-highlight-color:transparent}
   --c-seguimiento-bg:#4a3a12; --c-seguimiento-fg:#fde68a;
   --c-vence-bg:rgba(239,68,68,.18); --c-vence-fg:#fca5a5;
   --c-nota:#f472b6; --c-nota-bg:rgba(236,72,153,.2); --c-nota-fg:#f9a8d4;
+  --c-visita:#60a5fa; --c-visita-bg:rgba(59,130,246,.2); --c-visita-fg:#93c5fd;
 }
 
 html,body{height:100%;font-family:'DM Sans',sans-serif;font-size:14px;background:var(--bg);color:var(--text)}
@@ -125,7 +127,12 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;font-size:14px;background
    profundidad la dan las sombras sutiles de las cards, no un patrón. El PDF
    (#doc-a4) tiene su propio fondo blanco y nunca hereda este. */
 body{background-color:var(--bg)}
-#app{display:flex;flex-direction:column;height:100vh;height:-webkit-fill-available;overflow:hidden}
+/* Alto del shell: 100dvh (dynamic viewport height) sigue la barra de UI del
+   navegador móvil sin los problemas de 100vh. Fallbacks en cascada: 100vh para
+   motores muy viejos, -webkit-fill-available para iOS previo a dvh, y 100dvh
+   (última → gana en navegadores modernos). El espacio de la barra de totales se
+   reserva dentro de #main (ver reserveStickySpace), no vía padding del body. */
+#app{display:flex;flex-direction:column;height:100vh;height:-webkit-fill-available;height:100dvh;overflow:hidden}
 
 /* ICONOS (Lucide inline). Tamaño = 1em → heredan el tamaño de fuente del
    contenedor; color = currentColor → heredan el color del texto. Reemplazan
@@ -193,9 +200,24 @@ body{background-color:var(--bg)}
 .tab-btn:hover:not(.active){background:rgba(0,0,0,.03)}
 
 /* MAIN */
-#main{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:20px 24px;padding-bottom:max(20px,env(safe-area-inset-bottom))}
+#main{flex:1;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:20px 24px;padding-bottom:max(20px,env(safe-area-inset-bottom))}
 .inner{max-width:820px;margin:0 auto}
 .tab-panel{display:none}.tab-panel.active{display:block}
+/* Con un modal abierto, congelar el scroll del contenedor real (#main). Antes
+   varios modales hacían body.style.overflow='hidden', pero el body NO scrollea
+   (el único scroller es #main), así que el fondo se movía detrás del modal.
+   Un único observador (setupModalScrollLock) pone/saca esta clase. */
+body.modal-open #main{overflow:hidden}
+
+/* Animación de entrada al navegar entre pestañas con swipe (feedback del gesto).
+   Se aplica al panel entrante; la dirección indica hacia dónde se fue el dedo. */
+@keyframes tabSlideNext{from{opacity:.35;transform:translateX(26px)}to{opacity:1;transform:none}}
+@keyframes tabSlidePrev{from{opacity:.35;transform:translateX(-26px)}to{opacity:1;transform:none}}
+.tab-panel.tab-slide-next{animation:tabSlideNext .22s ease}
+.tab-panel.tab-slide-prev{animation:tabSlidePrev .22s ease}
+@media (prefers-reduced-motion:reduce){
+  .tab-panel.tab-slide-next,.tab-panel.tab-slide-prev{animation:none}
+}
 
 /* PRINT ZONE */
 #print-zone{display:none}
@@ -255,7 +277,7 @@ body{background-color:var(--bg)}
 /* ── Pop-up de arranque del día (llamativo, 1 vez/día) ── */
 #day-alert-overlay{display:none;position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(6,40,30,.55);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);z-index:2100;align-items:center;justify-content:center;padding:18px}
 #day-alert-overlay.open{display:flex;animation:daFade .2s ease}
-#day-alert-box{position:relative;background:linear-gradient(160deg,#ecfdf5,#d1fae5);border:1px solid #6ee7b7;border-radius:22px;padding:26px 22px 22px;width:440px;max-width:94vw;max-height:90vh;overflow:auto;box-shadow:0 24px 70px rgba(4,60,40,.4);text-align:center;animation:daPop .32s cubic-bezier(.2,.9,.3,1.3)}
+#day-alert-box{position:relative;background:linear-gradient(160deg,#ecfdf5,#d1fae5);border:1px solid #6ee7b7;border-radius:22px;padding:26px 22px 22px;width:440px;max-width:94vw;max-height:90vh;overflow:auto;overscroll-behavior:contain;box-shadow:0 24px 70px rgba(4,60,40,.4);text-align:center;animation:daPop .32s cubic-bezier(.2,.9,.3,1.3)}
 @keyframes daFade{from{opacity:0}to{opacity:1}}
 @keyframes daPop{from{opacity:0;transform:scale(.85) translateY(12px)}to{opacity:1;transform:none}}
 .da-close{position:absolute;top:12px;right:12px;width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#065f46;background:rgba(255,255,255,.7);border:1px solid #a7f3d0;border-radius:50%;cursor:pointer;line-height:1}
@@ -303,7 +325,7 @@ body{background-color:var(--bg)}
 #share-box{background:var(--card);border-radius:var(--radius-box);padding:24px;width:440px;max-width:92vw;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.25)}
 #share-box h4{font-family:'DM Serif Display',serif;font-size:17px;margin-bottom:10px;color:var(--text)}
 #share-box p{font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.5}
-#share-tray-list{overflow-y:auto;display:flex;flex-direction:column;gap:10px;margin-bottom:18px;-webkit-overflow-scrolling:touch}
+#share-tray-list{overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;gap:10px;margin-bottom:18px;-webkit-overflow-scrolling:touch}
 .share-row{display:flex;align-items:center;gap:12px}
 .share-thumb{width:56px;height:56px;flex-shrink:0;border-radius:var(--radius-box);overflow:hidden;background:var(--surface-2);display:flex;align-items:center;justify-content:center;font-size:22px}
 .share-thumb img{width:100%;height:100%;object-fit:cover}
@@ -313,7 +335,7 @@ body{background-color:var(--bg)}
 /* MODAL */
 #moverlay{display:none;position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center}
 #moverlay.open{display:flex}
-#mbox{background:var(--card);border-radius:var(--radius-box);padding:24px;width:440px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,.25);max-height:85vh;overflow-y:auto}
+#mbox{background:var(--card);border-radius:var(--radius-box);padding:24px;width:440px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,.25);max-height:85vh;overflow-y:auto;overscroll-behavior:contain}
 #mbox h3{font-family:'DM Serif Display',serif;font-size:18px;margin-bottom:16px}
 .msec{margin-bottom:12px;padding:14px;background:var(--surface);border-radius:var(--radius-box);border:1px solid var(--border)}
 .msec h4{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--accent-fg);margin-bottom:10px}
@@ -373,7 +395,7 @@ body{background-color:var(--bg)}
 .csel-backdrop{position:fixed;inset:0;z-index:1200;background:transparent}
 .csel-pop{position:fixed;z-index:1201;background:var(--card);border:1px solid var(--border);
   border-radius:var(--radius-box);box-shadow:0 12px 34px rgba(0,0,0,.20);
-  padding:5px;max-height:min(320px,60vh);overflow-y:auto;-webkit-overflow-scrolling:touch}
+  padding:5px;max-height:min(320px,60vh);overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
 .csel-opt{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:var(--radius-field);
   font-size:14px;color:var(--text);cursor:pointer;white-space:nowrap}
 .csel-opt:hover,.csel-opt.is-active{background:var(--surface-2)}
@@ -395,7 +417,7 @@ body{background-color:var(--bg)}
 .cdate-btn.cdate-ro .cdate-ico{opacity:.5}
 .cal-pop{position:fixed;z-index:1201;background:var(--card);border:1px solid var(--border);
   border-radius:var(--radius-box);box-shadow:0 12px 34px rgba(0,0,0,.20);
-  padding:12px;width:300px;max-width:calc(100vw - 16px);max-height:calc(100vh - 16px);overflow:auto}
+  padding:12px;width:300px;max-width:calc(100vw - 16px);max-height:calc(100vh - 16px);overflow:auto;overscroll-behavior:contain}
 .cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
 .cal-title{font-weight:700;font-size:14px;color:var(--text);text-transform:capitalize}
 .cal-nav{width:34px;height:34px;border:1px solid var(--border);border-radius:8px;background:var(--card);
@@ -491,6 +513,9 @@ details.scol[open]>summary .scol-chev{transform:rotate(180deg)}
 .btn-s{background:var(--surface-2);color:var(--text);border:1px solid var(--border)}.btn-s:hover{background:var(--surface-hover)}
 .btn-d{background:var(--red-light);color:var(--red);border:1px solid #fca5a5}.btn-d:hover{background:#fecaca}
 .btn-g{background:transparent;color:var(--muted);padding:5px 9px}.btn-g:hover{background:var(--surface-2);color:var(--text)}
+/* Estado "imagen lista para enviar" (flujo de dos toques de Compartir imagen):
+   relleno de marca para que se note que hay que tocar de nuevo para compartir. */
+.btn.btn-ready{background:var(--accent);color:#fff}.btn.btn-ready:hover{background:var(--accent-dark);color:#fff}
 .btn-sm{padding:5px 10px;font-size:12px}
 .btn-bl{width:100%;justify-content:center;margin-bottom:8px}
 .arow{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
@@ -546,7 +571,7 @@ details.scol[open]>summary .scol-chev{transform:rotate(180deg)}
 .notes-close{background:transparent;border:none;font-size:18px;color:var(--muted);cursor:pointer;line-height:1;padding:4px 6px;border-radius:6px}
 .notes-close:hover{background:var(--surface-2);color:var(--text)}
 .notes-sub{margin:0;padding:0 20px 12px;font-size:12px;color:var(--muted);line-height:1.5}
-.notes-scroll{overflow-y:auto;padding:4px 20px 8px;flex:1}
+.notes-scroll{overflow-y:auto;overscroll-behavior:contain;padding:4px 20px 8px;flex:1}
 .notes-block{margin-bottom:14px}
 .notes-block-label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:5px}
 #notes-general-text,.notes-item-ta{width:100%;padding:8px 10px;border:1px solid #f0d488;border-radius:var(--radius-field);font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:#fffdf5;outline:none;resize:vertical;min-height:48px;-webkit-appearance:none;appearance:none;transition:.15s}
@@ -887,10 +912,31 @@ details.scol[open]>summary .scol-chev{transform:rotate(180deg)}
   .st-val.accent,.st-total .st-val{font-size:15px}
   .st-total .st-val.accent{font-size:16px}
 }
-/* Cuando la sticky bar está visible, agregar padding al fondo del body
-   para que el contenido scrolleable no quede tapado por la barra fija. */
-body.has-sticky-totals{padding-bottom:64px}
-@media (max-width:600px){body.has-sticky-totals{padding-bottom:58px}}
+/* El espacio para que el contenido no quede tapado por la barra fija se reserva
+   ahora DENTRO del scroller (#main) desde JS (reserveStickySpace), midiendo el
+   alto real de la barra —incluye la safe-area del dispositivo—. Antes se hacía
+   con padding-bottom en el body, que solo funcionaba por un efecto colateral de
+   -webkit-fill-available sobre #app; con #app en 100dvh eso era frágil. La clase
+   body.has-sticky-totals se conserva como bandera de estado (posición del FAB). */
+
+/* BOTÓN "SUBIR" (scroll-to-top). Aparece al scrollear #main. */
+.scrolltop-fab{
+  position:fixed;z-index:25;
+  right:max(16px,env(safe-area-inset-right));
+  bottom:calc(16px + env(safe-area-inset-bottom));
+  width:44px;height:44px;border-radius:50%;
+  background:var(--card);color:var(--accent-fg);
+  border:1px solid var(--border);box-shadow:0 4px 16px rgba(0,0,0,.18);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;opacity:0;transform:translateY(8px);pointer-events:none;
+  transition:opacity .2s,transform .2s;
+}
+.scrolltop-fab.show{opacity:1;transform:none;pointer-events:auto}
+.scrolltop-fab:active{transform:scale(.94)}
+.scrolltop-fab .ic{width:20px;height:20px}
+/* En el Editor, elevarse por encima de la barra de totales fija (≈44px de alto
+   + su safe-area) para no taparla. */
+body.has-sticky-totals .scrolltop-fab{bottom:calc(56px + env(safe-area-inset-bottom))}
 
 /* LOGO */
 .lu-area{border:2px dashed var(--border);border-radius:var(--radius-box);padding:20px;text-align:center;cursor:pointer;margin-bottom:10px;transition:.15s;background:var(--surface)}
@@ -1017,6 +1063,11 @@ input[type=number]{-moz-appearance:textfield}
 .toast-action{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:12px;white-space:normal;pointer-events:auto}
 .toast-action .toast-btn{font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;color:#fff;background:var(--accent);border:none;border-radius:var(--radius-field);padding:6px 12px;cursor:pointer;white-space:nowrap}
 .toast-action .toast-btn:active{opacity:.85}
+/* Aviso de lluvia (clima): mensaje largo → texto a la izquierda que envuelve,
+   botón "Ver" al final, toda la tarjeta tocable. Botón blanco sobre el rojo. */
+.clima-toast{width:min(92vw,430px);max-width:92vw;text-align:left;justify-content:flex-start;flex-wrap:nowrap;cursor:pointer}
+.clima-toast>span{flex:1 1 auto;min-width:0;line-height:1.4}
+.clima-toast .toast-btn{flex:0 0 auto;background:rgba(255,255,255,.22)}
 
 /* MISC */
 .divider{height:1px;background:var(--border);margin:16px 0}
@@ -1350,6 +1401,10 @@ input[type=number]{-moz-appearance:textfield}
 .mb-stat{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:#065f46;background:var(--card);border:1px solid #a7f3d0;border-radius:var(--radius-field);padding:6px 11px}
 .mb-stat b{font-weight:800}
 .mb-stat .ic{width:15px;height:15px}
+/* Recomendaciones del día (clima): chips ámbar arriba del banner de hoy. */
+.mb-recos{display:flex;flex-wrap:wrap;gap:8px;margin:2px 0 12px}
+.mb-reco{display:inline-flex;align-items:center;font-size:12.5px;font-weight:600;color:#b45309;background:#fef3c7;border:1px solid #fcd34d;border-radius:var(--radius-field);padding:6px 11px;line-height:1.3}
+:root[data-theme="dark"] .mb-reco{color:#fcd34d;background:rgba(251,191,36,.12);border-color:rgba(251,191,36,.4)}
 .mb-close{flex-shrink:0;width:30px;height:30px;border-radius:var(--radius-field);border:none;background:transparent;color:#047857;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
 .mb-close:active{background:rgba(4,120,87,.12)}
 .mb-close .ic{width:16px;height:16px}
@@ -1364,6 +1419,12 @@ input[type=number]{-moz-appearance:textfield}
 .mb-act-view:active{background:var(--surface-2)}
 .mb-act-done{background:var(--card);color:#065f46;border:1px solid #6ee7b7}
 .mb-act-done:active{background:var(--surface-2)}
+/* Visitas de hoy en el banner: tarjeta tintada con el azul del concepto y
+   botón "Crear presupuesto" (pasar de la evaluación al presupuesto). */
+.morning-banner .fub-item.fub-item-visita{border-color:var(--c-visita);background:var(--c-visita-bg)}
+.fub-item-visita .fub-item-days{color:var(--c-visita-fg)}
+.mb-act-crear{background:var(--c-visita);color:#fff}
+.mb-act-crear:active{filter:brightness(.9)}
 .mb-route{width:100%;margin-top:2px;display:inline-flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:700;color:#065f46;background:var(--card);border:1px solid #6ee7b7;border-radius:var(--radius-field);padding:10px;cursor:pointer}
 .mb-route:active{background:var(--surface-2)}
 .mb-route .ic{width:16px;height:16px}
@@ -1502,6 +1563,7 @@ input[type=number]{-moz-appearance:textfield}
 .agc-c-vencimiento{background:var(--c-vence)}
 .agc-c-seguimiento{background:var(--c-seguimiento)}
 .agc-c-nota{background:var(--c-nota)}
+.agc-c-visita{background:var(--c-visita)}
 .agc-grid-head{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px}
 .agc-grid-head span{text-align:center;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
 .agc-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
@@ -1537,6 +1599,7 @@ input[type=number]{-moz-appearance:textfield}
 .agc-col-ev.t-vencimiento{border-left-color:var(--c-vence)}
 .agc-col-ev.t-seguimiento{border-left-color:var(--c-seguimiento)}
 .agc-col-ev.t-nota{border-left-color:var(--c-nota)}
+.agc-col-ev.t-visita{border-left-color:var(--c-visita);background:var(--c-visita-bg)}
 .agc-col-ev-title{font-size:12px;font-weight:600;color:var(--text);line-height:1.3;overflow-wrap:anywhere}
 .agc-col-ev-sub{font-size:10.5px;color:var(--muted);line-height:1.3;margin-top:1px;overflow-wrap:anywhere}
 .agc-col-ev.done .agc-col-ev-title{text-decoration:line-through;opacity:.6}
@@ -1557,6 +1620,12 @@ input[type=number]{-moz-appearance:textfield}
 .agc-ev.t-vencimiento .agc-ev-bar{background:var(--c-vence)}
 .agc-ev.t-seguimiento .agc-ev-bar{background:var(--c-seguimiento)}
 .agc-ev.t-nota .agc-ev-bar{background:var(--c-nota)}
+/* Visita (evaluación presencial / ir a presupuestar): además de la barra, la
+   tarjeta entera se tinta y la etiqueta va en color — es el compromiso que más
+   se anota a mano y tiene que saltar a la vista entre las notas comunes. */
+.agc-ev.t-visita .agc-ev-bar{background:var(--c-visita)}
+.agc-ev.t-visita{background:var(--c-visita-bg);border-color:var(--c-visita)}
+.agc-ev.t-visita .agc-ev-kind{color:var(--c-visita-fg)}
 .agc-ev-body{flex:1;min-width:0}
 .agc-ev-kind{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);display:block;margin-bottom:2px}
 .agc-ev-title{font-size:14px;font-weight:600;color:var(--text);line-height:1.35;word-break:break-word}
@@ -1573,6 +1642,39 @@ input[type=number]{-moz-appearance:textfield}
 :root[data-theme="dark"] .agc-ev-note{color:#fde68a}
 :root[data-theme="dark"] .agc-ev-note>.ic{color:#fbbf24}
 :root[data-theme="dark"] .agc-ev-note b{color:#fef3c7}
+/* Chip de clima (pronóstico del día del trabajo): en la tarjeta de evento de
+   la Agenda, el banner de podas de hoy y el pop-up del día. La variante -rain
+   se pinta en ámbar/rojo para que el aviso de lluvia salte a la vista. */
+.clima-chip{display:inline-flex;align-items:center;flex-wrap:wrap;gap:1px 5px;font-size:11.5px;font-weight:600;color:var(--muted);background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:3px 9px;line-height:1.35;white-space:normal;overflow-wrap:anywhere;max-width:100%}
+.clima-chip .clima-emoji{font-size:13px;line-height:1}
+.clima-chip.clima-rain{color:#b45309;background:#fef3c7;border-color:#fcd34d}
+:root[data-theme="dark"] .clima-chip.clima-rain{color:#fcd34d;background:rgba(251,191,36,.12);border-color:rgba(251,191,36,.4)}
+/* UV alto (≥6) sin lluvia: naranja "protegete del sol". Si además llueve,
+   gana el ámbar de lluvia (el UV igual queda en el texto del chip). */
+.clima-chip.clima-uv{color:#c2410c;background:#ffedd5;border-color:#fdba74}
+:root[data-theme="dark"] .clima-chip.clima-uv{color:#fdba74;background:rgba(251,146,60,.12);border-color:rgba(251,146,60,.4)}
+/* Viento fuerte (ráfaga ≥ umbral): rosa/rojo "peligro en altura". Solo pinta
+   el chip si no llueve (la lluvia gana el color; el viento queda en el texto). */
+.clima-chip.clima-wind{color:#be123c;background:#ffe4e6;border-color:#fda4af}
+:root[data-theme="dark"] .clima-chip.clima-wind{color:#fda4af;background:rgba(244,63,94,.12);border-color:rgba(244,63,94,.4)}
+/* Tira de pronóstico de 7 días en el diálogo de agendar (idea: elegir un buen
+   día). Cada celda = día tocable con emoji + temperatura; los días con lluvia
+   o viento fuerte se tiñen de ámbar. */
+.agenda-clima-strip{display:flex;gap:6px;overflow-x:auto;padding:2px 0 4px;-webkit-overflow-scrolling:touch}
+.agenda-clima-day{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:46px;padding:6px 4px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-field);cursor:pointer;font-family:'DM Sans',sans-serif}
+.agenda-clima-day .acd-wd{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase}
+.agenda-clima-day .acd-em{font-size:17px;line-height:1}
+.agenda-clima-day .acd-t{font-size:11px;font-weight:600;color:var(--text)}
+.agenda-clima-day.mal{background:#fef3c7;border-color:#fcd34d}
+.agenda-clima-day.mal .acd-wd{color:#b45309}
+:root[data-theme="dark"] .agenda-clima-day.mal{background:rgba(251,191,36,.12);border-color:rgba(251,191,36,.4)}
+.agenda-clima-day.sel{outline:2px solid var(--accent);outline-offset:0}
+.agenda-clima-day.elegido{border-color:var(--accent);border-width:2px}
+.agenda-clima-sel{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;margin-top:2px;font-size:12px}
+.agenda-clima-sel .acd-warn{color:var(--muted);line-height:1.35}
+.agenda-clima-hint{font-size:11.5px;color:var(--muted);margin:0 0 4px}
+.agc-ev-body .clima-chip{margin-top:4px}
+.da-item .clima-chip{align-self:flex-start}
 .agc-ev-acts{display:flex;flex-flow:row wrap;gap:7px;flex-shrink:0;justify-content:flex-end;align-content:flex-start}
 .agc-ev-btn{width:42px;height:42px;display:inline-flex;align-items:center;justify-content:center;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-field);cursor:pointer;color:var(--muted);padding:0}
 .agc-ev-btn .ic{width:19px;height:19px}
@@ -1580,6 +1682,9 @@ input[type=number]{-moz-appearance:textfield}
 .agc-day-empty{font-size:13px;color:var(--muted);padding:6px 2px;line-height:1.5}
 .agc-note-form{display:flex;gap:7px;align-items:stretch;margin-top:8px}
 .agc-note-form input{flex:1;min-width:0}
+/* Botón "+ Visita" (alta de nota tipo visita) — azul del concepto visita */
+.btn-visita{background:var(--c-visita);border-color:var(--c-visita);color:#fff}
+.btn-visita:active{filter:brightness(.9)}
 /* Contacto opcional de la nota (chat directo por WhatsApp) */
 .agc-note-contact{margin-top:8px}
 .agc-note-contact>summary{list-style:none;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--muted);padding:4px 2px;user-select:none}
@@ -1598,7 +1703,7 @@ input[type=number]{-moz-appearance:textfield}
 .agc-ubic-btns{display:flex;gap:7px;flex-wrap:wrap;margin-top:7px}
 .ne-hint{font-weight:400;font-size:11px;color:var(--muted)}
 /* Dropdown NATIVO de clientes (panel propio, no la barra de sugerencias del teclado) */
-.agc-cli-dd{position:absolute;z-index:9999;top:100%;left:0;right:0;margin-top:3px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-field);box-shadow:0 12px 32px rgba(0,0,0,.18);max-height:216px;overflow-y:auto}
+.agc-cli-dd{position:absolute;z-index:9999;top:100%;left:0;right:0;margin-top:3px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-field);box-shadow:0 12px 32px rgba(0,0,0,.18);max-height:216px;overflow-y:auto;overscroll-behavior:contain}
 .agc-cli-opt{display:flex;flex-direction:column;gap:1px;padding:9px 12px;cursor:pointer;border-bottom:1px solid var(--surface-2)}
 .agc-cli-opt:last-child{border-bottom:none}
 .agc-cli-opt:active{background:var(--accent-light)}
@@ -2128,7 +2233,7 @@ input[type=number]{-moz-appearance:textfield}
 }
 .doc-preview-close:active{background:rgba(255,255,255,.35)}
 .doc-preview-scroll{
-  flex:1;overflow:auto;-webkit-overflow-scrolling:touch;
+  flex:1;overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;
   padding:16px;display:flex;justify-content:center;align-items:flex-start;
 }
 /* El "papel" A4: se escala para caber en pantalla. El ancho real es
@@ -2613,7 +2718,7 @@ input[type=number]{-moz-appearance:textfield}
 /* Popup de un grupo apilado: lista de todos los trabajos del mismo lugar. */
 .mapa-popup-group { min-width:210px; }
 .mapa-popup-group-title { font-weight:700; font-size:13px; margin-bottom:6px; }
-.mapa-popup-list { max-height:244px; overflow:auto; display:flex; flex-direction:column; gap:8px; }
+.mapa-popup-list { max-height:244px; overflow:auto; overscroll-behavior:contain; display:flex; flex-direction:column; gap:8px; }
 .mapa-grow { padding:7px 6px; margin:0 -6px; border-top:1px solid var(--border); border-radius:8px; cursor:pointer; }
 .mapa-grow:first-child { border-top:none; }
 .mapa-grow:hover { background:var(--surface,rgba(0,0,0,.03)); }
@@ -2691,6 +2796,7 @@ input[type=number]{-moz-appearance:textfield}
 <symbol id="i-calendar" viewBox="0 0 24 24"><path d="M8 2v4" /> <path d="M16 2v4" /> <rect width="18" height="18" x="3" y="4" rx="2" /> <path d="M3 10h18" /></symbol>
 <symbol id="i-zap" viewBox="0 0 24 24"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z" /></symbol>
 <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14" /> <path d="M12 5v14" /></symbol>
+<symbol id="i-arrow-up" viewBox="0 0 24 24"><path d="M12 19V5" /> <path d="m5 12 7-7 7 7" /></symbol>
 <symbol id="i-paperclip" viewBox="0 0 24 24"><path d="m16 6-8.414 8.586a2 2 0 0 0 2.829 2.829l8.414-8.586a4 4 0 1 0-5.657-5.657l-8.379 8.551a6 6 0 1 0 8.485 8.485l8.379-8.551" /></symbol>
 <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" /> <path d="M21 3v5h-5" /> <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" /> <path d="M8 16H3v5" /></symbol>
 <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" /> <path d="m15 5 4 4" /></symbol>
@@ -2730,8 +2836,8 @@ input[type=number]{-moz-appearance:textfield}
   <div id="tabs">
     <button class="tab-btn active" onclick="switchTab('editor')"><svg class="ic"><use href="#i-pencil"></use></svg> Editor</button>
     <button class="tab-btn" onclick="switchTab('historial')"><svg class="ic"><use href="#i-book"></use></svg> Historial<span class="tab-dot" id="tab-hist-dot" hidden></span></button>
-    <button class="tab-btn" onclick="switchTab('mapa')"><svg class="ic"><use href="#i-pin"></use></svg> Mapa</button>
     <button class="tab-btn" onclick="switchTab('agenda')"><svg class="ic"><use href="#i-calendar"></use></svg> Agenda<span class="tab-dot" id="tab-agenda-dot" hidden></span></button>
+    <button class="tab-btn" onclick="switchTab('mapa')"><svg class="ic"><use href="#i-pin"></use></svg> Mapa</button>
     <button class="tab-btn" onclick="switchTab('facturacion')"><svg class="ic ic-c-amber"><use href="#i-money"></use></svg> Facturas</button>
   </div>
 
@@ -3627,6 +3733,7 @@ input[type=number]{-moz-appearance:textfield}
         </div>
         <div class="agc-legend" id="agc-legend">
           <span class="agc-leg"><i class="agc-dot agc-c-trabajo"></i>Trabajo</span>
+          <span class="agc-leg"><i class="agc-dot agc-c-visita"></i>Visita</span>
           <span class="agc-leg"><i class="agc-dot agc-c-recontacto"></i>Recontacto</span>
           <span class="agc-leg"><i class="agc-dot agc-c-vencimiento"></i>Vence</span>
           <span class="agc-leg"><i class="agc-dot agc-c-seguimiento"></i>Seguimiento</span>
@@ -3795,6 +3902,13 @@ input[type=number]{-moz-appearance:textfield}
       <input type="text" id="agc-edit-text" maxlength="140" placeholder="Texto de la nota" onkeydown="if(event.key==='Enter'){calSaveNoteEdit();}">
     </div>
     <div class="ne-field">
+      <label for="agc-edit-tipo">Tipo</label>
+      <select id="agc-edit-tipo">
+        <option value="">Nota (recordatorio común)</option>
+        <option value="visita">Visita (evaluación / ir a presupuestar)</option>
+      </select>
+    </div>
+    <div class="ne-field">
       <label>Contacto para chat directo (opcional)</label>
       <div class="agc-note-crow">
         <div class="agc-cli-wrap"><input type="text" id="agc-edit-cli" placeholder="Cliente" maxlength="80" autocomplete="off"></div>
@@ -3881,6 +3995,14 @@ input[type=number]{-moz-appearance:textfield}
         <input type="date" id="agenda-fecha" aria-label="Fecha" oninput="agendaOnDateChange()">
         <button type="button" class="btn btn-g btn-sm" id="agenda-add-dia" onclick="agendaAddDia()" hidden>Agregar día</button>
       </div>
+    </div>
+    <!-- Pronóstico de los próximos días (idea 1): elegir un buen día antes de
+         agendar. Solo en modo trabajo y si hay datos; lo rellena agendaClimaRender. -->
+    <div class="fg" id="agenda-clima-wrap" hidden>
+      <label>Pronóstico de la zona</label>
+      <p class="agenda-clima-hint">Tocá un día para elegirlo. Los días en ámbar tienen lluvia o viento fuerte.</p>
+      <div class="agenda-clima-strip" id="agenda-clima-strip"></div>
+      <p class="agenda-clima-sel" id="agenda-clima-sel" hidden></p>
     </div>
     <div class="fg" id="agenda-nota-wrap" hidden>
       <label for="agenda-nota">Nota (opcional)</label>
@@ -3981,6 +4103,14 @@ input[type=number]{-moz-appearance:textfield}
   </div>
 </div>
 
+<!-- ════════════════════ BOTÓN "SUBIR" ════════════════════
+     FAB que aparece al scrollear #main (el único scroller, compartido por
+     todas las pestañas) y lleva de vuelta arriba. En el Editor se eleva por
+     encima de la barra de totales fija (ver body.has-sticky-totals). -->
+<button id="scrolltop-fab" class="scrolltop-fab" type="button" aria-label="Subir al inicio" title="Subir" onclick="scrollMainToTop()">
+  <svg class="ic"><use href="#i-arrow-up"></use></svg>
+</button>
+
 <!-- ════════════════════ TOAST ════════════════════ -->
 <div id="toast-container"></div>
 
@@ -4021,6 +4151,8 @@ const LS = {
   DAY_ALERT_SEEN: 'pq_day_alert_seen',
   NOTES:          'pq_agenda_notes',
   CAL_VIEW:       'pq_cal_view',
+  CLIMA:          'pq_clima',
+  CLIMA_WARN:     'pq_clima_warn',
 };
 
 // Notificaciones push (avisos de seguimiento con la app cerrada). Ambos se
@@ -5950,7 +6082,7 @@ function attachClientAutocomplete() {
     dropdown.style.cssText = `
       position:absolute;z-index:9999;background:#fff;border:1px solid var(--border);
       border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.12);
-      max-height:220px;overflow-y:auto;width:100%;display:none;
+      max-height:220px;overflow-y:auto;overscroll-behavior:contain;width:100%;display:none;
       font-family:'DM Sans',sans-serif;top:100%;left:0;margin-top:2px;
     `;
     nameInput.parentElement.style.position = 'relative';
@@ -7741,14 +7873,24 @@ function toggleCollapsibleSection(id) {
   }
 }
 
+// Memoria de scroll por pestaña. Como TODAS las pestañas comparten el único
+// scroller (#main), al cambiar de pestaña el scrollTop se "filtraba" de una a
+// otra (entrabas al Editor scrolleado a la mitad porque venías scrolleado del
+// Historial). Guardamos la posición de la pestaña que dejamos y restauramos la
+// de la que entramos (0 la primera vez que se visita).
+const _tabScroll = {};
 function switchTab(name) {
   // El puente presupuesto→factura solo aplica dentro de Facturación; al salir
   // a otra pestaña descartamos el enlace pendiente para no atar la factura a
   // un presupuesto que no corresponde.
   if (name !== 'facturacion') _pendingFacturaQuote = null;
+  // Recordar dónde quedó la pestaña que estamos dejando (antes de ocultarla).
+  const _main = document.getElementById('main');
+  const _prev = document.querySelector('.tab-panel.active');
+  if (_main && _prev) _tabScroll[_prev.id] = _main.scrollTop;
   // Empresa y Estilo ya no tienen botón en la barra (viven en el engranaje ⚙);
   // este array debe coincidir en orden con los .tab-btn que SÍ quedan en #tabs.
-  const names = ['editor','historial','mapa','agenda','facturacion'];
+  const names = ['editor','historial','agenda','mapa','facturacion'];
   document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active', names[i]===name));
   // Resaltar el engranaje cuando estamos en una pantalla de Configuración
   // (esos paneles no tienen botón de pestaña que se marque activo).
@@ -7782,6 +7924,59 @@ function switchTab(name) {
       sticky.style.display = 'none';
       document.body.classList.remove('has-sticky-totals');
     }
+  }
+  // Reservar el espacio de la barra de totales (solo en Editor) antes de
+  // restaurar el scroll, para que el scrollTop se calcule sobre la altura final.
+  reserveStickySpace();
+  // Restaurar la posición propia de la pestaña que entra (0 si es su primera
+  // visita). Va al final: el contenido ya se re-renderizó (renderHistory, etc.)
+  // así que el scrollTop se aplica sobre la altura correcta. Los callers que
+  // hacen su propio scrollIntoView tras switchTab (p. ej. abrir un presupuesto
+  // del historial) corren después y ganan — no hay conflicto.
+  if (_main) _main.scrollTop = _tabScroll['panel-' + name] || 0;
+}
+
+// Reserva, dentro del scroller #main, el alto real de la barra de totales fija
+// para que el contenido no quede tapado. Se mide con offsetHeight (incluye la
+// safe-area del dispositivo). Fuera del Editor la barra está oculta → se limpia
+// el padding y vuelve al valor por defecto del CSS.
+function reserveStickySpace() {
+  const main = document.getElementById('main');
+  const bar  = document.getElementById('sticky-totals');
+  if (!main || !bar) return;
+  const shown = document.body.classList.contains('has-sticky-totals') && bar.style.display !== 'none';
+  main.style.paddingBottom = shown ? (bar.offsetHeight + 16) + 'px' : '';
+}
+
+// Vuelve #main al tope con scroll suave (botón "subir").
+function scrollMainToTop() {
+  const main = document.getElementById('main');
+  if (main) main.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// Orden de las pestañas de la barra (para navegar con swipe). Debe coincidir
+// con el orden de los .tab-btn y con el array `names` de switchTab. 'empresa'
+// (Configuración) no está: se llega por el engranaje, no por swipe.
+const TAB_ORDER = ['editor', 'historial', 'agenda', 'mapa', 'facturacion'];
+
+// Navega a la pestaña vecina (dir: +1 siguiente, -1 anterior) con una animación
+// de entrada. Usada por el gesto de swipe. En los bordes no hace nada.
+function _navTab(dir) {
+  const cur = document.querySelector('.tab-panel.active');
+  if (!cur) return;
+  const i = TAB_ORDER.indexOf(cur.id.replace('panel-', ''));
+  if (i < 0) return;                 // p. ej. Configuración: sin swipe-nav
+  // Wrap circular: desde Facturas (última) el swipe sigue a Editor (primera) y
+  // viceversa. El +len antes del módulo evita el negativo con dir=-1.
+  const j = (i + dir + TAB_ORDER.length) % TAB_ORDER.length;
+  switchTab(TAB_ORDER[j]);
+  const p = document.getElementById('panel-' + TAB_ORDER[j]);
+  if (p) {
+    const cls = dir > 0 ? 'tab-slide-next' : 'tab-slide-prev';
+    p.classList.remove('tab-slide-next', 'tab-slide-prev');
+    void p.offsetWidth;              // reflow: reinicia la animación
+    p.classList.add(cls);
+    p.addEventListener('animationend', () => p.classList.remove(cls), { once: true });
   }
 }
 
@@ -8015,6 +8210,25 @@ function onDateChange() {
   S.dateIssue = gv('date-issue');
   calcExpiry();
   sched();
+}
+
+// Auto-actualiza la fecha de emisión al día de hoy SOLO si no hay nada en
+// edición (presupuesto en blanco). La fecha vive en localStorage y quedaba
+// congelada en el día en que se creó el borrador vacío: si el usuario abría la
+// app días después sin tocar "Nuevo", el presupuesto arrancaba con una fecha
+// pasada. Cuando ya hay datos cargados NO se toca (esa fecha es intencional).
+// Devuelve true si actualizó algo. Se llama al abrir la app y al volver del
+// segundo plano (visibilitychange). `noSync` evita disparar un guardado
+// espurio: la fecha de un borrador vacío no vale la pena persistir sola.
+function refreshIssueDateIfBlank() {
+  if (typeof isBlankQuote !== 'function' || !isBlankQuote()) return false;
+  const hoy = today();
+  if (S.dateIssue === hoy) return false;
+  S.dateIssue = hoy;
+  sv('date-issue', S.dateIssue);
+  { const e = document.getElementById('date-issue'); if (e && e._cdateBtn) syncCdate(e); }
+  calcExpiry();
+  return true;
 }
 
 function onValidityChange() {
@@ -8522,6 +8736,32 @@ function getH() {
 
 function setH(h) { safeSetLS(LS.HISTORY, JSON.stringify(h)); if (typeof scheduleGcalSync === 'function') scheduleGcalSync(); }
 
+// Devuelve true si el presupuesto ACTUAL (estado en memoria `S`) está en
+// blanco: sin cliente, sin items, sin total, sin observaciones ni condiciones
+// de pago, ni datos del informe de riesgo. Es "no hay nada en edición": el
+// usuario abrió la app, se asignó un N° automático, y nunca cargó nada.
+// Se usa para no ensuciar el historial con borradores vacíos y para saber si
+// es seguro auto-actualizar la fecha de emisión al día de hoy.
+function isBlankQuote() {
+  const itemCount = S.isEstimative
+    ? (S.estItems||[]).filter(i=>i.type==='work'||i.type==='service').length
+    : (S.items||[]).length;
+
+  let total = 0;
+  if (S.isEstimative) {
+    (S.estItems||[]).forEach(i=>{ if((i.type==='work'||i.type==='service')&&i.price) total+=parseFloat(i.price)||0; });
+  } else {
+    total = calcTotals().total;
+  }
+
+  return !S.clientName?.trim()
+      && itemCount === 0
+      && total === 0
+      && !S.observations?.trim()
+      && !S.paymentConditions?.trim()
+      && !(S.isRisk && S.riskData?.species);
+}
+
 // ─── AUTO-SAVE (silencioso) ───────────────────
 // Devuelve true si asentó el presupuesto en el historial, false si no
 // había nada que guardar (sin N° o borrador vacío).
@@ -8546,13 +8786,7 @@ function autoSaveToHistory() {
   // sin total, sin observaciones. Eso es ruido — el usuario abrió la
   // app, se asignó un N° automático, y nunca cargó nada. Antes esos
   // borradores ensuciaban el historial con líneas "Sin cliente · $0".
-  const isEmptyDraft = !S.clientName?.trim()
-                    && itemCount === 0
-                    && total === 0
-                    && !S.observations?.trim()
-                    && !S.paymentConditions?.trim()
-                    && !(S.isRisk && S.riskData?.species);
-  if (isEmptyDraft) return false;
+  if (isBlankQuote()) return false;
 
   // Snapshot del estado, pero SIN el logo. El logo es config global de
   // empresa (vive en S.logo y se exporta a nivel raíz del backup). No
@@ -8879,6 +9113,9 @@ function openAgendaDlg(id, opts) {
   if (ca) ca.textContent = _agendaFromAccept ? 'Todavía no sé' : 'Cancelar';
   setAgendaMode((opts && opts.mode) || 'trabajo');
   ov.classList.add('open');
+  // Pronóstico de la zona para elegir un buen día (idea 1): baja el clima de
+  // este trabajo aunque no esté aceptado y repinta la tira al terminar.
+  if (typeof climaEnsureZona === 'function') climaEnsureZona(e, () => { try { agendaClimaRender(); } catch (_) {} });
 }
 
 // Alterna entre "Fecha del trabajo" (multi-día) y "Recontactar": actualiza
@@ -9022,6 +9259,8 @@ function agendaOnDateChange() {
   } else {
     warn.hidden = true;
   }
+  // Repintar la tira de clima (resalta el día elegido + su detalle).
+  if (typeof agendaClimaRender === 'function') agendaClimaRender();
 }
 
 // Persiste el modo activo en el entry. En trabajo escribe e.fechasTrabajo
@@ -9088,6 +9327,9 @@ function agendaSave() {
   if (!e) return;
   if (rec) toast(e.recontactoEn ? `Recontacto agendado: ${fmtDiaCorto(e.recontactoEn)}` : 'Recontacto quitado', 'ok');
   else     toast(_agendaTrabajoToast(e), 'ok');
+  // Trabajo recién agendado: bajar el pronóstico ya (y avisar si viene lluvia)
+  // sin esperar la próxima apertura de la app.
+  if (!rec && typeof climaRefresh === 'function') climaRefresh();
 }
 
 // "Quitar fecha" (visible solo en recontacto): vacía el recontacto y guarda.
@@ -9475,24 +9717,9 @@ function _awaitDocImages(root, timeoutMs = 8000) {
   return Promise.race([settle, guard]);
 }
 
-// Comparte un File por la bandeja nativa del sistema (navigator.share). Si el
-// dispositivo no soporta compartir archivos (típicamente escritorio), cae al
-// flujo manual: descarga el archivo y abre WhatsApp con texto.
-async function _shareFileOrFallback(file, e) {
-  if (navigator.canShare && navigator.share && navigator.canShare({ files: [file] })) {
-    const empresa = ((e.snapshot && e.snapshot.coName) || S.coName || '').trim();
-    const txt = `Presupuesto ${e.quoteNumber || ''}${empresa ? ' — ' + empresa : ''}`.trim();
-    try {
-      await navigator.share({ files: [file], title: file.name, text: txt });
-    } catch (err) {
-      if (err && err.name !== 'AbortError') { // AbortError = el usuario canceló la bandeja
-        console.error('navigator.share falló', err);
-        toast('No se pudo compartir el archivo', 'err');
-      }
-    }
-    return;
-  }
-  // Fallback escritorio / sin soporte de compartir-archivos.
+// Fallback manual (escritorio o cuando navigator.share falla): descarga la
+// imagen y abre WhatsApp con un texto, para que el usuario la adjunte a mano.
+function _downloadAndWhatsApp(file, e) {
   const url = URL.createObjectURL(file);
   const a = document.createElement('a');
   a.href = url; a.download = file.name;
@@ -9502,7 +9729,30 @@ async function _shareFileOrFallback(file, e) {
     ? normalizeArgPhone((e.snapshot && e.snapshot.clientContact) || '') : '';
   const base = phone ? `https://wa.me/${phone}` : 'https://wa.me/';
   window.open(`${base}?text=${encodeURIComponent('Te paso el presupuesto ' + (e.quoteNumber || ''))}`, '_blank', 'noopener');
-  toast('Archivo descargado. Adjuntalo en WhatsApp.', 'info', 6000);
+  toast('Imagen descargada. Adjuntala en WhatsApp.', 'info', 6000);
+}
+
+// Comparte un File por la bandeja nativa del sistema (navigator.share). Debe
+// llamarse DENTRO del gesto del usuario (ver sharePngFromHistory: el envío va
+// en un segundo toque fresco) para no perder la activación transitoria. Si el
+// dispositivo no soporta compartir archivos, o si navigator.share falla de
+// verdad (p. ej. la activación ya venció → NotAllowedError), cae al flujo
+// manual (descargar + WhatsApp) para no dejar al usuario sin nada.
+async function _shareFileOrFallback(file, e) {
+  if (navigator.canShare && navigator.share && navigator.canShare({ files: [file] })) {
+    const empresa = ((e.snapshot && e.snapshot.coName) || S.coName || '').trim();
+    const txt = `Presupuesto ${e.quoteNumber || ''}${empresa ? ' — ' + empresa : ''}`.trim();
+    try {
+      await navigator.share({ files: [file], title: file.name, text: txt });
+      return;
+    } catch (err) {
+      if (err && err.name === 'AbortError') return; // el usuario canceló la bandeja
+      // Falló de verdad → en vez de un error sin salida, caemos al camino manual.
+      console.error('navigator.share falló; uso descarga + WhatsApp como fallback', err);
+    }
+  }
+  // Fallback escritorio / sin soporte de compartir-archivos / share falló.
+  _downloadAndWhatsApp(file, e);
 }
 
 // Calcula el factor de escala (≈ DPI) más alto posible para rasterizar el
@@ -9520,24 +9770,68 @@ function _bestRasterScale(cssW, cssH) {
   return Math.max(1.5, Math.round(s * 100) / 100); // piso 1.5×
 }
 
+// Imagen ya generada y lista para enviar (flujo de DOS TOQUES, ver abajo).
+// Guardamos solo UNA a la vez para no retener memoria. Se limpia al re-render
+// del historial (renderHistory) y tras enviarla.
+let _pngShareReady = null; // { id, file, btn }
+
+// Deja un botón "Compartir" en su estado base (por si quedó en "Enviar imagen").
+function _resetShareBtn(btn) {
+  if (!btn || !btn.isConnected) return;
+  btn.disabled = false;
+  btn.classList.remove('btn-ready');
+  btn.innerHTML = `${icon('image')} Compartir`;
+}
+
+// Descarta cualquier imagen lista pendiente y restaura su botón.
+function _clearPngShareReady() {
+  if (_pngShareReady) { _resetShareBtn(_pngShareReady.btn); _pngShareReady = null; }
+}
+
 // Compartir como imagen PNG del presupuesto COMPLETO (una sola imagen larga).
 // Usa html2canvas (vía html2pdf) para rasterizar el documento y lo exporta como
 // PNG SIN PÉRDIDA. Calidad máxima: esperamos a que las fuentes estén cargadas
 // (texto nítido, sin fallback) y rasterizamos al mayor DPI que el dispositivo
 // banque. Es la opción para quien prefiera mandar una imagen; el PDF vectorial
 // de máxima calidad sigue estando en el botón Imprimir/PDF de siempre.
-async function sharePngFromHistory(id) {
+//
+// FLUJO DE DOS TOQUES (importante): navigator.share exige "activación
+// transitoria" (estar todavía dentro del gesto del usuario, ventana de ~5 s en
+// Android). Como rasterizar puede tardar más que eso (documentos largos, fotos,
+// celu lento), si compartiéramos en el mismo toque la activación ya habría
+// vencido → NotAllowedError → "no se pudo compartir". Por eso separamos:
+//   1er toque → genera la imagen (trabajo pesado) y deja el botón en "Enviar".
+//   2do toque → comparte YA, dentro de un gesto fresco (share nunca falla por
+//               activación vencida).
+async function sharePngFromHistory(id, btn) {
   const e = getH().find(x => x.id === id);
   if (!e || !e.snapshot) { toast('No se pudo abrir el presupuesto', 'err'); return; }
+
+  // SEGUNDO TOQUE: ya hay una imagen lista para ESTE presupuesto → compartir
+  // ahora mismo, sin ningún await previo, para conservar la activación del gesto.
+  if (_pngShareReady && _pngShareReady.id === id && _pngShareReady.file) {
+    const file = _pngShareReady.file;
+    _resetShareBtn(_pngShareReady.btn);
+    if (btn && btn !== _pngShareReady.btn) _resetShareBtn(btn);
+    _pngShareReady = null;
+    await _shareFileOrFallback(file, e);
+    return;
+  }
+
+  // Si había una imagen lista de OTRO presupuesto, descartarla y resetear su botón.
+  _clearPngShareReady();
+
+  // PRIMER TOQUE: generar la imagen (trabajo pesado). NO compartimos acá.
+  if (btn) { btn.disabled = true; btn.innerHTML = `${icon('image')} Generando…`; }
   toast('Generando imagen para compartir…', 'info', 4000);
   let h2p;
   try { h2p = await ensureHtml2Pdf(); }
-  catch (err) { toast('⚠️ No se pudo cargar el generador de imagen. La primera vez necesita conexión.', 'err', 6000); return; }
+  catch (err) { _resetShareBtn(btn); toast('⚠️ No se pudo cargar el generador de imagen. La primera vez necesita conexión.', 'err', 6000); return; }
   // Fuentes listas antes de rasterizar: si html2canvas captura mientras la
   // tipografía de marca aún no cargó, el texto sale con la fuente de respaldo.
   try { if (document.fonts && document.fonts.ready) await document.fonts.ready; } catch (_) {}
   const od = _offscreenDoc(e);
-  if (!od) { toast('No se pudo generar el documento', 'err'); return; }
+  if (!od) { _resetShareBtn(btn); toast('No se pudo generar el documento', 'err'); return; }
   try {
     // Esperar a que las fotos carguen ANTES de medir/rasterizar (ver
     // _awaitDocImages): evita el espacio en blanco entre secciones.
@@ -9557,10 +9851,19 @@ async function sharePngFromHistory(id) {
     }).from(od.inner).toCanvas().get('canvas');
     // toBlob('image/png') es sin pérdida; el 2º arg (calidad) no aplica a PNG.
     const blob = await new Promise((res) => canvas.toBlob(res, 'image/png'));
-    if (!blob) { toast('No se pudo generar la imagen', 'err'); return; }
-    await _shareFileOrFallback(new File([blob], _entryFileBase(e) + '.png', { type: 'image/png' }), e);
+    if (!blob) { _resetShareBtn(btn); toast('No se pudo generar la imagen', 'err'); return; }
+    const file = new File([blob], _entryFileBase(e) + '.png', { type: 'image/png' });
+    // Imagen lista: el botón queda en modo "Enviar" y esperamos el 2º toque.
+    _pngShareReady = { id, file, btn };
+    if (btn && btn.isConnected) {
+      btn.disabled = false;
+      btn.classList.add('btn-ready');
+      btn.innerHTML = `${icon('share')} Enviar imagen`;
+    }
+    toast('✅ Imagen lista — tocá "Enviar imagen" para compartir', 'ok', 5000);
   } catch (err) {
     console.error('Error generando la imagen para compartir', err);
+    _resetShareBtn(btn);
     toast('⚠️ No se pudo generar la imagen', 'err', 5000);
   } finally {
     od.host.remove();
@@ -9953,6 +10256,21 @@ function getTrabajosDeHoy() {
   return getH().filter(e => (e.estado || '') === 'aceptado' && agFechas(e).includes(hoy));
 }
 
+// Visitas (evaluaciones presenciales / ir a presupuestar) agendadas para HOY
+// que siguen pendientes. Van al banner del día junto con las podas.
+function getVisitasDeHoy() {
+  const hoy = today();
+  return (typeof getNotes === 'function' ? getNotes() : [])
+    .filter(n => n && n.tipo === 'visita' && !n.hecho && n.fecha === hoy);
+}
+
+// Cierra una visita desde el banner: la marca hecha (calToggleNote persiste y
+// re-renderiza la Agenda) y actualiza el banner (baja a N-1 o desaparece).
+function marcarVisitaHecha(id) {
+  if (typeof calToggleNote === 'function') calToggleNote(id);
+  renderMorningBanner();
+}
+
 // Para un trabajo multi-día, qué número de día es HOY y cuántos hay en total
 // ({ idx, total }); null si es de un solo día. Sirve para el contexto
 // "Día 2 de 4" en el banner del día.
@@ -10045,18 +10363,36 @@ function renderMorningBanner() {
   const el = document.getElementById('morning-banner');
   if (!el) return;
   const hoy = getTrabajosDeHoy();
-  if (!hoy.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
+  const visitas = getVisitasDeHoy();
+  if (!hoy.length && !visitas.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
 
-  const n = hoy.length;
+  const n = hoy.length, nv = visitas.length;
   const esManana = new Date().getHours() < 12;
+  const partes = [];
+  if (n)  partes.push(`${n} poda${n>1?'s':''}`);
+  if (nv) partes.push(`${nv} visita${nv>1?'s':''}`);
+  const queHay = partes.join(' y ');
   const titulo = esManana
-    ? `${icon('sun')} Buen día — Hoy tenés ${n} poda${n>1?'s':''}`
-    : `${icon('tree')} Trabajo${n>1?'s':''} de hoy (${n})`;
+    ? `${icon('sun')} Buen día — Hoy tenés ${queHay}`
+    : `${icon('tree')} Agenda de hoy: ${queHay}`;
   const subtitulo = esManana
-    ? `Trabajo${n>1?'s':''} agendado${n>1?'s':''} para hoy. Accesos rápidos para llegar y avisarle al cliente.`
-    : `Cuando termines, marcá el trabajo como realizado para cerrarlo${n>1?'s':''}.`;
+    ? `Agendado para hoy. Accesos rápidos para llegar y avisarle al cliente.`
+    : (n
+      ? `Cuando termines, marcá el trabajo como realizado para cerrarlo${n>1?'s':''}.`
+      : `Al terminar cada visita, marcala hecha o creá el presupuesto directo desde acá.`);
 
   const { summaryHtml: summary } = _resumenDelDia(hoy);
+
+  // Recomendaciones del día (idea 6): lluvia/viento/UV/temperatura. Todos los
+  // trabajos de hoy caen en la misma zona → alcanza con el pronóstico del
+  // primero para hoy (o el de la primera visita si hoy solo hay visitas).
+  let recosHtml = '';
+  if (typeof climaRecomendaciones === 'function') {
+    const d = n ? climaDe(hoy[0], today())
+      : (typeof climaDeNota === 'function' ? climaDeNota(visitas[0], today()) : null);
+    const recos = climaRecomendaciones(d);
+    if (recos.length) recosHtml = `<div class="mb-recos">${recos.map(r => `<span class="mb-reco">${esc(r)}</span>`).join('')}</div>`;
+  }
 
   el.style.display = 'block';
   el.innerHTML = `
@@ -10066,6 +10402,7 @@ function renderMorningBanner() {
     </div>
     <div class="fub-sub">${subtitulo}</div>
     ${summary}
+    ${recosHtml}
     <div class="fub-list">
       ${hoy.map(e => {
         const snap = e.snapshot || {};
@@ -10073,17 +10410,38 @@ function renderMorningBanner() {
         const tieneTel  = !!histClientPhone(e);
         const lugar = (snap.workAddress || '').trim();
         const dinfo = agDiaDeHoyInfo(e); // "Día 2 de 4" en trabajos multi-día
+        const clima = (typeof climaDe === 'function') ? climaChipHTML(climaDe(e, today())) : '';
         return `<div class="fub-item">
           <div class="fub-item-info" onclick="goToHistoryEntry(${e.id})" role="button" tabindex="0" title="Ver este presupuesto en el historial">
             <span><span class="fub-item-num">${esc(e.quoteNumber||'—')}</span> <span class="fub-item-client">${esc(e.clientName||'(sin nombre)')}</span></span>
             ${dinfo ? `<span class="fub-item-days">${icon('calendar')} Día ${dinfo.idx} de ${dinfo.total}</span>` : ''}
             ${lugar ? `<span class="fub-item-days">${icon('pin')} ${esc(lugar)}</span>` : ''}
+            ${clima ? `<span>${clima}</span>` : ''}
           </div>
           <div class="mb-acts">
             ${tieneUbic ? `<button type="button" class="mb-act mb-act-map" onclick="comoLlegar(${e.id})">${icon('pin')} Cómo llegar</button>` : ''}
             ${tieneTel ? `<button type="button" class="mb-act mb-act-wa" onclick="avisarVoyEnCamino(${e.id})">${icon('message')} Voy en camino</button>` : ''}
             <button type="button" class="mb-act mb-act-view" onclick="previewFromHistory(${e.id})">${icon('eye')} Ver</button>
             <button type="button" class="mb-act mb-act-done" onclick="marcarTrabajoRealizado(${e.id})" title="Marcar el trabajo como realizado (te ofrece registrar la factura)">${icon('check')} Realizado</button>
+          </div>
+        </div>`;
+      }).join('')}
+      ${visitas.map(v => {
+        const ubic = (v.ubic || '').trim();
+        const tieneUbic = !!(ubic && mapsUrlFor(ubic, ''));
+        const tieneTel  = !!(v.tel || '').trim();
+        const clima = (typeof climaDeNota === 'function') ? climaChipHTML(climaDeNota(v, today())) : '';
+        return `<div class="fub-item fub-item-visita">
+          <div class="fub-item-info" onclick="switchTab('agenda')" role="button" tabindex="0" title="Ver la visita en la Agenda">
+            <span><span class="fub-item-num">Visita</span> <span class="fub-item-client">${esc(v.texto || '')}</span></span>
+            ${(v.cliente || '').trim() ? `<span class="fub-item-days">${icon('user')} ${esc(v.cliente)}</span>` : ''}
+            ${clima ? `<span>${clima}</span>` : ''}
+          </div>
+          <div class="mb-acts">
+            ${tieneUbic ? `<button type="button" class="mb-act mb-act-map" onclick="calOpenNoteMap('${v.id}')">${icon('pin')} Cómo llegar</button>` : ''}
+            ${tieneTel ? `<button type="button" class="mb-act mb-act-wa" onclick="calChatNote('${v.id}')">${icon('message')} WhatsApp</button>` : ''}
+            <button type="button" class="mb-act mb-act-crear" onclick="calCrearPresupuestoDesdeVisita('${v.id}')" title="Crear un presupuesto con los datos de esta visita">${icon('file')} Crear presupuesto</button>
+            <button type="button" class="mb-act mb-act-done" onclick="marcarVisitaHecha('${v.id}')" title="Marcar la visita como hecha">${icon('check')} Hecha</button>
           </div>
         </div>`;
       }).join('')}
@@ -10115,9 +10473,10 @@ function marcarTrabajoRealizado(id) {
 // saludo cambia según la hora (mañana: "Buen día"; después: "Trabajo de hoy").
 // Además, la PRIMERA vez del día, dispara el pop-up llamativo (una sola vez).
 function maybeShowMorningBanner() {
-  if (!getTrabajosDeHoy().length) return;
+  if (!getTrabajosDeHoy().length && !getVisitasDeHoy().length) return;
   renderMorningBanner();
-  maybeShowDayAlert();
+  // El pop-up llamativo del día sigue siendo solo para días con poda.
+  if (getTrabajosDeHoy().length) maybeShowDayAlert();
 }
 
 // ─── POP-UP DE ARRANQUE DEL DÍA (llamativo, 1 vez por día) ───
@@ -10194,10 +10553,12 @@ function renderDayAlert(hoy) {
         const snap = e.snapshot || {};
         const lugar = (snap.workAddress || '').trim();
         const dinfo = agDiaDeHoyInfo(e);
+        const clima = (typeof climaDe === 'function') ? climaChipHTML(climaDe(e, today())) : '';
         return `<button type="button" class="da-item" onclick="dayAlertGoTo(${e.id})">
           <span class="da-item-top"><span class="da-item-num">${esc(e.quoteNumber || '—')}</span> <span class="da-item-client">${esc(e.clientName || '(sin nombre)')}</span></span>
           ${dinfo ? `<span class="da-item-meta">${icon('calendar')} Día ${dinfo.idx} de ${dinfo.total}</span>` : ''}
           ${lugar ? `<span class="da-item-meta">${icon('pin')} ${esc(lugar)}</span>` : ''}
+          ${clima}
           ${_dayAlertNotesHTML(snap)}
         </button>`;
       }).join('')}
@@ -10533,6 +10894,9 @@ function clearHistSearch(){
 
 function renderHistory() {
   const list     = document.getElementById('history-list');     if(!list) return;
+  // Re-render → los botones se recrean: descartar cualquier imagen lista
+  // pendiente (su botón y su referencia quedaron obsoletos).
+  _pngShareReady = null;
   const searchEl = document.getElementById('hist-search');
   const filterEl = document.getElementById('hist-client-filter');
   const countEl  = document.getElementById('hist-count');
@@ -10660,8 +11024,9 @@ function renderHistory() {
       <div class="hacts">
         <select class="hestado-sel" style="color:${txtCol};background-color:${bgCol};border-color:${bgCol}" onchange="setEstadoHistory(${e.id}, this.value)" title="Cambiar estado" aria-label="Estado del presupuesto">${estadoOpts}</select>
         ${agendaChipFor(e)}
+        ${typeof climaChipForEntry === 'function' ? climaChipForEntry(e) : ''}
         <button class="btn btn-g btn-sm" onclick="previewFromHistory(${e.id})">${icon('eye')} Ver</button>
-        <button class="btn btn-g btn-sm" onclick="sharePngFromHistory(${e.id})" title="Generar una imagen del presupuesto y compartirla (WhatsApp, etc.)">${icon('image')} Compartir</button>
+        <button class="btn btn-g btn-sm" onclick="sharePngFromHistory(${e.id}, this)" title="Generar una imagen del presupuesto y compartirla (WhatsApp, etc.)">${icon('image')} Compartir</button>
         ${tieneTel ? `<button class="btn btn-g btn-sm" onclick="chatWhatsappHistory(${e.id})" title="Abrir el chat de WhatsApp con el cliente" aria-label="Chat de WhatsApp con el cliente">${icon('message')} Chat</button>` : ''}
         ${tieneDir ? `<button class="btn btn-g btn-sm" onclick="comoLlegar(${e.id})" title="Cómo llegar a la dirección del trabajo" aria-label="Cómo llegar">${icon('pin')} Llegar</button>` : ''}
         <button class="btn-icon-del" onclick="delFromHistory(${e.id})" title="Eliminar presupuesto" aria-label="Eliminar presupuesto">${icon('trash')}</button>
@@ -11629,6 +11994,7 @@ function _gcalEvInfo(ev, e){
   let summary = '', loc = '';
   const desc = [];
   if (ev.tipo === 'trabajo')      summary = 'Trabajo: ' + ev.title + (ev.sub ? ' — ' + ev.sub : '');
+  else if (ev.tipo === 'visita')  summary = 'Visita: ' + ev.title;
   else if (ev.tipo === 'nota')    summary = 'Nota: ' + ev.title;
   else                            summary = ev.title;   // "Llamar a X" / "Vence X" / "Seguimiento X"
   if (e) {
@@ -11645,7 +12011,7 @@ function _gcalEvInfo(ev, e){
   return { summary, desc: desc.join('\n'), loc };
 }
 // Construye el conjunto DESEADO desde calBuildIndex(): { pqKey: {body, hash} }.
-// Incluye los 5 tipos, solo de hoy en adelante; notas ya hechas no van.
+// Incluye todos los tipos, solo de hoy en adelante; notas/visitas hechas no van.
 function _gcalBuildDesired(){
   const idx = calBuildIndex();
   const hoy = today();
@@ -11656,7 +12022,7 @@ function _gcalBuildDesired(){
   Object.keys(idx).sort().forEach(iso => {
     if (iso < hoy) return;
     idx[iso].forEach(ev => {
-      if (ev.tipo === 'nota' && ev.done) return;
+      if ((ev.tipo === 'nota' || ev.tipo === 'visita') && ev.done) return;
       const dstart = iso.replace(/-/g, '');
       const dendISO = _calAddDays(iso, 1);
       const info = _gcalEvInfo(ev, ev.entryId != null ? byId[ev.entryId] : null);
@@ -13749,6 +14115,507 @@ function mapaArmarRuta() {
   window.open(url, '_blank', 'noopener');
 }
 
+// ===== js/clima.js =====
+// ═══════════════════════════════════════════════════════════════════════════
+// CLIMA.JS — Pronóstico del tiempo para los trabajos agendados.
+//
+// Fuente: Open-Meteo (https://open-meteo.com) — gratuita, sin API key, con
+// CORS abierto. Se pide el pronóstico DIARIO (código de tiempo, probabilidad
+// y milímetros de lluvia, temperaturas, viento sostenido + ráfaga, e índice
+// UV) para la ubicación de cada trabajo agendado de los próximos días.
+//
+// Coordenadas: se resuelven con la misma plomería del mapa (entryLatLng:
+// pin manual → "lat,lng" → Plus Code). Si el trabajo no tiene ubicación, se
+// usa el centroide de la zona del usuario (_mapaComputeGeoRef). Como el
+// pronóstico es a escala de ciudad, las ubicaciones se agrupan redondeando
+// a ~1 km: en la práctica es UNA sola llamada por refresco.
+//
+// Cache en LS.CLIMA (pq_clima): { "lat,lng": { at, v, days: { iso: {...} } } }.
+// TTL 3 h. Sin conexión no se intenta nada y se sirve lo último cacheado
+// (offline-first: el chip muestra el pronóstico viejo antes que nada).
+//
+// Se usa en: chip de clima (Agenda, banner de hoy, pop-up, Historial), tira
+// de 7 días al agendar (elegir un buen día), recomendaciones del día, y aviso
+// accionable de lluvia/viento para trabajos de HOY o MAÑANA (toast que lleva
+// al presupuesto y ofrece reprogramar por WhatsApp; una vez por día por
+// trabajo, gate en LS.CLIMA_WARN).
+
+const CLIMA = {
+  TTL_MS: 3 * 60 * 60 * 1000,  // refrescar como mucho cada 3 h
+  MAX_DAYS: 14,                // horizonte útil del pronóstico diario
+  VER: 3,                      // versión del formato cacheado (v2: +UV, v3: +ráfaga);
+                               // subirla invalida el cache viejo en el próximo refresh
+  WIND_WARN: 45,               // km/h de ráfaga: aviso "peligro en altura"
+  WIND_CHIP: 35,               // km/h de ráfaga: mostrar el viento en el chip
+  UV_CHIP: 6,                  // índice UV: mostrar el UV en el chip (escala OMS: "alto")
+  _fetching: false,
+};
+
+function _climaCache() {
+  try { return JSON.parse(localStorage.getItem(LS.CLIMA) || '{}') || {}; }
+  catch (_) { return {}; }
+}
+
+// Agrupar ubicaciones a ~1 km (2 decimales): el pronóstico no cambia a esa
+// escala y así casi siempre alcanza con una sola llamada a la API.
+function _climaKey(ll) { return ll[0].toFixed(2) + ',' + ll[1].toFixed(2); }
+
+// Coordenadas para el clima de un trabajo: las del trabajo si las tiene,
+// si no el centroide de la zona (todos los trabajos de un podador caen en
+// la misma zona). null si no hay forma de ubicar nada todavía.
+function _climaLatLngDe(e) {
+  const propia = (typeof entryLatLng === 'function') ? entryLatLng(e) : null;
+  if (propia) return propia;
+  if (!_mapaGeoRef && typeof _mapaComputeGeoRef === 'function') _mapaGeoRef = _mapaComputeGeoRef();
+  return _mapaGeoRef;
+}
+
+// Trabajos agendados (aceptados) con días dentro del horizonte del
+// pronóstico: [{ e, fechas: [iso...] }].
+function _climaProximosTrabajos() {
+  const hoy = today();
+  const lim = _calAddDays(hoy, CLIMA.MAX_DAYS);
+  const out = [];
+  getH().forEach(e => {
+    if ((e.estado || '') !== 'aceptado') return;
+    const fechas = agFechas(e).filter(f => f >= hoy && f <= lim);
+    if (fechas.length) out.push({ e, fechas });
+  });
+  return out;
+}
+
+// Visitas (notas tipo 'visita') pendientes dentro del horizonte del
+// pronóstico: sus zonas también se bajan/cachean para el chip de clima
+// (evaluar un árbol con lluvia o ráfagas es tan mala idea como podarlo).
+function _climaProximasVisitas() {
+  const hoy = today();
+  const lim = _calAddDays(hoy, CLIMA.MAX_DAYS);
+  return (typeof getNotes === 'function' ? getNotes() : [])
+    .filter(n => n && n.tipo === 'visita' && !n.hecho && n.fecha >= hoy && n.fecha <= lim);
+}
+
+// Coordenadas para el clima de una visita: la ubicación cargada en la nota
+// ("lat,lng" o Plus Code; un link http no se puede convertir a coordenadas)
+// o, si no, el centroide de la zona — igual que un trabajo sin ubicación.
+function _climaLatLngNota(n) {
+  const u = ((n && n.ubic) || '').trim();
+  if (u && !/^https?:\/\//i.test(u)) {
+    const m = u.match(/^\s*(-?\d{1,3}(?:\.\d+)?)\s*,\s*(-?\d{1,3}(?:\.\d+)?)\s*$/);
+    if (m) {
+      const lat = parseFloat(m[1]), lng = parseFloat(m[2]);
+      if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) return [lat, lng];
+    }
+    const pc = (typeof plusCodeToLatLng === 'function') ? plusCodeToLatLng(u, _mapaGeoRef) : null;
+    if (pc) return pc;
+  }
+  if (!_mapaGeoRef && typeof _mapaComputeGeoRef === 'function') _mapaGeoRef = _mapaComputeGeoRef();
+  return _mapaGeoRef;
+}
+
+// Pronóstico cacheado para una visita en una fecha, o null si no hay.
+function climaDeNota(n, iso) {
+  const ll = _climaLatLngNota(n);
+  if (!ll) return null;
+  const z = _climaCache()[_climaKey(ll)];
+  return (z && z.days && z.days[iso]) || null;
+}
+
+// Asegura el pronóstico de la zona de UNA visita recién agendada y llama a
+// cb() al terminar (espejo de climaEnsureZona para trabajos).
+async function climaEnsureNota(n, cb) {
+  const ll = _climaLatLngNota(n);
+  if (!ll) { if (cb) cb(); return; }
+  const zonas = {}; zonas[_climaKey(ll)] = ll;
+  try { await _climaFetchZonas(zonas); } catch (_) {}
+  if (cb) cb();
+}
+
+// Baja y cachea el pronóstico de las zonas indicadas (map key→[lat,lng]) que
+// no estén frescas (por TTL o versión de formato vieja). Persiste el cache y
+// devuelve true si algo cambió. NO poda zonas (de eso se encarga climaRefresh
+// con las zonas de los trabajos). No hace nada sin conexión.
+async function _climaFetchZonas(zonas) {
+  if (CLIMA._fetching || navigator.onLine === false) return false;
+  const cache = _climaCache();
+  const ahora = Date.now();
+  const pendientes = Object.keys(zonas)
+    .filter(k => !cache[k] || !cache[k].at || cache[k].v !== CLIMA.VER
+              || (ahora - cache[k].at) > CLIMA.TTL_MS);
+  if (!pendientes.length) return false;
+
+  CLIMA._fetching = true;
+  let cambio = false;
+  try {
+    for (const k of pendientes) {
+      const [lat, lng] = zonas[k];
+      try {
+        const url = 'https://api.open-meteo.com/v1/forecast'
+          + `?latitude=${lat.toFixed(4)}&longitude=${lng.toFixed(4)}`
+          + '&daily=weather_code,precipitation_probability_max,precipitation_sum,temperature_2m_max,temperature_2m_min,wind_speed_10m_max,wind_gusts_10m_max,uv_index_max'
+          + '&timezone=auto&forecast_days=16';
+        const res = await fetch(url);
+        if (!res.ok) continue;
+        const j = await res.json();
+        const d = j && j.daily;
+        if (!d || !Array.isArray(d.time)) continue;
+        const days = {};
+        d.time.forEach((iso, i) => {
+          days[iso] = {
+            code: d.weather_code?.[i] ?? null,
+            pp:   d.precipitation_probability_max?.[i] ?? null, // % probabilidad
+            mm:   d.precipitation_sum?.[i] ?? null,             // milímetros
+            tmax: d.temperature_2m_max?.[i] ?? null,
+            tmin: d.temperature_2m_min?.[i] ?? null,
+            wind: d.wind_speed_10m_max?.[i] ?? null,            // km/h sostenido
+            gust: d.wind_gusts_10m_max?.[i] ?? null,            // km/h ráfaga (peligro en altura)
+            uv:   d.uv_index_max?.[i] ?? null,                  // índice UV máx
+          };
+        });
+        cache[k] = { at: ahora, v: CLIMA.VER, days };
+        cambio = true;
+      } catch (_) { /* sin señal o API caída: se sirve lo cacheado */ }
+    }
+    if (cambio) safeSetLS(LS.CLIMA, JSON.stringify(cache));
+  } finally {
+    CLIMA._fetching = false;
+  }
+  return cambio;
+}
+
+// Refresco (silencioso): baja el pronóstico de las zonas con trabajos
+// agendados que no estén frescas, poda las que ya no tienen trabajos, avisa si
+// viene lluvia/viento y repinta lo que muestra clima. No hace nada sin
+// conexión o sin trabajos próximos.
+async function climaRefresh() {
+  if (navigator.onLine === false) return;
+  const trabajos = _climaProximosTrabajos();
+  const visitas = _climaProximasVisitas();
+  if (!trabajos.length && !visitas.length) return;
+
+  const zonas = {};
+  trabajos.forEach(t => { const ll = _climaLatLngDe(t.e); if (ll) zonas[_climaKey(ll)] = ll; });
+  visitas.forEach(n => { const ll = _climaLatLngNota(n); if (ll) zonas[_climaKey(ll)] = ll; });
+  const cambio = await _climaFetchZonas(zonas);
+
+  // Podar zonas que ya no corresponden a ningún trabajo ni visita.
+  const cache = _climaCache();
+  let podado = false;
+  Object.keys(cache).forEach(k => { if (!zonas[k]) { delete cache[k]; podado = true; } });
+  if (podado) { try { safeSetLS(LS.CLIMA, JSON.stringify(cache)); } catch (_) {} }
+
+  _climaAvisar();
+  if (cambio) {
+    // Repintar lo que muestra clima con el dato fresco.
+    try { if (typeof renderCal === 'function') renderCal(); } catch (_) {}
+    try { if (typeof renderMorningBanner === 'function') renderMorningBanner(); } catch (_) {}
+    try { if (typeof renderHistory === 'function') renderHistory(); } catch (_) {}
+  }
+}
+
+// Asegura el pronóstico de la zona de UN trabajo puntual (aunque todavía no
+// esté aceptado): lo usa el diálogo de agendar para mostrar el clima al elegir
+// el día. Baja si hace falta y llama a cb() al terminar (haya cambiado o no).
+async function climaEnsureZona(e, cb) {
+  const ll = _climaLatLngDe(e);
+  if (!ll) { if (cb) cb(); return; }
+  const zonas = {}; zonas[_climaKey(ll)] = ll;
+  try { await _climaFetchZonas(zonas); } catch (_) {}
+  if (cb) cb();
+}
+
+// Pronóstico cacheado para un trabajo en una fecha, o null si no hay.
+function climaDe(e, iso) {
+  const ll = _climaLatLngDe(e);
+  if (!ll) return null;
+  const z = _climaCache()[_climaKey(ll)];
+  return (z && z.days && z.days[iso]) || null;
+}
+
+// ¿El pronóstico amerita aviso de lluvia? Probabilidad alta, milímetros
+// apreciables o código WMO de lluvia/chaparrón/tormenta.
+function climaEsLluvia(d) {
+  if (!d) return false;
+  const c = d.code;
+  const codLluvia = c != null && ((c >= 51 && c <= 67) || (c >= 80 && c <= 82) || c >= 95);
+  return (d.pp != null && d.pp >= 50) || (d.mm != null && d.mm >= 2) || codLluvia;
+}
+
+// Ráfaga máxima estimada (km/h): la ráfaga si está, si no el viento sostenido.
+// Es lo que importa para trabajar en altura (lo que te sacude en el árbol).
+function _climaRafaga(d) {
+  if (!d) return null;
+  return (d.gust != null) ? d.gust : (d.wind != null ? d.wind : null);
+}
+
+// ¿Viento fuerte? Ráfaga por encima del umbral de "peligro en altura".
+function climaEsViento(d) {
+  const g = _climaRafaga(d);
+  return g != null && g >= CLIMA.WIND_WARN;
+}
+
+// Motivo de riesgo climático de un día para los avisos: { lluvia, viento, txt }.
+// txt combina ambos ("lluvia y viento fuerte") o queda '' si el día está bien.
+function _climaMotivo(d) {
+  const l = climaEsLluvia(d), v = climaEsViento(d);
+  let txt = '';
+  if (l && v) txt = 'lluvia y viento fuerte';
+  else if (l) txt = 'lluvia';
+  else if (v) txt = 'viento fuerte';
+  return { lluvia: l, viento: v, txt };
+}
+
+// Código WMO → emoji + descripción corta (es-AR).
+function _climaEmojiDesc(c) {
+  if (c == null)          return ['🌡️', 'Pronóstico'];
+  if (c === 0)            return ['☀️', 'Despejado'];
+  if (c <= 2)             return ['🌤️', 'Algo nublado'];
+  if (c === 3)            return ['☁️', 'Nublado'];
+  if (c === 45 || c === 48) return ['🌫️', 'Niebla'];
+  if (c <= 57)            return ['🌦️', 'Llovizna'];
+  if (c <= 67)            return ['🌧️', 'Lluvia'];
+  if (c <= 77)            return ['🌨️', 'Nieve'];
+  if (c <= 82)            return ['🌧️', 'Chaparrones'];
+  if (c <= 86)            return ['🌨️', 'Nieve'];
+  return ['⛈️', 'Tormenta'];
+}
+
+// Etiqueta corta del índice UV (escala OMS). '' si no hay dato.
+function _climaUvLabel(uv) {
+  if (uv == null) return '';
+  if (uv >= 11) return 'extremo';
+  if (uv >= 8)  return 'muy alto';
+  if (uv >= 6)  return 'alto';
+  if (uv >= 3)  return 'moderado';
+  return 'bajo';
+}
+
+// Chip HTML con el pronóstico de un día (para la Agenda / banners / Historial),
+// '' si no hay dato cacheado. Color según prioridad: lluvia (ámbar) > viento
+// fuerte (rosa, peligro en altura) > UV alto (naranja). El viento se muestra en
+// el texto a partir de ráfaga ≥ WIND_CHIP y el UV a partir de ≥ UV_CHIP; en el
+// detalle (title) va todo siempre.
+function climaChipHTML(d) {
+  if (!d) return '';
+  const [emoji, desc] = _climaEmojiDesc(d.code);
+  const lluvia = climaEsLluvia(d);
+  const g = _climaRafaga(d);
+  const vientoWarn = g != null && g >= CLIMA.WIND_WARN;
+  const vientoChip = g != null && g >= CLIMA.WIND_CHIP;
+  const uvAlto = d.uv != null && d.uv >= CLIMA.UV_CHIP;
+  const temp = (d.tmax != null) ? ` ${Math.round(d.tmax)}°` : '';
+  const lluviaTxt = lluvia
+    ? ` · lluvia${d.pp != null ? ` ${Math.round(d.pp)}%` : ''}${d.mm ? ` (${Math.round(d.mm)} mm)` : ''}`
+    : '';
+  const vientoTxt = vientoChip ? ` · 💨 ${Math.round(g)} km/h` : '';
+  const uvTxt = uvAlto ? ` · UV ${Math.round(d.uv)} ${_climaUvLabel(d.uv)}` : '';
+  const cls = lluvia ? ' clima-rain' : (vientoWarn ? ' clima-wind' : (uvAlto ? ' clima-uv' : ''));
+  const title = `${desc}${temp ? `, máx${temp}` : ''}`
+    + `${d.tmin != null ? ` / mín ${Math.round(d.tmin)}°` : ''}`
+    + `${d.pp != null ? ` · prob. de lluvia ${Math.round(d.pp)}%` : ''}`
+    + `${g != null ? ` · viento ${Math.round(g)} km/h` : ''}`
+    + `${d.uv != null ? ` · UV ${Math.round(d.uv)} (${_climaUvLabel(d.uv)})` : ''}`;
+  return `<span class="clima-chip${cls}" title="${esc(title)}">`
+       + `<span class="clima-emoji">${emoji}</span>${esc(desc)}${temp}${esc(lluviaTxt)}${esc(vientoTxt)}${esc(uvTxt)}</span>`;
+}
+
+// Recomendaciones prácticas del día (para el banner de "podas de hoy"): lista
+// corta de avisos según lluvia, viento, UV y temperatura. Vacía si el día
+// está tranquilo.
+function climaRecomendaciones(d) {
+  if (!d) return [];
+  const out = [];
+  if (climaEsLluvia(d)) out.push('🌧️ Puede llover — fijate si conviene reprogramar');
+  const g = _climaRafaga(d);
+  if (g != null && g >= CLIMA.WIND_WARN) out.push(`💨 Viento fuerte (${Math.round(g)} km/h) — cuidado con el trabajo en altura`);
+  if (d.uv != null && d.uv >= 8)      out.push('🧴 UV muy alto — protector, gorra y sombra al mediodía');
+  else if (d.uv != null && d.uv >= 6) out.push('🧴 UV alto — protector solar y gorra');
+  if (d.tmax != null && d.tmax >= 32)     out.push('🥵 Va a hacer calor — llevá agua e hidratate seguido');
+  else if (d.tmax != null && d.tmax <= 7) out.push('🥶 Va a hacer frío — abrigate bien');
+  return out;
+}
+
+// Chip de clima para una tarjeta del Historial (idea 5): solo para trabajos
+// aceptados con un día próximo (hoy o futuro) dentro del horizonte. '' si no
+// aplica o no hay pronóstico cacheado.
+function climaChipForEntry(e) {
+  if (!e || (e.estado || '') !== 'aceptado') return '';
+  const hoy = today();
+  const ref = (typeof agFechas === 'function' ? agFechas(e) : []).find(f => f >= hoy);
+  if (!ref) return '';
+  return climaChipHTML(climaDe(e, ref));
+}
+
+// Abre WhatsApp con un mensaje ya redactado para reprogramar el trabajo por
+// mal clima (idea 3). `motivo` = texto del _climaMotivo ("lluvia" / "viento
+// fuerte" / "lluvia y viento fuerte"); si viene vacío, mensaje genérico.
+function climaReprogramarWhatsApp(id, motivo) {
+  const e = getH().find(x => x.id === id);
+  if (!e) return;
+  const phone = (typeof normalizeArgPhone === 'function' && typeof histClientPhone === 'function')
+    ? normalizeArgPhone(histClientPhone(e)) : '';
+  const cliente = (e.clientName || '').trim();
+  const empresa = (S.coName || '').trim();
+  const saludo = cliente ? `Hola ${cliente}` : 'Hola';
+  const firma = empresa ? ` Te escribo de ${empresa}.` : '';
+  const porque = motivo ? `pronostican ${motivo}` : 'el pronóstico no viene bueno';
+  const msg = `${saludo}, ¿cómo estás?${firma} Para el día que teníamos pactado el trabajo de poda ${porque}. ¿Te parece si lo reprogramamos para otro día con mejor clima?`;
+  const base = phone ? `https://wa.me/${phone}` : 'https://wa.me/';
+  window.open(`${base}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
+}
+
+// Toast accionable (multi-línea, tocable) para el aviso de clima. El toast()
+// plano tiene white-space:nowrap y trunca los mensajes largos; este usa
+// .toast-action (envuelve el texto). Toda la tarjeta dispara onCardTap (ir al
+// presupuesto / la Agenda); `botones` son acciones extra ({label, on}) — p. ej.
+// "Reprogramar" por WhatsApp — que se muestran como botones propios.
+function _climaToast(msgHtml, onCardTap, botones) {
+  const c = document.getElementById('toast-container');
+  if (!c) return;
+  const el = document.createElement('div');
+  el.className = 'toast toast-err toast-action clima-toast';
+  el.innerHTML = `<span>${msgHtml}</span>`
+    + (botones || []).map((b, i) => `<button type="button" class="toast-btn" data-i="${i}">${esc(b.label)}</button>`).join('');
+  c.appendChild(el);
+  requestAnimationFrame(() => { requestAnimationFrame(() => el.classList.add('show')); });
+  const close = () => { el.classList.remove('show'); setTimeout(() => el.remove(), 300); };
+  el.querySelectorAll('.toast-btn').forEach(btn => {
+    btn.onclick = (ev) => { ev.stopPropagation(); const b = (botones || [])[+btn.dataset.i]; try { b && b.on(); } finally { close(); } };
+  });
+  if (onCardTap) el.onclick = () => { try { onCardTap(); } finally { close(); } };
+  setTimeout(close, 13000);
+}
+
+// Detalle corto (probabilidad · mm · ráfaga) de un pronóstico, para el aviso.
+// '' si no hay ningún dato.
+function _climaDet(d) {
+  const partes = [];
+  if (d.pp != null) partes.push(`${Math.round(d.pp)}% prob.`);
+  if (d.mm) partes.push(`${Math.round(d.mm)} mm`);
+  const g = _climaRafaga(d);
+  if (climaEsViento(d) && g != null) partes.push(`ráfagas ${Math.round(g)} km/h`);
+  return partes.join(' · ');
+}
+
+// Aviso de lluvia O viento fuerte para trabajos de HOY o MAÑANA. Junta todos
+// los avisos nuevos (no mostrados hoy) y notifica UNA vez: si es uno solo, un
+// toast que lleva al presupuesto y ofrece reprogramar por WhatsApp; si son
+// varios, un único toast consolidado que lleva a la Agenda (evita apilar varios
+// carteles largos que se pisaban). Gate diario por trabajo en LS.CLIMA_WARN =
+// { "entryId|fecha": "avisadoEl" }.
+function _climaAvisar() {
+  const hoy = today();
+  const man = _calAddDays(hoy, 1);
+  let gate = {};
+  try { gate = JSON.parse(localStorage.getItem(LS.CLIMA_WARN) || '{}') || {}; } catch (_) {}
+  let cambio = false;
+  // Podar avisos de fechas ya pasadas.
+  Object.keys(gate).forEach(k => { if ((k.split('|')[1] || '') < hoy) { delete gate[k]; cambio = true; } });
+
+  const avisos = [];
+  _climaProximosTrabajos().forEach(t => {
+    t.fechas.filter(f => f === hoy || f === man).forEach(f => {
+      const d = climaDe(t.e, f);
+      const motivo = _climaMotivo(d);
+      if (!motivo.txt) return;             // día sin lluvia ni viento fuerte
+      const k = `${t.e.id}|${f}`;
+      if (gate[k] === hoy) return;         // ya avisado hoy
+      gate[k] = hoy; cambio = true;
+      avisos.push({ e: t.e, cuando: f === hoy ? 'hoy' : 'mañana', d, motivo });
+    });
+  });
+  if (cambio) { try { localStorage.setItem(LS.CLIMA_WARN, JSON.stringify(gate)); } catch (_) {} }
+  if (!avisos.length) return;
+
+  if (avisos.length === 1) {
+    const a = avisos[0];
+    const quien = (a.e.clientName || '').trim() || 'sin nombre';
+    const det = _climaDet(a.d);
+    // Emoji e intro según el motivo (lluvia / viento / ambos).
+    const emoji = a.motivo.viento && !a.motivo.lluvia ? '💨' : '⛈️';
+    const enAltura = a.motivo.viento ? ' Ojo con el trabajo en altura.' : '';
+    const tieneTel = typeof histClientPhone === 'function' && !!histClientPhone(a.e);
+    const botones = [];
+    if (tieneTel) botones.push({ label: 'Reprogramar', on: () => climaReprogramarWhatsApp(a.e.id, a.motivo.txt) });
+    botones.push({ label: 'Ver', on: () => goToHistoryEntry(a.e.id) });
+    _climaToast(
+      `${emoji} <b>${_cap(a.motivo.txt)} ${a.cuando}</b> y tenés la poda de ${esc(quien)}${det ? ` (${esc(det)})` : ''}.${enAltura} Tocá para ver el presupuesto.`,
+      () => goToHistoryEntry(a.e.id),
+      botones
+    );
+  } else {
+    const nHoy = avisos.filter(a => a.cuando === 'hoy').length;
+    const nMan = avisos.length - nHoy;
+    const cuandoTxt = nHoy && nMan ? 'hoy y mañana' : (nHoy ? 'hoy' : 'mañana');
+    _climaToast(
+      `⛈️ <b>Mal clima pronosticado</b> para ${avisos.length} podas (${cuandoTxt}). Tocá para ver la Agenda y reprogramar.`,
+      () => switchTab('agenda'),
+      [{ label: 'Ver Agenda', on: () => switchTab('agenda') }]
+    );
+  }
+}
+
+// Primera letra en mayúscula (para el motivo al arrancar el aviso).
+function _cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
+
+// ─── PRONÓSTICO EN EL DIÁLOGO DE AGENDAR (idea 1) ────────────
+// Tira de 7 días (hoy → +6) con emoji + temperatura para ayudar a elegir un
+// buen día antes de fijar la fecha. Solo en modo trabajo y si hay pronóstico
+// cacheado de la zona del trabajo. Debajo, el detalle + recomendación del día
+// que esté seleccionado en el input. La llama openAgendaDlg (tras asegurar la
+// zona), setAgendaMode y agendaOnDateChange.
+function agendaClimaRender() {
+  const wrap = document.getElementById('agenda-clima-wrap');
+  const strip = document.getElementById('agenda-clima-strip');
+  const selEl = document.getElementById('agenda-clima-sel');
+  if (!wrap || !strip) return;
+  const e = (typeof getH === 'function') ? getH().find(x => x.id === _agendaId) : null;
+  if (!e || _agendaMode === 'recontacto') { wrap.hidden = true; return; }
+
+  const hoy = today();
+  const dias = [];
+  for (let i = 0; i < 7; i++) { const iso = _calAddDays(hoy, i); dias.push({ iso, d: climaDe(e, iso) }); }
+  if (!dias.some(x => x.d)) { wrap.hidden = true; return; }  // sin pronóstico → no mostrar nada
+
+  wrap.hidden = false;
+  const sel = (document.getElementById('agenda-fecha') || {}).value || '';
+  strip.innerHTML = dias.map(({ iso, d }, i) => {
+    const [emoji] = d ? _climaEmojiDesc(d.code) : ['·', ''];
+    const mal = d && (climaEsLluvia(d) || climaEsViento(d));
+    const yaElegido = _agendaFechas.includes(iso);
+    const esSel = iso === sel;
+    const p = iso.split('-');
+    const dt = new Date(+p[0], +p[1] - 1, +p[2]);
+    const wd = i === 0 ? 'Hoy' : AGENDA_WD[dt.getDay()];
+    const temp = d && d.tmax != null ? `${Math.round(d.tmax)}°` : '';
+    return `<button type="button" class="agenda-clima-day${mal ? ' mal' : ''}${esSel ? ' sel' : ''}${yaElegido ? ' elegido' : ''}" onclick="agendaClimaPick('${iso}')" title="${esc(dt.getDate() + '/' + (dt.getMonth() + 1))}">
+      <span class="acd-wd">${esc(wd)}</span>
+      <span class="acd-em">${emoji}</span>
+      <span class="acd-t">${esc(temp)}</span>
+    </button>`;
+  }).join('');
+
+  // Detalle + primera recomendación del día seleccionado (si hay uno elegido).
+  const dSel = sel ? climaDe(e, sel) : null;
+  if (dSel && selEl) {
+    const recs = climaRecomendaciones(dSel);
+    selEl.innerHTML = climaChipHTML(dSel)
+      + (recs.length ? `<span class="acd-warn">${esc(recs.join(' · '))}</span>` : '');
+    selEl.hidden = false;
+  } else if (selEl) {
+    selEl.hidden = true; selEl.innerHTML = '';
+  }
+}
+
+// Tocar un día de la tira: lo pone en el campo de fecha (staging para "Agregar
+// día" o Guardar) y refresca warning + pronóstico.
+function agendaClimaPick(iso) {
+  const inp = document.getElementById('agenda-fecha');
+  if (!inp) return;
+  inp.value = iso;
+  if (typeof syncCdate === 'function') syncCdate(inp);
+  agendaOnDateChange();
+}
+
 // ===== js/calendar.js =====
 // ═══════════════════════════════════════════════════════════════════════════
 // CALENDAR.JS — Pestaña "Agenda": vista de calendario (mes) que superpone TODO
@@ -13760,6 +14627,9 @@ function mapaArmarRuta() {
 //   · seguimiento  → e.enviadoEn + cfg.days (día en que toca contactar)
 //   · nota         → anotaciones/recordatorios propios (LS.NOTES), lo único
 //                    que se guarda de nuevo. Sobrevive backup/restore.
+//   · visita       → nota con tipo:'visita' (evaluación presencial / ir a
+//                    presupuestar): concepto propio, color azul, prioridad
+//                    junto al trabajo, chip de clima y botón "Crear presupuesto".
 // Todas las fechas son LOCALES (YYYY-MM-DD), nunca UTC (regla del proyecto).
 // La semana arranca en LUNES (convención AR).
 
@@ -13767,8 +14637,10 @@ const CAL_MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Ago
 const CAL_WD_MON = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
 const CAL_DIAS = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
 // Orden de prioridad de los tipos (para ordenar dentro de un día y los puntos).
-const CAL_TIPO_ORD = { trabajo:0, recontacto:1, vencimiento:2, seguimiento:3, nota:4 };
-const CAL_TIPO_LBL = { trabajo:'Trabajo', recontacto:'Recontacto', vencimiento:'Vence', seguimiento:'Seguimiento', nota:'Nota' };
+// La visita (evaluación presencial / ir a presupuestar) va pegada al trabajo:
+// es un compromiso con lugar y persona, no un recordatorio suelto.
+const CAL_TIPO_ORD = { trabajo:0, visita:1, recontacto:2, vencimiento:3, seguimiento:4, nota:5 };
+const CAL_TIPO_LBL = { trabajo:'Trabajo', visita:'Visita', recontacto:'Recontacto', vencimiento:'Vence', seguimiento:'Seguimiento', nota:'Nota' };
 
 let _calY = null, _calM = null;   // año / mes (0-11) que se está mostrando (vista mes)
 let _calAnchor = null;            // fecha ancla (iso) para las grillas semana/3-días
@@ -13778,11 +14650,18 @@ let _calOverdueOpen = false;      // sección "Atrasado" desplegada (colapsada p
 
 // ─── NOTAS MANUALES (localStorage) ───────────────────────────
 // Cada nota: { id, fecha:'YYYY-MM-DD', texto, hecho:bool, creadoEn }.
+// Campo opcional tipo:'visita' → evaluación presencial / ir a presupuestar
+// (se muestra como concepto propio en la Agenda; sin tipo = nota común).
 function getNotes() {
   try { const a = JSON.parse(localStorage.getItem(LS.NOTES) || '[]'); return Array.isArray(a) ? a : []; }
   catch (e) { return []; }
 }
-function setNotes(a) { safeSetLS(LS.NOTES, JSON.stringify(a || [])); if (typeof scheduleGcalSync === 'function') scheduleGcalSync(); }
+function setNotes(a) {
+  safeSetLS(LS.NOTES, JSON.stringify(a || []));
+  if (typeof scheduleGcalSync === 'function') scheduleGcalSync();
+  // Las visitas de hoy viven también en el banner del día → mantenerlo al día.
+  try { if (typeof renderMorningBanner === 'function') renderMorningBanner(); } catch (_) {}
+}
 
 // ─── HELPERS DE FECHA (locales) ──────────────────────────────
 // Suma n días a una fecha ISO local y devuelve otra ISO local.
@@ -13852,7 +14731,9 @@ function calBuildIndex() {
       const notas = (typeof snapshotIntNotes === 'function') ? snapshotIntNotes(e.snapshot) : [];
       fechas.forEach((f, i) => {
         const dnum = total > 1 ? ` · día ${i + 1} de ${total}` : '';
-        push(f, { tipo: 'trabajo', title: quien, sub: (num ? num : '') + dnum, entryId: e.id, tel, mapUrl, notes: notas });
+        // Pronóstico del día del trabajo (cache local; null si no hay dato).
+        const clima = (typeof climaDe === 'function') ? climaDe(e, f) : null;
+        push(f, { tipo: 'trabajo', title: quien, sub: (num ? num : '') + dnum, entryId: e.id, tel, mapUrl, notes: notas, clima });
       });
     }
 
@@ -13895,10 +14776,16 @@ function calBuildIndex() {
   getNotes().forEach(n => {
     if (!n || !n.fecha) return;
     const ubic = (n.ubic || '').trim();
+    const esVisita = n.tipo === 'visita';
+    // Visitas: pronóstico del día (mismo chip que los trabajos — evaluar un
+    // árbol con lluvia o ráfagas también es mala idea). Solo días no pasados.
+    const clima = (esVisita && n.fecha >= today() && typeof climaDeNota === 'function')
+      ? climaDeNota(n, n.fecha) : null;
     push(n.fecha, {
-      tipo: 'nota', title: n.texto || '(nota)', sub: (n.cliente || '').trim(),
+      tipo: esVisita ? 'visita' : 'nota', title: n.texto || '(nota)', sub: (n.cliente || '').trim(),
       noteId: n.id, done: !!n.hecho, tel: (n.tel || '').trim(),
-      ubic, mapUrl: ubic && typeof mapsUrlFor === 'function' ? mapsUrlFor(ubic, '') : ''
+      ubic, mapUrl: ubic && typeof mapsUrlFor === 'function' ? mapsUrlFor(ubic, '') : '',
+      clima
     });
   });
 
@@ -14126,11 +15013,15 @@ function _calEvHTML(ev, dateLabel) {
   } else if (ev.noteId != null) {
     // "Hecho" y "Eliminar" se accionan deslizando la tarjeta (ver abajo); en el
     // botonera quedan chat (si hay contacto), Maps (si hay ubicación),
-    // compartir y editar, más grandes.
+    // compartir y editar, más grandes. Las visitas suman "Crear presupuesto":
+    // al volver de la evaluación, pasa los datos de la visita al editor.
     const mapBtn = ev.mapUrl
       ? `<button class="agc-ev-btn agc-ev-map" onclick="calOpenNoteMap('${ev.noteId}')" title="Abrir la ubicación en Maps" aria-label="Ver ubicación en Maps">${icon('pin')}</button>`
       : '';
-    acts = chat + mapBtn + share
+    const crearBtn = (ev.tipo === 'visita' && !ev.done)
+      ? `<button class="agc-ev-btn" onclick="calCrearPresupuestoDesdeVisita('${ev.noteId}')" title="Crear un presupuesto con los datos de esta visita" aria-label="Crear presupuesto desde la visita">${icon('file')}</button>`
+      : '';
+    acts = chat + mapBtn + crearBtn + share
          + `<button class="agc-ev-btn" onclick="calEditNote('${ev.noteId}')" title="Editar la nota / ubicación / contacto">${icon('pencil')}</button>`;
   }
   // Anotaciones internas (solo en eventos de trabajo): memoria privada de
@@ -14140,12 +15031,15 @@ function _calEvHTML(ev, dateLabel) {
         `<span class="agc-ev-note">${icon('bulb')}<span class="agc-ev-note-tx">${nn.label ? `<b>${esc(nn.label)}:</b> ` : ''}${esc(nn.text)}</span></span>`
       ).join('')}</div>`
     : '';
+  // Pronóstico del día (eventos de trabajo y visitas con dato cacheado).
+  const climaHtml = (ev.clima && typeof climaChipHTML === 'function') ? climaChipHTML(ev.clima) : '';
   const card = `<div class="agc-ev t-${ev.tipo}${ev.done ? ' done' : ''}">
     <span class="agc-ev-bar"></span>
     <div class="agc-ev-body">
       <span class="agc-ev-kind">${kindTxt}</span>
       <div class="agc-ev-title">${esc(ev.title)}</div>
       ${sub}
+      ${climaHtml}
       ${notesHtml}
     </div>
     <div class="agc-ev-acts">${acts}</div>
@@ -14188,6 +15082,7 @@ function renderCalDay(noList) {
     <div class="agc-note-form">
       <input type="text" id="agc-note-input" placeholder="Anotá un recordatorio para este día…" maxlength="140" onkeydown="if(event.key==='Enter'){calSaveNote();}">
       <button class="btn btn-p btn-sm" onclick="calSaveNote()">${icon('plus')} Nota</button>
+      <button class="btn btn-visita btn-sm" onclick="calSaveNote('visita')" title="Guardar como visita: evaluación presencial / ir a presupuestar">${icon('plus')} Visita</button>
     </div>
     <details class="agc-note-contact">
       <summary>${icon('message')} Vincular contacto (chat directo)</summary>
@@ -14249,7 +15144,7 @@ function renderCalList() {
       //  · RECONTACTO y NOTA los creás a mano (son intenciones deliberadas) → se
       //    mantienen sin importar la antigüedad; los resolvés o borrás vos.
       let pend = false;
-      if (ev.tipo === 'nota') pend = !ev.done;
+      if (ev.tipo === 'nota' || ev.tipo === 'visita') pend = !ev.done;
       else if (ev.tipo === 'recontacto') pend = true;
       else if (ev.tipo === 'seguimiento') { const d = daysSinceDate(iso); pend = (d != null && d <= 30); }
       if (pend) overdue.push({ iso, ev });
@@ -14300,11 +15195,13 @@ function renderCalList() {
 }
 
 // ─── NOTAS: alta / toggle / borrado ──────────────────────────
-function calSaveNote() {
+// `tipo` opcional: 'visita' guarda la nota como visita (evaluación presencial).
+function calSaveNote(tipo) {
   const inp = document.getElementById('agc-note-input');
   if (!inp || !_calSel) return;
+  const esVisita = tipo === 'visita';
   const texto = (inp.value || '').trim();
-  if (!texto) { toast('Escribí algo para la nota', 'info', 2200); return; }
+  if (!texto) { toast(esVisita ? 'Escribí a quién o qué vas a ir a ver' : 'Escribí algo para la nota', 'info', 2200); return; }
   // Contacto opcional vinculado a la nota.
   const cliEl = document.getElementById('agc-note-cli');
   const telEl = document.getElementById('agc-note-tel');
@@ -14329,6 +15226,7 @@ function calSaveNote() {
     cliente: cliente, tel: tel
   };
   if (ubic) nueva.ubic = ubic;
+  if (esVisita) nueva.tipo = 'visita';
   notes.push(nueva);
   setNotes(notes);
   // Si es un contacto nuevo (nombre + teléfono) que todavía no está en la DB de
@@ -14343,13 +15241,46 @@ function calSaveNote() {
   if (telEl) telEl.value = '';
   if (ubicEl) ubicEl.value = '';
   renderCal();
-  toast('Nota agendada', 'ok');
+  // Visitas: asegurar el pronóstico de la zona para pintar el chip de clima.
+  if (esVisita && typeof climaEnsureNota === 'function') climaEnsureNota(nueva, () => renderCal());
+  toast(esVisita ? 'Visita agendada' : 'Nota agendada', 'ok');
 }
 // Abre el chat de WhatsApp del contacto vinculado a una nota.
 function calChatNote(id) {
   const n = getNotes().find(x => x.id === id);
   if (!n) { toast('No se encontró la nota', 'info', 2500); return; }
   chatWhatsappPhone(n.tel || '');
+}
+
+// ─── VISITA → PRESUPUESTO ────────────────────────────────────
+// Cierra el círculo de la evaluación presencial: crea un presupuesto nuevo con
+// los datos de la visita ya cargados (cliente, teléfono, ubicación y el texto
+// como nota interna), marca la visita como hecha y abre el Editor. El borrador
+// actual se guarda solo en el historial (mismo criterio que newQuote).
+async function calCrearPresupuestoDesdeVisita(id) {
+  const notes = getNotes();
+  const n = notes.find(x => x.id === id);
+  if (!n) { toast('No se encontró la visita', 'info', 2500); return; }
+  const quien = (n.cliente || '').trim() || (n.texto || '').trim() || 'esta visita';
+  const ok = await confirmDlg('Crear presupuesto',
+    `¿Crear un presupuesto nuevo con los datos de la visita a ${quien}? El borrador actual se guardará automáticamente en el historial y la visita quedará marcada como hecha.`,
+    'Crear presupuesto', 'btn-p');
+  if (!ok) return;
+  autoSaveToHistory();
+  resetToNewQuote();
+  S.clientName = (n.cliente || '').trim();
+  S.clientContact = (n.tel || '').trim();
+  S.workMapLink = (n.ubic || '').trim();
+  if ((n.texto || '').trim()) S.intNote = 'Visita: ' + n.texto.trim();
+  noSync = true; restoreUI(); noSync = false;
+  sched();
+  if (!n.hecho) {
+    n.hecho = true;
+    setNotes(notes);
+  }
+  renderCal();
+  if (typeof renderMorningBanner === 'function') renderMorningBanner();
+  toast('Presupuesto creado con los datos de la visita', 'ok', 3500);
 }
 
 // ─── EDICIÓN DE NOTA (modal) ─────────────────────────────────
@@ -14369,6 +15300,8 @@ function calEditNote(id) {
   txt.value = n.texto || '';
   if (cli) cli.value = n.cliente || '';
   if (tel) tel.value = n.tel || '';
+  const tipoEl = document.getElementById('agc-edit-tipo');
+  if (tipoEl) tipoEl.value = (n.tipo === 'visita') ? 'visita' : '';
   const ubicEl = document.getElementById('agc-edit-ubic');
   if (ubicEl) ubicEl.value = n.ubic || '';
   if (cli) attachClientDropdown(cli, tel);
@@ -14413,6 +15346,8 @@ function calSaveNoteEdit() {
   n.cliente = cliente;
   n.tel = telef;
   if (ubic) n.ubic = ubic; else delete n.ubic;
+  const tipoEl = document.getElementById('agc-edit-tipo');
+  if (tipoEl) { if (tipoEl.value === 'visita') n.tipo = 'visita'; else delete n.tipo; }
   setNotes(notes);
   // Importar el contacto a la DB de clientes si es nuevo (nombre + teléfono).
   if (cliente && telef && typeof saveClientToDB === 'function') {
@@ -14443,7 +15378,7 @@ function calDeleteNote(id) {
 // seguimiento, recontacto o trabajo). Pensado para mandárselo a un compañero
 // por WhatsApp: encabezado con emoji + tipo + fecha, y el detalle abajo.
 function _calShareText(ev) {
-  const EMO = { trabajo: '🌳', recontacto: '📞', vencimiento: '⏰', seguimiento: '🔔', nota: '📝' };
+  const EMO = { trabajo: '🌳', visita: '📋', recontacto: '📞', vencimiento: '⏰', seguimiento: '🔔', nota: '📝' };
   const kind = CAL_TIPO_LBL[ev.tipo] || 'Recordatorio';
   const emo = EMO[ev.tipo] || '📌';
   let fecha = '';
@@ -14699,9 +15634,9 @@ function calExportIcs() {
   Object.keys(idx).sort().forEach(iso => {
     if (iso < hoy) return;                       // solo lo que viene
     idx[iso].forEach(ev => {
-      // Exportamos tareas concretas: trabajos, recontactos y notas pendientes.
-      // Vencimientos/seguimientos son derivados y ruidosos → quedan afuera.
-      if (ev.tipo === 'nota') { if (ev.done) return; }
+      // Exportamos tareas concretas: trabajos, recontactos, visitas y notas
+      // pendientes. Vencimientos/seguimientos son derivados y ruidosos → afuera.
+      if (ev.tipo === 'nota' || ev.tipo === 'visita') { if (ev.done) return; }
       else if (ev.tipo !== 'trabajo' && ev.tipo !== 'recontacto') return;
 
       const dstart = iso.replace(/-/g, '');
@@ -14727,6 +15662,10 @@ function calExportIcs() {
           if (e.total > 0) desc.push('Presupuesto ' + (e.quoteNumber || '') + ': ' + fmtM(e.total, e.currency || 'ARS'));
           if (snap.clientContact) desc.push('Contacto: ' + snap.clientContact);
         }
+      } else if (ev.tipo === 'visita') {           // evaluación presencial
+        summary = 'Visita: ' + ev.title + (ev.sub ? ' — ' + ev.sub : '');
+        if (ev.tel) desc.push('Contacto: ' + ev.tel);
+        if (ev.mapUrl) { desc.push('Ubicación: ' + ev.mapUrl); loc = ev.mapUrl; }
       } else {                                     // nota
         summary = 'Nota: ' + ev.title;
       }
@@ -14771,8 +15710,8 @@ function calUpdateDot() {
   if (!dot) return;
   const hoy = today();
   const evs = calBuildIndex()[hoy] || [];
-  // Notas ya hechas no cuentan como "pendiente de hoy".
-  const hay = evs.some(ev => !(ev.tipo === 'nota' && ev.done));
+  // Notas/visitas ya hechas no cuentan como "pendiente de hoy".
+  const hay = evs.some(ev => !((ev.tipo === 'nota' || ev.tipo === 'visita') && ev.done));
   dot.hidden = !hay;
 }
 
@@ -14821,6 +15760,11 @@ window.addEventListener('DOMContentLoaded', async () => {
   // Calendario propio para los <input type="date"> editables.
   enhanceDateInputs(document);
 
+  // Si el presupuesto cargado está en blanco (nada en edición), poner la fecha
+  // de emisión en HOY. Evita que un borrador vacío arrastre la fecha vieja del
+  // día en que se creó. Con datos cargados no se toca (la fecha es intencional).
+  refreshIssueDateIfBlank();
+
   renderItems();
   renderEstItems();
 
@@ -14838,7 +15782,82 @@ window.addEventListener('DOMContentLoaded', async () => {
   if (sticky) {
     sticky.style.display = 'block';
     document.body.classList.add('has-sticky-totals');
+    reserveStickySpace();
   }
+
+  // Botón "subir": aparece cuando #main pasa el umbral de scroll y lo lleva al
+  // tope. #main es el único scroller (compartido por todas las pestañas), así
+  // que un solo listener alcanza. Throttle con requestAnimationFrame.
+  (function setupScrollTopFab(){
+    const main = document.getElementById('main');
+    const fab  = document.getElementById('scrolltop-fab');
+    if (!main || !fab) return;
+    let ticking = false;
+    const update = () => { fab.classList.toggle('show', main.scrollTop > 600); ticking = false; };
+    main.addEventListener('scroll', () => {
+      if (!ticking) { ticking = true; requestAnimationFrame(update); }
+    }, { passive: true });
+    update();
+  })();
+
+  // Navegación por swipe entre pestañas. Detector liviano sobre #main con LOCK
+  // DE EJE: solo actúa si el gesto es claramente horizontal, así no interfiere
+  // con el scroll vertical. Guardas: no navega con un modal abierto, ni cuando
+  // el gesto arranca sobre un elemento que ya es dueño del deslizamiento
+  // horizontal (mapa, columnas del calendario, tiras, filas con swipe-acción,
+  // color picker, inputs/selects/dropdowns). Listeners pasivos → no bloquea el
+  // scroll nativo. El feedback visual lo da la animación de _navTab.
+  (function setupTabSwipe(){
+    const main = document.getElementById('main');
+    if (!main) return;
+    const BLOCK = '#map-canvas,.leaflet-container,.agc-cols,.agc-viewtoggle,' +
+      '.agenda-clima-strip,.agc-swipe,.cpk-sv,.cpk-hue,input,textarea,select,' +
+      '.csel-pop,.cal-pop';
+    let x0 = 0, y0 = 0, tracking = false, axis = 0;  // axis: 0 indeciso, 1 horiz, 2 vert
+    main.addEventListener('touchstart', (e) => {
+      tracking = false; axis = 0;
+      if (e.touches.length !== 1) return;
+      if (document.body.classList.contains('modal-open')) return;
+      const cur = document.querySelector('.tab-panel.active');
+      if (!cur || TAB_ORDER.indexOf(cur.id.replace('panel-', '')) < 0) return;
+      if (e.target.closest && e.target.closest(BLOCK)) return;
+      const t = e.touches[0]; x0 = t.clientX; y0 = t.clientY; tracking = true;
+    }, { passive: true });
+    main.addEventListener('touchmove', (e) => {
+      if (!tracking || axis !== 0) return;
+      const t = e.touches[0], dx = t.clientX - x0, dy = t.clientY - y0;
+      if (Math.abs(dx) < 12 && Math.abs(dy) < 12) return;   // aún indeciso
+      // Se bloquea en horizontal solo si domina claramente; si no, es scroll.
+      axis = (Math.abs(dx) > Math.abs(dy) * 1.4) ? 1 : 2;
+      if (axis === 2) tracking = false;                     // scroll vertical: abandonar
+    }, { passive: true });
+    main.addEventListener('touchend', (e) => {
+      if (!tracking || axis !== 1) { tracking = false; return; }
+      tracking = false;
+      const t = e.changedTouches[0], dx = t.clientX - x0, dy = t.clientY - y0;
+      if (Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+        _navTab(dx < 0 ? 1 : -1);     // dedo a la izquierda → siguiente
+      }
+    }, { passive: true });
+  })();
+
+  // Lock de scroll unificado para modales: un único observador vigila la clase
+  // de todos los overlays a pantalla completa; cuando alguno abre (.open) marca
+  // body.modal-open y el CSS congela el scroll de #main (el scroller real), así
+  // el fondo no se mueve detrás del modal. Centraliza lo que antes hacían solo
+  // un par de modales (y encima sobre el body, que no scrollea).
+  (function setupModalScrollLock(){
+    const ids = ['confirm-overlay','agenda-overlay','day-alert-overlay',
+      'share-overlay','moverlay','notes-overlay','phrases-overlay',
+      'photo-viewer-overlay','note-edit-overlay','doc-preview-overlay'];
+    const els = ids.map(id => document.getElementById(id)).filter(Boolean);
+    if (!els.length) return;
+    const sync = () => document.body.classList.toggle(
+      'modal-open', els.some(el => el.classList.contains('open')));
+    const obs = new MutationObserver(sync);
+    els.forEach(el => obs.observe(el, { attributes: true, attributeFilter: ['class'] }));
+    sync();
+  })();
 
   // iOS: el botón ✕ del type="search" dispara 'search', no 'input'
   const hs = document.getElementById('hist-search');
@@ -14855,6 +15874,10 @@ window.addEventListener('DOMContentLoaded', async () => {
   // Podas de hoy: banner "resumen del día" arriba del editor, una vez por
   // día al abrir, si hay trabajos agendados para hoy.
   if (typeof maybeShowMorningBanner === 'function') maybeShowMorningBanner();
+
+  // Clima: bajar el pronóstico de los días con trabajos agendados (silencioso,
+  // solo con señal) y avisar si viene lluvia para una poda de hoy o mañana.
+  if (typeof climaRefresh === 'function') climaRefresh();
 
   // Importar de contactos: mostrar el botón solo si el dispositivo soporta
   // la Contact Picker API (Chrome Android sobre HTTPS).
@@ -14915,6 +15938,15 @@ window.addEventListener('DOMContentLoaded', async () => {
       clearTimeout(GDRIVE._timer);
       _gWithAuthRetry(gdriveInvalidateToken, gdriveUpload).catch(() => {});
     }
+  });
+  // Al volver del segundo plano (p. ej. la app quedó abierta de un día para
+  // otro): si no hay nada en edición, poner la fecha de emisión en HOY para
+  // que un borrador vacío no arranque con la fecha de ayer. Y refrescar el
+  // pronóstico (tiene TTL propio: no golpea la API en cada vuelta).
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') return;
+    refreshIssueDateIfBlank();
+    if (typeof climaRefresh === 'function') climaRefresh();
   });
   // pagehide cubre el cierre real de la pestaña/app (y el bfcache), donde
   // visibilitychange a veces no llega a tiempo.
