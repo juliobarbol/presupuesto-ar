@@ -73,6 +73,18 @@ extra por evento:
     con `hidden` pero el `display:grid` del CSS lo pisaba y aparecía una fila fantasma en
     Semana/3-días → ahora se controla con `style.display` (`none` en columnas, `''` en Mes).
 
+- **Visitas (evaluación presencial / ir a presupuestar)** (v165). Sexto concepto:
+  una nota con `tipo:'visita'` (mismo storage `LS.NOTES`, retrocompatible — sin
+  tipo = nota común). Color propio azul (`--c-visita/-bg/-fg` claro y oscuro),
+  prioridad junto al trabajo (`CAL_TIPO_ORD`), tarjeta tintada (`.agc-ev.t-visita`),
+  alta con doble botón "+ Nota / + Visita" (`calSaveNote('visita')`), selector de
+  tipo en el modal de edición, chip de clima (`climaDeNota`/`_climaLatLngNota`:
+  ubicación de la nota o centroide de zona; sus zonas entran en `climaRefresh`),
+  visitas de hoy en el banner del día (`getVisitasDeHoy`, con "Cómo llegar" /
+  WhatsApp / Hecha) y botón **"Crear presupuesto"** (`calCrearPresupuestoDesdeVisita`:
+  precarga cliente/tel/ubicación + texto como nota interna y marca la visita hecha).
+  Sale a Google Calendar ("Visita: …") y al `.ics` (pendientes).
+
 ## Ideas futuras (no comprometidas)
 - Botón "Hoy" también en la vista Agenda (scroll al grupo Hoy).
 - Umbral de "seguimiento reciente" configurable (hoy fijo en 30 días en `renderCalList`).

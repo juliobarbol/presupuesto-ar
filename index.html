@@ -75,6 +75,7 @@ a{-webkit-tap-highlight-color:transparent}
   --c-seguimiento:#d97706; --c-seguimiento-bg:#fef3c7; --c-seguimiento-fg:#92400e;
   --c-vence:#dc2626;       --c-vence-bg:#fee2e2; --c-vence-fg:#991b1b;
   --c-nota:#ec4899;        --c-nota-bg:#fce7f3; --c-nota-fg:#9d174e;
+  --c-visita:#2563eb;      --c-visita-bg:#dbeafe; --c-visita-fg:#1e40af;
 }
 
 /* ═══ MODO OSCURO ═══════════════════════════════════════════════════
@@ -118,6 +119,7 @@ a{-webkit-tap-highlight-color:transparent}
   --c-seguimiento-bg:#4a3a12; --c-seguimiento-fg:#fde68a;
   --c-vence-bg:rgba(239,68,68,.18); --c-vence-fg:#fca5a5;
   --c-nota:#f472b6; --c-nota-bg:rgba(236,72,153,.2); --c-nota-fg:#f9a8d4;
+  --c-visita:#60a5fa; --c-visita-bg:rgba(59,130,246,.2); --c-visita-fg:#93c5fd;
 }
 
 html,body{height:100%;font-family:'DM Sans',sans-serif;font-size:14px;background:var(--bg);color:var(--text)}
@@ -1417,6 +1419,12 @@ input[type=number]{-moz-appearance:textfield}
 .mb-act-view:active{background:var(--surface-2)}
 .mb-act-done{background:var(--card);color:#065f46;border:1px solid #6ee7b7}
 .mb-act-done:active{background:var(--surface-2)}
+/* Visitas de hoy en el banner: tarjeta tintada con el azul del concepto y
+   botón "Crear presupuesto" (pasar de la evaluación al presupuesto). */
+.morning-banner .fub-item.fub-item-visita{border-color:var(--c-visita);background:var(--c-visita-bg)}
+.fub-item-visita .fub-item-days{color:var(--c-visita-fg)}
+.mb-act-crear{background:var(--c-visita);color:#fff}
+.mb-act-crear:active{filter:brightness(.9)}
 .mb-route{width:100%;margin-top:2px;display:inline-flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:700;color:#065f46;background:var(--card);border:1px solid #6ee7b7;border-radius:var(--radius-field);padding:10px;cursor:pointer}
 .mb-route:active{background:var(--surface-2)}
 .mb-route .ic{width:16px;height:16px}
@@ -1555,6 +1563,7 @@ input[type=number]{-moz-appearance:textfield}
 .agc-c-vencimiento{background:var(--c-vence)}
 .agc-c-seguimiento{background:var(--c-seguimiento)}
 .agc-c-nota{background:var(--c-nota)}
+.agc-c-visita{background:var(--c-visita)}
 .agc-grid-head{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px}
 .agc-grid-head span{text-align:center;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
 .agc-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
@@ -1590,6 +1599,7 @@ input[type=number]{-moz-appearance:textfield}
 .agc-col-ev.t-vencimiento{border-left-color:var(--c-vence)}
 .agc-col-ev.t-seguimiento{border-left-color:var(--c-seguimiento)}
 .agc-col-ev.t-nota{border-left-color:var(--c-nota)}
+.agc-col-ev.t-visita{border-left-color:var(--c-visita);background:var(--c-visita-bg)}
 .agc-col-ev-title{font-size:12px;font-weight:600;color:var(--text);line-height:1.3;overflow-wrap:anywhere}
 .agc-col-ev-sub{font-size:10.5px;color:var(--muted);line-height:1.3;margin-top:1px;overflow-wrap:anywhere}
 .agc-col-ev.done .agc-col-ev-title{text-decoration:line-through;opacity:.6}
@@ -1610,6 +1620,12 @@ input[type=number]{-moz-appearance:textfield}
 .agc-ev.t-vencimiento .agc-ev-bar{background:var(--c-vence)}
 .agc-ev.t-seguimiento .agc-ev-bar{background:var(--c-seguimiento)}
 .agc-ev.t-nota .agc-ev-bar{background:var(--c-nota)}
+/* Visita (evaluación presencial / ir a presupuestar): además de la barra, la
+   tarjeta entera se tinta y la etiqueta va en color — es el compromiso que más
+   se anota a mano y tiene que saltar a la vista entre las notas comunes. */
+.agc-ev.t-visita .agc-ev-bar{background:var(--c-visita)}
+.agc-ev.t-visita{background:var(--c-visita-bg);border-color:var(--c-visita)}
+.agc-ev.t-visita .agc-ev-kind{color:var(--c-visita-fg)}
 .agc-ev-body{flex:1;min-width:0}
 .agc-ev-kind{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);display:block;margin-bottom:2px}
 .agc-ev-title{font-size:14px;font-weight:600;color:var(--text);line-height:1.35;word-break:break-word}
@@ -1666,6 +1682,9 @@ input[type=number]{-moz-appearance:textfield}
 .agc-day-empty{font-size:13px;color:var(--muted);padding:6px 2px;line-height:1.5}
 .agc-note-form{display:flex;gap:7px;align-items:stretch;margin-top:8px}
 .agc-note-form input{flex:1;min-width:0}
+/* Botón "+ Visita" (alta de nota tipo visita) — azul del concepto visita */
+.btn-visita{background:var(--c-visita);border-color:var(--c-visita);color:#fff}
+.btn-visita:active{filter:brightness(.9)}
 /* Contacto opcional de la nota (chat directo por WhatsApp) */
 .agc-note-contact{margin-top:8px}
 .agc-note-contact>summary{list-style:none;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--muted);padding:4px 2px;user-select:none}
@@ -3714,6 +3733,7 @@ input[type=number]{-moz-appearance:textfield}
         </div>
         <div class="agc-legend" id="agc-legend">
           <span class="agc-leg"><i class="agc-dot agc-c-trabajo"></i>Trabajo</span>
+          <span class="agc-leg"><i class="agc-dot agc-c-visita"></i>Visita</span>
           <span class="agc-leg"><i class="agc-dot agc-c-recontacto"></i>Recontacto</span>
           <span class="agc-leg"><i class="agc-dot agc-c-vencimiento"></i>Vence</span>
           <span class="agc-leg"><i class="agc-dot agc-c-seguimiento"></i>Seguimiento</span>
@@ -3880,6 +3900,13 @@ input[type=number]{-moz-appearance:textfield}
     <div class="ne-field">
       <label for="agc-edit-text">Recordatorio</label>
       <input type="text" id="agc-edit-text" maxlength="140" placeholder="Texto de la nota" onkeydown="if(event.key==='Enter'){calSaveNoteEdit();}">
+    </div>
+    <div class="ne-field">
+      <label for="agc-edit-tipo">Tipo</label>
+      <select id="agc-edit-tipo">
+        <option value="">Nota (recordatorio común)</option>
+        <option value="visita">Visita (evaluación / ir a presupuestar)</option>
+      </select>
     </div>
     <div class="ne-field">
       <label>Contacto para chat directo (opcional)</label>
@@ -10229,6 +10256,21 @@ function getTrabajosDeHoy() {
   return getH().filter(e => (e.estado || '') === 'aceptado' && agFechas(e).includes(hoy));
 }
 
+// Visitas (evaluaciones presenciales / ir a presupuestar) agendadas para HOY
+// que siguen pendientes. Van al banner del día junto con las podas.
+function getVisitasDeHoy() {
+  const hoy = today();
+  return (typeof getNotes === 'function' ? getNotes() : [])
+    .filter(n => n && n.tipo === 'visita' && !n.hecho && n.fecha === hoy);
+}
+
+// Cierra una visita desde el banner: la marca hecha (calToggleNote persiste y
+// re-renderiza la Agenda) y actualiza el banner (baja a N-1 o desaparece).
+function marcarVisitaHecha(id) {
+  if (typeof calToggleNote === 'function') calToggleNote(id);
+  renderMorningBanner();
+}
+
 // Para un trabajo multi-día, qué número de día es HOY y cuántos hay en total
 // ({ idx, total }); null si es de un solo día. Sirve para el contexto
 // "Día 2 de 4" en el banner del día.
@@ -10321,25 +10363,34 @@ function renderMorningBanner() {
   const el = document.getElementById('morning-banner');
   if (!el) return;
   const hoy = getTrabajosDeHoy();
-  if (!hoy.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
+  const visitas = getVisitasDeHoy();
+  if (!hoy.length && !visitas.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
 
-  const n = hoy.length;
+  const n = hoy.length, nv = visitas.length;
   const esManana = new Date().getHours() < 12;
+  const partes = [];
+  if (n)  partes.push(`${n} poda${n>1?'s':''}`);
+  if (nv) partes.push(`${nv} visita${nv>1?'s':''}`);
+  const queHay = partes.join(' y ');
   const titulo = esManana
-    ? `${icon('sun')} Buen día — Hoy tenés ${n} poda${n>1?'s':''}`
-    : `${icon('tree')} Trabajo${n>1?'s':''} de hoy (${n})`;
+    ? `${icon('sun')} Buen día — Hoy tenés ${queHay}`
+    : `${icon('tree')} Agenda de hoy: ${queHay}`;
   const subtitulo = esManana
-    ? `Trabajo${n>1?'s':''} agendado${n>1?'s':''} para hoy. Accesos rápidos para llegar y avisarle al cliente.`
-    : `Cuando termines, marcá el trabajo como realizado para cerrarlo${n>1?'s':''}.`;
+    ? `Agendado para hoy. Accesos rápidos para llegar y avisarle al cliente.`
+    : (n
+      ? `Cuando termines, marcá el trabajo como realizado para cerrarlo${n>1?'s':''}.`
+      : `Al terminar cada visita, marcala hecha o creá el presupuesto directo desde acá.`);
 
   const { summaryHtml: summary } = _resumenDelDia(hoy);
 
   // Recomendaciones del día (idea 6): lluvia/viento/UV/temperatura. Todos los
   // trabajos de hoy caen en la misma zona → alcanza con el pronóstico del
-  // primero para hoy.
+  // primero para hoy (o el de la primera visita si hoy solo hay visitas).
   let recosHtml = '';
   if (typeof climaRecomendaciones === 'function') {
-    const recos = climaRecomendaciones(climaDe(hoy[0], today()));
+    const d = n ? climaDe(hoy[0], today())
+      : (typeof climaDeNota === 'function' ? climaDeNota(visitas[0], today()) : null);
+    const recos = climaRecomendaciones(d);
     if (recos.length) recosHtml = `<div class="mb-recos">${recos.map(r => `<span class="mb-reco">${esc(r)}</span>`).join('')}</div>`;
   }
 
@@ -10375,6 +10426,25 @@ function renderMorningBanner() {
           </div>
         </div>`;
       }).join('')}
+      ${visitas.map(v => {
+        const ubic = (v.ubic || '').trim();
+        const tieneUbic = !!(ubic && mapsUrlFor(ubic, ''));
+        const tieneTel  = !!(v.tel || '').trim();
+        const clima = (typeof climaDeNota === 'function') ? climaChipHTML(climaDeNota(v, today())) : '';
+        return `<div class="fub-item fub-item-visita">
+          <div class="fub-item-info" onclick="switchTab('agenda')" role="button" tabindex="0" title="Ver la visita en la Agenda">
+            <span><span class="fub-item-num">Visita</span> <span class="fub-item-client">${esc(v.texto || '')}</span></span>
+            ${(v.cliente || '').trim() ? `<span class="fub-item-days">${icon('user')} ${esc(v.cliente)}</span>` : ''}
+            ${clima ? `<span>${clima}</span>` : ''}
+          </div>
+          <div class="mb-acts">
+            ${tieneUbic ? `<button type="button" class="mb-act mb-act-map" onclick="calOpenNoteMap('${v.id}')">${icon('pin')} Cómo llegar</button>` : ''}
+            ${tieneTel ? `<button type="button" class="mb-act mb-act-wa" onclick="calChatNote('${v.id}')">${icon('message')} WhatsApp</button>` : ''}
+            <button type="button" class="mb-act mb-act-crear" onclick="calCrearPresupuestoDesdeVisita('${v.id}')" title="Crear un presupuesto con los datos de esta visita">${icon('file')} Crear presupuesto</button>
+            <button type="button" class="mb-act mb-act-done" onclick="marcarVisitaHecha('${v.id}')" title="Marcar la visita como hecha">${icon('check')} Hecha</button>
+          </div>
+        </div>`;
+      }).join('')}
       ${n>1 ? `<button type="button" class="mb-route" onclick="rutaDelDiaMaps()">${icon('truck')} Ruta del día (${n} paradas)</button>` : ''}
     </div>`;
 }
@@ -10403,9 +10473,10 @@ function marcarTrabajoRealizado(id) {
 // saludo cambia según la hora (mañana: "Buen día"; después: "Trabajo de hoy").
 // Además, la PRIMERA vez del día, dispara el pop-up llamativo (una sola vez).
 function maybeShowMorningBanner() {
-  if (!getTrabajosDeHoy().length) return;
+  if (!getTrabajosDeHoy().length && !getVisitasDeHoy().length) return;
   renderMorningBanner();
-  maybeShowDayAlert();
+  // El pop-up llamativo del día sigue siendo solo para días con poda.
+  if (getTrabajosDeHoy().length) maybeShowDayAlert();
 }
 
 // ─── POP-UP DE ARRANQUE DEL DÍA (llamativo, 1 vez por día) ───
@@ -11923,6 +11994,7 @@ function _gcalEvInfo(ev, e){
   let summary = '', loc = '';
   const desc = [];
   if (ev.tipo === 'trabajo')      summary = 'Trabajo: ' + ev.title + (ev.sub ? ' — ' + ev.sub : '');
+  else if (ev.tipo === 'visita')  summary = 'Visita: ' + ev.title;
   else if (ev.tipo === 'nota')    summary = 'Nota: ' + ev.title;
   else                            summary = ev.title;   // "Llamar a X" / "Vence X" / "Seguimiento X"
   if (e) {
@@ -11939,7 +12011,7 @@ function _gcalEvInfo(ev, e){
   return { summary, desc: desc.join('\n'), loc };
 }
 // Construye el conjunto DESEADO desde calBuildIndex(): { pqKey: {body, hash} }.
-// Incluye los 5 tipos, solo de hoy en adelante; notas ya hechas no van.
+// Incluye todos los tipos, solo de hoy en adelante; notas/visitas hechas no van.
 function _gcalBuildDesired(){
   const idx = calBuildIndex();
   const hoy = today();
@@ -11950,7 +12022,7 @@ function _gcalBuildDesired(){
   Object.keys(idx).sort().forEach(iso => {
     if (iso < hoy) return;
     idx[iso].forEach(ev => {
-      if (ev.tipo === 'nota' && ev.done) return;
+      if ((ev.tipo === 'nota' || ev.tipo === 'visita') && ev.done) return;
       const dstart = iso.replace(/-/g, '');
       const dendISO = _calAddDays(iso, 1);
       const info = _gcalEvInfo(ev, ev.entryId != null ? byId[ev.entryId] : null);
@@ -14112,6 +14184,52 @@ function _climaProximosTrabajos() {
   return out;
 }
 
+// Visitas (notas tipo 'visita') pendientes dentro del horizonte del
+// pronóstico: sus zonas también se bajan/cachean para el chip de clima
+// (evaluar un árbol con lluvia o ráfagas es tan mala idea como podarlo).
+function _climaProximasVisitas() {
+  const hoy = today();
+  const lim = _calAddDays(hoy, CLIMA.MAX_DAYS);
+  return (typeof getNotes === 'function' ? getNotes() : [])
+    .filter(n => n && n.tipo === 'visita' && !n.hecho && n.fecha >= hoy && n.fecha <= lim);
+}
+
+// Coordenadas para el clima de una visita: la ubicación cargada en la nota
+// ("lat,lng" o Plus Code; un link http no se puede convertir a coordenadas)
+// o, si no, el centroide de la zona — igual que un trabajo sin ubicación.
+function _climaLatLngNota(n) {
+  const u = ((n && n.ubic) || '').trim();
+  if (u && !/^https?:\/\//i.test(u)) {
+    const m = u.match(/^\s*(-?\d{1,3}(?:\.\d+)?)\s*,\s*(-?\d{1,3}(?:\.\d+)?)\s*$/);
+    if (m) {
+      const lat = parseFloat(m[1]), lng = parseFloat(m[2]);
+      if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) return [lat, lng];
+    }
+    const pc = (typeof plusCodeToLatLng === 'function') ? plusCodeToLatLng(u, _mapaGeoRef) : null;
+    if (pc) return pc;
+  }
+  if (!_mapaGeoRef && typeof _mapaComputeGeoRef === 'function') _mapaGeoRef = _mapaComputeGeoRef();
+  return _mapaGeoRef;
+}
+
+// Pronóstico cacheado para una visita en una fecha, o null si no hay.
+function climaDeNota(n, iso) {
+  const ll = _climaLatLngNota(n);
+  if (!ll) return null;
+  const z = _climaCache()[_climaKey(ll)];
+  return (z && z.days && z.days[iso]) || null;
+}
+
+// Asegura el pronóstico de la zona de UNA visita recién agendada y llama a
+// cb() al terminar (espejo de climaEnsureZona para trabajos).
+async function climaEnsureNota(n, cb) {
+  const ll = _climaLatLngNota(n);
+  if (!ll) { if (cb) cb(); return; }
+  const zonas = {}; zonas[_climaKey(ll)] = ll;
+  try { await _climaFetchZonas(zonas); } catch (_) {}
+  if (cb) cb();
+}
+
 // Baja y cachea el pronóstico de las zonas indicadas (map key→[lat,lng]) que
 // no estén frescas (por TTL o versión de formato vieja). Persiste el cache y
 // devuelve true si algo cambió. NO poda zonas (de eso se encarga climaRefresh
@@ -14171,13 +14289,15 @@ async function _climaFetchZonas(zonas) {
 async function climaRefresh() {
   if (navigator.onLine === false) return;
   const trabajos = _climaProximosTrabajos();
-  if (!trabajos.length) return;
+  const visitas = _climaProximasVisitas();
+  if (!trabajos.length && !visitas.length) return;
 
   const zonas = {};
   trabajos.forEach(t => { const ll = _climaLatLngDe(t.e); if (ll) zonas[_climaKey(ll)] = ll; });
+  visitas.forEach(n => { const ll = _climaLatLngNota(n); if (ll) zonas[_climaKey(ll)] = ll; });
   const cambio = await _climaFetchZonas(zonas);
 
-  // Podar zonas que ya no corresponden a ningún trabajo (limpiar la cuota).
+  // Podar zonas que ya no corresponden a ningún trabajo ni visita.
   const cache = _climaCache();
   let podado = false;
   Object.keys(cache).forEach(k => { if (!zonas[k]) { delete cache[k]; podado = true; } });
@@ -14507,6 +14627,9 @@ function agendaClimaPick(iso) {
 //   · seguimiento  → e.enviadoEn + cfg.days (día en que toca contactar)
 //   · nota         → anotaciones/recordatorios propios (LS.NOTES), lo único
 //                    que se guarda de nuevo. Sobrevive backup/restore.
+//   · visita       → nota con tipo:'visita' (evaluación presencial / ir a
+//                    presupuestar): concepto propio, color azul, prioridad
+//                    junto al trabajo, chip de clima y botón "Crear presupuesto".
 // Todas las fechas son LOCALES (YYYY-MM-DD), nunca UTC (regla del proyecto).
 // La semana arranca en LUNES (convención AR).
 
@@ -14514,8 +14637,10 @@ const CAL_MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Ago
 const CAL_WD_MON = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
 const CAL_DIAS = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
 // Orden de prioridad de los tipos (para ordenar dentro de un día y los puntos).
-const CAL_TIPO_ORD = { trabajo:0, recontacto:1, vencimiento:2, seguimiento:3, nota:4 };
-const CAL_TIPO_LBL = { trabajo:'Trabajo', recontacto:'Recontacto', vencimiento:'Vence', seguimiento:'Seguimiento', nota:'Nota' };
+// La visita (evaluación presencial / ir a presupuestar) va pegada al trabajo:
+// es un compromiso con lugar y persona, no un recordatorio suelto.
+const CAL_TIPO_ORD = { trabajo:0, visita:1, recontacto:2, vencimiento:3, seguimiento:4, nota:5 };
+const CAL_TIPO_LBL = { trabajo:'Trabajo', visita:'Visita', recontacto:'Recontacto', vencimiento:'Vence', seguimiento:'Seguimiento', nota:'Nota' };
 
 let _calY = null, _calM = null;   // año / mes (0-11) que se está mostrando (vista mes)
 let _calAnchor = null;            // fecha ancla (iso) para las grillas semana/3-días
@@ -14525,11 +14650,18 @@ let _calOverdueOpen = false;      // sección "Atrasado" desplegada (colapsada p
 
 // ─── NOTAS MANUALES (localStorage) ───────────────────────────
 // Cada nota: { id, fecha:'YYYY-MM-DD', texto, hecho:bool, creadoEn }.
+// Campo opcional tipo:'visita' → evaluación presencial / ir a presupuestar
+// (se muestra como concepto propio en la Agenda; sin tipo = nota común).
 function getNotes() {
   try { const a = JSON.parse(localStorage.getItem(LS.NOTES) || '[]'); return Array.isArray(a) ? a : []; }
   catch (e) { return []; }
 }
-function setNotes(a) { safeSetLS(LS.NOTES, JSON.stringify(a || [])); if (typeof scheduleGcalSync === 'function') scheduleGcalSync(); }
+function setNotes(a) {
+  safeSetLS(LS.NOTES, JSON.stringify(a || []));
+  if (typeof scheduleGcalSync === 'function') scheduleGcalSync();
+  // Las visitas de hoy viven también en el banner del día → mantenerlo al día.
+  try { if (typeof renderMorningBanner === 'function') renderMorningBanner(); } catch (_) {}
+}
 
 // ─── HELPERS DE FECHA (locales) ──────────────────────────────
 // Suma n días a una fecha ISO local y devuelve otra ISO local.
@@ -14644,10 +14776,16 @@ function calBuildIndex() {
   getNotes().forEach(n => {
     if (!n || !n.fecha) return;
     const ubic = (n.ubic || '').trim();
+    const esVisita = n.tipo === 'visita';
+    // Visitas: pronóstico del día (mismo chip que los trabajos — evaluar un
+    // árbol con lluvia o ráfagas también es mala idea). Solo días no pasados.
+    const clima = (esVisita && n.fecha >= today() && typeof climaDeNota === 'function')
+      ? climaDeNota(n, n.fecha) : null;
     push(n.fecha, {
-      tipo: 'nota', title: n.texto || '(nota)', sub: (n.cliente || '').trim(),
+      tipo: esVisita ? 'visita' : 'nota', title: n.texto || '(nota)', sub: (n.cliente || '').trim(),
       noteId: n.id, done: !!n.hecho, tel: (n.tel || '').trim(),
-      ubic, mapUrl: ubic && typeof mapsUrlFor === 'function' ? mapsUrlFor(ubic, '') : ''
+      ubic, mapUrl: ubic && typeof mapsUrlFor === 'function' ? mapsUrlFor(ubic, '') : '',
+      clima
     });
   });
 
@@ -14875,11 +15013,15 @@ function _calEvHTML(ev, dateLabel) {
   } else if (ev.noteId != null) {
     // "Hecho" y "Eliminar" se accionan deslizando la tarjeta (ver abajo); en el
     // botonera quedan chat (si hay contacto), Maps (si hay ubicación),
-    // compartir y editar, más grandes.
+    // compartir y editar, más grandes. Las visitas suman "Crear presupuesto":
+    // al volver de la evaluación, pasa los datos de la visita al editor.
     const mapBtn = ev.mapUrl
       ? `<button class="agc-ev-btn agc-ev-map" onclick="calOpenNoteMap('${ev.noteId}')" title="Abrir la ubicación en Maps" aria-label="Ver ubicación en Maps">${icon('pin')}</button>`
       : '';
-    acts = chat + mapBtn + share
+    const crearBtn = (ev.tipo === 'visita' && !ev.done)
+      ? `<button class="agc-ev-btn" onclick="calCrearPresupuestoDesdeVisita('${ev.noteId}')" title="Crear un presupuesto con los datos de esta visita" aria-label="Crear presupuesto desde la visita">${icon('file')}</button>`
+      : '';
+    acts = chat + mapBtn + crearBtn + share
          + `<button class="agc-ev-btn" onclick="calEditNote('${ev.noteId}')" title="Editar la nota / ubicación / contacto">${icon('pencil')}</button>`;
   }
   // Anotaciones internas (solo en eventos de trabajo): memoria privada de
@@ -14889,7 +15031,7 @@ function _calEvHTML(ev, dateLabel) {
         `<span class="agc-ev-note">${icon('bulb')}<span class="agc-ev-note-tx">${nn.label ? `<b>${esc(nn.label)}:</b> ` : ''}${esc(nn.text)}</span></span>`
       ).join('')}</div>`
     : '';
-  // Pronóstico del día (solo eventos de trabajo con dato cacheado).
+  // Pronóstico del día (eventos de trabajo y visitas con dato cacheado).
   const climaHtml = (ev.clima && typeof climaChipHTML === 'function') ? climaChipHTML(ev.clima) : '';
   const card = `<div class="agc-ev t-${ev.tipo}${ev.done ? ' done' : ''}">
     <span class="agc-ev-bar"></span>
@@ -14940,6 +15082,7 @@ function renderCalDay(noList) {
     <div class="agc-note-form">
       <input type="text" id="agc-note-input" placeholder="Anotá un recordatorio para este día…" maxlength="140" onkeydown="if(event.key==='Enter'){calSaveNote();}">
       <button class="btn btn-p btn-sm" onclick="calSaveNote()">${icon('plus')} Nota</button>
+      <button class="btn btn-visita btn-sm" onclick="calSaveNote('visita')" title="Guardar como visita: evaluación presencial / ir a presupuestar">${icon('plus')} Visita</button>
     </div>
     <details class="agc-note-contact">
       <summary>${icon('message')} Vincular contacto (chat directo)</summary>
@@ -15001,7 +15144,7 @@ function renderCalList() {
       //  · RECONTACTO y NOTA los creás a mano (son intenciones deliberadas) → se
       //    mantienen sin importar la antigüedad; los resolvés o borrás vos.
       let pend = false;
-      if (ev.tipo === 'nota') pend = !ev.done;
+      if (ev.tipo === 'nota' || ev.tipo === 'visita') pend = !ev.done;
       else if (ev.tipo === 'recontacto') pend = true;
       else if (ev.tipo === 'seguimiento') { const d = daysSinceDate(iso); pend = (d != null && d <= 30); }
       if (pend) overdue.push({ iso, ev });
@@ -15052,11 +15195,13 @@ function renderCalList() {
 }
 
 // ─── NOTAS: alta / toggle / borrado ──────────────────────────
-function calSaveNote() {
+// `tipo` opcional: 'visita' guarda la nota como visita (evaluación presencial).
+function calSaveNote(tipo) {
   const inp = document.getElementById('agc-note-input');
   if (!inp || !_calSel) return;
+  const esVisita = tipo === 'visita';
   const texto = (inp.value || '').trim();
-  if (!texto) { toast('Escribí algo para la nota', 'info', 2200); return; }
+  if (!texto) { toast(esVisita ? 'Escribí a quién o qué vas a ir a ver' : 'Escribí algo para la nota', 'info', 2200); return; }
   // Contacto opcional vinculado a la nota.
   const cliEl = document.getElementById('agc-note-cli');
   const telEl = document.getElementById('agc-note-tel');
@@ -15081,6 +15226,7 @@ function calSaveNote() {
     cliente: cliente, tel: tel
   };
   if (ubic) nueva.ubic = ubic;
+  if (esVisita) nueva.tipo = 'visita';
   notes.push(nueva);
   setNotes(notes);
   // Si es un contacto nuevo (nombre + teléfono) que todavía no está en la DB de
@@ -15095,13 +15241,46 @@ function calSaveNote() {
   if (telEl) telEl.value = '';
   if (ubicEl) ubicEl.value = '';
   renderCal();
-  toast('Nota agendada', 'ok');
+  // Visitas: asegurar el pronóstico de la zona para pintar el chip de clima.
+  if (esVisita && typeof climaEnsureNota === 'function') climaEnsureNota(nueva, () => renderCal());
+  toast(esVisita ? 'Visita agendada' : 'Nota agendada', 'ok');
 }
 // Abre el chat de WhatsApp del contacto vinculado a una nota.
 function calChatNote(id) {
   const n = getNotes().find(x => x.id === id);
   if (!n) { toast('No se encontró la nota', 'info', 2500); return; }
   chatWhatsappPhone(n.tel || '');
+}
+
+// ─── VISITA → PRESUPUESTO ────────────────────────────────────
+// Cierra el círculo de la evaluación presencial: crea un presupuesto nuevo con
+// los datos de la visita ya cargados (cliente, teléfono, ubicación y el texto
+// como nota interna), marca la visita como hecha y abre el Editor. El borrador
+// actual se guarda solo en el historial (mismo criterio que newQuote).
+async function calCrearPresupuestoDesdeVisita(id) {
+  const notes = getNotes();
+  const n = notes.find(x => x.id === id);
+  if (!n) { toast('No se encontró la visita', 'info', 2500); return; }
+  const quien = (n.cliente || '').trim() || (n.texto || '').trim() || 'esta visita';
+  const ok = await confirmDlg('Crear presupuesto',
+    `¿Crear un presupuesto nuevo con los datos de la visita a ${quien}? El borrador actual se guardará automáticamente en el historial y la visita quedará marcada como hecha.`,
+    'Crear presupuesto', 'btn-p');
+  if (!ok) return;
+  autoSaveToHistory();
+  resetToNewQuote();
+  S.clientName = (n.cliente || '').trim();
+  S.clientContact = (n.tel || '').trim();
+  S.workMapLink = (n.ubic || '').trim();
+  if ((n.texto || '').trim()) S.intNote = 'Visita: ' + n.texto.trim();
+  noSync = true; restoreUI(); noSync = false;
+  sched();
+  if (!n.hecho) {
+    n.hecho = true;
+    setNotes(notes);
+  }
+  renderCal();
+  if (typeof renderMorningBanner === 'function') renderMorningBanner();
+  toast('Presupuesto creado con los datos de la visita', 'ok', 3500);
 }
 
 // ─── EDICIÓN DE NOTA (modal) ─────────────────────────────────
@@ -15121,6 +15300,8 @@ function calEditNote(id) {
   txt.value = n.texto || '';
   if (cli) cli.value = n.cliente || '';
   if (tel) tel.value = n.tel || '';
+  const tipoEl = document.getElementById('agc-edit-tipo');
+  if (tipoEl) tipoEl.value = (n.tipo === 'visita') ? 'visita' : '';
   const ubicEl = document.getElementById('agc-edit-ubic');
   if (ubicEl) ubicEl.value = n.ubic || '';
   if (cli) attachClientDropdown(cli, tel);
@@ -15165,6 +15346,8 @@ function calSaveNoteEdit() {
   n.cliente = cliente;
   n.tel = telef;
   if (ubic) n.ubic = ubic; else delete n.ubic;
+  const tipoEl = document.getElementById('agc-edit-tipo');
+  if (tipoEl) { if (tipoEl.value === 'visita') n.tipo = 'visita'; else delete n.tipo; }
   setNotes(notes);
   // Importar el contacto a la DB de clientes si es nuevo (nombre + teléfono).
   if (cliente && telef && typeof saveClientToDB === 'function') {
@@ -15195,7 +15378,7 @@ function calDeleteNote(id) {
 // seguimiento, recontacto o trabajo). Pensado para mandárselo a un compañero
 // por WhatsApp: encabezado con emoji + tipo + fecha, y el detalle abajo.
 function _calShareText(ev) {
-  const EMO = { trabajo: '🌳', recontacto: '📞', vencimiento: '⏰', seguimiento: '🔔', nota: '📝' };
+  const EMO = { trabajo: '🌳', visita: '📋', recontacto: '📞', vencimiento: '⏰', seguimiento: '🔔', nota: '📝' };
   const kind = CAL_TIPO_LBL[ev.tipo] || 'Recordatorio';
   const emo = EMO[ev.tipo] || '📌';
   let fecha = '';
@@ -15451,9 +15634,9 @@ function calExportIcs() {
   Object.keys(idx).sort().forEach(iso => {
     if (iso < hoy) return;                       // solo lo que viene
     idx[iso].forEach(ev => {
-      // Exportamos tareas concretas: trabajos, recontactos y notas pendientes.
-      // Vencimientos/seguimientos son derivados y ruidosos → quedan afuera.
-      if (ev.tipo === 'nota') { if (ev.done) return; }
+      // Exportamos tareas concretas: trabajos, recontactos, visitas y notas
+      // pendientes. Vencimientos/seguimientos son derivados y ruidosos → afuera.
+      if (ev.tipo === 'nota' || ev.tipo === 'visita') { if (ev.done) return; }
       else if (ev.tipo !== 'trabajo' && ev.tipo !== 'recontacto') return;
 
       const dstart = iso.replace(/-/g, '');
@@ -15479,6 +15662,10 @@ function calExportIcs() {
           if (e.total > 0) desc.push('Presupuesto ' + (e.quoteNumber || '') + ': ' + fmtM(e.total, e.currency || 'ARS'));
           if (snap.clientContact) desc.push('Contacto: ' + snap.clientContact);
         }
+      } else if (ev.tipo === 'visita') {           // evaluación presencial
+        summary = 'Visita: ' + ev.title + (ev.sub ? ' — ' + ev.sub : '');
+        if (ev.tel) desc.push('Contacto: ' + ev.tel);
+        if (ev.mapUrl) { desc.push('Ubicación: ' + ev.mapUrl); loc = ev.mapUrl; }
       } else {                                     // nota
         summary = 'Nota: ' + ev.title;
       }
@@ -15523,8 +15710,8 @@ function calUpdateDot() {
   if (!dot) return;
   const hoy = today();
   const evs = calBuildIndex()[hoy] || [];
-  // Notas ya hechas no cuentan como "pendiente de hoy".
-  const hay = evs.some(ev => !(ev.tipo === 'nota' && ev.done));
+  // Notas/visitas ya hechas no cuentan como "pendiente de hoy".
+  const hay = evs.some(ev => !((ev.tipo === 'nota' || ev.tipo === 'visita') && ev.done));
   dot.hidden = !hay;
 }
 
