@@ -14668,7 +14668,10 @@ function _climaDetailRender() {
   const hoy = today();
 
   const fechaTxt = (typeof _calLongDate === 'function') ? _calLongDate(iso) : iso;
-  const cuando = iso === hoy ? ' · hoy' : (iso === _calAddDays(hoy, 1) ? ' · mañana' : '');
+  let cuando = iso === hoy ? ' · hoy' : (iso === _calAddDays(hoy, 1) ? ' · mañana' : '');
+  // Marcar si el día mirado es el agendado (ayuda a no confundirse navegando
+  // la tira: solo en estos días aparece "Reprogramar").
+  if (tgt.fechas.includes(iso)) cuando += tgt.e ? ' · día del trabajo' : ' · día de la visita';
 
   // Tira de días (hoy → +6) para comparar/elegir: los días con lluvia o
   // ráfagas van en ámbar y los agendados del trabajo quedan marcados.
@@ -14764,11 +14767,13 @@ function _climaDetailRender() {
       : 'Todavía no se descargó el pronóstico de esta zona. Se baja solo cuando hay conexión.'}</div>`;
   }
 
-  // Pie: reprogramar por WhatsApp (solo trabajos con teléfono y día feo) +
-  // fuente y edad del dato (para saber cuánto confiar estando offline).
+  // Pie: reprogramar por WhatsApp — SOLO si el día que se está mirando es un
+  // día agendado del trabajo (con teléfono y clima feo). Navegando otros días
+  // de la tira (p. ej. comparando) no tiene sentido ofrecer reprogramar: el
+  // mensaje diría "para el día pactado pronostican lluvia" y sería falso.
   const motivo = d ? _climaMotivo(d) : { txt: '' };
   const tieneTel = tgt.e && typeof histClientPhone === 'function' && !!histClientPhone(tgt.e);
-  const repro = (tgt.e && motivo.txt && tieneTel)
+  const repro = (tgt.e && motivo.txt && tieneTel && tgt.fechas.includes(iso))
     ? `<button type="button" class="btn btn-g btn-sm" onclick="climaReprogramarWhatsApp(${tgt.e.id}, '${esc(motivo.txt)}')">${icon('message')} Reprogramar</button>`
     : '';
   const foot = `<div class="cw-foot">
