@@ -1065,8 +1065,8 @@ input[type=number]{-moz-appearance:textfield}
 .toast-action .toast-btn:active{opacity:.85}
 /* Aviso de lluvia (clima): mensaje largo → texto a la izquierda que envuelve,
    botón "Ver" al final, toda la tarjeta tocable. Botón blanco sobre el rojo. */
-.clima-toast{width:min(92vw,430px);max-width:92vw;text-align:left;justify-content:flex-start;flex-wrap:nowrap;cursor:pointer}
-.clima-toast>span{flex:1 1 auto;min-width:0;line-height:1.4}
+.clima-toast{width:min(92vw,430px);max-width:92vw;text-align:left;justify-content:flex-end;flex-wrap:wrap;gap:8px 10px;cursor:pointer}
+.clima-toast>span{flex:1 1 100%;min-width:0;line-height:1.4}
 .clima-toast .toast-btn{flex:0 0 auto;background:rgba(255,255,255,.22)}
 
 /* MISC */
@@ -1675,6 +1675,66 @@ input[type=number]{-moz-appearance:textfield}
 .agenda-clima-hint{font-size:11.5px;color:var(--muted);margin:0 0 4px}
 .agc-ev-body .clima-chip{margin-top:4px}
 .da-item .clima-chip{align-self:flex-start}
+/* Chip tocable: abre el panel de detalle del clima (climaOpenDetail). El ›
+   final es la pista visual de que hay más información detrás. */
+.clima-chip.clima-tap{cursor:pointer}
+.clima-chip.clima-tap:active{filter:brightness(.93)}
+.clima-chip .clima-more{font-weight:800;opacity:.55;margin-left:1px}
+/* ── Panel de detalle del clima (tocar un chip o el aviso de mal tiempo) ──
+   Pronóstico completo del día del trabajo/visita: lluvia, viento, UV y
+   térmica en tarjetas, hora por hora (si hay), recomendaciones y tira de
+   próximos días para comparar/elegir mejor fecha. */
+#clima-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2300;align-items:center;justify-content:center;padding:16px}
+#clima-overlay.open{display:flex}
+#clima-box{position:relative;background:var(--card);border-radius:var(--radius-box);padding:20px;width:460px;max-width:94vw;max-height:88vh;overflow:auto;overscroll-behavior:contain;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.cw-close{position:absolute;top:10px;right:10px;width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:var(--muted);background:var(--surface-2);border:1px solid var(--border);border-radius:50%;cursor:pointer;line-height:1}
+.cw-close:active{background:var(--accent-light)}
+.cw-kicker{font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--muted)}
+.cw-title{font-family:'DM Serif Display',serif;font-size:19px;line-height:1.2;color:var(--text);margin:1px 0 2px;padding-right:36px}
+.cw-fecha{font-size:12.5px;font-weight:600;color:var(--muted);margin-bottom:8px}
+#clima-box .agenda-clima-strip{margin-bottom:4px}
+.cw-hero{display:flex;align-items:center;gap:12px;margin:8px 0 12px}
+.cw-hero-em{font-size:42px;line-height:1}
+.cw-hero-desc{font-size:15.5px;font-weight:700;color:var(--text)}
+.cw-hero-t{font-size:12.5px;font-weight:600;color:var(--muted)}
+.cw-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.cw-card{display:flex;flex-direction:column;gap:2px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-field);padding:9px 11px}
+.cw-card-l{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;color:var(--muted)}
+.cw-card-v{font-size:15px;font-weight:700;color:var(--text)}
+.cw-card-s{font-size:11.5px;color:var(--muted);line-height:1.35}
+/* warn = ámbar (lluvia / UV alto); peligro = rosa (ráfagas, trabajo en altura) */
+.cw-card.warn{background:#fef3c7;border-color:#fcd34d}
+.cw-card.warn .cw-card-l,.cw-card.warn .cw-card-s{color:#b45309}
+.cw-card.warn .cw-card-v{color:#92400e}
+:root[data-theme="dark"] .cw-card.warn{background:rgba(251,191,36,.12);border-color:rgba(251,191,36,.4)}
+:root[data-theme="dark"] .cw-card.warn .cw-card-l,:root[data-theme="dark"] .cw-card.warn .cw-card-s{color:#fcd34d}
+:root[data-theme="dark"] .cw-card.warn .cw-card-v{color:#fde68a}
+.cw-card.peligro{background:#ffe4e6;border-color:#fda4af}
+.cw-card.peligro .cw-card-l,.cw-card.peligro .cw-card-s{color:#be123c}
+.cw-card.peligro .cw-card-v{color:#9f1239}
+:root[data-theme="dark"] .cw-card.peligro{background:rgba(244,63,94,.12);border-color:rgba(244,63,94,.4)}
+:root[data-theme="dark"] .cw-card.peligro .cw-card-l,:root[data-theme="dark"] .cw-card.peligro .cw-card-s{color:#fda4af}
+:root[data-theme="dark"] .cw-card.peligro .cw-card-v{color:#fecdd3}
+.cw-sec{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);margin:14px 0 6px}
+.cw-hours{display:flex;gap:6px;overflow-x:auto;padding:2px 0 6px;-webkit-overflow-scrolling:touch}
+.cw-hour{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:46px;padding:7px 4px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-field)}
+.cw-hour.mal{background:#fef3c7;border-color:#fcd34d}
+:root[data-theme="dark"] .cw-hour.mal{background:rgba(251,191,36,.12);border-color:rgba(251,191,36,.4)}
+.cw-hour-h{font-size:10px;font-weight:700;color:var(--muted)}
+.cw-hour-em{font-size:16px;line-height:1}
+.cw-hour-t{font-size:11px;font-weight:700;color:var(--text)}
+.cw-hour-pp{font-size:10px;font-weight:600;color:#2563eb;white-space:nowrap}
+:root[data-theme="dark"] .cw-hour-pp{color:#93c5fd}
+.cw-hour-g{font-size:10px;font-weight:600;color:#be123c;white-space:nowrap}
+:root[data-theme="dark"] .cw-hour-g{color:#fda4af}
+.cw-recos{display:flex;flex-direction:column;gap:6px}
+.cw-reco{font-size:12.5px;line-height:1.4;color:var(--text);background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-field);padding:8px 11px}
+.cw-reco-ok{background:#ecfdf5;border-color:#a7f3d0;color:#065f46}
+:root[data-theme="dark"] .cw-reco-ok{background:rgba(52,211,153,.1);border-color:rgba(52,211,153,.35);color:#a7f3d0}
+.cw-empty{font-size:13px;color:var(--muted);padding:12px 0;line-height:1.5}
+.cw-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:14px;flex-wrap:wrap}
+.cw-src{font-size:10.5px;color:var(--muted)}
+.cw-btns{display:flex;gap:8px;justify-content:flex-end;flex:1}
 .agc-ev-acts{display:flex;flex-flow:row wrap;gap:7px;flex-shrink:0;justify-content:flex-end;align-content:flex-start}
 .agc-ev-btn{width:42px;height:42px;display:inline-flex;align-items:center;justify-content:center;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-field);cursor:pointer;color:var(--muted);padding:0}
 .agc-ev-btn .ic{width:19px;height:19px}
@@ -1821,6 +1881,7 @@ input[type=number]{-moz-appearance:textfield}
   #agenda-overlay,
   #share-overlay,
   #day-alert-overlay,
+  #clima-overlay,
   #photo-viewer-overlay,
   #phrases-overlay,
   #notes-overlay,
@@ -4036,6 +4097,20 @@ input[type=number]{-moz-appearance:textfield}
   <div id="day-alert-box" role="dialog" aria-modal="true" aria-labelledby="day-alert-body">
     <button type="button" class="da-close" onclick="closeDayAlert()" aria-label="Cerrar" title="Cerrar">✕</button>
     <div id="day-alert-body"></div>
+  </div>
+</div>
+
+<!-- ════════════════════ DETALLE DEL CLIMA ════════════════════
+     Se abre al tocar cualquier chip de pronóstico (Agenda / banner de hoy /
+     pop-up del día / Historial / diálogo de agendar) o el botón "Clima" del
+     aviso de mal tiempo. Muestra el día completo (lluvia, viento, UV,
+     térmica), el pronóstico hora por hora si hay, recomendaciones y los
+     próximos días para comparar. La lógica vive en js/clima.js
+     (climaOpenDetail / _climaDetailRender). -->
+<div id="clima-overlay" role="presentation" onclick="if(event.target===this)closeClimaDetail()">
+  <div id="clima-box" role="dialog" aria-modal="true" aria-labelledby="clima-dlg-title">
+    <button type="button" class="cw-close" onclick="closeClimaDetail()" aria-label="Cerrar" title="Cerrar">✕</button>
+    <div id="clima-dlg-body"></div>
   </div>
 </div>
 
@@ -10440,7 +10515,7 @@ function renderMorningBanner() {
         const tieneTel  = !!histClientPhone(e);
         const lugar = (snap.workAddress || '').trim();
         const dinfo = agDiaDeHoyInfo(e); // "Día 2 de 4" en trabajos multi-día
-        const clima = (typeof climaDe === 'function') ? climaChipHTML(climaDe(e, today())) : '';
+        const clima = (typeof climaDe === 'function') ? climaChipHTML(climaDe(e, today()), _climaTap('e', e.id, today())) : '';
         return `<div class="fub-item">
           <div class="fub-item-info" onclick="goToHistoryEntry(${e.id})" role="button" tabindex="0" title="Ver este presupuesto en el historial">
             <span><span class="fub-item-num">${esc(e.quoteNumber||'—')}</span> <span class="fub-item-client">${esc(e.clientName||'(sin nombre)')}</span></span>
@@ -10460,7 +10535,7 @@ function renderMorningBanner() {
         const ubic = (v.ubic || '').trim();
         const tieneUbic = !!(ubic && mapsUrlFor(ubic, ''));
         const tieneTel  = !!(v.tel || '').trim();
-        const clima = (typeof climaDeNota === 'function') ? climaChipHTML(climaDeNota(v, today())) : '';
+        const clima = (typeof climaDeNota === 'function') ? climaChipHTML(climaDeNota(v, today()), _climaTap('n', v.id, today())) : '';
         return `<div class="fub-item fub-item-visita">
           <div class="fub-item-info" onclick="switchTab('agenda')" role="button" tabindex="0" title="Ver la visita en la Agenda">
             <span><span class="fub-item-num">Visita</span> <span class="fub-item-client">${esc(v.texto || '')}</span></span>
@@ -10583,7 +10658,7 @@ function renderDayAlert(hoy) {
         const snap = e.snapshot || {};
         const lugar = (snap.workAddress || '').trim();
         const dinfo = agDiaDeHoyInfo(e);
-        const clima = (typeof climaDe === 'function') ? climaChipHTML(climaDe(e, today())) : '';
+        const clima = (typeof climaDe === 'function') ? climaChipHTML(climaDe(e, today()), _climaTap('e', e.id, today())) : '';
         return `<button type="button" class="da-item" onclick="dayAlertGoTo(${e.id})">
           <span class="da-item-top"><span class="da-item-num">${esc(e.quoteNumber || '—')}</span> <span class="da-item-client">${esc(e.clientName || '(sin nombre)')}</span></span>
           ${dinfo ? `<span class="da-item-meta">${icon('calendar')} Día ${dinfo.idx} de ${dinfo.total}</span>` : ''}
@@ -14168,13 +14243,17 @@ function mapaArmarRuta() {
 // de 7 días al agendar (elegir un buen día), recomendaciones del día, y aviso
 // accionable de lluvia/viento para trabajos de HOY o MAÑANA (toast que lleva
 // al presupuesto y ofrece reprogramar por WhatsApp; una vez por día por
-// trabajo, gate en LS.CLIMA_WARN).
+// trabajo, gate en LS.CLIMA_WARN). Además, tocar cualquier chip (o el botón
+// "Clima" del aviso) abre el PANEL DE DETALLE (climaOpenDetail): día completo
+// en tarjetas, hora por hora (próximas 72 h, guardadas en `hours` del cache)
+// y tira de próximos días para comparar.
 
 const CLIMA = {
   TTL_MS: 3 * 60 * 60 * 1000,  // refrescar como mucho cada 3 h
   MAX_DAYS: 14,                // horizonte útil del pronóstico diario
-  VER: 3,                      // versión del formato cacheado (v2: +UV, v3: +ráfaga);
-                               // subirla invalida el cache viejo en el próximo refresh
+  VER: 4,                      // versión del formato cacheado (v2: +UV, v3: +ráfaga,
+                               // v4: +hora por hora); subirla invalida el cache
+                               // viejo en el próximo refresh
   WIND_WARN: 45,               // km/h de ráfaga: aviso "peligro en altura"
   WIND_CHIP: 35,               // km/h de ráfaga: mostrar el viento en el chip
   UV_CHIP: 6,                  // índice UV: mostrar el UV en el chip (escala OMS: "alto")
@@ -14282,7 +14361,8 @@ async function _climaFetchZonas(zonas) {
         const url = 'https://api.open-meteo.com/v1/forecast'
           + `?latitude=${lat.toFixed(4)}&longitude=${lng.toFixed(4)}`
           + '&daily=weather_code,precipitation_probability_max,precipitation_sum,temperature_2m_max,temperature_2m_min,wind_speed_10m_max,wind_gusts_10m_max,uv_index_max'
-          + '&timezone=auto&forecast_days=16';
+          + '&hourly=temperature_2m,precipitation_probability,precipitation,weather_code,wind_gusts_10m,uv_index'
+          + '&timezone=auto&forecast_days=16&forecast_hours=72';
         const res = await fetch(url);
         if (!res.ok) continue;
         const j = await res.json();
@@ -14301,7 +14381,26 @@ async function _climaFetchZonas(zonas) {
             uv:   d.uv_index_max?.[i] ?? null,                  // índice UV máx
           };
         });
-        cache[k] = { at: ahora, v: CLIMA.VER, days };
+        // Hora por hora (próximas 72 h — forecast_hours limita SOLO lo horario,
+        // el diario sigue siendo de 16 días): agrupado por fecha local para el
+        // panel de detalle ("a qué hora llueve / cuándo pega la ráfaga").
+        const hh = j.hourly;
+        const hours = {};
+        if (hh && Array.isArray(hh.time)) {
+          hh.time.forEach((t, i) => {
+            const [iso, hm] = t.split('T');
+            (hours[iso] || (hours[iso] = [])).push({
+              h:    hm ? hm.slice(0, 2) : '',                  // "07", "15"…
+              t:    hh.temperature_2m?.[i] ?? null,
+              pp:   hh.precipitation_probability?.[i] ?? null, // % probabilidad
+              mm:   hh.precipitation?.[i] ?? null,             // milímetros
+              code: hh.weather_code?.[i] ?? null,
+              gust: hh.wind_gusts_10m?.[i] ?? null,            // km/h ráfaga
+              uv:   hh.uv_index?.[i] ?? null,
+            });
+          });
+        }
+        cache[k] = { at: ahora, v: CLIMA.VER, days, hours };
         cambio = true;
       } catch (_) { /* sin señal o API caída: se sirve lo cacheado */ }
     }
@@ -14423,8 +14522,10 @@ function _climaUvLabel(uv) {
 // '' si no hay dato cacheado. Color según prioridad: lluvia (ámbar) > viento
 // fuerte (rosa, peligro en altura) > UV alto (naranja). El viento se muestra en
 // el texto a partir de ráfaga ≥ WIND_CHIP y el UV a partir de ≥ UV_CHIP; en el
-// detalle (title) va todo siempre.
-function climaChipHTML(d) {
+// detalle (title) va todo siempre. `tap` (opcional) es el JS a ejecutar al
+// tocarlo (armado con _climaTap): vuelve el chip clickeable (abre el panel de
+// detalle) con stopPropagation para no disparar la tarjeta que lo contiene.
+function climaChipHTML(d, tap) {
   if (!d) return '';
   const [emoji, desc] = _climaEmojiDesc(d.code);
   const lluvia = climaEsLluvia(d);
@@ -14444,8 +14545,20 @@ function climaChipHTML(d) {
     + `${d.pp != null ? ` · prob. de lluvia ${Math.round(d.pp)}%` : ''}`
     + `${g != null ? ` · viento ${Math.round(g)} km/h` : ''}`
     + `${d.uv != null ? ` · UV ${Math.round(d.uv)} (${_climaUvLabel(d.uv)})` : ''}`;
-  return `<span class="clima-chip${cls}" title="${esc(title)}">`
-       + `<span class="clima-emoji">${emoji}</span>${esc(desc)}${temp}${esc(lluviaTxt)}${esc(vientoTxt)}${esc(uvTxt)}</span>`;
+  const tapAttrs = tap
+    ? ` role="button" tabindex="0" onclick="event.stopPropagation();${esc(tap)}"`
+    : '';
+  return `<span class="clima-chip${cls}${tap ? ' clima-tap' : ''}"${tapAttrs} title="${esc(title)}">`
+       + `<span class="clima-emoji">${emoji}</span>${esc(desc)}${temp}${esc(lluviaTxt)}${esc(vientoTxt)}${esc(uvTxt)}`
+       + (tap ? `<span class="clima-more">›</span>` : '') + `</span>`;
+}
+
+// Arma el onclick que abre el panel de detalle del clima para un trabajo
+// (t='e', id numérico del historial) o una visita (t='n', id string de la
+// nota) en una fecha dada. Se pasa como segundo argumento a climaChipHTML.
+function _climaTap(t, id, iso) {
+  const idJs = (typeof id === 'number') ? id : `'${String(id).replace(/['"\\<>]/g, '')}'`;
+  return `climaOpenDetail('${t === 'n' ? 'n' : 'e'}',${idJs},'${String(iso).replace(/['"\\<>]/g, '')}')`;
 }
 
 // Recomendaciones prácticas del día (para el banner de "podas de hoy"): lista
@@ -14472,7 +14585,204 @@ function climaChipForEntry(e) {
   const hoy = today();
   const ref = (typeof agFechas === 'function' ? agFechas(e) : []).find(f => f >= hoy);
   if (!ref) return '';
-  return climaChipHTML(climaDe(e, ref));
+  return climaChipHTML(climaDe(e, ref), _climaTap('e', e.id, ref));
+}
+
+// ─── PANEL DE DETALLE DEL CLIMA (tocar un chip / el aviso) ───
+// Modal con el pronóstico completo de un día para un trabajo ('e') o una
+// visita ('n'): tarjetas de lluvia/viento/UV/térmica, hora por hora (si está
+// cacheado: próximas 72 h), recomendaciones y tira de días para comparar.
+// Objetivo: que el usuario pueda prepararse ante un imprevisto del clima sin
+// salir de la app (y reprogramar por WhatsApp desde acá si pinta feo).
+let _climaDlg = null;   // { t:'e'|'n', id, iso } del panel abierto
+
+function climaOpenDetail(t, id, iso) {
+  _climaDlg = { t: t === 'n' ? 'n' : 'e', id, iso: iso || today() };
+  _climaDetailRender();
+  const ov = document.getElementById('clima-overlay');
+  if (ov) ov.classList.add('open');
+  // Refrescar la zona en segundo plano (solo si hace falta y hay señal) y
+  // repintar el panel si sigue abierto cuando llega el dato fresco.
+  const cb = () => { if (_climaDlg && document.querySelector('#clima-overlay.open')) _climaDetailRender(); };
+  if (_climaDlg.t === 'e') {
+    const e = getH().find(x => x.id === id);
+    if (e) climaEnsureZona(e, cb);
+  } else {
+    const n = (typeof getNotes === 'function' ? getNotes() : []).find(x => x.id === id);
+    if (n) climaEnsureNota(n, cb);
+  }
+}
+
+function closeClimaDetail() {
+  const ov = document.getElementById('clima-overlay');
+  if (ov) ov.classList.remove('open');
+  _climaDlg = null;
+}
+
+// Tocar un día de la tira del panel: cambia el día mostrado.
+function climaDetailPick(iso) {
+  if (_climaDlg) { _climaDlg.iso = iso; _climaDetailRender(); }
+}
+
+// Sujeto del panel abierto (trabajo o visita) + su zona / título / fechas
+// agendadas (para marcarlas en la tira). null si el registro ya no existe.
+function _climaDlgTarget() {
+  if (!_climaDlg) return null;
+  if (_climaDlg.t === 'e') {
+    const e = getH().find(x => x.id === _climaDlg.id);
+    if (!e) return null;
+    return {
+      e, ll: _climaLatLngDe(e),
+      kicker: 'Pronóstico para la poda',
+      titulo: (e.clientName || '').trim() || '(sin nombre)',
+      fechas: (typeof agFechas === 'function') ? agFechas(e) : [],
+    };
+  }
+  const n = (typeof getNotes === 'function' ? getNotes() : []).find(x => x.id === _climaDlg.id);
+  if (!n) return null;
+  return {
+    n, ll: _climaLatLngNota(n),
+    kicker: 'Pronóstico para la visita',
+    titulo: (n.texto || '').trim() || 'Visita',
+    fechas: n.fecha ? [n.fecha] : [],
+  };
+}
+
+// "recién" / "hace 40 min" / "hace 2 h" — edad del pronóstico cacheado, para
+// saber cuán confiable es lo que se está viendo (clave estando offline).
+function _climaHaceTxt(at) {
+  const min = Math.max(0, Math.round((Date.now() - at) / 60000));
+  if (min < 1) return 'recién actualizado';
+  if (min < 60) return `hace ${min} min`;
+  return `hace ${Math.round(min / 60)} h`;
+}
+
+function _climaDetailRender() {
+  const body = document.getElementById('clima-dlg-body');
+  if (!body || !_climaDlg) return;
+  const tgt = _climaDlgTarget();
+  if (!tgt) { body.innerHTML = '<div class="cw-empty">No se encontró el trabajo o la visita.</div>'; return; }
+  const zona = tgt.ll ? _climaCache()[_climaKey(tgt.ll)] : null;
+  const iso = _climaDlg.iso;
+  const d = (zona && zona.days && zona.days[iso]) || null;
+  const hoy = today();
+
+  const fechaTxt = (typeof _calLongDate === 'function') ? _calLongDate(iso) : iso;
+  const cuando = iso === hoy ? ' · hoy' : (iso === _calAddDays(hoy, 1) ? ' · mañana' : '');
+
+  // Tira de días (hoy → +6) para comparar/elegir: los días con lluvia o
+  // ráfagas van en ámbar y los agendados del trabajo quedan marcados.
+  let strip = '';
+  if (zona && zona.days) {
+    const dias = [];
+    for (let i = 0; i < 7; i++) { const di = _calAddDays(hoy, i); dias.push({ iso: di, d: zona.days[di] }); }
+    if (dias.some(x => x.d)) {
+      strip = `<div class="agenda-clima-strip">` + dias.map(({ iso: di, d: dd }, i) => {
+        const [em] = dd ? _climaEmojiDesc(dd.code) : ['·', ''];
+        const mal = dd && (climaEsLluvia(dd) || climaEsViento(dd));
+        const p = di.split('-');
+        const dt = new Date(+p[0], +p[1] - 1, +p[2]);
+        const wd = i === 0 ? 'Hoy' : AGENDA_WD[dt.getDay()];
+        const temp = dd && dd.tmax != null ? `${Math.round(dd.tmax)}°` : '';
+        return `<button type="button" class="agenda-clima-day${mal ? ' mal' : ''}${di === iso ? ' sel' : ''}${tgt.fechas.includes(di) ? ' elegido' : ''}" onclick="climaDetailPick('${di}')" title="${esc(dt.getDate() + '/' + (dt.getMonth() + 1))}">
+          <span class="acd-wd">${esc(wd)}</span><span class="acd-em">${em}</span><span class="acd-t">${esc(temp)}</span></button>`;
+      }).join('') + `</div>`;
+    }
+  }
+
+  let main = '';
+  if (d) {
+    const [em, desc] = _climaEmojiDesc(d.code);
+    const g = _climaRafaga(d);
+    const lluvia = climaEsLluvia(d);
+    const viento = climaEsViento(d);
+    const uvAlto = d.uv != null && d.uv >= CLIMA.UV_CHIP;
+    const tTxt = [
+      d.tmax != null ? `Máx ${Math.round(d.tmax)}°` : '',
+      d.tmin != null ? `Mín ${Math.round(d.tmin)}°` : '',
+    ].filter(Boolean).join(' · ');
+
+    const cards =
+      `<div class="cw-card${lluvia ? ' warn' : ''}">
+        <span class="cw-card-l">🌧️ Lluvia</span>
+        <span class="cw-card-v">${d.pp != null ? `${Math.round(d.pp)}%` : '—'}</span>
+        <span class="cw-card-s">${d.mm ? `${Math.round(d.mm * 10) / 10} mm previstos` : (lluvia ? 'posible lluvia' : 'sin acumulado previsto')}</span>
+      </div>
+      <div class="cw-card${viento ? ' peligro' : ''}">
+        <span class="cw-card-l">💨 Viento</span>
+        <span class="cw-card-v">${g != null ? `${Math.round(g)} km/h` : '—'}</span>
+        <span class="cw-card-s">${d.wind != null && d.gust != null ? `sostenido ${Math.round(d.wind)} · ráfagas ${Math.round(d.gust)}` : 'ráfaga máxima'}${viento ? ' — peligro en altura' : ''}</span>
+      </div>
+      <div class="cw-card${uvAlto ? ' warn' : ''}">
+        <span class="cw-card-l">☀️ UV</span>
+        <span class="cw-card-v">${d.uv != null ? Math.round(d.uv) : '—'}</span>
+        <span class="cw-card-s">${d.uv != null ? `índice ${_climaUvLabel(d.uv)}` : 'sin dato'}</span>
+      </div>
+      <div class="cw-card">
+        <span class="cw-card-l">🌡️ Temperatura</span>
+        <span class="cw-card-v">${d.tmax != null ? `${Math.round(d.tmax)}°` : '—'}</span>
+        <span class="cw-card-s">${d.tmin != null ? `mínima ${Math.round(d.tmin)}°` : ''}</span>
+      </div>`;
+
+    // Hora por hora del día (solo está para las próximas ~72 h). Se muestran
+    // las horas laborables (6–21); las feas (lluvia probable o ráfaga con
+    // peligro en altura) van teñidas de ámbar.
+    let hoursHtml = '';
+    const hs = ((zona.hours && zona.hours[iso]) || [])
+      .filter(x => { const h = parseInt(x.h, 10); return h >= 6 && h <= 21; });
+    if (hs.length) {
+      hoursHtml = `<div class="cw-sec">Hora por hora</div><div class="cw-hours">` + hs.map(x => {
+        const [hem] = _climaEmojiDesc(x.code);
+        const malH = (x.pp != null && x.pp >= 40) || (x.mm != null && x.mm >= 0.5)
+                  || (x.gust != null && x.gust >= CLIMA.WIND_WARN);
+        return `<div class="cw-hour${malH ? ' mal' : ''}">
+          <span class="cw-hour-h">${esc(x.h)} h</span>
+          <span class="cw-hour-em">${hem}</span>
+          <span class="cw-hour-t">${x.t != null ? Math.round(x.t) + '°' : ''}</span>
+          ${x.pp != null && x.pp >= 20 ? `<span class="cw-hour-pp">💧${Math.round(x.pp)}%</span>` : ''}
+          ${x.gust != null && x.gust >= CLIMA.WIND_CHIP ? `<span class="cw-hour-g">💨${Math.round(x.gust)}</span>` : ''}
+        </div>`;
+      }).join('') + `</div>`;
+    }
+
+    const recs = climaRecomendaciones(d);
+    const recosHtml = `<div class="cw-sec">Para tener en cuenta</div><div class="cw-recos">`
+      + (recs.length
+          ? recs.map(r => `<div class="cw-reco">${esc(r)}</div>`).join('')
+          : `<div class="cw-reco cw-reco-ok">✅ Día tranquilo para trabajar: sin lluvia ni viento fuerte a la vista.</div>`)
+      + `</div>`;
+
+    main = `
+      <div class="cw-hero"><span class="cw-hero-em">${em}</span>
+        <div><div class="cw-hero-desc">${esc(desc)}</div>${tTxt ? `<div class="cw-hero-t">${esc(tTxt)}</div>` : ''}</div></div>
+      <div class="cw-grid">${cards}</div>
+      ${hoursHtml}
+      ${recosHtml}`;
+  } else {
+    main = `<div class="cw-empty">${zona
+      ? 'No hay pronóstico para este día: queda más allá del horizonte útil (~2 semanas).'
+      : 'Todavía no se descargó el pronóstico de esta zona. Se baja solo cuando hay conexión.'}</div>`;
+  }
+
+  // Pie: reprogramar por WhatsApp (solo trabajos con teléfono y día feo) +
+  // fuente y edad del dato (para saber cuánto confiar estando offline).
+  const motivo = d ? _climaMotivo(d) : { txt: '' };
+  const tieneTel = tgt.e && typeof histClientPhone === 'function' && !!histClientPhone(tgt.e);
+  const repro = (tgt.e && motivo.txt && tieneTel)
+    ? `<button type="button" class="btn btn-g btn-sm" onclick="climaReprogramarWhatsApp(${tgt.e.id}, '${esc(motivo.txt)}')">${icon('message')} Reprogramar</button>`
+    : '';
+  const foot = `<div class="cw-foot">
+    <span class="cw-src">Open-Meteo${zona && zona.at ? ` · ${esc(_climaHaceTxt(zona.at))}` : ''}</span>
+    <div class="cw-btns">${repro}<button type="button" class="btn btn-p btn-sm" onclick="closeClimaDetail()">Listo</button></div>
+  </div>`;
+
+  body.innerHTML = `
+    <div class="cw-kicker">${esc(tgt.kicker)}</div>
+    <h4 class="cw-title" id="clima-dlg-title">${esc(tgt.titulo)}</h4>
+    <div class="cw-fecha">${esc(fechaTxt + cuando)}</div>
+    ${strip}
+    ${main}
+    ${foot}`;
 }
 
 // Abre WhatsApp con un mensaje ya redactado para reprogramar el trabajo por
@@ -14550,7 +14860,7 @@ function _climaAvisar() {
       const k = `${t.e.id}|${f}`;
       if (gate[k] === hoy) return;         // ya avisado hoy
       gate[k] = hoy; cambio = true;
-      avisos.push({ e: t.e, cuando: f === hoy ? 'hoy' : 'mañana', d, motivo });
+      avisos.push({ e: t.e, f, cuando: f === hoy ? 'hoy' : 'mañana', d, motivo });
     });
   });
   if (cambio) { try { localStorage.setItem(LS.CLIMA_WARN, JSON.stringify(gate)); } catch (_) {} }
@@ -14566,6 +14876,9 @@ function _climaAvisar() {
     const tieneTel = typeof histClientPhone === 'function' && !!histClientPhone(a.e);
     const botones = [];
     if (tieneTel) botones.push({ label: 'Reprogramar', on: () => climaReprogramarWhatsApp(a.e.id, a.motivo.txt) });
+    // "Clima": abre el panel de detalle (hora por hora, recomendaciones y
+    // próximos días) para dimensionar el imprevisto antes de decidir.
+    botones.push({ label: 'Clima', on: () => climaOpenDetail('e', a.e.id, a.f) });
     botones.push({ label: 'Ver', on: () => goToHistoryEntry(a.e.id) });
     _climaToast(
       `${emoji} <b>${_cap(a.motivo.txt)} ${a.cuando}</b> y tenés la poda de ${esc(quien)}${det ? ` (${esc(det)})` : ''}.${enAltura} Tocá para ver el presupuesto.`,
@@ -14628,7 +14941,7 @@ function agendaClimaRender() {
   const dSel = sel ? climaDe(e, sel) : null;
   if (dSel && selEl) {
     const recs = climaRecomendaciones(dSel);
-    selEl.innerHTML = climaChipHTML(dSel)
+    selEl.innerHTML = climaChipHTML(dSel, _climaTap('e', _agendaId, sel))
       + (recs.length ? `<span class="acd-warn">${esc(recs.join(' · '))}</span>` : '');
     selEl.hidden = false;
   } else if (selEl) {
@@ -15061,8 +15374,12 @@ function _calEvHTML(ev, dateLabel) {
         `<span class="agc-ev-note">${icon('bulb')}<span class="agc-ev-note-tx">${nn.label ? `<b>${esc(nn.label)}:</b> ` : ''}${esc(nn.text)}</span></span>`
       ).join('')}</div>`
     : '';
-  // Pronóstico del día (eventos de trabajo y visitas con dato cacheado).
-  const climaHtml = (ev.clima && typeof climaChipHTML === 'function') ? climaChipHTML(ev.clima) : '';
+  // Pronóstico del día (eventos de trabajo y visitas con dato cacheado). El
+  // chip es tocable: abre el panel de detalle del clima para ese día.
+  const climaTap = ev.entryId != null
+    ? _climaTap('e', ev.entryId, ev._iso)
+    : (ev.noteId != null ? _climaTap('n', ev.noteId, ev._iso) : '');
+  const climaHtml = (ev.clima && typeof climaChipHTML === 'function') ? climaChipHTML(ev.clima, climaTap) : '';
   const card = `<div class="agc-ev t-${ev.tipo}${ev.done ? ' done' : ''}">
     <span class="agc-ev-bar"></span>
     <div class="agc-ev-body">
@@ -15889,7 +16206,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   (function setupModalScrollLock(){
     const ids = ['confirm-overlay','agenda-overlay','day-alert-overlay',
       'share-overlay','moverlay','notes-overlay','phrases-overlay',
-      'photo-viewer-overlay','note-edit-overlay','doc-preview-overlay'];
+      'photo-viewer-overlay','note-edit-overlay','doc-preview-overlay',
+      'clima-overlay'];
     const els = ids.map(id => document.getElementById(id)).filter(Boolean);
     if (!els.length) return;
     const sync = () => document.body.classList.toggle(
