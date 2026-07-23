@@ -10829,14 +10829,19 @@ function saveRecontactoTemplate() {
 function mapsUrlFor(mapLink, addr) {
   const link = (mapLink || '').trim();
   const dir  = (addr || '').trim();
+  const BASE = 'https://www.google.com/maps/search/?api=1&query=';
   // Un link completo de Maps (maps.app.goo.gl, google.com/maps, etc.) se abre
   // tal cual. Un Plus Code o coordenadas se pasan como búsqueda.
   if (link) {
-    return /^https?:\/\//i.test(link)
-      ? link
-      : 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(link);
+    if (/^https?:\/\//i.test(link)) return link;
+    // Coordenadas "lat,lng" (con o sin espacio): van con coma literal, sin
+    // codificar, para que el link quede corto y prolijo al compartirlo por
+    // WhatsApp (query=lat,lng en vez de query=lat%2C%20lng).
+    const coord = link.match(/^(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)$/);
+    if (coord) return BASE + coord[1] + ',' + coord[2];
+    return BASE + encodeURIComponent(link);
   }
-  if (dir) return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(dir);
+  if (dir) return BASE + encodeURIComponent(dir);
   return '';
 }
 
@@ -14643,7 +14648,7 @@ function _climaDlgTarget() {
   return {
     n, ll: _climaLatLngNota(n),
     kicker: 'Pronóstico para la visita',
-    titulo: (n.texto || '').trim() || 'Visita',
+    titulo: (n.texto || '').trim() || (n.cliente || '').trim() || 'Visita',
     fechas: n.fecha ? [n.fecha] : [],
   };
 }
@@ -15129,8 +15134,14 @@ function calBuildIndex() {
     // árbol con lluvia o ráfagas también es mala idea). Solo días no pasados.
     const clima = (esVisita && n.fecha >= today() && typeof climaDeNota === 'function')
       ? climaDeNota(n, n.fecha) : null;
+    // Título: el texto de la nota. Una visita puede no tener título (se explica
+    // sola): entonces mostramos el contacto, o "Visita" a secas si tampoco hay.
+    // Si el título cae en el contacto, el subtítulo se omite para no repetirlo.
+    const cliente = (n.cliente || '').trim();
+    const texto = (n.texto || '').trim();
+    const titulo = texto || (esVisita ? (cliente || 'Visita') : '(nota)');
     push(n.fecha, {
-      tipo: esVisita ? 'visita' : 'nota', title: n.texto || '(nota)', sub: (n.cliente || '').trim(),
+      tipo: esVisita ? 'visita' : 'nota', title: titulo, sub: (titulo === cliente) ? '' : cliente,
       noteId: n.id, done: !!n.hecho, tel: (n.tel || '').trim(),
       ubic, mapUrl: ubic && typeof mapsUrlFor === 'function' ? mapsUrlFor(ubic, '') : '',
       clima
@@ -15553,7 +15564,6 @@ function calSaveNote(tipo) {
   if (!inp || !_calSel) return;
   const esVisita = tipo === 'visita';
   const texto = (inp.value || '').trim();
-  if (!texto) { toast(esVisita ? 'Escribí a quién o qué vas a ir a ver' : 'Escribí algo para la nota', 'info', 2200); return; }
   // Contacto opcional vinculado a la nota.
   const cliEl = document.getElementById('agc-note-cli');
   const telEl = document.getElementById('agc-note-tel');
@@ -15571,6 +15581,14 @@ function calSaveNote(tipo) {
   }
   const ubicEl = document.getElementById('agc-note-ubic');
   const ubic = ubicEl ? (ubicEl.value || '').trim() : '';
+  // Validación: una nota común necesita texto. Una visita se explica sola (es
+  // una evaluación presencial), así que puede guardarse sin título mientras
+  // esté anclada a algo —un contacto o una ubicación—; sin nada de eso pedimos
+  // al menos un dato para no crear un evento vacío por un toque accidental.
+  if (!texto) {
+    if (!esVisita) { toast('Escribí algo para la nota', 'info', 2200); return; }
+    if (!cliente && !tel && !ubic) { toast('Vinculá un contacto o una ubicación, o escribí a quién vas a ver', 'info', 3200); return; }
+  }
   const notes = getNotes();
   const nueva = {
     id: 'n_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
@@ -15750,10 +15768,14 @@ function _calShareText(ev) {
   }
   const lines = [`${emo} ${kind}${fecha ? ' · ' + fecha : ''}`];
   if (ev.title) lines.push(ev.title);
-  if (ev.sub) lines.push(ev.sub);
-  // Ubicación: si el recordatorio tiene un punto en Maps, se adjunta el link
-  // para que el compañero pueda abrirlo y llegar.
-  if (ev.mapUrl) lines.push(`📍 Ubicación: ${ev.mapUrl}`);
+  // No repetir el contacto cuando el título ya lo contiene (p. ej. una visita
+  // "Presupuesto Mara Cejas" con el contacto "Mara Cejas" vinculado).
+  const tituloLC = (ev.title || '').toLowerCase();
+  const subLC = (ev.sub || '').toLowerCase();
+  if (ev.sub && !(subLC && tituloLC.includes(subLC))) lines.push(ev.sub);
+  // Ubicación: el 📍 y la tarjeta de vista previa de WhatsApp ya indican que es
+  // una ubicación, así que va el link a secas (sin la palabra "Ubicación:").
+  if (ev.mapUrl) lines.push(`📍 ${ev.mapUrl}`);
   return lines.join('\n');
 }
 // Comparte el texto guardado en el data-share del botón (se arma en el render).
