@@ -3387,7 +3387,7 @@ input[type=number]{-moz-appearance:textfield}
 
           <div class="st">Datos del Titular / Empresa</div>
           <div class="r2">
-            <div class="fg"><label>Nombre / Razón social</label><input type="text" id="co-name" placeholder="Ej: Podas del Sur"></div>
+            <div class="fg"><label>Nombre de empresa</label><input type="text" id="co-name" placeholder="Ej: Podas del Sur"></div>
             <div class="fg"><label>Titular</label><input type="text" id="co-owner" placeholder="Ej: Juan Pérez"></div>
           </div>
           <div class="fg"><label>Subtítulo / Especialidad</label><input type="text" id="co-subtitle" placeholder="Poda en Altura y Extracción de Árboles"></div>
@@ -4403,6 +4403,53 @@ const DEF = {
   // reordenan. Ver DOC_SECTIONS / sanitizeSectionOrder / buildDoc.
   docSectionOrder: ['duration','details','total','plan','criteria','observations','payment','validity','notes'],
 };
+
+// ─── CONFIGURACIÓN GLOBAL vs. DATOS DEL PRESUPUESTO ──────────
+// Estos campos de S son CONFIGURACIÓN DEL NEGOCIO, no datos de un presupuesto
+// puntual: quién sos, cómo se ve tu documento y los textos que reusás siempre.
+// Viven en S (y por lo tanto viajan dentro de cada snapshot del historial),
+// pero NO deben restaurarse al abrir un presupuesto viejo: son "cómo sos hoy",
+// no "cómo eras cuando hiciste ese presupuesto".
+//
+// Sin esto, abrir un presupuesto de hace meses pisaba silenciosamente el nombre
+// de la empresa, el subtítulo, el CUIT, los textos del PDF y el color con los
+// valores de entonces — y el autoguardado los dejaba asentados. Desde afuera se
+// veía como "cada tanto se me resetean solos". Además, imprimir un presupuesto
+// viejo salía con los datos viejos, justo cuando se lo estabas por mandar al
+// cliente.
+//
+// Cada vez que se agregue un campo a DEF hay que decidir de qué lado cae. La
+// pregunta es: ¿tendría sentido que este valor sea distinto en dos presupuestos
+// del mismo día? Si la respuesta es no, va acá.
+const CFG_GLOBAL_FIELDS = [
+  // Identidad y contacto de la empresa
+  'coName','coOwner','coSubtitle','coCuit','coWhatsapp','coCity','coEmail',
+  'coTechNotes','coFooter','logo',
+  // Diseño del documento y de la app
+  'accentColor','customColors','pdfTheme','pdfCompact','pdfFont','themeMode',
+  // Textos editables del PDF (Empresa → Textos del PDF)
+  'docTitle','docTitleEst','docTitleRisk','docEstBanner','docDisclaimer',
+  'docDisclaimerSvc','docCriteria','docGreeting','docCriteriaTitle',
+  'docCriteriaIntro','workPlanTitle','workPlan','docDiscountLabel',
+  'docDiscountNote','docSectionOrder',
+  // Numeración y preferencias del dispositivo
+  'numPrefix','numNext','pushEnabled',
+];
+// OJO: workPlanOverride / workPlanCustom / workPlanCustomTitle NO van acá — son
+// el override del plan de trabajo para UN presupuesto puntual (ver DEF).
+
+// Vuelca el snapshot de un presupuesto sobre `target` (normalmente S) SIN pisar
+// la configuración global. Es el único lugar donde se decide eso: antes cada
+// camino que abría un presupuesto guardado tenía su propia lista de campos a
+// preservar —loadFromHistory salvaba 5, impIndividual solo 1, la vista previa
+// otros 3— y cada campo nuevo se arreglaba de a uno, cuando alguien lo notaba.
+function assignSnapshot(target, snap) {
+  const keep = {};
+  CFG_GLOBAL_FIELDS.forEach(k => { if (target[k] !== undefined) keep[k] = target[k]; });
+  // El orden importa: primero el snapshot, después la config global encima.
+  Object.assign(target, snap, keep);
+  return target;
+}
 
 // Secciones reordenables del cuerpo del presupuesto normal. El orden lo define
 // S.docSectionOrder; este array es la lista canónica (ids + etiqueta para la UI)
@@ -9477,25 +9524,10 @@ function loadFromHistory(id) {
   if (S.quoteNumber && S.quoteNumber !== e.quoteNumber && autoSaveToHistory()) {
     prevNum = S.quoteNumber;
   }
-  // Preservar numNext y logo del state actual — el snapshot tiene
-  // numNext viejo que NO debe pisar al actual (sino al hacer "Nuevo"
-  // después se generan duplicados). El logo es config global de
-  // empresa: si el snapshot lo trae embebido (entries viejos) no debe
-  // sobrescribir la versión actual.
-  const savedNumNext = S.numNext;
-  const savedLogo    = S.logo;
-  // El diseño del documento (tema + compacto) es global: cargar un
-  // presupuesto viejo NO debe revertir el diseño que el usuario eligió
-  // ahora (sino su elección se perdería al abrir cualquier entry viejo).
-  const savedTheme   = S.pdfTheme;
-  const savedCompact = S.pdfCompact;
-  const savedFont    = S.pdfFont;
-  Object.assign(S, migrateState(e.snapshot));
-  if (savedNumNext !== undefined) S.numNext = savedNumNext;
-  if (savedLogo)                  S.logo    = savedLogo;
-  S.pdfTheme   = savedTheme;
-  S.pdfCompact = savedCompact;
-  S.pdfFont    = savedFont;
+  // Cargar un presupuesto viejo trae SUS datos, no la configuración de la
+  // empresa de aquel momento (nombre, subtítulo, CUIT, textos del PDF, diseño,
+  // numeración). Ver CFG_GLOBAL_FIELDS.
+  assignSnapshot(S, migrateState(e.snapshot));
   if (!S.estItems)       S.estItems = [];
   if (!S.estObservations) S.estObservations = '';
   if (S.surcharge === undefined) S.surcharge = 0;
@@ -10094,28 +10126,19 @@ function previewFromHistory(id) {
   const titleEl   = document.getElementById('doc-preview-title');
   if (!docEl || !contentEl || !overlay) return;
 
-  // 1. Backup del estado y del logo actual (el logo es global y NO
-  //    viene en el snapshot, así que lo inyectamos para que la previa
-  //    se vea completa con el membrete).
+  // 1. Backup del estado real (se restaura al cerrar la vista previa).
   _previewBackup = {
     S: JSON.parse(JSON.stringify(S)),
     activeScenario: activeScenario,
     docHTML: docEl.innerHTML,
   };
-  const currentLogo = S.logo;
 
-  // 2. Cargar snapshot en S (temporal)
+  // 2. Cargar el snapshot en S (temporal), conservando la configuración de la
+  //    empresa y el diseño ACTUALES: la previa de un presupuesto viejo tiene
+  //    que verse como sale hoy, con tu nombre, tu logo y tu diseño de ahora
+  //    (ver CFG_GLOBAL_FIELDS).
   const snap = migrateState(JSON.parse(JSON.stringify(e.snapshot)));
-  Object.assign(S, snap);
-  if (currentLogo && !S.logo) S.logo = currentLogo; // membrete
-  // El diseño del documento (tema + compacto) es una preferencia GLOBAL
-  // de la empresa, no un atributo de cada presupuesto. El snapshot lo trae
-  // congelado, pero para previsualizar el historial con el diseño elegido
-  // AHORA pisamos el del snapshot con el actual (_previewBackup.S es el S
-  // real respaldado en el paso 1).
-  S.pdfTheme   = _previewBackup.S.pdfTheme;
-  S.pdfCompact = _previewBackup.S.pdfCompact;
-  S.pdfFont    = _previewBackup.S.pdfFont;
+  assignSnapshot(S, snap);
   if (!Array.isArray(S.itemsB)) S.itemsB = [];
   if (!S.estItems) S.estItems = [];
   normalizeRiskData();
@@ -10248,15 +10271,11 @@ function _buildDocHTMLForEntry(e) {
   };
   const currentLogo = S.logo;
   try {
+    // La imagen que se comparte lleva los datos de empresa y el diseño de HOY
+    // (ver CFG_GLOBAL_FIELDS): si reenviás un presupuesto viejo, tiene que salir
+    // con tu nombre y tu contacto actuales, no con los de entonces.
     const snap = migrateState(JSON.parse(JSON.stringify(e.snapshot)));
-    Object.assign(S, snap);
-    if (currentLogo && !S.logo) S.logo = currentLogo; // membrete (logo es global)
-    // El diseño del documento es global (ver previewFromHistory): la imagen
-    // que se comparte debe coincidir con la vista previa, así que usamos el
-    // tema/compacto actual, no el congelado en el snapshot.
-    S.pdfTheme   = backup.S.pdfTheme;
-    S.pdfCompact = backup.S.pdfCompact;
-    S.pdfFont    = backup.S.pdfFont;
+    assignSnapshot(S, snap);
     if (!Array.isArray(S.itemsB)) S.itemsB = [];
     if (!S.estItems) S.estItems = [];
     normalizeRiskData();
@@ -12030,10 +12049,9 @@ function impIndividual() {
     // Igual que loadFromHistory: no descartar el borrador en curso sin
     // guardarlo antes de pisar el editor con el presupuesto importado.
     if (S.quoteNumber && S.quoteNumber !== (d.snapshot.quoteNumber || '')) autoSaveToHistory();
-    // Preservar numNext del state actual (ver loadFromHistory para detalles).
-    const savedNumNext = S.numNext;
-    Object.assign(S, migrateState(d.snapshot));
-    if (savedNumNext !== undefined) S.numNext = savedNumNext;
+    // Igual que loadFromHistory: el archivo trae el presupuesto, no la
+    // configuración de la empresa de quien lo exportó (ver CFG_GLOBAL_FIELDS).
+    assignSnapshot(S, migrateState(d.snapshot));
     if(!S.estItems)       S.estItems = [];
     if(!S.estObservations) S.estObservations = '';
     if(S.surcharge===undefined) S.surcharge = 0;
