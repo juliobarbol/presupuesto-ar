@@ -1735,6 +1735,31 @@ input[type=number]{-moz-appearance:textfield}
 .cw-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:14px;flex-wrap:wrap}
 .cw-src{font-size:10.5px;color:var(--muted)}
 .cw-btns{display:flex;gap:8px;justify-content:flex-end;flex:1}
+/* ── Centro de notificaciones (campanita) ──
+   Badge rojo sobre la campanita del topbar + panel con Pendientes y Recientes.
+   Reusa la caja/overlay del panel de clima (#clima-box). */
+.tbtn-bell{position:relative}
+.notif-badge{position:absolute;top:-5px;right:-5px;min-width:16px;height:16px;line-height:16px;border-radius:9px;background:#e11d48;color:#fff;font-size:10px;font-weight:700;text-align:center;padding:0 4px;box-shadow:0 0 0 2px var(--accent)}
+#notif-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2300;align-items:center;justify-content:center;padding:16px}
+#notif-overlay.open{display:flex}
+#notif-box{position:relative;background:var(--card);border-radius:var(--radius-box);padding:20px;width:460px;max-width:94vw;max-height:88vh;overflow:auto;overscroll-behavior:contain;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.nt-sec{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);margin:16px 0 8px}
+.nt-list{display:flex;flex-direction:column;gap:8px}
+.nt-item{display:flex;gap:10px;align-items:flex-start;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-field);padding:10px 11px}
+.nt-item.nt-tap{cursor:pointer}
+.nt-item.nt-tap:active{background:var(--accent-light)}
+.nt-item.nt-done{opacity:.55}
+.nt-ico{font-size:18px;line-height:1.2;flex-shrink:0}
+.nt-body{flex:1;min-width:0}
+.nt-txt{font-size:13.5px;line-height:1.4;color:var(--text)}
+.nt-sub{font-size:11.5px;color:var(--muted);margin-top:1px}
+.nt-when{font-size:10.5px;color:var(--muted);margin-top:2px}
+.nt-undo{flex-shrink:0;align-self:center;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-field);color:var(--accent);font-size:12px;font-weight:600;padding:6px 10px;cursor:pointer;white-space:nowrap}
+.nt-undo:active{background:var(--accent-light)}
+.nt-undo:disabled{color:var(--muted);cursor:default;opacity:.7}
+.nt-empty{font-size:13px;color:var(--muted);padding:10px 0;line-height:1.5}
+.nt-clear{margin-top:14px;width:100%;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-field);color:var(--muted);font-size:12px;font-weight:600;padding:8px;cursor:pointer}
+.nt-clear:active{background:var(--accent-light)}
 .agc-ev-acts{display:flex;flex-flow:row wrap;gap:7px;flex-shrink:0;justify-content:flex-end;align-content:flex-start}
 .agc-ev-btn{width:42px;height:42px;display:inline-flex;align-items:center;justify-content:center;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-field);cursor:pointer;color:var(--muted);padding:0}
 .agc-ev-btn .ic{width:19px;height:19px}
@@ -1882,6 +1907,7 @@ input[type=number]{-moz-appearance:textfield}
   #share-overlay,
   #day-alert-overlay,
   #clima-overlay,
+  #notif-overlay,
   #photo-viewer-overlay,
   #phrases-overlay,
   #notes-overlay,
@@ -2898,6 +2924,10 @@ input[type=number]{-moz-appearance:textfield}
          pantallas de config poco frecuentes para liberar la barra de pestañas.
          Exportar/Importar backup viven en la sub-pestaña "Negocio". -->
     <div class="topbar-menu">
+      <!-- Campanita: centro de notificaciones. Abre un panel con los avisos
+           vigentes (pendientes, recalculados) y la bitácora de los recientes,
+           para recuperar cualquiera que se haya cerrado sin querer. -->
+      <button class="tbtn tbtn-menu tbtn-bell" id="btn-notif" onclick="notifOpen()" aria-label="Notificaciones" title="Notificaciones"><svg class="ic"><use href="#i-bell"></use></svg><span class="notif-badge" id="notif-badge" hidden></span></button>
       <button class="tbtn tbtn-menu" id="btn-config" onclick="switchTab('empresa')" aria-label="Configuración" title="Configuración"><svg class="ic"><use href="#i-settings"></use></svg></button>
     </div>
   </div>
@@ -4114,6 +4144,19 @@ input[type=number]{-moz-appearance:textfield}
   </div>
 </div>
 
+<!-- ════════════════════ CENTRO DE NOTIFICACIONES ════════════════════
+     Panel de la campanita: "Pendientes" (derivado, se recalcula al abrir) +
+     "Recientes" (bitácora persistida en LS.NOTIF_LOG). La lógica vive en
+     js/notifs.js (notifOpen / notifRender). -->
+<div id="notif-overlay" role="presentation" onclick="if(event.target===this)notifClose()">
+  <div id="notif-box" role="dialog" aria-modal="true" aria-labelledby="notif-dlg-title">
+    <button type="button" class="cw-close" onclick="notifClose()" aria-label="Cerrar" title="Cerrar">✕</button>
+    <div class="cw-kicker">Notificaciones</div>
+    <h4 class="cw-title" id="notif-dlg-title">Avisos</h4>
+    <div id="notif-dlg-body"></div>
+  </div>
+</div>
+
 <!-- ════════════════════ BANDEJA DE FOTOS COMPARTIDAS ════════════════════
      Web Share Target: se abre cuando el usuario comparte fotos a la app.
      Por cada foto, elige el destino (árbol nuevo / ítem existente / descartar).
@@ -4236,6 +4279,7 @@ const LS = {
   CAL_VIEW:       'pq_cal_view',
   CLIMA:          'pq_clima',
   CLIMA_WARN:     'pq_clima_warn',
+  NOTIF_LOG:      'pq_notif_log',
 };
 
 // Notificaciones push (avisos de seguimiento con la app cerrada). Ambos se
@@ -9055,6 +9099,7 @@ function setEstadoHistory(id, nuevoEstado) {
   const h = getH();
   const e = h.find(x => x.id === id);
   if (!e) return;
+  const prevEstado = e.estado || 'borrador';
   e.estado = nuevoEstado;
   // Al pasar a "enviado", registrar la fecha. Este dato es lo que habilita
   // el seguimiento: solo los presupuestos enviados DESPUÉS de esta
@@ -9076,6 +9121,18 @@ function setEstadoHistory(id, nuevoEstado) {
   // el pipeline comercial con la pestaña Facturación (control de tope), para
   // no volver a tipear cliente + monto que ya están en el presupuesto.
   if (nuevoEstado === 'realizado') _ofrecerRegistrarFactura(e);
+  // Marcar "realizado" es la acción que más se toca sin querer (banner del día,
+  // dropdown del historial). Dejamos el aviso en el centro de notificaciones con
+  // botón "Deshacer" para volver al estado previo con un toque.
+  if (nuevoEstado === 'realizado' && prevEstado !== 'realizado' && typeof logNotif === 'function') {
+    logNotif({
+      icon: '✅', kind: 'estado',
+      text: `Marcaste como realizado: ${(e.clientName || '').trim() || '(sin nombre)'}${e.quoteNumber ? ` (N° ${e.quoteNumber})` : ''}`,
+      action: { type: 'entry', id: e.id },
+      undo: { type: 'estado', id: e.id, prev: prevEstado },
+    });
+  }
+  if (typeof updateNotifBadge === 'function') updateNotifBadge();
 }
 
 // ─── AGENDA: BOTÓN DEL ENCABEZADO ────────────────────────────
@@ -10258,6 +10315,9 @@ function buildRecontactoWhatsappLink(e) {
 // Banner celeste arriba del historial + globito en la pestaña Historial
 // (el globito es el aviso global: las pestañas se ven desde toda la app).
 function renderRecontactoBanner() {
+  // Refrescar el badge de la campanita: este banner se re-renderiza en cada
+  // cambio del historial, así que es un buen punto para mantenerlo al día.
+  if (typeof updateNotifBadge === 'function') updateNotifBadge();
   const pend = getRecontactosPendientes();
   const dot = document.getElementById('tab-hist-dot');
   if (dot) { dot.textContent = pend.length; dot.hidden = !pend.length; }
@@ -10301,11 +10361,21 @@ function marcarRecontactoHecho(id) {
   const h = getH();
   const e = h.find(x => x.id === id);
   if (!e) return;
+  const prevEn = e.recontactoEn, prevNota = e.recontactoNota;
   delete e.recontactoEn;
   delete e.recontactoNota;
   setH(h);
   renderHistory();
   toast('✓ Recontacto hecho', 'ok');
+  // Bitácora + Deshacer: si lo tocaste sin querer, restaura el pendiente.
+  if (typeof logNotif === 'function') {
+    logNotif({
+      icon: '📞', kind: 'recontacto',
+      text: `Recontacto marcado hecho: ${(e.clientName || '').trim() || '(sin nombre)'}`,
+      action: { type: 'entry', id: e.id },
+      undo: { type: 'recontacto', id: e.id, recontactoEn: prevEn, recontactoNota: prevNota },
+    });
+  }
 }
 
 // Tras abrir WhatsApp para un recontacto, ofrecer cerrar el ciclo: si
@@ -10338,6 +10408,12 @@ function toastRecontactosPendientes() {
   const txt = pend.length === 1
     ? `Recontactar a ${first.clientName || 'un cliente'} para coordinar la fecha del trabajo`
     : `Tenés ${pend.length} clientes para recontactar y coordinar fechas`;
+  // Bitácora: una vez por día (dedupeKey) para poder volver a verlo desde la
+  // campanita aunque el toast se haya cerrado.
+  if (typeof logNotif === 'function') {
+    logNotif({ icon: '📞', kind: 'recontacto', text: txt, dedupeKey: 'recontactos',
+      action: pend.length === 1 ? { type: 'entry', id: first.id } : { type: 'tab', tab: 'historial' } });
+  }
   const el = document.createElement('div');
   el.className = 'toast toast-info toast-action';
   el.innerHTML = `<span>📞 ${esc(txt)}</span><button type="button" class="toast-btn">Ver</button>`;
@@ -10372,8 +10448,21 @@ function getVisitasDeHoy() {
 // Cierra una visita desde el banner: la marca hecha (calToggleNote persiste y
 // re-renderiza la Agenda) y actualiza el banner (baja a N-1 o desaparece).
 function marcarVisitaHecha(id) {
+  const nota = (typeof getNotes === 'function') ? getNotes().find(n => n && n.id === id) : null;
   if (typeof calToggleNote === 'function') calToggleNote(id);
   renderMorningBanner();
+  // Bitácora + Deshacer: cerrar una visita desde el banner también se toca sin
+  // querer. Solo si quedó marcada hecha (calToggleNote alterna).
+  if (nota && typeof logNotif === 'function') {
+    const cli = (nota.cliente || '').trim();
+    const t = (nota.texto || '').trim() || cli || 'Visita';
+    logNotif({
+      icon: '📍', kind: 'visita',
+      text: `Visita marcada hecha: ${t}`,
+      action: { type: 'tab', tab: 'agenda' },
+      undo: { type: 'note', id: id },
+    });
+  }
 }
 
 // Para un trabajo multi-día, qué número de día es HOY y cuántos hay en total
@@ -11373,6 +11462,10 @@ function buildBackupObject() {
     // así un restore en otro teléfono reusa el mismo calendario en vez de crear
     // uno nuevo y duplicar eventos.
     gcalId: (function(){ try { return localStorage.getItem(LS.GCAL_ID); } catch(_) { return null; } })(),
+    // Bitácora del centro de notificaciones (avisos recientes + acciones con
+    // "Deshacer"): viaja en el backup para no perder el historial al cambiar de
+    // dispositivo. Es opcional; un backup viejo sin esto no rompe nada.
+    notifLog: (typeof getNotifLog === 'function') ? getNotifLog() : [],
     photos: photos
   };
 }
@@ -11596,6 +11689,8 @@ function applyBackupObject(d) {
     // Id del calendario "Presupuestos AR": reusar el mismo tras un restore para
     // no duplicar el calendario ni sus eventos.
     if (d.gcalId) { try { localStorage.setItem(LS.GCAL_ID, d.gcalId); } catch(_){} }
+    // Bitácora del centro de notificaciones (opcional en backups viejos).
+    if (Array.isArray(d.notifLog)) { try { localStorage.setItem(LS.NOTIF_LOG, JSON.stringify(d.notifLog.slice(0, NOTIF_CAP))); } catch(_){} }
     if (!Array.isArray(S.itemsB)) S.itemsB = [];
     normalizeRiskData();
     // Backups viejos (v3-) traían las fotos embebidas en el estado: migrarlas.
@@ -14876,6 +14971,20 @@ function _climaAvisar() {
   if (cambio) { try { localStorage.setItem(LS.CLIMA_WARN, JSON.stringify(gate)); } catch (_) {} }
   if (!avisos.length) return;
 
+  // Bitácora: dejar cada aviso nuevo en el centro de notificaciones (el toast
+  // es efímero; así se puede volver a consultar desde la campanita).
+  if (typeof logNotif === 'function') {
+    avisos.forEach(a => {
+      const quien = (a.e.clientName || '').trim() || '(sin nombre)';
+      const emoji = a.motivo.viento && !a.motivo.lluvia ? '💨' : '⛈️';
+      const cap = (typeof _cap === 'function') ? _cap(a.motivo.txt) : a.motivo.txt;
+      logNotif({ icon: emoji, kind: 'clima',
+        text: `${cap} ${a.cuando}: ${quien}`,
+        dedupeKey: `clima|${a.e.id}|${a.f}`,
+        action: { type: 'clima', id: a.e.id, f: a.f } });
+    });
+  }
+
   if (avisos.length === 1) {
     const a = avisos[0];
     const quien = (a.e.clientName || '').trim() || 'sin nombre';
@@ -16099,6 +16208,291 @@ function calUpdateDot() {
   dot.hidden = !hay;
 }
 
+// ===== js/notifs.js =====
+// ═══════════════════════════════════════════════════════════════════════════
+// NOTIFS.JS — Centro de notificaciones (campanita del topbar).
+// Resuelve dos necesidades: (1) revisar los avisos VIGENTES aunque se haya
+// cerrado el toast, y (2) recuperar los que ya pasaron / recuperar de una
+// acción hecha sin querer (ej: tocar "Realizado" en el banner del día).
+//
+// El panel tiene dos zonas:
+//   · Pendientes → DERIVADO del estado (se recalcula al abrir; nada que se
+//     "pierda"): recontactos, trabajos/visitas de hoy, seguimientos y
+//     vencimientos que ya tocan, y clima adverso para hoy/mañana.
+//   · Recientes  → BITÁCORA persistida en LS.NOTIF_LOG (ring buffer capado,
+//     incluido en el backup). La llenan logNotif() desde los puntos donde hoy
+//     se disparan toasts efímeros y desde las acciones reversibles, que además
+//     dejan un botón "Deshacer".
+// La caja/overlay reusa el estilo del panel de clima (#notif-box ~ #clima-box).
+// ═══════════════════════════════════════════════════════════════════════════
+
+const NOTIF_CAP = 50;
+
+function getNotifLog(){
+  try { const a = JSON.parse(localStorage.getItem(LS.NOTIF_LOG) || '[]'); return Array.isArray(a) ? a : []; }
+  catch(_){ return []; }
+}
+// Escritura directa (no safeSetLS): el log es chico y NO queremos disparar un
+// backup a Drive por cada aviso. Ya viaja en el backup vía buildBackupObject.
+function setNotifLog(arr){
+  try { localStorage.setItem(LS.NOTIF_LOG, JSON.stringify((arr || []).slice(0, NOTIF_CAP))); } catch(_){}
+}
+
+// Registrar un aviso en la bitácora. rec = { icon, text, kind?, action?, undo?,
+// dedupeKey? }. dedupeKey evita duplicar el mismo aviso el mismo día (ej: el
+// resumen de recontactos que se dispara en cada apertura).
+function logNotif(rec){
+  if (!rec || !rec.text) return;
+  const log = getNotifLog();
+  if (rec.dedupeKey) {
+    const hoy = today();
+    if (log.some(n => n.dedupeKey === rec.dedupeKey && toLocalISODate(new Date(n.ts)) === hoy)) return;
+  }
+  log.unshift({
+    id:   'n_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    ts:   Date.now(),
+    icon: rec.icon || '🔔',
+    text: String(rec.text),
+    kind: rec.kind || 'info',
+    action: rec.action || null,
+    undo:   rec.undo || null,
+    dedupeKey: rec.dedupeKey || null,
+  });
+  setNotifLog(log);
+  updateNotifBadge();
+  if (document.querySelector('#notif-overlay.open')) notifRender();
+}
+
+// ─── PENDIENTES (derivado) ───────────────────────────────────
+// Junta TODO lo que necesita atención ahora, recalculado desde el estado.
+function notifBuildPendientes(){
+  const out = [];
+  const hoy = today();
+
+  // 1. Recontactos pendientes (aceptados que quedaron en coordinar fecha).
+  if (typeof getRecontactosPendientes === 'function') {
+    getRecontactosPendientes().forEach(p => {
+      const e = p.entry;
+      const cuando = p.dias === 0 ? 'hoy' : `hace ${p.dias} día${p.dias > 1 ? 's' : ''}`;
+      out.push({ icon: '📞', kind: 'recontacto',
+        text: `Recontactar a ${(e.clientName || '').trim() || '(sin nombre)'}`,
+        sub: `Coordinar la fecha del trabajo · ${cuando}`,
+        action: { type: 'entry', id: e.id } });
+    });
+  }
+
+  // 2. Trabajos agendados para hoy.
+  if (typeof getTrabajosDeHoy === 'function') {
+    getTrabajosDeHoy().forEach(e => {
+      out.push({ icon: '🪚', kind: 'trabajo',
+        text: `Trabajo de hoy: ${(e.clientName || '').trim() || '(sin nombre)'}`,
+        sub: e.quoteNumber ? `N° ${e.quoteNumber}` : '',
+        action: { type: 'entry', id: e.id } });
+    });
+  }
+
+  // 3. Visitas (evaluaciones) de hoy.
+  if (typeof getVisitasDeHoy === 'function') {
+    getVisitasDeHoy().forEach(n => {
+      const cli = (n.cliente || '').trim();
+      const t = (n.texto || '').trim() || cli || 'Visita';
+      out.push({ icon: '📍', kind: 'visita',
+        text: `Visita de hoy: ${t}`,
+        sub: (cli && t !== cli) ? cli : '',
+        action: { type: 'tab', tab: 'agenda' } });
+    });
+  }
+
+  // 4. Seguimientos y vencimientos que YA tocan (hoy o atrasados). Respetan la
+  //    config de seguimiento porque salen de calBuildIndex.
+  if (typeof calBuildIndex === 'function') {
+    let idx = {};
+    try { idx = calBuildIndex() || {}; } catch(_){ idx = {}; }
+    Object.keys(idx).filter(iso => iso <= hoy).sort().forEach(iso => {
+      idx[iso].forEach(ev => {
+        if (ev.tipo !== 'seguimiento' && ev.tipo !== 'vencimiento') return;
+        const atras = iso < hoy;
+        out.push({ icon: ev.tipo === 'vencimiento' ? '⏳' : '📨', kind: ev.tipo,
+          text: ev.title,
+          sub: (ev.sub ? ev.sub + ' · ' : '') + (atras ? 'atrasado' : 'hoy'),
+          action: { type: 'entry', id: ev.entryId } });
+      });
+    });
+  }
+
+  // 5. Clima adverso (lluvia / viento fuerte) para trabajos de hoy o mañana.
+  notifClimaPendientes().forEach(c => out.push(c));
+
+  return out;
+}
+
+// Clima adverso hoy/mañana — mismo criterio que _climaAvisar pero SIN el gate
+// diario (acá siempre queremos mostrar lo vigente, no "una vez por día").
+function notifClimaPendientes(){
+  const out = [];
+  if (typeof _climaProximosTrabajos !== 'function' || typeof _climaMotivo !== 'function'
+      || typeof climaDe !== 'function' || typeof _calAddDays !== 'function') return out;
+  const hoy = today();
+  const man = _calAddDays(hoy, 1);
+  try {
+    _climaProximosTrabajos().forEach(t => {
+      t.fechas.filter(f => f === hoy || f === man).forEach(f => {
+        const d = climaDe(t.e, f);
+        const motivo = _climaMotivo(d);
+        if (!motivo.txt) return;
+        const cuando = f === hoy ? 'hoy' : 'mañana';
+        const emoji = motivo.viento && !motivo.lluvia ? '💨' : '⛈️';
+        const cap = (typeof _cap === 'function') ? _cap(motivo.txt) : motivo.txt;
+        out.push({ icon: emoji, kind: 'clima',
+          text: `${cap} ${cuando}: ${(t.e.clientName || '').trim() || '(sin nombre)'}`,
+          sub: 'Considerá reprogramar el trabajo',
+          action: { type: 'clima', id: t.e.id, f } });
+      });
+    });
+  } catch(_){}
+  return out;
+}
+
+// ─── ACCIONES (abrir el aviso) ───────────────────────────────
+// Los avisos guardan un descriptor serializable (no funciones), que este
+// dispatcher traduce a la navegación correspondiente.
+function notifRunAction(a){
+  if (!a) return;
+  notifClose();
+  try {
+    if (a.type === 'entry' && typeof goToHistoryEntry === 'function') goToHistoryEntry(a.id);
+    else if (a.type === 'tab' && typeof switchTab === 'function') switchTab(a.tab);
+    else if (a.type === 'clima' && typeof climaOpenDetail === 'function') climaOpenDetail('e', a.id, a.f);
+  } catch(_){}
+}
+
+// ─── DESHACER (acciones reversibles) ─────────────────────────
+function notifUndo(recId){
+  const log = getNotifLog();
+  const rec = log.find(n => n.id === recId);
+  if (!rec || !rec.undo || rec.undoneAt) return;
+  const u = rec.undo;
+  let ok = false;
+  try {
+    if (u.type === 'estado') {
+      const h = getH(); const e = h.find(x => x.id === u.id);
+      if (e) { e.estado = u.prev; setH(h); ok = true; }
+    } else if (u.type === 'recontacto') {
+      const h = getH(); const e = h.find(x => x.id === u.id);
+      if (e) {
+        if (u.recontactoEn) e.recontactoEn = u.recontactoEn;
+        if (u.recontactoNota != null && u.recontactoNota !== '') e.recontactoNota = u.recontactoNota;
+        setH(h); ok = true;
+      }
+    } else if (u.type === 'note') {
+      const notes = (typeof getNotes === 'function') ? getNotes() : [];
+      const n = notes.find(x => x && x.id === u.id);
+      if (n) { n.hecho = false; if (typeof setNotes === 'function') setNotes(notes); ok = true; }
+    }
+  } catch(_){}
+  if (!ok) { if (typeof toast === 'function') toast('No se pudo deshacer', 'err'); return; }
+  rec.undoneAt = Date.now();
+  setNotifLog(log);
+  if (typeof renderHistory === 'function') renderHistory();
+  if (typeof renderMorningBanner === 'function') renderMorningBanner();
+  if (typeof renderCal === 'function' && document.querySelector('#panel-agenda.active')) { try { renderCal(); } catch(_){} }
+  if (typeof toast === 'function') toast('✓ Deshecho', 'ok');
+  updateNotifBadge();
+  if (document.querySelector('#notif-overlay.open')) notifRender();
+}
+
+// ─── RENDER DEL PANEL ────────────────────────────────────────
+function notifItemHTML(p){
+  const tap = p.action ? ' nt-tap' : '';
+  const onclick = p.action ? ` onclick='notifRunAction(${JSON.stringify(p.action)})'` : '';
+  return `<div class="nt-item${tap}"${onclick}>
+    <span class="nt-ico">${p.icon || '🔔'}</span>
+    <div class="nt-body">
+      <div class="nt-txt">${esc(p.text)}</div>
+      ${p.sub ? `<div class="nt-sub">${esc(p.sub)}</div>` : ''}
+    </div>
+  </div>`;
+}
+
+function notifLogItemHTML(r){
+  const tap = r.action ? ' nt-tap' : '';
+  const onclick = r.action ? ` onclick='notifRunAction(${JSON.stringify(r.action)})'` : '';
+  const undoBtn = r.undo
+    ? `<button type="button" class="nt-undo"${r.undoneAt ? ' disabled' : ''} onclick="event.stopPropagation();notifUndo('${r.id}')">${r.undoneAt ? 'Deshecho' : 'Deshacer'}</button>`
+    : '';
+  return `<div class="nt-item${tap}${r.undoneAt ? ' nt-done' : ''}"${onclick}>
+    <span class="nt-ico">${r.icon || '🔔'}</span>
+    <div class="nt-body">
+      <div class="nt-txt">${esc(r.text)}</div>
+      <div class="nt-when">${esc(notifRelTime(r.ts))}</div>
+    </div>
+    ${undoBtn}
+  </div>`;
+}
+
+// Timestamp → texto relativo corto ("recién", "hace 5 min", "hoy 14:30", "ayer…").
+function notifRelTime(ts){
+  if (!ts) return '';
+  const secs = Math.round((Date.now() - ts) / 1000);
+  if (secs < 60) return 'recién';
+  if (secs < 3600) { const m = Math.round(secs / 60); return `hace ${m} min`; }
+  const d = new Date(ts);
+  const iso = toLocalISODate(d);
+  const hh = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  const hoy = today();
+  if (iso === hoy) return `hoy ${hh}`;
+  if (iso === _calAddDays(hoy, -1)) return `ayer ${hh}`;
+  const p = iso.split('-');
+  return `${p[2]}/${p[1]} ${hh}`;
+}
+
+function notifRender(){
+  const body = document.getElementById('notif-dlg-body');
+  if (!body) return;
+  const pend = notifBuildPendientes();
+  const log = getNotifLog();
+
+  let h = `<div class="nt-sec">Pendientes${pend.length ? ` · ${pend.length}` : ''}</div>`;
+  h += pend.length
+    ? `<div class="nt-list">${pend.map(notifItemHTML).join('')}</div>`
+    : `<div class="nt-empty">Nada pendiente. Todo al día 👌</div>`;
+
+  h += `<div class="nt-sec">Recientes</div>`;
+  if (log.length) {
+    h += `<div class="nt-list">${log.map(notifLogItemHTML).join('')}</div>`;
+    h += `<button type="button" class="nt-clear" onclick="notifClearLog()">Vaciar recientes</button>`;
+  } else {
+    h += `<div class="nt-empty">Los avisos que aparezcan van a quedar acá para que puedas volver a verlos.</div>`;
+  }
+  body.innerHTML = h;
+}
+
+function notifOpen(){
+  notifRender();
+  const ov = document.getElementById('notif-overlay');
+  if (ov) ov.classList.add('open');
+}
+function notifClose(){
+  const ov = document.getElementById('notif-overlay');
+  if (ov) ov.classList.remove('open');
+}
+function notifClearLog(){
+  setNotifLog([]);
+  updateNotifBadge();
+  notifRender();
+}
+
+// Badge de la campanita = cantidad de PENDIENTES (lo accionable ahora). Se
+// llama al iniciar y tras cada render del historial / banner del día.
+function updateNotifBadge(){
+  const b = document.getElementById('notif-badge');
+  if (!b) return;
+  let n = 0;
+  try { n = notifBuildPendientes().length; } catch(_){ n = 0; }
+  b.textContent = n > 99 ? '99+' : String(n);
+  b.hidden = n === 0;
+}
+
 // ===== js/core.js =====
 // ═══════════════════════════════════════
 // CORE.JS — Inicialización principal de la app
@@ -16234,7 +16628,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     const ids = ['confirm-overlay','agenda-overlay','day-alert-overlay',
       'share-overlay','moverlay','notes-overlay','phrases-overlay',
       'photo-viewer-overlay','note-edit-overlay','doc-preview-overlay',
-      'clima-overlay'];
+      'clima-overlay','notif-overlay'];
     const els = ids.map(id => document.getElementById(id)).filter(Boolean);
     if (!els.length) return;
     const sync = () => document.body.classList.toggle(
@@ -16251,6 +16645,10 @@ window.addEventListener('DOMContentLoaded', async () => {
   // Seguimiento comercial: mostrar el banner de pendientes desde el
   // arranque (aunque el usuario aún no entre al Historial).
   if (typeof renderFollowupBanner === 'function') renderFollowupBanner();
+
+  // Campanita: badge inicial con los pendientes (recontactos, trabajos/visitas
+  // de hoy, seguimientos/vencimientos vencidos, clima).
+  if (typeof updateNotifBadge === 'function') updateNotifBadge();
 
   // Recontactos: aviso global al abrir la app (toast accionable), por si
   // el usuario usa la app sin pasar por la pestaña Historial.
