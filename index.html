@@ -2376,8 +2376,20 @@ input[type=number]{-moz-appearance:textfield}
   display:grid;grid-template-columns:repeat(2,1fr);gap:12px;
 }
 .pphoto{margin:0}
+/* La caja de la foto respeta SIEMPRE la proporción original del archivo.
+   NO volver a `width:100%` + `max-height` + `object-fit:cover`: eso arma una
+   caja con OTRA proporción (ej. una foto vertical 3:4 metida en una caja
+   apaisada) y sólo el navegador la disimula recortando. Al compartir como
+   imagen/PDF rasterizado usamos html2canvas, que IGNORA `object-fit` y dibuja
+   la foto estirada dentro de esa caja → árboles achatados en el presupuesto.
+   Con ancho y alto `auto` acotados por max-*, la caja sale con la proporción
+   real y todos los motores (pantalla, impresión y html2canvas) la dibujan
+   igual: sin deformar y sin recortar. */
 .pphoto img{
-  width:100%;height:auto;max-height:75mm;object-fit:cover;
+  width:auto;height:auto;
+  max-width:100%;max-height:75mm;
+  object-fit:contain;
+  margin:0 auto;
   border:1px solid #e2e8f0;border-radius:8px;display:block;
 }
 .pphoto figcaption{
