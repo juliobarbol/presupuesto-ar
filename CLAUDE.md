@@ -15,7 +15,7 @@
 
 ## Estructura de archivos
 - `index.html` — **toda la app** (markup + `<style>` + `<script>`).
-- `sw.js` — Service Worker (offline + actualizaciones). **`CACHE_VERSION` actual: `presupuesto-v176`**.
+- `sw.js` — Service Worker (offline + actualizaciones). **`CACHE_VERSION` actual: `presupuesto-v177`**.
 - `manifest.webmanifest`, `*.png` — PWA (instalación, iconos).
 - `push-worker/` — Cloudflare Worker **opcional** para notificaciones push de seguimiento (avisos con la app cerrada). No es parte del PWA shell; se despliega aparte. Ver `docs/push-setup.md`. La app es inerte a esto hasta rellenar `PUSH_WORKER_URL` / `PUSH_VAPID_KEY` en `index.html`.
 
@@ -51,7 +51,7 @@ El CSS vive en el `<style>` (líneas ~16–1711). Hay dos bloques de estilos del
 
 ## Convenciones importantes
 - **Estado:** objeto global `S` (presupuesto actual + config). `DEF` son los valores por defecto.
-- **localStorage:** claves centralizadas en el objeto `LS`. Las DBs tienen sus propias constantes (`SPECIES_KEY`, `SERVICES_KEY`, `CLIENT_KEY`, `PHRASE_KEYS`…). Escribir SIEMPRE vía `safeSetLS()` (maneja cuota llena y dispara el backup a Drive).
+- **localStorage:** claves centralizadas en el objeto `LS`. Las DBs tienen sus propias constantes (`SPECIES_KEY`, `SERVICES_KEY`, `CLIENT_KEY`, `PHRASE_KEYS`…). Escribir SIEMPRE vía `safeSetLS()` (maneja cuota llena y dispara el backup a Drive). **Al agregar una clave nueva hay que decidir si va o no al backup** — la lista canónica, con el criterio, está comentada en `buildBackupObject()` (`js/exportimport.js`). Si el usuario la escribió o la configuró, va.
 - **Dinero en centavos:** usar `moneyToCents` / `centsToMoney` / `fmtM` (evita errores de punto flotante). No operar con floats de pesos directo.
 - **Sin centavos en pantalla:** el oficio no maneja centavos. `fmtM` (UI) y `fmtMDoc` (documento) muestran pesos redondos; el `,00` no aporta nada y compite con los separadores de miles. Es SOLO presentación: los cálculos siguen en centavos. Única excepción: el **recibo** (`fmtARSd` vía `buildReciboDoc`), que muestra centavos solo si el monto realmente los tiene — es un comprobante de pago y el importe tiene que coincidir exacto.
 - **Total del estimativo:** siempre vía `calcEstTotals(estItems)` (trabajos a precio plano + servicios × cantidad, en centavos). La usan la barra de totales, `buildEstDoc()` y `autoSaveToHistory()`. No recalcularlo a mano en ningún lado: ese fue el origen de C2 (el PDF decía $710.000 y el historial guardaba $470.000).
@@ -69,6 +69,8 @@ El CSS vive en el `<style>` (líneas ~16–1711). Hay dos bloques de estilos del
 - El listener `window.addEventListener('online', …)` sube lo pendiente al volver la conexión.
 - Al desconectar (`gdriveDisconnect`) se borra también `LS.GDRIVE_EMAIL`.
 
+- **Fallos de sincronización:** Drive y Calendar comparten `_autoSync()` (cuenta fallos SEGUIDOS, repinta la UI falle o no, y avisa recién al 2º con un toast una vez por sesión). Un fallo aislado no molesta; una caída real marca la sección en rojo (`.fu-config.is-fail`), dice desde cuándo no hay copia y ofrece "Reconectar". Cualquier éxito reinicia el contador. No volver a poner `.catch(() => {})` en esos caminos: el backup fallando en silencio es el peor escenario de una app sin backend.
+
 ## Módulo GCAL (sincronizar la Agenda con Google Calendar)
 - Empuja **una sola vía** (app → Google) todo lo de `calBuildIndex()` (los 5 tipos, de hoy en adelante) a un calendario propio **"Presupuestos AR"**. Reusa el OAuth de Google (mismo `GDRIVE.CLIENT_ID` y `loadGIS()`) con **su propio token client** y el scope mínimo **`calendar.app.created`** (+ `openid email` para recordar la cuenta). Corre como el auto-backup de Drive: al abrir (`gcalInitOnLoad`, silencioso) y con retardo tras cada cambio (`scheduleGcalSync`, enganchado en `setH` y `setNotes`), solo con señal. **Nunca pide token al abrir con UI.**
 - **Idempotencia:** cada evento lleva `extendedProperties.private.pqKey` (clave estable estilo UID del `.ics`) + `pqHash`. `gcalSync()` lista lo que hay, reconstruye el estado desde el servidor y hace el diff (insert / patch si cambió el hash / delete si ya no está). Sin ledger local frágil → auto-reparable entre dispositivos.
@@ -83,7 +85,7 @@ El CSS vive en el `<style>` (líneas ~16–1711). Hay dos bloques de estilos del
 > versión nueva la próxima vez que abran la app con conexión.
 
 1. Desarrollar en la rama de trabajo (`claude/...`), no en `main`.
-2. **Subir `CACHE_VERSION` en `sw.js`** en cada cambio que se despliegue (si no, los dispositivos siguen con la versión vieja en caché). Formato: `presupuesto-vNN`. **Versión actual: v176**.
+2. **Subir `CACHE_VERSION` en `sw.js`** en cada cambio que se despliegue (si no, los dispositivos siguen con la versión vieja en caché). Formato: `presupuesto-vNN`. **Versión actual: v177**.
 3. Si agregás un archivo nuevo (ej. otro `.js` o `.css`), **agregarlo a `APP_SHELL` en `sw.js`** o se rompe el offline.
 4. **Mergear a `main`** → Cloudflare despliega solo.
 

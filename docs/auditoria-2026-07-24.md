@@ -784,11 +784,13 @@ Tandas chicas, cada una verificable y desplegable por separado.
 > presupuestos ya guardados con el total de menos. Regresión en `test/money.test.cjs`
 > (10 checks). C2 y B5 cerrados y verificados.
 
-### Tanda 3 — Que el backup sea completo y honesto (A1 + A3) → `v176`
-1. Agregar `followup` a `buildBackupObject()`/`applyBackupObject()` + comentario con la lista
-   canónica de claves y su decisión.
-2. Contador de fallos de Drive y de Calendar + estado visible, reusando `_gcalErrMsg()`.
-3. Que `gcalSync()` no aborte la pasada de borrado por un insert fallido.
+### Tanda 3 — Que el backup sea completo y honesto (A1 + A3) → `v177` ✅ HECHA
+> `followup` (días, estados y las 3 plantillas de WhatsApp) entra al backup, con su
+> validador y la lista canónica de claves comentada en `buildBackupObject()`. Drive y
+> Calendar comparten `_autoSync()`: cuentan fallos seguidos, repintan la UI aunque
+> fallen, marcan la sección en rojo al 2º y avisan con el mensaje accionable de
+> `_gcalErrMsg()`. `gcalSync()` ya no aborta la pasada por un evento fallido.
+> Regresión en `test/backup-sync.test.cjs` (16 checks). A1 y A3 cerrados.
 
 ### Tanda 4 — Tráfico y batería (A6 + M9) → `v177`
 Las dos son de una línea cada una y de ganancia inmediata:
