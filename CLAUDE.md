@@ -15,7 +15,7 @@
 
 ## Estructura de archivos
 - `index.html` — **toda la app** (markup + `<style>` + `<script>`).
-- `sw.js` — Service Worker (offline + actualizaciones). **`CACHE_VERSION` actual: `presupuesto-v135`**.
+- `sw.js` — Service Worker (offline + actualizaciones). **`CACHE_VERSION` actual: `presupuesto-v172`**.
 - `manifest.webmanifest`, `*.png` — PWA (instalación, iconos).
 - `push-worker/` — Cloudflare Worker **opcional** para notificaciones push de seguimiento (avisos con la app cerrada). No es parte del PWA shell; se despliega aparte. Ver `docs/push-setup.md`. La app es inerte a esto hasta rellenar `PUSH_WORKER_URL` / `PUSH_VAPID_KEY` en `index.html`.
 
@@ -41,7 +41,9 @@ grep -n "===== js/" index.html
 | `js/pdf.js` | `buildDoc`/`buildEstDoc`/`buildRiskDoc` (documento para imprimir/PDF), `printDoc` |
 | `js/facturacion.js` | Registro de facturas + tope anual |
 | `js/mapa.js` | Mapa de presupuestos (ubicación, "Sin ubicar", zonas) |
-| `js/calendar.js` | Pestaña **Agenda**: cuatro vistas (`_calView` `mes`/`semana`/`3dias`/`agenda`) que superponen trabajos, recontactos, vencimientos y seguimientos (derivados del historial) + notas/recordatorios manuales (`getNotes`/`setNotes`, `LS.NOTES`, incluidas en el backup). Colores por concepto vía tokens `--c-*` (unificados con los chips/badges del historial); `renderCal` (dispatcher) → `renderCalGrid` (grilla del mes) / `renderCalCols` (Semana/3-días: columnas por día con los eventos como bloques `_calColEv` a la vista; Semana con scroll horizontal que abre en hoy, 3-días en 3 columnas; `_calAnchor` + navegación unificada `calPrev`/`calNext`) / `renderCalList` (lista cronológica con sección "Atrasado") / `_calEvHTML` (tarjeta de evento compartida). Export masivo a `.ics` (`calExportIcs`). Estado y pendientes en `docs/agenda-roadmap.md` |
+| `js/clima.js` | Pronóstico (Open-Meteo, sin API key) para los trabajos agendados: cache versionado en `LS.CLIMA` (TTL 3 h, `CLIMA.VER`), fetch por zona (`_climaFetchZonas`/`climaRefresh`/`climaEnsureZona`). Muestra **lluvia + viento fuerte (ráfaga, peligro en altura) + índice UV** en el chip (`climaChipHTML`, color por prioridad lluvia>viento>UV) en Agenda/banners/Historial (`climaChipForEntry`). **Tira de 7 días** en el diálogo de agendar para elegir buen día (`agendaClimaRender`/`agendaClimaPick`). **Recomendaciones del día** en el banner de hoy (`climaRecomendaciones`: lluvia/viento/UV/temperatura). **Aviso** de lluvia/viento hoy/mañana (`_climaAvisar`/`_climaToast`: toast accionable que lleva al presupuesto —o a la Agenda si son varios— y ofrece **reprogramar por WhatsApp** `climaReprogramarWhatsApp`; gate diario en `LS.CLIMA_WARN`). **Panel de detalle** al tocar cualquier chip o el botón "Clima" del aviso (`climaOpenDetail`/`_climaDetailRender`, overlay `#clima-overlay`): día completo en tarjetas (lluvia/viento/UV/térmica), **hora por hora** de las próximas 72 h (clave `hours` del cache, `forecast_hours=72`), recomendaciones, tira de días para comparar y reprogramar por WhatsApp. Coordenadas vía `entryLatLng` del mapa, fallback al centroide de la zona |
+| `js/notifs.js` | **Centro de notificaciones** (campanita del topbar). Panel con dos zonas: **Pendientes** (derivado, se recalcula al abrir: recontactos, trabajos/visitas de hoy, seguimientos/vencimientos vencidos y clima adverso hoy/mañana; agrupados en **Hoy** arriba y **Atrasado** debajo por `bucket`+`ord`) y **Recientes** (bitácora persistida en `LS.NOTIF_LOG`, ring buffer capado a 50, incluida en el backup). `logNotif()` la llena desde los puntos donde hoy se disparan toasts efímeros (`toastRecontactosPendientes`, `_climaAvisar`) y desde acciones reversibles (`setEstadoHistory`→realizado, `marcarRecontactoHecho`, `marcarVisitaHecha`), que dejan botón **"Deshacer"** (`notifUndo`). Badge = cantidad de pendientes **nuevos** (no vistos): al abrir se snapshotean los `key` en `LS.NOTIF_SEEN` (`_notifMarkSeen`, estado de lectura local, fuera del backup) y `updateNotifBadge` cuenta solo los que no están en ese set, así se apaga tras abrir y solo reaparece con algo nuevo. Acciones serializables vía `notifRunAction`. Overlay `#notif-overlay` reusa el estilo de `#clima-box` |
+| `js/calendar.js` | Pestaña **Agenda**: cuatro vistas (`_calView` `mes`/`semana`/`3dias`/`agenda`) que superponen trabajos, recontactos, vencimientos y seguimientos (derivados del historial) + notas/recordatorios manuales (`getNotes`/`setNotes`, `LS.NOTES`, incluidas en el backup). Las notas pueden ser **visitas** (`tipo:'visita'`: evaluación presencial / ir a presupuestar): concepto propio azul (`--c-visita`), prioridad junto al trabajo, chip de clima (`climaDeNota`), aparecen en el banner de hoy (`getVisitasDeHoy`) y tienen botón **"Crear presupuesto"** (`calCrearPresupuestoDesdeVisita`: pasa cliente/tel/ubicación/texto al editor y marca la visita hecha). Colores por concepto vía tokens `--c-*` (unificados con los chips/badges del historial); `renderCal` (dispatcher) → `renderCalGrid` (grilla del mes) / `renderCalCols` (Semana/3-días: columnas por día con los eventos como bloques `_calColEv` a la vista; Semana con scroll horizontal que abre en hoy, 3-días en 3 columnas; `_calAnchor` + navegación unificada `calPrev`/`calNext`) / `renderCalList` (lista cronológica con sección "Atrasado") / `_calEvHTML` (tarjeta de evento compartida). Export masivo a `.ics` (`calExportIcs`). Estado y pendientes en `docs/agenda-roadmap.md` |
 | `js/core.js` | Inicialización (`DOMContentLoaded`) + setup de la PWA |
 
 El CSS vive en el `<style>` (líneas ~16–1711). Hay dos bloques de estilos del documento: uno `@media print` (`#doc-a4`) y otro de pantalla para la vista previa (`.doc-preview-host .doc-a4-screen`).
@@ -63,6 +65,12 @@ El CSS vive en el `<style>` (líneas ~16–1711). Hay dos bloques de estilos del
 - El listener `window.addEventListener('online', …)` sube lo pendiente al volver la conexión.
 - Al desconectar (`gdriveDisconnect`) se borra también `LS.GDRIVE_EMAIL`.
 
+## Módulo GCAL (sincronizar la Agenda con Google Calendar)
+- Empuja **una sola vía** (app → Google) todo lo de `calBuildIndex()` (los 5 tipos, de hoy en adelante) a un calendario propio **"Presupuestos AR"**. Reusa el OAuth de Google (mismo `GDRIVE.CLIENT_ID` y `loadGIS()`) con **su propio token client** y el scope mínimo **`calendar.app.created`** (+ `openid email` para recordar la cuenta). Corre como el auto-backup de Drive: al abrir (`gcalInitOnLoad`, silencioso) y con retardo tras cada cambio (`scheduleGcalSync`, enganchado en `setH` y `setNotes`), solo con señal. **Nunca pide token al abrir con UI.**
+- **Idempotencia:** cada evento lleva `extendedProperties.private.pqKey` (clave estable estilo UID del `.ics`) + `pqHash`. `gcalSync()` lista lo que hay, reconstruye el estado desde el servidor y hace el diff (insert / patch si cambió el hash / delete si ya no está). Sin ledger local frágil → auto-reparable entre dispositivos.
+- `LS.GCAL_ID` (el calendarId) va en el backup (`buildBackupObject`/`applyBackupObject`) para no duplicar el calendario tras un restore.
+- **Prerequisito del dueño (una vez):** habilitar la **Google Calendar API** en el proyecto del Client ID y agregar el scope `calendar.app.created` a la pantalla de consentimiento. Sin eso, "Conectar" da error.
+
 ## Flujo de despliegue (SEGUIR SIEMPRE)
 
 > **Para desplegar cualquier cambio a producción: mergear la rama de trabajo a
@@ -71,7 +79,7 @@ El CSS vive en el `<style>` (líneas ~16–1711). Hay dos bloques de estilos del
 > versión nueva la próxima vez que abran la app con conexión.
 
 1. Desarrollar en la rama de trabajo (`claude/...`), no en `main`.
-2. **Subir `CACHE_VERSION` en `sw.js`** en cada cambio que se despliegue (si no, los dispositivos siguen con la versión vieja en caché). Formato: `presupuesto-vNN`. **Versión actual: v135**.
+2. **Subir `CACHE_VERSION` en `sw.js`** en cada cambio que se despliegue (si no, los dispositivos siguen con la versión vieja en caché). Formato: `presupuesto-vNN`. **Versión actual: v172**.
 3. Si agregás un archivo nuevo (ej. otro `.js` o `.css`), **agregarlo a `APP_SHELL` en `sw.js`** o se rompe el offline.
 4. **Mergear a `main`** → Cloudflare despliega solo.
 
