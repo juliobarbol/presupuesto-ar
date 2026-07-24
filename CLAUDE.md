@@ -15,7 +15,7 @@
 
 ## Estructura de archivos
 - `index.html` — **toda la app** (markup + `<style>` + `<script>`).
-- `sw.js` — Service Worker (offline + actualizaciones). **`CACHE_VERSION` actual: `presupuesto-v172`**.
+- `sw.js` — Service Worker (offline + actualizaciones). **`CACHE_VERSION` actual: `presupuesto-v174`**.
 - `manifest.webmanifest`, `*.png` — PWA (instalación, iconos).
 - `push-worker/` — Cloudflare Worker **opcional** para notificaciones push de seguimiento (avisos con la app cerrada). No es parte del PWA shell; se despliega aparte. Ver `docs/push-setup.md`. La app es inerte a esto hasta rellenar `PUSH_WORKER_URL` / `PUSH_VAPID_KEY` en `index.html`.
 
@@ -31,6 +31,7 @@ grep -n "===== js/" index.html
 | Sección | De qué se ocupa |
 |---|---|
 | `js/state.js` | Estado global `S`, defaults `DEF`, claves `LS`, helpers (fechas, dinero, `esc`), `saveLS`/`loadLS`, `safeSetLS`, toasts, totales |
+| `js/sanitize.js` | **Validación de todo lo que entra desde afuera** (backup `.json` de un colega, copia de Drive, clave de `localStorage` manipulada). `sanitizeBackup`/`sanitizeHistory`/`sanitizeNotes`/`sanitizeNotifLog`/`sanitizeFacturas`/`sanitizeStateObj`/`sanitizeImport` + helpers (`sanStr`/`sanEnum`/`sanISODate`/`sanNumId`/`sanTextId`) y listas blancas (`PDF_THEMES`, `PDF_FONTS`, `NOTE_TIPOS`). `migrateSanitizeStored()` normaliza al arrancar lo que ya estuviera guardado. **Regla: nada entra al estado ni a `localStorage` sin pasar por acá** — cerró el XSS por backup ajeno y el caso de la app rota por un `history` que no era array. Ver `docs/auditoria-2026-07-24.md` (C1/C3/A2) y `test/security.test.cjs` |
 | `js/photos.js` | Almacén de fotos en **IndexedDB** (`pq_photos`). `item.photo` guarda un ID `p_...`; el binario vive en IDB. `savePhoto`/`getPhotoData`/`hydratePhotoCache`/`migrateInlinePhotosToIDB`/`restorePhotosFromBackup` |
 | `js/clients.js` | DBs de clientes, especies y servicios (autocompletar) |
 | `js/phrases.js` | Biblioteca de frases reusables |
@@ -55,6 +56,7 @@ El CSS vive en el `<style>` (líneas ~16–1711). Hay dos bloques de estilos del
 - **Fechas en LOCAL, no UTC:** usar `today()` / `toLocalISODate()` / `calcExpiry()`. Nunca `toISOString().slice(0,10)` para fechas de calendario (corre el día en Argentina).
 - **Fotos en IndexedDB, no en localStorage:** `item.photo` guarda un ID `p_...`; el dataURL vive en IDB (`pq_photos`). Para mostrar una foto resolvé con `getPhotoData(item.photo)` y validá con `safeImgSrc()`. Para guardar una foto nueva usá `savePhoto(dataUrl)` (devuelve el ID, o el dataURL embebido si IDB falla). El caché en memoria se hidrata al iniciar con `hydratePhotoCache()` (antes del primer render). Las fotos viejas embebidas (`data:image/...`) siguen funcionando y se migran a IDB con `migrateInlinePhotosToIDB()` al cargar. El backup completo incluye las fotos referenciadas (`photos`) para sobrevivir un cambio de dispositivo.
 - **XSS:** escapar SIEMPRE los datos del usuario con `esc()` antes de meterlos en `innerHTML`.
+- **Datos importados:** un backup ajeno es input NO confiable. Todo lo que venga de un archivo, de Drive o de `localStorage` pasa por `js/sanitize.js` ANTES de tocar el estado. Los ids se interpolan dentro de atributos (`onclick="fn(ID)"`), así que `esc()` no alcanza: hay que validarlos (o usar `data-*` + listener delegado, como el panel de la campanita).
 - **3 modos de presupuesto:** Normal, Estimativo (fotos) y Riesgo (informe ISA). `buildDoc()` deriva a `buildEstDoc()`/`buildRiskDoc()` según `S.isEstimative`/`S.isRisk`.
 - **Temas del PDF (`S.pdfTheme`):** `clasico`, `profesional`, `calido`, `minimalista`, `lateral`, `tecnico`, `elegante` (clase `pdoc-theme-X` sobre `<table class="pdoc">`). `S.pdfCompact` es un modificador ortogonal de densidad (clase `pdoc-compact`). Para agregar uno nuevo está la skill **`nuevo-tema-pdf`** (`.claude/skills/`), que documenta la receta exacta (CSS, encabezado, UI, verificación, despliegue).
 
@@ -79,7 +81,7 @@ El CSS vive en el `<style>` (líneas ~16–1711). Hay dos bloques de estilos del
 > versión nueva la próxima vez que abran la app con conexión.
 
 1. Desarrollar en la rama de trabajo (`claude/...`), no en `main`.
-2. **Subir `CACHE_VERSION` en `sw.js`** en cada cambio que se despliegue (si no, los dispositivos siguen con la versión vieja en caché). Formato: `presupuesto-vNN`. **Versión actual: v172**.
+2. **Subir `CACHE_VERSION` en `sw.js`** en cada cambio que se despliegue (si no, los dispositivos siguen con la versión vieja en caché). Formato: `presupuesto-vNN`. **Versión actual: v174**.
 3. Si agregás un archivo nuevo (ej. otro `.js` o `.css`), **agregarlo a `APP_SHELL` en `sw.js`** o se rompe el offline.
 4. **Mergear a `main`** → Cloudflare despliega solo.
 

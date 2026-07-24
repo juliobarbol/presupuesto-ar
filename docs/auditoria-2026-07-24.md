@@ -762,8 +762,10 @@ no parchear solo `:8942`.
 Tandas chicas, cada una verificable y desplegable por separado.
 **Recordá subir `CACHE_VERSION` en `sw.js` en cada deploy** (actual: `presupuesto-v173`).
 
-### Tanda 1 — Blindar la frontera de entrada (C1 + C3 + A2) → `v174`
-La más importante, y conviene hacerla junta porque las tres comparten la solución.
+### Tanda 1 — Blindar la frontera de entrada (C1 + C3 + A2) → `v174` ✅ HECHA
+> Implementada en `js/sanitize.js` (nueva sección de `index.html`) + regresión en
+> `test/security.test.cjs` (12 checks; falla contra el código previo, pasa contra el nuevo).
+> C1, C3 y A2 quedan cerrados y verificados. Detalle de lo que se hizo, abajo.
 1. `sanitizeBackup(d)` / `sanitizeHistory(h)` / `sanitizeNotes(n)` / `sanitizeNotifLog(l)`:
    verificar arrays, descartar entradas inválidas, validar IDs con `/^[\w-]{1,40}$/` y los
    enums (`pdfTheme`, `pdfFont`, `estado`, `tipo`) contra lista blanca.

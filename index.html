@@ -5517,6 +5517,324 @@ async function initPush() {
   }
 }
 
+// ===== js/sanitize.js =====
+// ═══════════════════════════════════════════════════════════════════════════
+// SANITIZE.JS — Validación de todo lo que entra DESDE AFUERA.
+//
+// Un backup .json, la copia de Google Drive o una clave de localStorage
+// manipulada son INPUT NO CONFIABLE: los backups se intercambian entre colegas
+// y un archivo ajeno puede venir con cualquier cosa adentro. Dos problemas
+// concretos que este módulo cierra:
+//
+//   1. XSS. Los ids y los enums se interpolan dentro de atributos HTML
+//      (onclick="fn('ID')", class="pdoc-theme-X"). Un id con comillas rompía el
+//      atributo y ejecutaba código ajeno con solo abrir la Agenda o la
+//      campanita — sin tocar nada más. El texto del usuario nunca fue el
+//      problema: ese siempre pasó por esc().
+//   2. App rota de forma permanente. Un `history` que no fuera un array quedaba
+//      guardado igual y a partir de ahí la app tiraba "h is not iterable" en
+//      CADA arranque: Historial y Agenda muertos, sin forma de recuperarse
+//      desde la app.
+//
+// REGLA: nada entra al estado ni a localStorage sin pasar por acá.
+//
+// Criterio general: NO se descartan datos del usuario si se pueden arreglar.
+// Un id inválido se reemplaza por uno nuevo, un enum desconocido cae al
+// default, un campo de más se conserva (compatibilidad hacia adelante). Solo se
+// descarta lo que no se puede mostrar de ninguna manera (una nota sin fecha).
+// Perder un presupuesto siempre es peor que tener un id raro.
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Ids seguros para interpolar: letras, números, guion y guion bajo. Cubre los
+// que genera la app ('n_lx3k2a', 'p_...', '1721847...') y rechaza cualquier
+// cosa con comillas, < > o espacios.
+const SAN_ID_RE = /^[\w-]{1,40}$/;
+// Listas blancas de los enums que van a parar a un atributo HTML.
+const PDF_THEMES = ['clasico','profesional','calido','minimalista','lateral','tecnico','elegante'];
+const PDF_FONTS  = ['auto','dm','plex','lora-inter','inter'];
+const NOTE_TIPOS = ['visita'];   // sin tipo = nota común
+const NOTIF_KINDS = ['info','ok','warn','err'];
+
+function sanStr(v, max) { return typeof v === 'string' ? v.slice(0, max || 2000) : ''; }
+function sanBool(v) { return !!v; }
+function sanNum(v) { const n = Number(v); return Number.isFinite(n) ? n : 0; }
+function sanEnum(v, allowed, def) { return allowed.indexOf(v) >= 0 ? v : def; }
+function sanISODate(v) { return (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)) ? v : ''; }
+// Timestamp ISO completo (savedAt, enviadoEn…). Se conserva si parsea.
+function sanTS(v) { return (typeof v === 'string' && !isNaN(new Date(v).getTime())) ? v : ''; }
+// Id de texto: el original si es seguro, si no uno nuevo (no se pierde el dato).
+function sanTextId(v, prefix) {
+  if (typeof v === 'string' && SAN_ID_RE.test(v)) return v;
+  if (typeof v === 'number' && Number.isFinite(v)) return String(v);
+  return (prefix || 'x_') + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+}
+// Id NUMÉRICO (entradas del historial). Devolver siempre un número deja probado
+// que `onclick="fn(${e.id})"` no puede inyectar nada, sin tener que tocar los
+// ~20 sitios que lo interpolan.
+let _sanIdSeq = 0;
+function sanNumId(v) {
+  if (typeof v === 'number' && Number.isFinite(v)) return v;
+  if (typeof v === 'string' && /^\d{1,20}$/.test(v)) return parseInt(v, 10);
+  return Date.now() + (++_sanIdSeq);   // nuevo, único dentro de la misma pasada
+}
+
+// Lo que debería ser una lista pero no lo es. Si viene como objeto con las
+// entradas adentro ({"0":{…}} — típico de un JSON armado a mano o por otra
+// herramienta) se rescatan los valores antes de rendirse: son datos del
+// usuario. Cualquier otra cosa da lista vacía.
+function _sanToArray(raw) {
+  if (Array.isArray(raw)) return raw;
+  if (raw && typeof raw === 'object') return Object.keys(raw).map(k => raw[k]);
+  return [];
+}
+
+// ─── HISTORIAL ───────────────────────────────────────────────
+// Conserva los campos desconocidos (una versión más nueva puede haber agregado
+// alguno) y solo normaliza lo estructural y lo que se interpola.
+function sanitizeHistory(raw) {
+  const out = [];
+  _sanToArray(raw).forEach(e => {
+    if (!e || typeof e !== 'object' || Array.isArray(e)) return;
+    const s = Object.assign({}, e);
+    s.id          = sanNumId(e.id);
+    s.estado      = sanEnum(e.estado, ESTADOS, 'borrador');
+    s.quoteNumber = sanStr(e.quoteNumber, 60);
+    s.clientName  = sanStr(e.clientName, 200);
+    s.currency    = sanEnum(e.currency, ['ARS','USD','EUR'], 'ARS');
+    s.total       = sanNum(e.total);
+    s.itemCount   = sanNum(e.itemCount);
+    s.isEstimative = sanBool(e.isEstimative);
+    s.snapshot    = (e.snapshot && typeof e.snapshot === 'object' && !Array.isArray(e.snapshot))
+      ? sanitizeStateObj(e.snapshot) : {};
+    // Fechas del ciclo comercial: se limpian las que no parsean para que no
+    // envenenen los cálculos de días (daysSince y compañía).
+    ['savedAt','enviadoEn','seguimientoHechoEn','vencimientoVistoEn'].forEach(k => {
+      if (e[k] != null) { const t = sanTS(e[k]); if (t) s[k] = t; else delete s[k]; }
+    });
+    ['fechaTrabajo','recontactoEn'].forEach(k => {
+      if (e[k] != null) { const f = sanISODate(e[k]); if (f) s[k] = f; else delete s[k]; }
+    });
+    if (Array.isArray(e.fechasTrabajo)) {
+      s.fechasTrabajo = e.fechasTrabajo.map(sanISODate).filter(Boolean);
+    } else { delete s.fechasTrabajo; }
+    if (e.recontactoNota != null) s.recontactoNota = sanStr(e.recontactoNota, 500);
+    if (e.diasEstimados != null)  s.diasEstimados  = Math.max(1, Math.round(sanNum(e.diasEstimados)) || 1);
+    out.push(s);
+  });
+  return out;
+}
+
+// ─── ESTADO / SNAPSHOT ───────────────────────────────────────
+// Acota SOLO lo que se interpola crudo en el documento (tema, fuente, color) y
+// garantiza que los arrays de ítems sean arrays. El resto del estado es texto
+// que ya se escapa con esc() al renderizar.
+function sanitizeStateObj(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
+  const s = Object.assign({}, raw);
+  s.pdfTheme = sanEnum(raw.pdfTheme, PDF_THEMES, 'clasico');
+  s.pdfFont  = sanEnum(raw.pdfFont,  PDF_FONTS,  'auto');
+  s.accentColor = (typeof safeColor === 'function') ? safeColor(raw.accentColor) : '#064e3b';
+  s.currency = sanEnum(raw.currency, ['ARS','USD','EUR'], 'ARS');
+  if (!Array.isArray(s.items))     s.items = [];
+  if (!Array.isArray(s.itemsB))    s.itemsB = [];
+  if (!Array.isArray(s.estItems))  s.estItems = [];
+  if (!Array.isArray(s.customColors)) s.customColors = [];
+  if (s.logo != null && typeof s.logo !== 'string') s.logo = '';
+  return s;
+}
+
+// ─── NOTAS DE LA AGENDA ──────────────────────────────────────
+// Una nota sin fecha válida no se puede ubicar en el calendario: se descarta
+// (es lo único que no tiene arreglo posible).
+function sanitizeNotes(raw) {
+  const out = [];
+  _sanToArray(raw).forEach(n => {
+    if (!n || typeof n !== 'object' || Array.isArray(n)) return;
+    const fecha = sanISODate(n.fecha);
+    if (!fecha) return;
+    const s = {
+      id:      sanTextId(n.id, 'n_'),
+      fecha:   fecha,
+      texto:   sanStr(n.texto, 500),
+      hecho:   sanBool(n.hecho),
+      cliente: sanStr(n.cliente, 200),
+      tel:     sanStr(n.tel, 60),
+    };
+    const ts = sanTS(n.creadoEn); if (ts) s.creadoEn = ts;
+    if (n.ubic != null) s.ubic = sanStr(n.ubic, 500);
+    const tipo = sanEnum(n.tipo, NOTE_TIPOS, ''); if (tipo) s.tipo = tipo;
+    out.push(s);
+  });
+  return out;
+}
+
+// ─── BITÁCORA DEL CENTRO DE NOTIFICACIONES ───────────────────
+// `action` y `undo` son objetos que se ejecutan al tocar el aviso: se valida el
+// tipo contra la lista de acciones que notifRunAction/notifUndo saben manejar y
+// se descarta cualquier otra cosa.
+function sanitizeNotifAction(a) {
+  if (!a || typeof a !== 'object' || Array.isArray(a)) return null;
+  const type = sanEnum(a.type, ['entry','tab','clima'], '');
+  if (!type) return null;
+  const out = { type: type };
+  if (a.id != null) out.id = sanNumId(a.id);
+  if (type === 'tab')   out.tab = sanEnum(a.tab, ['editor','historial','mapa','agenda','facturacion'], 'historial');
+  if (type === 'clima') out.f = sanISODate(a.f);
+  return out;
+}
+function sanitizeNotifUndo(u) {
+  if (!u || typeof u !== 'object' || Array.isArray(u)) return null;
+  const type = sanEnum(u.type, ['estado','recontacto','note'], '');
+  if (!type) return null;
+  const out = { type: type };
+  if (type === 'note') out.id = sanTextId(u.id, 'n_');
+  else                 out.id = sanNumId(u.id);
+  if (type === 'estado')     out.prev = sanEnum(u.prev, ESTADOS, 'borrador');
+  if (type === 'recontacto') {
+    const f = sanISODate(u.recontactoEn); if (f) out.recontactoEn = f;
+    if (u.recontactoNota != null) out.recontactoNota = sanStr(u.recontactoNota, 500);
+  }
+  return out;
+}
+function sanitizeNotifLog(raw) {
+  const out = [];
+  _sanToArray(raw).forEach(r => {
+    if (!r || typeof r !== 'object' || Array.isArray(r)) return;
+    if (!r.text) return;
+    const s = {
+      id:   sanTextId(r.id, 'n_'),
+      ts:   sanNum(r.ts) || Date.now(),
+      // El icono es un emoji: se acota acá y además se escapa al renderizar.
+      icon: sanStr(r.icon, 8) || '🔔',
+      text: sanStr(r.text, 300),
+      kind: sanEnum(r.kind, NOTIF_KINDS, 'info'),
+      action: sanitizeNotifAction(r.action),
+      undo:   sanitizeNotifUndo(r.undo),
+      dedupeKey: sanStr(r.dedupeKey, 120) || null,
+    };
+    if (r.undoneAt != null) s.undoneAt = sanNum(r.undoneAt);
+    out.push(s);
+  });
+  return out.slice(0, NOTIF_CAP);
+}
+
+// ─── FACTURAS ────────────────────────────────────────────────
+// El id se interpola en onclick="factRecibo('ID')" y la fecha se muestra tal
+// cual; una fecha inválida se deja vacía (visible y editable) en vez de tirar
+// la factura, que es plata registrada.
+function sanitizeFacturas(raw) {
+  const out = [];
+  _sanToArray(raw).forEach(f => {
+    if (!f || typeof f !== 'object' || Array.isArray(f)) return;
+    const s = Object.assign({}, f);
+    s.id      = sanTextId(f.id, 'f_');
+    s.fecha   = sanISODate(f.fecha);
+    s.monto   = sanNum(f.monto);
+    s.cliente = sanStr(f.cliente, 200);
+    s.desc    = sanStr(f.desc, 500);
+    if (f.quoteNumber != null) s.quoteNumber = sanStr(f.quoteNumber, 60);
+    if (f.reciboNum != null)   s.reciboNum   = sanStr(f.reciboNum, 60);
+    out.push(s);
+  });
+  return out;
+}
+
+// ─── DBs SIMPLES (clientes / especies / servicios / frases) ──
+// Son texto que ya se escapa al renderizar: solo hay que garantizar que sean
+// arrays y acotar el tamaño para que un backup inflado no llene la cuota.
+function sanitizeStrList(raw, max) {
+  return _sanToArray(raw).filter(v => typeof v === 'string' && v.trim()).map(v => v.slice(0, max || 300));
+}
+function sanitizeClients(raw) {
+  const out = [];
+  _sanToArray(raw).forEach(c => {
+    if (typeof c === 'string') { if (c.trim()) out.push({ name: c.slice(0,200), contact:'', address:'', maplink:'' }); return; }
+    if (!c || typeof c !== 'object' || Array.isArray(c)) return;
+    const name = sanStr(c.name, 200);
+    if (!name.trim()) return;
+    out.push({
+      name: name,
+      contact: sanStr(c.contact, 120),
+      address: sanStr(c.address, 300),
+      maplink: sanStr(c.maplink || c.mapLink, 500),
+    });
+  });
+  return out;
+}
+
+// ─── LIMPIEZA DE LO YA GUARDADO ──────────────────────────────
+// Un dispositivo puede tener datos inválidos guardados de ANTES de que
+// existiera este módulo (un backup ajeno importado en su momento). Validar en
+// cada lectura sería carísimo — getH() se llama varias veces por render —, así
+// que se hace una sola pasada al arrancar y solo se reescribe lo que realmente
+// cambió (si no cambió nada, que es el caso normal, no se toca localStorage ni
+// se dispara una copia a Drive).
+function migrateSanitizeStored() {
+  let arreglados = 0;
+  const pasada = (key, sanitizer, write) => {
+    let raw;
+    try { raw = localStorage.getItem(key); } catch(_) { return; }
+    if (!raw) return;
+    let parsed;
+    try { parsed = JSON.parse(raw); } catch(_) { parsed = null; }
+    const limpio = sanitizer(parsed);
+    const nuevo = JSON.stringify(limpio);
+    if (nuevo === raw) return;         // ya estaba bien: no tocar nada
+    write(nuevo);
+    arreglados++;
+  };
+  pasada(LS.HISTORY,   sanitizeHistory,  v => { try { localStorage.setItem(LS.HISTORY, v); } catch(_){} });
+  pasada(LS.NOTES,     sanitizeNotes,    v => { try { localStorage.setItem(LS.NOTES, v); } catch(_){} });
+  pasada(LS.NOTIF_LOG, sanitizeNotifLog, v => { try { localStorage.setItem(LS.NOTIF_LOG, v); } catch(_){} });
+  if (typeof FACT_KEY !== 'undefined') {
+    pasada(FACT_KEY,   sanitizeFacturas, v => { try { localStorage.setItem(FACT_KEY, v); } catch(_){} });
+  }
+  // El estado activo: acotar tema/fuente/color, que son los que se interpolan
+  // en el documento. S ya está cargado en memoria (loadLS corrió antes).
+  const tema = sanEnum(S.pdfTheme, PDF_THEMES, 'clasico');
+  const fuente = sanEnum(S.pdfFont, PDF_FONTS, 'auto');
+  const color = (typeof safeColor === 'function') ? safeColor(S.accentColor) : S.accentColor;
+  if (tema !== S.pdfTheme || fuente !== S.pdfFont || color !== S.accentColor) {
+    S.pdfTheme = tema; S.pdfFont = fuente; S.accentColor = color;
+    arreglados++;
+    try { localStorage.setItem(LS.STATE, JSON.stringify(S)); } catch(_){}
+  }
+  if (arreglados) console.warn('Se normalizaron ' + arreglados + ' bloque(s) de datos guardados');
+  return arreglados;
+}
+
+// ─── BACKUP COMPLETO ─────────────────────────────────────────
+// Normaliza el objeto ENTERO en memoria y devuelve una copia limpia, o null si
+// no es un backup reconocible. Nada se escribe todavía: esa es justamente la
+// idea (ver applyBackupObject, que restaura en dos fases).
+function sanitizeBackup(d) {
+  if (!d || typeof d !== 'object' || Array.isArray(d)) return null;
+  const b = {};
+  if (d.state)   b.state   = sanitizeStateObj(d.state);
+  if (d.history !== undefined) b.history = sanitizeHistory(d.history);
+  if (d.clients !== undefined) b.clients = sanitizeClients(d.clients);
+  if (d.species !== undefined) b.species = sanitizeStrList(d.species, 120);
+  if (d.services !== undefined)       b.services       = sanitizeStrList(d.services, 120);
+  if (d.servicesPinned !== undefined) b.servicesPinned = sanitizeStrList(d.servicesPinned, 120);
+  if (d.phrases && typeof d.phrases === 'object' && !Array.isArray(d.phrases)) {
+    b.phrases = {};
+    ['desc','obs','pay'].forEach(k => {
+      if (Array.isArray(d.phrases[k])) b.phrases[k] = sanitizeStrList(d.phrases[k], 1000);
+    });
+  }
+  if (d.facturas !== undefined) b.facturas = sanitizeFacturas(d.facturas);
+  if (d.tope != null) { const t = sanNum(d.tope); if (t > 0) b.tope = t; }
+  if (d.reciboSeq != null) b.reciboSeq = Math.max(0, Math.round(sanNum(d.reciboSeq)));
+  if (d.notes !== undefined)    b.notes    = sanitizeNotes(d.notes);
+  if (d.notifLog !== undefined) b.notifLog = sanitizeNotifLog(d.notifLog);
+  // El id de calendario de Google es un email-like acotado; si no pinta como
+  // tal, se ignora (peor caso: se crea un calendario nuevo).
+  if (typeof d.gcalId === 'string' && /^[\w.@-]{1,200}$/.test(d.gcalId)) b.gcalId = d.gcalId;
+  // Las fotos ya las valida restorePhotosFromBackup (exige dataURL de imagen).
+  if (d.photos && typeof d.photos === 'object' && !Array.isArray(d.photos)) b.photos = d.photos;
+  return b;
+}
+
 // ===== js/photos.js =====
 // ═══════════════════════════════════════
 // PHOTOS.JS — Almacén de fotos en IndexedDB
@@ -8889,10 +9207,21 @@ function checkBackupReminder() {
 // ═══════════════════════════════════════
 
 // ─── STORAGE ─────────────────────────────────
+// Lectura defensiva: si lo guardado no es un array de entradas válidas (backup
+// de otra herramienta, archivo editado a mano, versión futura), se normaliza
+// acá en vez de propagar el problema. Antes, un `history` que no fuera array
+// quedaba guardado y rompía la app en CADA arranque ("h is not iterable"):
+// Historial y Agenda muertos, sin forma de recuperarse desde la app.
 function getH() {
   try {
     const raw = localStorage.getItem(LS.HISTORY) || localStorage.getItem(LS.HISTORY_LEGACY);
-    return JSON.parse(raw||'[]');
+    const parsed = JSON.parse(raw||'[]');
+    if (Array.isArray(parsed)) return parsed;
+    // Forma inesperada: lo dejamos utilizable y reparamos el valor persistido
+    // (una sola vez) para que la próxima lectura ya salga limpia.
+    const fixed = sanitizeHistory(parsed);
+    try { safeSetLS(LS.HISTORY, JSON.stringify(fixed)); } catch(_){}
+    return fixed;
   } catch(e){ return []; }
 }
 
@@ -11516,10 +11845,39 @@ function handleImport(e) {
 // intercambian entre colegas). Los handlers de import leen de acá.
 let _pendingImport = null;
 
+// Normaliza el archivo importado según su tipo. Se hace UNA vez acá, al
+// mostrar las opciones, para que los cuatro handlers de import (impIndividual,
+// impToHistory, impHistCombine, impHistReplace) trabajen siempre sobre datos ya
+// validados y no haya que acordarse en cada uno.
+function sanitizeImport(data) {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
+  const type = data._type;
+  if (type === 'backup_completo') {
+    const b = sanitizeBackup(data);
+    if (b) b._type = type;
+    return b;
+  }
+  if (type === 'historial_presupuestos') {
+    return { _type: type, history: sanitizeHistory(data.history), photos: data.photos };
+  }
+  if (type === 'presupuesto_individual') {
+    return {
+      _type: type,
+      quoteNumber: sanStr(data.quoteNumber, 60),
+      clientName:  sanStr(data.clientName, 200),
+      currency:    sanEnum(data.currency, ['ARS','USD','EUR'], 'ARS'),
+      total:       sanNum(data.total),
+      snapshot:    data.snapshot ? sanitizeStateObj(data.snapshot) : null,
+      photos:      data.photos,
+    };
+  }
+  return { _type: type };   // tipo no reconocido: la UI ya lo informa
+}
+
 function showImpOpts(data) {
   const opts = document.getElementById('imp-opts'); if(!opts) return;
   const type = data._type || 'desconocido';
-  _pendingImport = data;
+  _pendingImport = sanitizeImport(data);
   let h = `<div class="msec"><h4>Tipo: <code>${esc(type)}</code></h4>`;
 
   if(type==='presupuesto_individual'){
@@ -11654,8 +12012,46 @@ async function impHistReplace() {
 
 // Aplica un objeto de backup ya parseado al estado y a las DBs. Reutilizada
 // por la restauración desde archivo y desde Google Drive. Devuelve true si OK.
-function applyBackupObject(d) {
+// Claves de localStorage que toca una restauración. Se usan para la copia de
+// seguridad previa (rollback) — ver applyBackupObject.
+function _restoreTouchedKeys() {
+  const keys = [LS.STATE, LS.HISTORY, LS.NOTES, LS.NOTIF_LOG, LS.GCAL_ID];
+  [typeof CLIENT_KEY !== 'undefined' && CLIENT_KEY,
+   typeof SPECIES_KEY !== 'undefined' && SPECIES_KEY,
+   typeof SERVICES_KEY !== 'undefined' && SERVICES_KEY,
+   typeof SERVICES_PINNED_KEY !== 'undefined' && SERVICES_PINNED_KEY,
+   typeof PHRASE_SEEDED_KEY !== 'undefined' && PHRASE_SEEDED_KEY,
+   typeof FACT_KEY !== 'undefined' && FACT_KEY,
+   typeof TOPE_KEY !== 'undefined' && TOPE_KEY,
+   typeof RECIBO_SEQ_KEY !== 'undefined' && RECIBO_SEQ_KEY].forEach(k => { if (k) keys.push(k); });
+  if (typeof PHRASE_KEYS !== 'undefined') ['desc','obs','pay'].forEach(c => { if (PHRASE_KEYS[c]) keys.push(PHRASE_KEYS[c]); });
+  return keys;
+}
+function _snapshotKeys(keys) {
+  const snap = {};
+  keys.forEach(k => { try { snap[k] = localStorage.getItem(k); } catch(_) { snap[k] = null; } });
+  return snap;
+}
+function _restoreKeys(snap) {
+  Object.keys(snap).forEach(k => {
+    try { if (snap[k] == null) localStorage.removeItem(k); else localStorage.setItem(k, snap[k]); } catch(_){}
+  });
+}
+
+// Aplica un backup en DOS FASES:
+//   1. Validar y normalizar TODO en memoria (sanitizeBackup). Si el archivo no
+//      es reconocible, se sale sin haber tocado nada.
+//   2. Escribir. Antes se guarda una copia de las claves afectadas y, si algo
+//      falla a mitad de camino, se revierte.
+// Antes esto era un solo try con ~18 escrituras seguidas: si fallaba en la
+// número 10, el historial y los clientes ya se habían pisado pero facturación y
+// notas no, y el usuario veía "el backup no tiene un formato válido" — o sea,
+// creía que no había pasado nada cuando ya había perdido sus datos.
+function applyBackupObject(raw) {
+  const d = (typeof sanitizeBackup === 'function') ? sanitizeBackup(raw) : raw;
   if (!d || typeof d !== 'object') return false;
+  const _snap = _snapshotKeys(_restoreTouchedKeys());
+  const _prevS = JSON.parse(JSON.stringify(S));
   try {
     // Fotos (v4+): repoblar IndexedDB/caché ANTES de renderizar, para que el
     // estado e historial restaurados encuentren sus fotos por ID.
@@ -11721,7 +12117,17 @@ function applyBackupObject(d) {
     if (typeof factInit === 'function') factInit();
     return true;
   } catch(e) {
-    console.error('Error al aplicar backup', e);
+    // Rollback: dejar el dispositivo como estaba antes de intentar restaurar.
+    console.error('Error al aplicar backup — revirtiendo', e);
+    try {
+      _restoreKeys(_snap);
+      S = _prevS;
+      noSync=true; restoreUI(); noSync=false;
+      calcExpiry(); renderItems(); renderEstItems(); renderRiskDefects();
+      applyMode(currentMode());
+      renderHistory(); updateTotalsBar(); updateSurchargeUI();
+      if (typeof factInit === 'function') factInit();
+    } catch(e2) { console.error('Falló también el rollback', e2); }
     return false;
   }
 }
@@ -13433,7 +13839,13 @@ const TOPE_DEF = 15058447.71; // vigente desde febrero 2026
 const TOPE_DEF_VIGENTE_DESDE = '2026-02-01';
 
 function getFacturas() {
-  try { return JSON.parse(localStorage.getItem(FACT_KEY)||'[]'); } catch(e){ return []; }
+  try {
+    const a = JSON.parse(localStorage.getItem(FACT_KEY)||'[]');
+    if (Array.isArray(a)) return a;
+    const fixed = sanitizeFacturas(a);
+    try { safeSetLS(FACT_KEY, JSON.stringify(fixed)); } catch(_){}
+    return fixed;
+  } catch(e){ return []; }
 }
 function setFacturas(arr) { safeSetLS(FACT_KEY, JSON.stringify(arr)); }
 function getTope() { const v=roundMoney(localStorage.getItem(TOPE_KEY)); return v>0? v : TOPE_DEF; }
@@ -13572,7 +13984,7 @@ function factRender() {
   list.innerHTML = sorted.map(f=>`
     <div class="fact-reg-item">
       <div class="fact-reg-info${f.quoteNumber?' is-linked':''}" onclick="factIrAlPresupuesto('${f.id}')" title="${f.quoteNumber?'Ver el presupuesto en el historial':''}">
-        <div class="fact-reg-date">${f.fecha}</div>
+        <div class="fact-reg-date">${esc(f.fecha)}</div>
         <div class="fact-reg-client">${esc(f.cliente||'—')}</div>
         ${f.desc && f.desc !== 'Presupuesto ' + (f.quoteNumber||'') ? `<div class="fact-reg-meta">${esc(f.desc)}</div>` : ''}
         ${f.quoteNumber?`<div class="fact-reg-meta fact-reg-link">→ Presupuesto ${esc(f.quoteNumber)}</div>`:''}
@@ -15128,8 +15540,13 @@ let _calOverdueOpen = false;      // sección "Atrasado" desplegada (colapsada p
 // Campo opcional tipo:'visita' → evaluación presencial / ir a presupuestar
 // (se muestra como concepto propio en la Agenda; sin tipo = nota común).
 function getNotes() {
-  try { const a = JSON.parse(localStorage.getItem(LS.NOTES) || '[]'); return Array.isArray(a) ? a : []; }
-  catch (e) { return []; }
+  try {
+    const a = JSON.parse(localStorage.getItem(LS.NOTES) || '[]');
+    if (Array.isArray(a)) return a;
+    const fixed = sanitizeNotes(a);
+    try { safeSetLS(LS.NOTES, JSON.stringify(fixed)); } catch (_) {}
+    return fixed;
+  } catch (e) { return []; }
 }
 function setNotes(a) {
   safeSetLS(LS.NOTES, JSON.stringify(a || []));
@@ -16242,8 +16659,13 @@ function calUpdateDot() {
 const NOTIF_CAP = 50;
 
 function getNotifLog(){
-  try { const a = JSON.parse(localStorage.getItem(LS.NOTIF_LOG) || '[]'); return Array.isArray(a) ? a : []; }
-  catch(_){ return []; }
+  try {
+    const a = JSON.parse(localStorage.getItem(LS.NOTIF_LOG) || '[]');
+    if (Array.isArray(a)) return a;
+    const fixed = sanitizeNotifLog(a);
+    try { localStorage.setItem(LS.NOTIF_LOG, JSON.stringify(fixed)); } catch(_){}
+    return fixed;
+  } catch(_){ return []; }
 }
 // Escritura directa (no safeSetLS): el log es chico y NO queremos disparar un
 // backup a Drive por cada aviso. Ya viaja en el backup vía buildBackupObject.
@@ -16425,11 +16847,23 @@ function notifUndo(recId){
 }
 
 // ─── RENDER DEL PANEL ────────────────────────────────────────
+// Las acciones NO se serializan dentro del atributo onclick. Antes iban como
+// onclick='notifRunAction({"type":"entry","id":123})': una comilla simple en
+// cualquier campo rompía el atributo y ejecutaba código ajeno (los avisos
+// vienen del backup, que puede ser de un tercero). Ahora quedan en este array
+// por render y el markup solo lleva su índice; un listener delegado las
+// resuelve. Al DOM no viaja ningún dato del usuario.
+let _notifActions = [];
+function _notifActionAttr(action){
+  if (!action) return '';
+  const i = _notifActions.push(action) - 1;
+  return ` data-nt-act="${i}"`;
+}
+
 function notifItemHTML(p){
   const tap = p.action ? ' nt-tap' : '';
-  const onclick = p.action ? ` onclick='notifRunAction(${JSON.stringify(p.action)})'` : '';
-  return `<div class="nt-item${tap}"${onclick}>
-    <span class="nt-ico">${p.icon || '🔔'}</span>
+  return `<div class="nt-item${tap}"${_notifActionAttr(p.action)}>
+    <span class="nt-ico">${esc(p.icon || '🔔')}</span>
     <div class="nt-body">
       <div class="nt-txt">${esc(p.text)}</div>
       ${p.sub ? `<div class="nt-sub">${esc(p.sub)}</div>` : ''}
@@ -16439,18 +16873,32 @@ function notifItemHTML(p){
 
 function notifLogItemHTML(r){
   const tap = r.action ? ' nt-tap' : '';
-  const onclick = r.action ? ` onclick='notifRunAction(${JSON.stringify(r.action)})'` : '';
   const undoBtn = r.undo
-    ? `<button type="button" class="nt-undo"${r.undoneAt ? ' disabled' : ''} onclick="event.stopPropagation();notifUndo('${r.id}')">${r.undoneAt ? 'Deshecho' : 'Deshacer'}</button>`
+    ? `<button type="button" class="nt-undo"${r.undoneAt ? ' disabled' : ''} data-nt-undo="${esc(r.id)}">${r.undoneAt ? 'Deshecho' : 'Deshacer'}</button>`
     : '';
-  return `<div class="nt-item${tap}${r.undoneAt ? ' nt-done' : ''}"${onclick}>
-    <span class="nt-ico">${r.icon || '🔔'}</span>
+  return `<div class="nt-item${tap}${r.undoneAt ? ' nt-done' : ''}"${_notifActionAttr(r.action)}>
+    <span class="nt-ico">${esc(r.icon || '🔔')}</span>
     <div class="nt-body">
       <div class="nt-txt">${esc(r.text)}</div>
       <div class="nt-when">${esc(notifRelTime(r.ts))}</div>
     </div>
     ${undoBtn}
   </div>`;
+}
+
+// Listener delegado del panel: resuelve la acción por índice y el "Deshacer"
+// por id. Se engancha una sola vez sobre el contenedor.
+function _wireNotifPanel(body){
+  if (!body || body._ntWired) return;
+  body.addEventListener('click', (ev) => {
+    const undo = ev.target.closest('[data-nt-undo]');
+    if (undo) { ev.stopPropagation(); notifUndo(undo.getAttribute('data-nt-undo')); return; }
+    const item = ev.target.closest('[data-nt-act]');
+    if (!item) return;
+    const a = _notifActions[parseInt(item.getAttribute('data-nt-act'), 10)];
+    if (a) notifRunAction(a);
+  });
+  body._ntWired = true;
 }
 
 // Timestamp → texto relativo corto ("recién", "hace 5 min", "hoy 14:30", "ayer…").
@@ -16474,6 +16922,7 @@ function notifRender(){
   if (!body) return;
   const pend = notifBuildPendientes();
   const log = getNotifLog();
+  _notifActions = [];   // se rellena al armar el markup (ver _notifActionAttr)
 
   // Lo de HOY arriba de todo; lo atrasado, después (así no hay que scrollear
   // entre la pila de vencimientos para encontrar el trabajo/aviso de hoy).
@@ -16503,6 +16952,7 @@ function notifRender(){
     h += `<div class="nt-empty">Los avisos que aparezcan van a quedar acá para que puedas volver a verlos.</div>`;
   }
   body.innerHTML = h;
+  _wireNotifPanel(body);
 }
 
 function notifOpen(){
@@ -16558,6 +17008,10 @@ function updateNotifBadge(){
 
 window.addEventListener('DOMContentLoaded', async () => {
   loadLS();
+  // Normalizar lo que ya esté guardado en el dispositivo (puede venir de un
+  // backup ajeno importado antes de que existiera js/sanitize.js). Va ANTES de
+  // cualquier render: es lo que garantiza que nada inválido llegue al DOM.
+  try { migrateSanitizeStored(); } catch (e) { console.error('migrateSanitizeStored', e); }
   // Tema de la UI (claro/oscuro/auto). El atributo data-theme ya lo fijó el
   // script del <head> para evitar el flash; acá sincronizamos S, el selector
   // y los tonos del acento, y escuchamos cambios del sistema en modo auto.
