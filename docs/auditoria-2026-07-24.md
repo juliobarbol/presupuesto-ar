@@ -778,10 +778,11 @@ Tandas chicas, cada una verificable y desplegable por separado.
 5. **Verificación:** volver a correr `xss3`, `xss-notif`, `xss-hist`, `xss-theme` y `brick` —
    los cinco tienen que dar negativo. Vale la pena dejarlos como test permanente en `test/`.
 
-### Tanda 2 — Plata correcta (C2 + B5) → `v175`
-1. Extraer `calcEstTotals(estItems)` en centavos y usarla en los cuatro lugares.
-2. **Verificación:** `money.test.cjs` — los tres números tienen que coincidir.
-3. Migración: recalcular `e.total` de las entradas con `isEstimative` una sola vez al arrancar.
+### Tanda 2 — Plata correcta (C2 + B5) → `v175` ✅ HECHA
+> `calcEstTotals()` es ahora la única fuente de verdad del total del estimativo (barra,
+> PDF e historial), en centavos. `migrateFixEstTotals()` corrige al arrancar los
+> presupuestos ya guardados con el total de menos. Regresión en `test/money.test.cjs`
+> (10 checks). C2 y B5 cerrados y verificados.
 
 ### Tanda 3 — Que el backup sea completo y honesto (A1 + A3) → `v176`
 1. Agregar `followup` a `buildBackupObject()`/`applyBackupObject()` + comentario con la lista

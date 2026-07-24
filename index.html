@@ -5073,6 +5073,33 @@ function calcTotals(arr) {
   };
 }
 
+// Totales del presupuesto ESTIMATIVO. ÚNICA fuente de verdad: la usan la barra
+// de totales, el documento/PDF y lo que se asienta en el historial.
+//
+// Antes cada uno lo calculaba a su manera y no coincidían: el historial sumaba
+// `parseFloat(i.price)` de todos los ítems, ignorando la CANTIDAD de los
+// servicios. Un estimativo con "Volquete $120.000 × 3" mostraba $710.000 en el
+// PDF que recibía el cliente y guardaba $470.000 en el historial — que es el
+// número que pre-carga el monto de la factura y suma al tope de monotributo.
+//
+// Reglas del modo estimativo: los TRABAJOS van a precio plano (no llevan
+// cantidad), los SERVICIOS son precio × cantidad, y las notas no suman.
+// Todo en centavos, como el resto de la app.
+function calcEstTotals(arr) {
+  const items = Array.isArray(arr) ? arr : (S.estItems || []);
+  let workCents = 0, svcCents = 0;
+  items.forEach(i => {
+    if (!i) return;
+    if (i.type === 'work')         workCents += Math.max(0, moneyToCents(i.price));
+    else if (i.type === 'service') svcCents  += itemTotalCents(i);
+  });
+  return {
+    work:  centsToMoney(workCents),   // subtotal de trabajos estimados
+    svc:   centsToMoney(svcCents),    // subtotal de servicios / costos fijos
+    total: centsToMoney(workCents + svcCents),
+  };
+}
+
 function updateTotalsBar() {
   const cur = S.currency || 'ARS';
 
@@ -5091,8 +5118,7 @@ function updateTotalsBar() {
     setTxt('st-total', fmtM(total, cur));
     _stickyShowVariant('normal');
   } else if (S.isEstimative) {
-    let estTotal = 0;
-    (S.estItems||[]).forEach(i=>{ if(i.type==='work'||i.type==='service') estTotal+=itemTotal(i); });
+    const estTotal = calcEstTotals(S.estItems).total;
     setTxt('tb-est-total', fmtM(estTotal, cur));
     setTxt('st-est-val',   fmtM(estTotal, cur));
     _stickyShowVariant('est');
@@ -9238,12 +9264,7 @@ function isBlankQuote() {
     ? (S.estItems||[]).filter(i=>i.type==='work'||i.type==='service').length
     : (S.items||[]).length;
 
-  let total = 0;
-  if (S.isEstimative) {
-    (S.estItems||[]).forEach(i=>{ if((i.type==='work'||i.type==='service')&&i.price) total+=parseFloat(i.price)||0; });
-  } else {
-    total = calcTotals().total;
-  }
+  const total = S.isEstimative ? calcEstTotals(S.estItems).total : calcTotals().total;
 
   return !S.clientName?.trim()
       && itemCount === 0
@@ -9251,6 +9272,38 @@ function isBlankQuote() {
       && !S.observations?.trim()
       && !S.paymentConditions?.trim()
       && !(S.isRisk && S.riskData?.species);
+}
+
+// ─── MIGRACIÓN: totales de estimativos mal guardados ─────────
+// Los presupuestos ESTIMATIVOS guardados antes del fix de C2 tienen el total
+// de menos si algún servicio llevaba cantidad > 1 (se ignoraba la cantidad).
+// Ese número es el que se ve en el historial y en el mapa, el que pre-carga el
+// monto al facturar y el que suma en los totales del mes: hay que corregirlo,
+// no solo dejar de generarlo mal.
+//
+// Recalcula desde el snapshot, que es la fuente de verdad de lo que se
+// presupuestó. Es idempotente: una vez corregido, el recálculo coincide y no
+// vuelve a escribir (ni dispara copia a Drive).
+function migrateFixEstTotals() {
+  let h;
+  try { h = getH(); } catch (_) { return 0; }
+  if (!Array.isArray(h) || !h.length) return 0;
+  let cambios = 0;
+  h.forEach(e => {
+    if (!e || !e.isEstimative) return;
+    const est = e.snapshot && e.snapshot.estItems;
+    if (!Array.isArray(est) || !est.length) return;
+    const real = calcEstTotals(est).total;
+    // Comparar en centavos para no pelear con el punto flotante.
+    if (moneyToCents(real) === moneyToCents(e.total)) return;
+    e.total = real;
+    cambios++;
+  });
+  if (cambios) {
+    try { localStorage.setItem(LS.HISTORY, JSON.stringify(h)); } catch (_) {}
+    console.warn('Se corrigió el total de ' + cambios + ' presupuesto(s) estimativo(s)');
+  }
+  return cambios;
 }
 
 // ─── AUTO-SAVE (silencioso) ───────────────────
@@ -9266,12 +9319,10 @@ function autoSaveToHistory() {
     ? (S.estItems||[]).filter(i=>i.type==='work'||i.type==='service').length
     : S.items.length;
 
-  let total = 0;
-  if (S.isEstimative) {
-    (S.estItems||[]).forEach(i=>{ if((i.type==='work'||i.type==='service')&&i.price) total+=parseFloat(i.price)||0; });
-  } else {
-    total = calcTotals().total;
-  }
+  // El total del estimativo sale de calcEstTotals (la misma que el PDF): antes
+  // se calculaba acá aparte y se guardaba de menos al haber servicios con
+  // cantidad > 1. Ver docs/auditoria-2026-07-24.md (C2).
+  const total = S.isEstimative ? calcEstTotals(S.estItems).total : calcTotals().total;
 
   // No guardar borradores completamente vacíos: sin cliente, sin items,
   // sin total, sin observaciones. Eso es ruido — el usuario abrió la
@@ -13566,11 +13617,10 @@ function buildEstDoc() {
   const noteItems    = (S.estItems||[]).filter(i=>i.type==='note');
   const allItems     = S.estItems||[];
 
-  let estSubtotal = 0;
-  workItems.forEach(i=>{ if(i.price) estSubtotal+=parseFloat(i.price)||0; });
-  let svcSubtotal = 0;
-  serviceItems.forEach(i=>{ svcSubtotal += itemTotal(i); });
-  const grandTotal = estSubtotal + svcSubtotal;
+  const _estT = calcEstTotals(allItems);
+  const estSubtotal = _estT.work;
+  const svcSubtotal = _estT.svc;
+  const grandTotal  = _estT.total;
 
   const contacts = [];
   if(S.coWhatsapp) contacts.push(`${pdfIcon('phone')} ${esc(S.coWhatsapp)}`);
@@ -17012,6 +17062,9 @@ window.addEventListener('DOMContentLoaded', async () => {
   // backup ajeno importado antes de que existiera js/sanitize.js). Va ANTES de
   // cualquier render: es lo que garantiza que nada inválido llegue al DOM.
   try { migrateSanitizeStored(); } catch (e) { console.error('migrateSanitizeStored', e); }
+  // Corregir los totales de estimativos guardados de menos (ver C2 en la
+  // auditoría). Va después de sanitizar: trabaja sobre un historial ya válido.
+  try { migrateFixEstTotals(); } catch (e) { console.error('migrateFixEstTotals', e); }
   // Tema de la UI (claro/oscuro/auto). El atributo data-theme ya lo fijó el
   // script del <head> para evitar el flash; acá sincronizamos S, el selector
   // y los tonos del acento, y escuchamos cambios del sistema en modo auto.
