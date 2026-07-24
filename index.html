@@ -4981,12 +4981,20 @@ function saveLS() {
 // (común en móviles con poco espacio + historial largo + logos grandes)
 // y avisa al usuario con un toast en vez de romper el flujo.
 // Devuelve true si la escritura fue exitosa, false si falló.
-function safeSetLS(key, value) {
+// `opts.backup === false` → escribe sin disparar la copia a Drive. Es para
+// CACHES y estado interno (el pronóstico del clima, por ejemplo): datos que la
+// app puede volver a generar sola y que NO son del usuario. Sin esta salida, un
+// refresco de clima programaba la subida del backup ENTERO —con todas las fotos
+// en base64, 15 a 60 MB con un historial real— sobre datos móviles y en el
+// campo, para re-subir exactamente lo mismo que ya estaba.
+// Regla: si el usuario lo escribió o lo configuró, va con backup (el default).
+function safeSetLS(key, value, opts) {
   try {
     localStorage.setItem(key, value);
-    // Cualquier escritura de datos dispara (con retardo) la copia a Drive,
-    // si está conectada. Centralizado acá para no olvidar ningún caso.
-    if (typeof scheduleGdriveBackup === 'function') scheduleGdriveBackup();
+    // Cualquier escritura de DATOS dispara (con retardo) la copia a Drive, si
+    // está conectada. Centralizado acá para no olvidar ningún caso.
+    if (!(opts && opts.backup === false) &&
+        typeof scheduleGdriveBackup === 'function') scheduleGdriveBackup();
     return true;
   } catch(e) {
     // Distinguimos "almacenamiento lleno" (QuotaExceededError) de cualquier
@@ -5446,7 +5454,10 @@ function normalizeArgPhone(raw) {
 function _pushDeviceId() {
   let id = localStorage.getItem(LS.PUSH_DEVICE_ID);
   if (!id) {
-    id = 'pq-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+    // Sufijo aleatorio de largo garantizado: Math.random().toString(36) puede
+    // salir muy corto (o vacío) en casos degenerados, y este id se persiste.
+    const rnd = (Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2)).slice(0, 10);
+    id = 'pq-' + Date.now() + '-' + (rnd || 'x0');
     localStorage.setItem(LS.PUSH_DEVICE_ID, id);
   }
   return id;
@@ -12097,46 +12108,77 @@ function impHistCombine() {
   const importedList = d.history || [];
   const localList    = getH();
 
-  // En caso de duplicado de quoteNumber, conservar el más reciente
-  // (mayor savedAt). Si no hay savedAt o son iguales, gana el local
-  // (más seguro porque refleja cambios recientes del usuario).
-  const byNum = new Map();
-  let conflicts = 0;
-  let newImported = 0;
+  // ─── CÓMO SE COMBINA ───
+  // El número de presupuesto es la identidad DENTRO de un dispositivo, pero la
+  // numeración es local (mkQN sobre S.numNext): dos equipos generan "2026-0042"
+  // para clientes distintos sin saberlo. Y el `id` tampoco identifica: cada
+  // re-guardado le asigna un Date.now() nuevo.
+  //
+  // Antes se deduplicaba solo por número y se descartaba el más viejo, así que
+  // combinar el historial de la tablet con el del celular BORRABA presupuestos
+  // distintos que compartían número — en silencio, y el toast decía
+  // alegremente "1 actualizados desde el import". Además, las entradas sin
+  // número se perdían enteras (no entraban al Map del que salía el resultado).
+  //
+  // Ahora: mismo número + mismo cliente = el mismo presupuesto → gana el más
+  // reciente. Mismo número + cliente distinto = presupuestos DISTINTOS → se
+  // conservan los dos y se avisa cuáles quedaron con número repetido, para que
+  // el usuario decida. Nada se descarta en silencio.
+  const clave = e => (e.quoteNumber || '') + ' ' + ((e.clientName || '').trim().toLowerCase());
+  const porClave = new Map();
+  const sinNumero = [];
+  let conflicts = 0, newImported = 0;
 
-  // Primero metemos todos los locales (son la base de verdad)
-  localList.forEach(e => {
-    if (e.quoteNumber) byNum.set(e.quoteNumber, e);
-  });
-
-  // Después comparamos los importados contra los locales
-  importedList.forEach(imp => {
-    if (!imp.quoteNumber) return;
-    const local = byNum.get(imp.quoteNumber);
-    if (!local) {
-      byNum.set(imp.quoteNumber, imp);
-      newImported++;
+  const meter = (e, esImportado) => {
+    if (!e || typeof e !== 'object') return;
+    // Sin número no se puede emparejar con nada: se conserva tal cual.
+    if (!e.quoteNumber) { sinNumero.push(e); return; }
+    const k = clave(e);
+    const prev = porClave.get(k);
+    if (!prev) {
+      porClave.set(k, e);
+      if (esImportado) newImported++;
       return;
     }
-    // Hay duplicado: comparar savedAt
-    const tLocal = local.savedAt || '';
-    const tImp   = imp.savedAt   || '';
-    if (tImp > tLocal) {
-      byNum.set(imp.quoteNumber, imp);
-      conflicts++;
-    }
-    // Si el local es igual o más nuevo, lo dejamos (no contamos como conflict)
+    // Mismo presupuesto en los dos lados: gana el guardado más recientemente.
+    // Empate o sin fecha → gana el local (refleja los cambios del usuario acá).
+    const tPrev = prev.savedAt || '';
+    const tNew  = e.savedAt   || '';
+    if (esImportado && tNew > tPrev) { porClave.set(k, e); conflicts++; }
+  };
+
+  localList.forEach(e => meter(e, false));
+  importedList.forEach(e => meter(e, true));
+
+  const merged = sinNumero.concat(Array.from(porClave.values()))
+    .sort((a,b) => (b.savedAt||'').localeCompare(a.savedAt||''));
+
+  // Los ids se usan para buscar y para los handlers de la UI: si dos entradas
+  // quedaran con el mismo id, tocar una abriría la otra. Se reasignan los
+  // repetidos (el id no es identidad estable acá, ver arriba).
+  const vistos = new Set();
+  let seq = 0;
+  merged.forEach(e => {
+    if (e.id == null || vistos.has(e.id)) e.id = Date.now() + (++seq);
+    vistos.add(e.id);
   });
 
-  const merged = Array.from(byNum.values())
-    .sort((a,b) => (b.savedAt||'').localeCompare(a.savedAt||''));
+  // Números que quedaron repetidos entre presupuestos distintos.
+  const cuentaNum = {};
+  merged.forEach(e => { if (e.quoteNumber) cuentaNum[e.quoteNumber] = (cuentaNum[e.quoteNumber] || 0) + 1; });
+  const repetidos = Object.keys(cuentaNum).filter(n => cuentaNum[n] > 1).sort();
 
   setH(merged);
   renderHistory();
-  const msg = `Historial combinado: ${merged.length} presupuestos`
+  let msg = `Historial combinado: ${merged.length} presupuestos`
     + (newImported ? ` (${newImported} nuevos)` : '')
     + (conflicts   ? ` · ${conflicts} actualizados desde el import` : '');
-  toast(msg, 'ok');
+  toast(msg, 'ok', 5000);
+  // Aviso aparte y más largo: es lo único que requiere una decisión del usuario.
+  if (repetidos.length) {
+    const lista = repetidos.slice(0, 4).join(', ') + (repetidos.length > 4 ? ` y ${repetidos.length - 4} más` : '');
+    toast(`Ojo: quedaron ${repetidos.length} número(s) repetidos con clientes distintos (${lista}). No se borró nada — renumerá el que corresponda desde el historial.`, 'info', 11000);
+  }
   closeModal();
 }
 
@@ -15128,10 +15170,15 @@ async function _climaFetchZonas(zonas) {
   let cambio = false;
   try {
     for (const k of pendientes) {
-      const [lat, lng] = zonas[k];
+      // Las coordenadas que salen a internet son las YA REDONDEADAS de la
+      // zona (la clave: 2 decimales ≈ 1 km), no las exactas del trabajo. El
+      // pronóstico diario es idéntico a esa escala, así que mandar 4 decimales
+      // (≈ 11 m) solo exponía la ubicación puntual de la casa del cliente.
+      const [lat, lng] = k.split(',').map(Number);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
       try {
         const url = 'https://api.open-meteo.com/v1/forecast'
-          + `?latitude=${lat.toFixed(4)}&longitude=${lng.toFixed(4)}`
+          + `?latitude=${lat}&longitude=${lng}`
           + '&daily=weather_code,precipitation_probability_max,precipitation_sum,temperature_2m_max,temperature_2m_min,wind_speed_10m_max,wind_gusts_10m_max,uv_index_max'
           + '&hourly=temperature_2m,precipitation_probability,precipitation,weather_code,wind_gusts_10m,uv_index'
           + '&timezone=auto&forecast_days=16&forecast_hours=72';
@@ -15176,7 +15223,8 @@ async function _climaFetchZonas(zonas) {
         cambio = true;
       } catch (_) { /* sin señal o API caída: se sirve lo cacheado */ }
     }
-    if (cambio) safeSetLS(LS.CLIMA, JSON.stringify(cache));
+    // Cache: sin disparar copia a Drive (ver safeSetLS / opts.backup).
+    if (cambio) safeSetLS(LS.CLIMA, JSON.stringify(cache), { backup: false });
   } finally {
     CLIMA._fetching = false;
   }
@@ -15202,7 +15250,7 @@ async function climaRefresh() {
   const cache = _climaCache();
   let podado = false;
   Object.keys(cache).forEach(k => { if (!zonas[k]) { delete cache[k]; podado = true; } });
-  if (podado) { try { safeSetLS(LS.CLIMA, JSON.stringify(cache)); } catch (_) {} }
+  if (podado) { try { safeSetLS(LS.CLIMA, JSON.stringify(cache), { backup: false }); } catch (_) {} }
 
   _climaAvisar();
   if (cambio) {

@@ -214,6 +214,102 @@ async function nuevaPagina(browser) {
       await page.close();
     }
 
+    // ── A4 · Combinar historial no debe descartar presupuestos ──
+    {
+      const page = await nuevaPagina(browser);
+      const r = await page.evaluate(() => {
+        const mk = (id, num, cli, savedAt) => ({
+          _type:'presupuesto_individual', id, quoteNumber:num, clientName:cli, currency:'ARS',
+          total: 1000, itemCount: 1, estado:'enviado', savedAt, snapshot:{ items:[] } });
+        // Local: dos presupuestos. Importado: el MISMO 0001 más nuevo, un 0002
+        // de OTRO cliente (mismo número, presupuesto distinto) y uno nuevo.
+        setH([
+          mk(1, '2026-0001', 'Ana',  '2026-07-01T10:00:00Z'),
+          mk(2, '2026-0002', 'Bruno','2026-07-02T10:00:00Z'),
+        ]);
+        _pendingImport = sanitizeImport({ _type:'historial_presupuestos', history: [
+          mk(3, '2026-0001', 'Ana',    '2026-07-20T10:00:00Z'),   // el mismo, más nuevo
+          mk(4, '2026-0002', 'Carlos', '2026-07-03T10:00:00Z'),   // ¡otro cliente!
+          mk(5, '2026-0003', 'Delia',  '2026-07-04T10:00:00Z'),   // nuevo
+        ]});
+        impHistCombine();
+        const h = getH();
+        const ids = h.map(e => e.id);
+        return {
+          total: h.length,
+          clientes: h.map(e => e.clientName).sort(),
+          anaSavedAt: (h.find(e => e.clientName === 'Ana') || {}).savedAt,
+          idsUnicos: new Set(ids).size === ids.length,
+          dosCon0002: h.filter(e => e.quoteNumber === '2026-0002').length,
+        };
+      });
+      check('A4 · no se pierde ningún presupuesto al combinar',
+        r.total === 4 && r.clientes.join(',') === 'Ana,Bruno,Carlos,Delia', r.total + ': ' + r.clientes.join(','));
+      check('A4 · el mismo presupuesto se actualiza al más reciente',
+        r.anaSavedAt === '2026-07-20T10:00:00Z', 'savedAt=' + r.anaSavedAt);
+      check('A4 · dos presupuestos DISTINTOS con el mismo número se conservan los dos',
+        r.dosCon0002 === 2, 'con 2026-0002: ' + r.dosCon0002);
+      check('A4 · los ids quedan únicos (si no, tocar uno abriría el otro)', r.idsUnicos);
+      await page.close();
+    }
+
+    // ── A4b · Las entradas sin número no se tiran ──
+    {
+      const page = await nuevaPagina(browser);
+      const r = await page.evaluate(() => {
+        setH([{ _type:'presupuesto_individual', id: 9, quoteNumber:'', clientName:'Sin numero',
+                currency:'ARS', total: 500, itemCount:1, estado:'borrador',
+                savedAt:'2026-07-01T10:00:00Z', snapshot:{ items:[] } }]);
+        _pendingImport = sanitizeImport({ _type:'historial_presupuestos', history: [
+          { _type:'presupuesto_individual', id: 10, quoteNumber:'2026-0009', clientName:'Con numero',
+            currency:'ARS', total: 600, itemCount:1, estado:'enviado',
+            savedAt:'2026-07-02T10:00:00Z', snapshot:{ items:[] } }]});
+        impHistCombine();
+        return getH().map(e => e.clientName).sort();
+      });
+      check('A4b · una entrada local sin número de presupuesto sobrevive',
+        r.join(',') === 'Con numero,Sin numero', r.join(','));
+      await page.close();
+    }
+
+    // ── A6 · El cache del clima no dispara la copia a Drive ──
+    {
+      const page = await nuevaPagina(browser);
+      const r = await page.evaluate(() => {
+        localStorage.setItem('pq_gdrive_on', '1');
+        let n = 0;
+        const orig = window.scheduleGdriveBackup;
+        window.scheduleGdriveBackup = () => { n++; };
+        safeSetLS(LS.CLIMA, JSON.stringify({ z: 1 }), { backup: false });
+        const trasCache = n;
+        setNotes([{ id:'n_1', fecha: today(), texto:'nota', hecho:false }]);
+        const trasDato = n;
+        window.scheduleGdriveBackup = orig;
+        return { trasCache, trasDato };
+      });
+      check('A6 · escribir el cache del clima NO programa backup a Drive', r.trasCache === 0, 'n=' + r.trasCache);
+      check('A6 · pero un dato del usuario sí lo programa', r.trasDato === 1, 'n=' + r.trasDato);
+      await page.close();
+    }
+
+    // ── M9 · Las coordenadas que salen a internet están redondeadas ──
+    {
+      const page = await nuevaPagina(browser);
+      const r = await page.evaluate(async () => {
+        let url = '';
+        const of = window.fetch;
+        window.fetch = async (u) => { url = String(u); return { ok: false, status: 500 }; };
+        const exacta = [-31.417533, -64.183456];          // la casa del cliente
+        await _climaFetchZonas({ [_climaKey(exacta)]: exacta });
+        window.fetch = of;
+        const m = url.match(/latitude=([-\d.]+)&longitude=([-\d.]+)/);
+        return m ? { lat: m[1], lng: m[2] } : null;
+      });
+      check('M9 · se envía la zona redondeada (~1 km), no la ubicación exacta',
+        r && r.lat === '-31.42' && r.lng === '-64.18', r ? r.lat + ', ' + r.lng : '(no se pidió)');
+      await page.close();
+    }
+
   } finally {
     await browser.close();
   }

@@ -55,18 +55,18 @@ Lo más importante, en orden:
 | A1 | Alto | Integridad | La config de seguimiento (`pq_followup`) no entra en el backup | `index.html:11436–11484` vs `:5165` |
 | A2 | Alto | Integridad | `applyBackupObject()` puede fallar a la mitad y dejar el estado mezclado | `index.html:11657–11730` |
 | A3 | Alto | Robustez | Los fallos del backup a Drive **y de la sync con Calendar** son silenciosos | `index.html:12304`, y el auto-backup de Drive |
-| A4 | Alto | Integridad | "Combinar historial" descarta presupuestos distintos con el mismo número | `index.html` · `impHistCombine()` |
-| A5 | Alto | Seguridad | `push-worker`: `GET /test` y `POST /subscribe` sin autenticación, CORS `*` | `push-worker/index.js:125`, `:146`, `:110` |
-| A6 | Alto | Rendimiento | **El cache del clima dispara un backup completo a Drive** (con todas las fotos) | `index.html:14520`, `:14546`, `:4917` |
+| A4 ✅ | Alto | Integridad | "Combinar historial" descarta presupuestos distintos con el mismo número | `index.html` · `impHistCombine()` |
+| A5 ✅ | Alto | Seguridad | `push-worker`: `GET /test` y `POST /subscribe` sin autenticación, CORS `*` | `push-worker/index.js:125`, `:146`, `:110` |
+| A6 ✅ | Alto | Rendimiento | **El cache del clima dispara un backup completo a Drive** (con todas las fotos) | `index.html:14520`, `:14546`, `:4917` |
 | M1 | Medio | Integridad | Las fotos nunca se borran de IndexedDB: crecen para siempre | `index.html:5520–5800` |
 | M2 | Medio | Rendimiento | Todas las fotos se cargan a RAM al arrancar y viajan enteras en cada subida | `index.html:5566`, `:11456` |
 | M3 | Medio | Rendimiento | Búsqueda del historial sin debounce + re-parseo completo 3–5 veces por acción | `index.html:8892`, `calBuildIndex()` |
 | M4 | Medio | Integridad | Dos dispositivos con la misma cuenta de Drive se pisan sin aviso | `gdriveUpload()` / `gdriveInitOnLoad()` |
-| M5 | Medio | Seguridad | Datos de clientes salen del dispositivo (KV de Cloudflare y Google Calendar) | `index.html:12209–12228`, `push-worker/index.js:154` |
+| M5 ~ | Medio | Seguridad | Datos de clientes salen del dispositivo (KV de Cloudflare y Google Calendar) — KV ya expira a 90 días | `index.html:12209–12228`, `push-worker/index.js:154` |
 | M6 | Medio | Fechas | Facturación filtra con `new Date(f.fecha)` (UTC) mezclado con `now` local | `index.html` · `factRender()` |
 | M7 | Medio | Robustez | `safeSetLS()` devuelve `false` y casi ningún llamador lo mira | `index.html:4917`, `:8899` |
 | M8 | Medio | Seguridad | **Los tokens OAuth de Google se persisten en `localStorage`** | `index.html:4280`, `:4285`, `:11767` |
-| M9 | Medio | Seguridad | **El clima envía coordenadas con ~11 m de precisión** pese a decir que agrupa a ~1 km | `index.html:14450`, `:14474` |
+| M9 ✅ | Medio | Seguridad | **El clima envía coordenadas con ~11 m de precisión** pese a decir que agrupa a ~1 km | `index.html:14450`, `:14474` |
 | B1 | Bajo | Calidad | `LS.PDF_THEME` declarada y nunca usada (clave muerta) | `index.html:4286` |
 | B2 | Bajo | Calidad | Escrituras directas a `localStorage` fuera de `safeSetLS()` | varias |
 | B3 | Bajo | Seguridad | `vendor/` sin versión registrada ni `package.json`/lockfile | `vendor/html2pdf.bundle.min.js` |
@@ -792,7 +792,10 @@ Tandas chicas, cada una verificable y desplegable por separado.
 > `_gcalErrMsg()`. `gcalSync()` ya no aborta la pasada por un evento fallido.
 > Regresión en `test/backup-sync.test.cjs` (16 checks). A1 y A3 cerrados.
 
-### Tanda 4 — Tráfico y batería (A6 + M9) → `v177`
+### Tanda 4 — Tráfico y batería (A6 + M9) → `v177` ✅ HECHA
+> `safeSetLS(k, v, {backup:false})` para caches; el clima ya no dispara la copia a Drive.
+> Las coordenadas que salen a Open-Meteo son las de la zona redondeada (~1 km).
+> Regresión en `test/backup-sync.test.cjs`.
 Las dos son de una línea cada una y de ganancia inmediata:
 1. Escritura directa (no `safeSetLS`) para el cache del clima, con el comentario del caso.
    Idealmente, un flag `{ backup: false }` en `safeSetLS()` para que no vuelva a pasar.
