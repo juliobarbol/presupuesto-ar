@@ -4280,6 +4280,7 @@ const LS = {
   CLIMA:          'pq_clima',
   CLIMA_WARN:     'pq_clima_warn',
   NOTIF_LOG:      'pq_notif_log',
+  NOTIF_SEEN:     'pq_notif_seen',
 };
 
 // Notificaciones push (avisos de seguimiento con la app cerrada). Ambos se
@@ -16264,7 +16265,12 @@ function logNotif(rec){
 }
 
 // ─── PENDIENTES (derivado) ───────────────────────────────────
-// Junta TODO lo que necesita atención ahora, recalculado desde el estado.
+// Junta TODO lo que necesita atención ahora, recalculado desde el estado. Cada
+// ítem lleva:
+//   · key    → identidad estable (para el badge "visto / nuevo")
+//   · bucket → 'hoy' (arriba de todo) o 'atrasado' (más abajo)
+//   · ord    → prioridad dentro del bucket
+const NOTIF_ORD = { trabajo: 1, visita: 2, clima: 3, recontacto: 4, seguimiento: 5, vencimiento: 6 };
 function notifBuildPendientes(){
   const out = [];
   const hoy = today();
@@ -16274,7 +16280,8 @@ function notifBuildPendientes(){
     getRecontactosPendientes().forEach(p => {
       const e = p.entry;
       const cuando = p.dias === 0 ? 'hoy' : `hace ${p.dias} día${p.dias > 1 ? 's' : ''}`;
-      out.push({ icon: '📞', kind: 'recontacto',
+      out.push({ icon: '📞', kind: 'recontacto', key: `recontacto|${e.id}`,
+        bucket: p.dias === 0 ? 'hoy' : 'atrasado', ord: NOTIF_ORD.recontacto,
         text: `Recontactar a ${(e.clientName || '').trim() || '(sin nombre)'}`,
         sub: `Coordinar la fecha del trabajo · ${cuando}`,
         action: { type: 'entry', id: e.id } });
@@ -16284,7 +16291,8 @@ function notifBuildPendientes(){
   // 2. Trabajos agendados para hoy.
   if (typeof getTrabajosDeHoy === 'function') {
     getTrabajosDeHoy().forEach(e => {
-      out.push({ icon: '🪚', kind: 'trabajo',
+      out.push({ icon: '🪚', kind: 'trabajo', key: `trabajo|${e.id}`,
+        bucket: 'hoy', ord: NOTIF_ORD.trabajo,
         text: `Trabajo de hoy: ${(e.clientName || '').trim() || '(sin nombre)'}`,
         sub: e.quoteNumber ? `N° ${e.quoteNumber}` : '',
         action: { type: 'entry', id: e.id } });
@@ -16296,7 +16304,8 @@ function notifBuildPendientes(){
     getVisitasDeHoy().forEach(n => {
       const cli = (n.cliente || '').trim();
       const t = (n.texto || '').trim() || cli || 'Visita';
-      out.push({ icon: '📍', kind: 'visita',
+      out.push({ icon: '📍', kind: 'visita', key: `visita|${n.id}`,
+        bucket: 'hoy', ord: NOTIF_ORD.visita,
         text: `Visita de hoy: ${t}`,
         sub: (cli && t !== cli) ? cli : '',
         action: { type: 'tab', tab: 'agenda' } });
@@ -16313,6 +16322,7 @@ function notifBuildPendientes(){
         if (ev.tipo !== 'seguimiento' && ev.tipo !== 'vencimiento') return;
         const atras = iso < hoy;
         out.push({ icon: ev.tipo === 'vencimiento' ? '⏳' : '📨', kind: ev.tipo,
+          key: `${ev.tipo}|${ev.entryId}`, bucket: atras ? 'atrasado' : 'hoy', ord: NOTIF_ORD[ev.tipo],
           text: ev.title,
           sub: (ev.sub ? ev.sub + ' · ' : '') + (atras ? 'atrasado' : 'hoy'),
           action: { type: 'entry', id: ev.entryId } });
@@ -16343,7 +16353,8 @@ function notifClimaPendientes(){
         const cuando = f === hoy ? 'hoy' : 'mañana';
         const emoji = motivo.viento && !motivo.lluvia ? '💨' : '⛈️';
         const cap = (typeof _cap === 'function') ? _cap(motivo.txt) : motivo.txt;
-        out.push({ icon: emoji, kind: 'clima',
+        out.push({ icon: emoji, kind: 'clima', key: `clima|${t.e.id}|${f}`,
+          bucket: 'hoy', ord: NOTIF_ORD.clima,
           text: `${cap} ${cuando}: ${(t.e.clientName || '').trim() || '(sin nombre)'}`,
           sub: 'Considerá reprogramar el trabajo',
           action: { type: 'clima', id: t.e.id, f } });
@@ -16452,10 +16463,25 @@ function notifRender(){
   const pend = notifBuildPendientes();
   const log = getNotifLog();
 
-  let h = `<div class="nt-sec">Pendientes${pend.length ? ` · ${pend.length}` : ''}</div>`;
-  h += pend.length
-    ? `<div class="nt-list">${pend.map(notifItemHTML).join('')}</div>`
-    : `<div class="nt-empty">Nada pendiente. Todo al día 👌</div>`;
+  // Lo de HOY arriba de todo; lo atrasado, después (así no hay que scrollear
+  // entre la pila de vencimientos para encontrar el trabajo/aviso de hoy).
+  const byOrd = (a, b) => (a.ord || 9) - (b.ord || 9);
+  const hoy = pend.filter(p => p.bucket === 'hoy').sort(byOrd);
+  const atras = pend.filter(p => p.bucket !== 'hoy').sort(byOrd);
+
+  let h = '';
+  if (!pend.length) {
+    h += `<div class="nt-sec">Pendientes</div><div class="nt-empty">Nada pendiente. Todo al día 👌</div>`;
+  } else {
+    if (hoy.length) {
+      h += `<div class="nt-sec">Hoy · ${hoy.length}</div>`;
+      h += `<div class="nt-list">${hoy.map(notifItemHTML).join('')}</div>`;
+    }
+    if (atras.length) {
+      h += `<div class="nt-sec">Atrasado · ${atras.length}</div>`;
+      h += `<div class="nt-list">${atras.map(notifItemHTML).join('')}</div>`;
+    }
+  }
 
   h += `<div class="nt-sec">Recientes</div>`;
   if (log.length) {
@@ -16471,6 +16497,11 @@ function notifOpen(){
   notifRender();
   const ov = document.getElementById('notif-overlay');
   if (ov) ov.classList.add('open');
+  // Marcar como vistos todos los pendientes actuales: el badge se apaga y solo
+  // vuelve a aparecer cuando surja algo NUEVO (no cada vez que quede algún
+  // atrasado). Es el comportamiento esperado de una campanita.
+  try { _notifMarkSeen(notifBuildPendientes().map(p => p.key)); } catch(_){}
+  updateNotifBadge();
 }
 function notifClose(){
   const ov = document.getElementById('notif-overlay');
@@ -16482,13 +16513,28 @@ function notifClearLog(){
   notifRender();
 }
 
-// Badge de la campanita = cantidad de PENDIENTES (lo accionable ahora). Se
-// llama al iniciar y tras cada render del historial / banner del día.
+// "Visto": snapshot de los keys de pendientes que el usuario ya miró (se
+// reemplaza en cada apertura del panel). No va al backup (estado local de
+// lectura, propio de cada dispositivo).
+function _notifSeenSet(){
+  try { const a = JSON.parse(localStorage.getItem(LS.NOTIF_SEEN) || '[]'); return new Set(Array.isArray(a) ? a : []); }
+  catch(_){ return new Set(); }
+}
+function _notifMarkSeen(keys){
+  try { localStorage.setItem(LS.NOTIF_SEEN, JSON.stringify(Array.from(new Set(keys || [])))); } catch(_){}
+}
+
+// Badge de la campanita = cantidad de pendientes NUEVOS (los que aún no se
+// vieron). Tras abrir el panel queda en 0 hasta que aparezca algo nuevo. Se
+// recalcula al iniciar y tras cada render del historial / banner del día.
 function updateNotifBadge(){
   const b = document.getElementById('notif-badge');
   if (!b) return;
   let n = 0;
-  try { n = notifBuildPendientes().length; } catch(_){ n = 0; }
+  try {
+    const seen = _notifSeenSet();
+    n = notifBuildPendientes().filter(p => !seen.has(p.key)).length;
+  } catch(_){ n = 0; }
   b.textContent = n > 99 ? '99+' : String(n);
   b.hidden = n === 0;
 }
