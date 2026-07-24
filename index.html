@@ -3934,7 +3934,7 @@ input[type=number]{-moz-appearance:textfield}
             <div class="st">Tope anual Monotributo Categoría B</div>
             <div class="fact-tope-row">
               <label>Tope anual ($)</label>
-              <input type="number" id="fact-tope-input" placeholder="15058447.71" inputmode="decimal" oninput="factTopeChanged()">
+              <input type="number" id="fact-tope-input" placeholder="15058448" inputmode="numeric" step="1" oninput="factTopeChanged()">
               <button class="btn btn-p btn-sm" onclick="factSaveTope()">Guardar</button>
             </div>
             <p class="hint" style="margin-bottom:16px">Actualizá este valor en febrero y agosto de cada año cuando ARCA publique los nuevos topes.</p>
@@ -4782,18 +4782,30 @@ function moneyToCents(v) {
 }
 function centsToMoney(cents) { return (Number.isFinite(cents) ? cents : 0) / 100; }
 function roundMoney(v) { return centsToMoney(moneyToCents(v)); }
-function fmtM(v,c){ return sym(c)+' '+roundMoney(v).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
-// Formato de dinero para el DOCUMENTO del cliente (PDF/vista previa). Difiere
-// de fmtM en una sola cosa con respaldo sólido: va SIN centavos. En Argentina,
-// con inflación alta y montos de cientos de miles/millones, los centavos son
-// económicamente nulos y un total tipo "$284.999,76" se lee como generado por
-// máquina y resta confianza; "$285.000" es la norma. Además, más dígitos
-// inflan la magnitud percibida (Coulter, Choi & Monroe 2012).
+// Formato de dinero para la PANTALLA (barra de totales, historial, mapa,
+// mensajes de WhatsApp). SIN centavos, igual que el documento del cliente.
+//
+// El oficio no maneja centavos: los precios son siempre pesos redondos. Con
+// montos de cientos de miles, el ",00" no aporta ninguna información y encima
+// compite visualmente con los separadores de miles — "$ 840.000,00" hace
+// tropezar la lectura justo en el número más importante de la pantalla.
+//
+// OJO: esto es solo presentación. Internamente se sigue calculando TODO en
+// centavos (moneyToCents/centsToMoney/itemTotalCents), que es lo que evita los
+// errores de punto flotante. No cambiar eso.
+function fmtM(v,c){ return sym(c)+' '+roundMoney(v).toLocaleString('es-AR',{maximumFractionDigits:0}); }
+// Formato de dinero para el DOCUMENTO del cliente (PDF/vista previa). Hoy es
+// idéntico a fmtM; se mantiene separado porque el criterio de cada uno es
+// independiente (lo que ve el cliente vs. lo que ve el podador) y ya se los
+// distingue en ~40 llamadas.
+// Sin centavos: en Argentina, con inflación alta y montos de cientos de miles,
+// un total tipo "$284.999,76" se lee como generado por máquina y resta
+// confianza; "$285.000" es la norma. Además, más dígitos inflan la magnitud
+// percibida (Coulter, Choi & Monroe 2012).
 // El símbolo $ se deja a tamaño normal y claro a propósito: la idea de
 // achicarlo/superíndice (estudio de menús Cornell 2009) no está replicada y en
 // un presupuesto, donde el cliente necesita entender que es plata, achicarlo
-// puede leerse como evasivo. En la UI de edición se sigue usando fmtM (con
-// centavos) para no perder precisión.
+// puede leerse como evasivo.
 function fmtMDoc(v,c){ return sym(c)+' '+roundMoney(v).toLocaleString('es-AR',{maximumFractionDigits:0}); }
 
 // ─── CÁLCULO DE NIVEL DE RIESGO (matriz ISA Basic) ───────────────────────────
@@ -7303,7 +7315,7 @@ function renderItems() {
           <div><div class="isub">Especie/s</div>
           <input class="ii sp-f" type="text" placeholder="Ej: Eucaliptus, Ciprés..." value="${esc(item.species||'')}"></div>
           <div><div class="isub">Precio${hasSurcharge?' (ajustado)':''}</div>
-          <input class="ii pr-f" type="number" min="0" placeholder="0.00" inputmode="decimal" value="${esc(String(item.price||''))}"></div>
+          <input class="ii pr-f" type="number" min="0" placeholder="0" inputmode="decimal" value="${esc(String(item.price||''))}"></div>
         </div>
         ${adjBadge}
         <div class="isub mb-row" style="margin-top:${hasSurcharge?'8px':'0'}">
@@ -7342,7 +7354,7 @@ function renderItems() {
           <div><div class="isub">Descripción</div>
           <input class="ii ds-f" type="text" placeholder="Servicio (ej: Camión - Viaje)..." value="${esc(item.desc||'')}"></div>
           <div><div class="isub">Precio unitario</div>
-          <input class="ii pr-f" type="number" min="0" placeholder="0.00" inputmode="decimal" value="${esc(String(item.price||''))}"></div>
+          <input class="ii pr-f" type="number" min="0" placeholder="0" inputmode="decimal" value="${esc(String(item.price||''))}"></div>
         </div>
         ${qtyRow}`;
 
@@ -7732,7 +7744,7 @@ function renderEstItems() {
           </div>
           <div>
             <div class="isub">Costo estimado</div>
-            <input class="ii est-pr-f" type="number" min="0" placeholder="0.00" inputmode="decimal" value="${esc(String(item.price||''))}">
+            <input class="ii est-pr-f" type="number" min="0" placeholder="0" inputmode="decimal" value="${esc(String(item.price||''))}">
           </div>
         </div>
         <div class="iactions">
@@ -7779,7 +7791,7 @@ function renderEstItems() {
           </div>
           <div>
             <div class="isub">Precio unitario</div>
-            <input class="ii est-pr-f" type="number" min="0" placeholder="0.00" inputmode="decimal" value="${esc(String(item.price||''))}">
+            <input class="ii est-pr-f" type="number" min="0" placeholder="0" inputmode="decimal" value="${esc(String(item.price||''))}">
           </div>
         </div>
         ${qtyRow}
@@ -13902,12 +13914,16 @@ function getTope() { const v=roundMoney(localStorage.getItem(TOPE_KEY)); return 
 function setTope(v) { safeSetLS(TOPE_KEY, String(v)); }
 
 function fmtARS(n)  { return '$ '+Math.round(roundMoney(n)).toLocaleString('es-AR'); }
+// Con centavos. Se usa SOLO en el recibo, y solo cuando el monto realmente los
+// tiene (ver buildReciboDoc): un recibo de pago es un comprobante y ahí el
+// importe tiene que coincidir exacto con lo cobrado. En el resto de la app el
+// dinero va sin centavos (ver fmtM).
 function fmtARSd(n) { return '$ '+roundMoney(n).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 
 // ─── INIT ────────────────────────────────────
 function factInit() {
   const inp = document.getElementById('fact-tope-input');
-  if(inp) inp.value = getTope();
+  if(inp) inp.value = Math.round(getTope());
   const fd = document.getElementById('fact-fecha');
   // Fecha LOCAL, no UTC: toISOString() corre el día en Argentina (UTC-3)
   // después de las 21 hs y la factura quedaría fechada al día siguiente.
@@ -13947,7 +13963,7 @@ function factRenderReminder() {
   }
 
   if(msgEl){
-    msgEl.innerHTML = `Tope vigente desde <strong>${fmtD(TOPE_DEF_VIGENTE_DESDE)}</strong>: <strong>$15.058.447,71</strong> anuales (actualización +14,29%).<br>
+    msgEl.innerHTML = `Tope vigente desde <strong>${fmtD(TOPE_DEF_VIGENTE_DESDE)}</strong>: <strong>${fmtARS(TOPE_DEF)}</strong> anuales (actualización +14,29%).<br>
     Cuando llegue ${proxNombre}, usá el botón de abajo para consultar el nuevo valor y actualizarlo en el campo de tope.`;
   }
 
@@ -13985,7 +14001,7 @@ function factRender() {
   const pctLbl  = document.getElementById('fact-pct-label');
 
   if(heroVal) heroVal.textContent = fmtARS(totalAnual);
-  if(heroSub) heroSub.textContent = 'de '+fmtARSd(tope)+' — tope anual Cat. B';
+  if(heroSub) heroSub.textContent = 'de '+fmtARS(tope)+' — tope anual Cat. B';
   if(promVal) promVal.textContent = fmtARS(promMensual);
   if(promSub) promSub.textContent = 'referencia: '+fmtARS(topeRefMes)+'/mes';
   if(fill){

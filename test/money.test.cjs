@@ -110,6 +110,35 @@ async function nuevaPagina(browser) {
       await page.close();
     }
 
+    // ── Sin centavos en pantalla (preferencia del usuario) ──
+    // El oficio no maneja centavos: el ",00" no aporta nada y compite con los
+    // separadores de miles justo en el número más importante de la pantalla.
+    // OJO: es solo presentación — los cálculos siguen en centavos (el check de
+    // 0,10 + 0,20 de más arriba lo verifica).
+    {
+      const page = await nuevaPagina(browser);
+      const r = await page.evaluate(() => {
+        S.currency = 'ARS';
+        return {
+          ui:   fmtM(840000, 'ARS'),
+          uiC:  fmtM(1234.56, 'ARS'),     // con centavos: se redondea, no se muestran
+          doc:  fmtMDoc(840000, 'ARS'),
+          fact: fmtARS(15058447.71),
+          // el valor interno NO se toca
+          interno: moneyToCents(1234.56),
+        };
+      });
+      const conCentavos = t => /,\d\d(?!\d)/.test(t);
+      check('Pantalla: "$ 840.000" sin centavos', r.ui === '$ 840.000', 'ui=' + r.ui);
+      check('Pantalla: un monto con centavos se redondea, no los muestra',
+        !conCentavos(r.uiC), 'uiC=' + r.uiC);
+      check('Documento y facturación tampoco muestran centavos',
+        !conCentavos(r.doc) && !conCentavos(r.fact), r.doc + ' / ' + r.fact);
+      check('Pero internamente se siguen guardando los centavos',
+        r.interno === 123456, 'centavos=' + r.interno);
+      await page.close();
+    }
+
     // ── Modo normal: el total no cambió ──
     {
       const page = await nuevaPagina(browser);

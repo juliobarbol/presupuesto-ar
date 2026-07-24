@@ -15,7 +15,7 @@
 
 ## Estructura de archivos
 - `index.html` — **toda la app** (markup + `<style>` + `<script>`).
-- `sw.js` — Service Worker (offline + actualizaciones). **`CACHE_VERSION` actual: `presupuesto-v175`**.
+- `sw.js` — Service Worker (offline + actualizaciones). **`CACHE_VERSION` actual: `presupuesto-v176`**.
 - `manifest.webmanifest`, `*.png` — PWA (instalación, iconos).
 - `push-worker/` — Cloudflare Worker **opcional** para notificaciones push de seguimiento (avisos con la app cerrada). No es parte del PWA shell; se despliega aparte. Ver `docs/push-setup.md`. La app es inerte a esto hasta rellenar `PUSH_WORKER_URL` / `PUSH_VAPID_KEY` en `index.html`.
 
@@ -53,6 +53,7 @@ El CSS vive en el `<style>` (líneas ~16–1711). Hay dos bloques de estilos del
 - **Estado:** objeto global `S` (presupuesto actual + config). `DEF` son los valores por defecto.
 - **localStorage:** claves centralizadas en el objeto `LS`. Las DBs tienen sus propias constantes (`SPECIES_KEY`, `SERVICES_KEY`, `CLIENT_KEY`, `PHRASE_KEYS`…). Escribir SIEMPRE vía `safeSetLS()` (maneja cuota llena y dispara el backup a Drive).
 - **Dinero en centavos:** usar `moneyToCents` / `centsToMoney` / `fmtM` (evita errores de punto flotante). No operar con floats de pesos directo.
+- **Sin centavos en pantalla:** el oficio no maneja centavos. `fmtM` (UI) y `fmtMDoc` (documento) muestran pesos redondos; el `,00` no aporta nada y compite con los separadores de miles. Es SOLO presentación: los cálculos siguen en centavos. Única excepción: el **recibo** (`fmtARSd` vía `buildReciboDoc`), que muestra centavos solo si el monto realmente los tiene — es un comprobante de pago y el importe tiene que coincidir exacto.
 - **Total del estimativo:** siempre vía `calcEstTotals(estItems)` (trabajos a precio plano + servicios × cantidad, en centavos). La usan la barra de totales, `buildEstDoc()` y `autoSaveToHistory()`. No recalcularlo a mano en ningún lado: ese fue el origen de C2 (el PDF decía $710.000 y el historial guardaba $470.000).
 - **Fechas en LOCAL, no UTC:** usar `today()` / `toLocalISODate()` / `calcExpiry()`. Nunca `toISOString().slice(0,10)` para fechas de calendario (corre el día en Argentina).
 - **Fotos en IndexedDB, no en localStorage:** `item.photo` guarda un ID `p_...`; el dataURL vive en IDB (`pq_photos`). Para mostrar una foto resolvé con `getPhotoData(item.photo)` y validá con `safeImgSrc()`. Para guardar una foto nueva usá `savePhoto(dataUrl)` (devuelve el ID, o el dataURL embebido si IDB falla). El caché en memoria se hidrata al iniciar con `hydratePhotoCache()` (antes del primer render). Las fotos viejas embebidas (`data:image/...`) siguen funcionando y se migran a IDB con `migrateInlinePhotosToIDB()` al cargar. El backup completo incluye las fotos referenciadas (`photos`) para sobrevivir un cambio de dispositivo.
@@ -82,7 +83,7 @@ El CSS vive en el `<style>` (líneas ~16–1711). Hay dos bloques de estilos del
 > versión nueva la próxima vez que abran la app con conexión.
 
 1. Desarrollar en la rama de trabajo (`claude/...`), no en `main`.
-2. **Subir `CACHE_VERSION` en `sw.js`** en cada cambio que se despliegue (si no, los dispositivos siguen con la versión vieja en caché). Formato: `presupuesto-vNN`. **Versión actual: v175**.
+2. **Subir `CACHE_VERSION` en `sw.js`** en cada cambio que se despliegue (si no, los dispositivos siguen con la versión vieja en caché). Formato: `presupuesto-vNN`. **Versión actual: v176**.
 3. Si agregás un archivo nuevo (ej. otro `.js` o `.css`), **agregarlo a `APP_SHELL` en `sw.js`** o se rompe el offline.
 4. **Mergear a `main`** → Cloudflare despliega solo.
 
