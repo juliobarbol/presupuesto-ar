@@ -12445,6 +12445,27 @@ function loadGIS(){
   return GDRIVE._gisPromise;
 }
 
+// Precarga la librería de Google al iniciar (nunca pide token: solo baja el
+// script y arma los token clients).
+//
+// Por qué: los botones "Conectar" abren un popup, y el navegador solo lo deja
+// abrir mientras dura el gesto del usuario. Si al tocar el botón todavía hay
+// que bajar accounts.google.com/gsi/client por datos móviles, el popup llega
+// tarde y Chrome lo cierra → error `popup_closed`, que parece un problema de
+// permisos y no lo es. Los caminos de init cortan antes de cargar GIS (Drive
+// si ya hay datos locales, Calendar si no está conectado), así que sin esto la
+// primera conexión de Calendar arranca SIEMPRE con la librería fría.
+function preloadGIS(){
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+  if (typeof gdriveConfigured === 'function' && !gdriveConfigured()) return;
+  loadGIS().then(() => {
+    // Armar los clients también es parte del costo del primer tap (initTokenClient
+    // no muestra UI ni pide nada a Google).
+    try { if (typeof gcalEnsureClient === 'function') gcalEnsureClient(); } catch(_){}
+    try { if (typeof gdriveEnsureClient === 'function') gdriveEnsureClient(); } catch(_){}
+  }).catch(() => { /* sin señal o Google caído: se reintenta al tocar Conectar */ });
+}
+
 async function gdriveEnsureClient(){
   await loadGIS();
   if (!GDRIVE._tokenClient) {
@@ -13127,6 +13148,16 @@ function _gcalErrBase(e){
 
 async function gcalConnect(){
   if (!gcalConfigured()) { toast('Google Calendar no está configurado todavía.', 'info', 5000); return; }
+  // Librería fría (falló la precarga, o se abrió sin señal): pedir el token
+  // ahora significa bajar el script primero y que el navegador cierre el popup
+  // por llegar tarde. Mejor calentarla y pedir un segundo toque, que sí abre la
+  // ventana dentro del gesto.
+  if (!(window.google && google.accounts && google.accounts.oauth2)) {
+    toast('Preparando Google… volvé a tocar "Conectar" en un segundo.', 'info', 4000);
+    try { await gcalEnsureClient(); }
+    catch(e){ GCAL._lastErr = e; gcalUpdateUI(); toast(_gcalErrMsg(e), 'err', 9000); }
+    return;
+  }
   try {
     toast('Conectando con Google Calendar…', 'info', 3000);
     const token = await gcalGetToken({ interactive: true });
@@ -17626,6 +17657,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   _deferIdle(() => {
     if (typeof gdriveInitOnLoad === 'function') gdriveInitOnLoad();
     if (typeof gcalInitOnLoad === 'function') gcalInitOnLoad();
+    if (typeof preloadGIS === 'function') preloadGIS();
   });
   // Notificaciones push (inerte si no está configurado el Worker).
   if (typeof initPush === 'function') initPush();
