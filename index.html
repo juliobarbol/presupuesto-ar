@@ -3790,7 +3790,7 @@ input[type=number]{-moz-appearance:textfield}
         <div class="r2" style="margin-bottom:4px">
           <span class="hsearch-wrap">
             <span class="hsearch-ico"><svg class="ic" aria-hidden="true"><use href="#i-search"></use></svg></span>
-            <input class="hsearch" id="hist-search" type="search" placeholder="Buscar por número, cliente o lugar..." oninput="_histSearchSync(this); renderHistory()" style="margin-bottom:0">
+            <input class="hsearch" id="hist-search" type="search" placeholder="Buscar por número, cliente o lugar..." oninput="_histSearchSync(this); renderHistoryDebounced()" style="margin-bottom:0">
             <button type="button" class="hsearch-clear" onclick="clearHistSearch()" aria-label="Limpiar búsqueda"><svg class="ic" aria-hidden="true"><use href="#i-x"></use></svg></button>
           </span>
           <select class="hsearch" id="hist-client-filter" onchange="renderHistory()" style="margin-bottom:0">
@@ -9344,20 +9344,49 @@ function checkBackupReminder() {
 // acá en vez de propagar el problema. Antes, un `history` que no fuera array
 // quedaba guardado y rompía la app en CADA arranque ("h is not iterable"):
 // Historial y Agenda muertos, sin forma de recuperarse desde la app.
+//
+// CACHE: el historial se re-parseaba en CADA llamada, y un solo render del
+// listado llama a getH() 9 veces (~5 ms cada una con 250 presupuestos, porque
+// los snapshots son el 94% de los bytes). El calendario es peor: calBuildIndex()
+// hace su propio getH() y se la invoca varias veces por render.
+//
+// El cache se valida contra el STRING guardado, no contra un flag: si el valor
+// en disco es idéntico al que parseamos, devolvemos el mismo array. Así ninguna
+// escritura directa a localStorage (las migraciones del arranque, por ejemplo)
+// puede dejar el cache viejo, y no hay que acordarse de invalidarlo a mano.
+// getItem de 1 MB es ~0 ms; parsearlo no.
+//
+// Se devuelve el MISMO array, no una copia: clonarlo cuesta 4× más que
+// parsearlo (11,7 ms vs 3 ms medidos). Es seguro porque en toda la app el
+// patrón es getH() → mutar → setH(); no hay ningún lugar que mute una entrada y
+// descarte el cambio. Si algún día se agrega uno, tiene que llamar a setH() o
+// trabajar sobre su propia copia.
+let _hRawCache = null;
+let _hArrCache = null;
+
 function getH() {
   try {
     const raw = localStorage.getItem(LS.HISTORY) || localStorage.getItem(LS.HISTORY_LEGACY);
+    if (_hArrCache && raw === _hRawCache) return _hArrCache;
     const parsed = JSON.parse(raw||'[]');
-    if (Array.isArray(parsed)) return parsed;
+    if (Array.isArray(parsed)) { _hRawCache = raw; _hArrCache = parsed; return parsed; }
     // Forma inesperada: lo dejamos utilizable y reparamos el valor persistido
     // (una sola vez) para que la próxima lectura ya salga limpia.
     const fixed = sanitizeHistory(parsed);
     try { safeSetLS(LS.HISTORY, JSON.stringify(fixed)); } catch(_){}
+    _hRawCache = null; _hArrCache = null;   // que la próxima lea del disco reparado
     return fixed;
   } catch(e){ return []; }
 }
 
-function setH(h) { safeSetLS(LS.HISTORY, JSON.stringify(h)); if (typeof scheduleGcalSync === 'function') scheduleGcalSync(); }
+function setH(h) {
+  const payload = JSON.stringify(h);
+  // El que escribe queda cacheado. Si safeSetLS falla (cuota llena), el string
+  // en disco no coincidirá y la próxima lectura se re-parsea sola.
+  _hRawCache = payload; _hArrCache = h;
+  safeSetLS(LS.HISTORY, payload);
+  if (typeof scheduleGcalSync === 'function') scheduleGcalSync();
+}
 
 // Devuelve true si el presupuesto ACTUAL (estado en memoria `S`) está en
 // blanco: sin cliente, sin items, sin total, sin observaciones ni condiciones
@@ -11562,6 +11591,17 @@ function clearHistSearch(){
   inp.focus();
 }
 
+// Re-render con retardo, para el buscador. Cada tecla disparaba un
+// renderHistory() completo: con 250 presupuestos son ~340 ms de bloqueo POR
+// LETRA en escritorio (y un celular de gama baja es 4-10x más lento), así que
+// escribir en el buscador se sentía como un teclado roto. 180 ms es el punto
+// donde ya no se percibe el retardo pero una ráfaga de tecleo cuenta como una.
+let _histRenderTimer = null;
+function renderHistoryDebounced() {
+  clearTimeout(_histRenderTimer);
+  _histRenderTimer = setTimeout(renderHistory, 180);
+}
+
 function renderHistory() {
   const list     = document.getElementById('history-list');     if(!list) return;
   // Re-render → los botones se recrean: descartar cualquier imagen lista
@@ -11740,7 +11780,11 @@ function renderHistory() {
     _expandedMonths.add(firstKey);
   }
 
-  // Render: cada mes como sección colapsable
+  // Render: cada mes como sección colapsable.
+  // El cuerpo de un mes CERRADO no se genera. Antes se armaba el HTML de las
+  // 250 tarjetas siempre —487 KB, 250 ms solo en el innerHTML— y el CSS ocultaba
+  // 11 de cada 12 meses. Se llena al desplegarlo (toggleHistoryMonth re-renderiza).
+  // (Con filtros activos no se pasa por acá: arriba se rinde plano y visible.)
   let html = summaryHtml;
   groups.forEach((entries, key) => {
     const isOpen = _expandedMonths.has(key);
@@ -11755,7 +11799,7 @@ function renderHistory() {
           <span class="hmonth-chevron">▾</span>
         </button>
         <div class="hmonth-body">
-          ${entries.map(renderEntry).join('')}
+          ${isOpen ? entries.map(renderEntry).join('') : ''}
         </div>
       </div>`;
   });

@@ -60,7 +60,7 @@ Lo más importante, en orden:
 | A6 ✅ | Alto | Rendimiento | **El cache del clima dispara un backup completo a Drive** (con todas las fotos) | `index.html:14520`, `:14546`, `:4917` |
 | M1 | Medio | Integridad | Las fotos nunca se borran de IndexedDB: crecen para siempre | `index.html:5520–5800` |
 | M2 | Medio | Rendimiento | Todas las fotos se cargan a RAM al arrancar y viajan enteras en cada subida | `index.html:5566`, `:11456` |
-| M3 | Medio | Rendimiento | Búsqueda del historial sin debounce + re-parseo completo 3–5 veces por acción | `index.html:8892`, `calBuildIndex()` |
+| M3 ✅ | Medio | Rendimiento | Búsqueda del historial sin debounce + re-parseo completo 3–5 veces por acción | `index.html:8892`, `calBuildIndex()` |
 | M4 | Medio | Integridad | Dos dispositivos con la misma cuenta de Drive se pisan sin aviso | `gdriveUpload()` / `gdriveInitOnLoad()` |
 | M5 ~ | Medio | Seguridad | Datos de clientes salen del dispositivo (KV de Cloudflare y Google Calendar) — KV ya expira a 90 días | `index.html:12209–12228`, `push-worker/index.js:154` |
 | M6 | Medio | Fechas | Facturación filtra con `new Date(f.fecha)` (UTC) mezclado con `now` local | `index.html` · `factRender()` |
@@ -802,7 +802,11 @@ Las dos son de una línea cada una y de ganancia inmediata:
 2. Mandar a Open-Meteo las coordenadas ya redondeadas de la clave de zona.
 3. **Verificación:** `clima.test.cjs` — la escritura del clima no debe programar backups.
 
-### Tanda 5 — Rendimiento en el celular (M3 + M7) → `v178`
+### Tanda 5 — Rendimiento en el celular (M3 + M7) → `v178` — M3 ✅ HECHA (M7 pendiente)
+> Cache de `getH()` validado contra el string en disco, debounce de 180 ms en el buscador y
+> render diferido de los meses colapsados. Medido con 250 presupuestos: `renderHistory()`
+> 145 → 27 ms, Agenda 46 → 23 ms, vista Mes 39 → 10 ms; escribir 9 letras pasa de 9
+> renders a 1. Regresión en `test/perf-historial.test.cjs` (15 checks).
 1. Caché en memoria de `getH()`, invalidado en `setH()`.
 2. Debounce de 200 ms en el buscador del historial.
 3. Propagar el booleano de `safeSetLS()` a los flujos de guardado importantes.
