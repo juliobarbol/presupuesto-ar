@@ -108,6 +108,60 @@ async function nuevaPagina(browser, silentOK) {
     'Sin permiso previo, recién ahí se pide con ventana', 'prompts=' + JSON.stringify(r2.prompts));
   check(r2.on === '1', 'Y también termina conectado', 'pq_gcal_on=' + r2.on);
 
+  // 2b) La cuenta recordada envenena la ventana: con login_hint el popup se
+  //     cierra solo (`popup_closed`). Tiene que reintentar SIN la cuenta
+  //     recordada — que es lo que destrababa desconectar y volver a conectar.
+  const p2b = await browser.newPage();
+  await p2b.setRequestInterception(true);
+  p2b.on('request', (req) => {
+    const u = req.url();
+    if (u.indexOf('accounts.google.com/gsi/client') >= 0) {
+      // Stub propio: falla mientras venga login_hint, funciona sin él.
+      return req.respond({ status: 200, contentType: 'text/javascript', body: `
+        window.__intentos = [];
+        window.google = { accounts: { oauth2: {
+          initTokenClient: (cfg) => ({
+            requestAccessToken: (req) => {
+              window.__intentos.push({ prompt: req.prompt, hint: req.login_hint || null });
+              setTimeout(() => {
+                if (req.prompt === 'none') { cfg.callback({ error: 'interaction_required' }); return; }
+                if (req.login_hint) { cfg.error_callback({ type: 'popup_closed' }); return; }
+                cfg.callback({ access_token: 'tok_sin_hint', expires_in: 3600, scope: cfg.scope });
+              }, 0);
+            },
+          }),
+          revoke: () => {},
+        } } };
+      ` });
+    }
+    if (req.method() === 'OPTIONS') return req.respond({ status: 204, headers: CORS, body: '' });
+    if (u.indexOf('/oauth2/v3/userinfo') >= 0) return req.respond(JSONRES({ email: 'test@example.com' }));
+    if (/\/calendar\/v3\/calendars\/[^/]+\/events/.test(u)) return req.respond(JSONRES({ items: [] }));
+    if (/\/calendar\/v3\/calendars/.test(u)) return req.respond(JSONRES({ id: 'cal_sin_hint' }));
+    if (u.startsWith('file://')) return req.continue();
+    return req.respond({ status: 204, headers: CORS, body: '' });
+  });
+  await p2b.evaluateOnNewDocument(() => {
+    localStorage.setItem('pq_gcal_email', 'viejo@example.com');
+    localStorage.removeItem('pq_gcal_on');
+    localStorage.removeItem('pq_gcal_tok');
+    localStorage.removeItem('pq_gcal_id');
+  });
+  await p2b.goto(INDEX, { waitUntil: 'load' });
+  await p2b.waitForFunction('!!(window.google && window.google.accounts)', { timeout: 10000 }).catch(() => {});
+  const r2b = await p2b.evaluate(async () => {
+    window.__intentos = [];
+    await gcalConnect();
+    return { intentos: window.__intentos, on: localStorage.getItem('pq_gcal_on') };
+  });
+  check(r2b.intentos.length === 3, 'Tres intentos: silencioso, con cuenta recordada, sin ella',
+    JSON.stringify(r2b.intentos));
+  check(!!r2b.intentos[1] && r2b.intentos[1].hint === 'viejo@example.com',
+    'El 2º va con la cuenta recordada');
+  check(!!r2b.intentos[2] && r2b.intentos[2].hint === null && r2b.intentos[2].prompt === 'consent',
+    'El 3º va limpio, como una primera conexión');
+  check(r2b.on === '1', 'Y ahí sí conecta, sin tener que desconectar antes', 'pq_gcal_on=' + r2b.on);
+
   // 3) El mensaje de popup_closed reconoce la app instalada.
   const msgs = await p2.evaluate(() => {
     const e = new Error('popup_closed');
