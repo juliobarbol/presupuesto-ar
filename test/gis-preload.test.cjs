@@ -97,7 +97,9 @@ const GIS_STUB = `
   check(!!t, 'Tocar "Conectar" pide el token de una (sin esperar la red)');
   check(!!t && /calendar\.app\.created/.test(t.scope), 'Pide el scope calendar.app.created',
     t ? t.scope : '(sin pedido)');
-  check(!!t && t.req && t.req.prompt === 'consent', 'Interactivo: prompt=consent',
+  // El primer pedido es SIN ventana a propósito (ver test/gcal-connect.test.cjs):
+  // acá lo que se fija es que salga de una, sin esperar la red.
+  check(!!t && t.req && t.req.prompt === 'none', 'Arranca por el pedido silencioso',
     t && t.req ? 'prompt=' + t.req.prompt : '(sin pedido)');
 
   // Y el camino frío: sin GIS, avisa y no dispara un popup condenado.
