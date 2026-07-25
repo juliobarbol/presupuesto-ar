@@ -106,23 +106,81 @@ async function sendPush(sub, payload, env) {
   return res.ok;
 }
 
-// ── CORS headers ───────────────────────────────────────────────────────────
-const CORS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
-};
+// ── CORS ───────────────────────────────────────────────────────────────────
+// Antes era 'Access-Control-Allow-Origin: *', o sea que CUALQUIER sitio web
+// podía llamar a estos endpoints desde el navegador de un visitante. Ahora solo
+// el origen de la app (configurable con la variable ALLOWED_ORIGIN, por si el
+// día de mañana hay dominio propio) y localhost para desarrollo.
+//
+// OJO: CORS lo aplica el NAVEGADOR, no es autenticación — un script fuera del
+// navegador puede llamar igual. Por eso además se valida la forma de todo lo que
+// entra (ver abajo): el deviceId es la clave del KV y no puede ser cualquier
+// cosa, y los tamaños están acotados para que nadie llene el namespace.
+const DEFAULT_ORIGIN = 'https://presupuesto-ar.juliobarribolbo.workers.dev';
+
+function corsFor(request, env) {
+  const permitidos = [env.ALLOWED_ORIGIN || DEFAULT_ORIGIN, 'http://localhost:8787', 'http://127.0.0.1:8787'];
+  const origin = request.headers.get('Origin') || '';
+  const h = {
+    'Access-Control-Allow-Methods': 'POST, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Vary': 'Origin',
+  };
+  if (permitidos.includes(origin)) h['Access-Control-Allow-Origin'] = origin;
+  return h;
+}
+
+// El deviceId es la CLAVE del registro en el KV: si se acepta cualquier string,
+// cualquiera puede escribir entradas arbitrarias (llenar el namespace, que se
+// paga) o pisar el registro de otro equipo. La app lo genera como
+// 'pq-<timestamp>-<random base36>'.
+// Permisivo a propósito en la parte aleatoria: Math.random().toString(36) puede
+// devolver pocos caracteres en casos degenerados, y el id queda PERSISTIDO en el
+// dispositivo — un equipo rechazado acá no volvería a suscribirse nunca.
+const DEVICE_ID_RE = /^pq-\d{10,16}-[a-z0-9]{1,30}$/;
+
+// Una suscripción de Push API válida: endpoint https de un servicio de push y
+// las dos claves que exige RFC 8291.
+function subscriptionValida(s) {
+  if (!s || typeof s !== 'object') return false;
+  if (typeof s.endpoint !== 'string' || !/^https:\/\//.test(s.endpoint) || s.endpoint.length > 1000) return false;
+  if (!s.keys || typeof s.keys !== 'object') return false;
+  const { p256dh, auth } = s.keys;
+  if (typeof p256dh !== 'string' || p256dh.length < 20 || p256dh.length > 200) return false;
+  if (typeof auth !== 'string'   || auth.length   < 10 || auth.length   > 100) return false;
+  return true;
+}
+
+// Recorta la lista de avisos a lo que el cron necesita, con tamaños acotados.
+const MAX_AVISOS = 300;
+function avisosValidos(arr) {
+  if (!Array.isArray(arr)) return [];
+  return arr.slice(0, MAX_AVISOS).map((f) => ({
+    id: typeof f?.id === 'number' ? f.id : String(f?.id ?? '').slice(0, 40),
+    clientName: String(f?.clientName ?? '').slice(0, 120),
+    date: /^\d{4}-\d{2}-\d{2}$/.test(f?.date) ? f.date : '',
+    diasDesdeEnvio: Number.isFinite(f?.diasDesdeEnvio) ? f.diasDesdeEnvio : 0,
+  })).filter((f) => f.date);
+}
 
 // ── Worker entry points ────────────────────────────────────────────────────
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    const CORS = corsFor(request, env);
 
     if (request.method === 'OPTIONS') return new Response(null, {status:204, headers:CORS});
 
-    // GET /test — dispara un push de prueba a todos los dispositivos suscritos.
-    // Usalo desde el navegador para confirmar que las notificaciones funcionan.
+    // GET /test?key=… — dispara un push de prueba a TODOS los dispositivos
+    // suscritos. Antes no pedía nada: como la URL del Worker está en claro en el
+    // index.html público, cualquiera podía hacer sonar el teléfono de todos, sin
+    // límite. Ahora exige el secreto TEST_KEY; si no está configurado, el
+    // endpoint no existe. (Para probar el envío real, lo documentado es disparar
+    // el cron a mano — ver docs/push-setup.md.)
     if (url.pathname === '/test' && request.method === 'GET') {
+      if (!env.TEST_KEY || url.searchParams.get('key') !== env.TEST_KEY) {
+        return new Response('Not found', {status:404, headers:CORS});
+      }
       const { keys } = await env.PUSH_KV.list({ prefix: 'sub:' });
       let ok = 0;
       for (const {name} of keys) {
@@ -145,13 +203,30 @@ export default {
 
     if (url.pathname === '/subscribe' && request.method === 'POST') {
       try {
-        const { deviceId, subscription, followups, expiries } = await request.json();
-        if (!deviceId || !subscription) return new Response('Bad request', {status:400, headers:CORS});
+        const body = await request.json();
+        const { deviceId, subscription } = body || {};
+        if (!DEVICE_ID_RE.test(String(deviceId || ''))) {
+          return new Response('Bad deviceId', {status:400, headers:CORS});
+        }
+        if (!subscriptionValida(subscription)) {
+          return new Response('Bad subscription', {status:400, headers:CORS});
+        }
         // Preservar el estado de deduplicación (notified) entre re-sincronizaciones:
         // si la app vuelve a suscribir, no debe perder qué ya se avisó hoy.
         let prev = {};
         try { prev = JSON.parse(await env.PUSH_KV.get(`sub:${deviceId}`)) || {}; } catch(_) {}
-        await env.PUSH_KV.put(`sub:${deviceId}`, JSON.stringify({subscription, followups: followups || [], expiries: expiries || [], notified: prev.notified || {}}));
+        await env.PUSH_KV.put(`sub:${deviceId}`, JSON.stringify({
+          subscription: { endpoint: subscription.endpoint, keys: { p256dh: subscription.keys.p256dh, auth: subscription.keys.auth } },
+          followups: avisosValidos(body.followups),
+          expiries:  avisosValidos(body.expiries),
+          notified:  prev.notified || {},
+        }), {
+          // Un equipo que deja de usarse se limpia solo: la app re-suscribe en
+          // cada apertura con señal, así que 90 días sin aparecer = abandonado.
+          // Antes las entradas quedaban para siempre, con los nombres de los
+          // clientes adentro.
+          expirationTtl: 60 * 60 * 24 * 90,
+        });
         return new Response('OK', {headers:CORS});
       } catch(e) { return new Response('Error', {status:500, headers:CORS}); }
     }
@@ -159,7 +234,7 @@ export default {
     if (url.pathname === '/subscribe' && request.method === 'DELETE') {
       try {
         const { deviceId } = await request.json();
-        if (deviceId) await env.PUSH_KV.delete(`sub:${deviceId}`);
+        if (DEVICE_ID_RE.test(String(deviceId || ''))) await env.PUSH_KV.delete(`sub:${deviceId}`);
         return new Response('OK', {headers:CORS});
       } catch(e) { return new Response('Error', {status:500, headers:CORS}); }
     }

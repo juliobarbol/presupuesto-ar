@@ -75,6 +75,20 @@ npx wrangler secret put VAPID_PRIVATE_KEY     # pegás la privada del paso 1
 npx wrangler secret put VAPID_SUBJECT         # escribís: mailto:juliobarribolbo@gmail.com
 ```
 
+**Opcionales (seguridad):**
+
+```bash
+# Habilita el endpoint GET /test?key=… para disparar un push de prueba a mano.
+# Si NO lo cargás, ese endpoint responde 404 — que es lo que querés en
+# producción: la URL del Worker está en claro en el index.html público, así que
+# sin secreto cualquiera podría hacer sonar el teléfono de todos los equipos.
+npx wrangler secret put TEST_KEY
+
+# Solo si algún día la app se sirve desde otro dominio: origen permitido para
+# las llamadas del navegador (CORS). Por defecto ya acepta el de Cloudflare.
+npx wrangler secret put ALLOWED_ORIGIN
+```
+
 ### 4. Desplegar el Worker
 
 ```bash
@@ -123,6 +137,11 @@ toggle y aceptá el permiso de notificaciones. Listo.
   presupuesto en estado "enviado" cuya fecha de seguimiento ya haya llegado, o
   cuya fecha de vigencia ya haya pasado (aviso de vencido).
 - **Ver suscripciones guardadas**: `npx wrangler kv key list --binding PUSH_KV`.
+  Cada registro expira solo a los 90 días sin re-suscribirse (la app re-suscribe
+  en cada apertura con señal), así que un equipo que dejaste de usar se limpia
+  sin que hagas nada.
+- **Push de prueba inmediato a todos los equipos**: solo si cargaste `TEST_KEY`,
+  abrí `https://…workers.dev/test?key=TU_TEST_KEY`.
 
 ---
 
