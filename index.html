@@ -223,8 +223,14 @@ body.modal-open #main{overflow:hidden}
 #print-zone{display:none}
 
 /* TOAST */
-#toast-container{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:9000;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none}
-.toast{background:#1a2e25;color:#fff;padding:10px 18px;border-radius:var(--radius-box);font-size:13px;font-weight:500;box-shadow:0 4px 16px rgba(0,0,0,.2);opacity:0;transform:translateY(8px);transition:.25s;pointer-events:none;white-space:nowrap;max-width:90vw}
+/* Ancho completo (antes left:50% + shrink-to-fit dejaba el contenedor en la
+   mitad del viewport, así que un toast que envuelve quedaba angosto y altísimo).
+   align-items:center sigue centrando cada toast. */
+#toast-container{position:fixed;bottom:24px;left:0;right:0;z-index:9000;display:flex;flex-direction:column;gap:8px;align-items:center;padding:0 12px;pointer-events:none}
+/* Los mensajes largos (errores de Google con la instrucción para arreglarlo)
+   con white-space:nowrap se salían de la pantalla y quedaban cortados: la
+   mitad accionable del texto no se leía. Ahora envuelven. */
+.toast{background:#1a2e25;color:#fff;padding:10px 18px;border-radius:var(--radius-box);font-size:13px;font-weight:500;line-height:1.4;box-shadow:0 4px 16px rgba(0,0,0,.2);opacity:0;transform:translateY(8px);transition:.25s;pointer-events:none;white-space:normal;text-align:center;overflow-wrap:anywhere;max-width:min(90vw,420px)}
 .toast.show{opacity:1;transform:translateY(0)}
 .toast.toast-ok{background:var(--accent)}
 .toast.toast-err{background:#dc2626}
@@ -12792,6 +12798,15 @@ async function gcalEnsureClient(){
       callback: (resp) => {
         const p = GCAL._pending; GCAL._pending = null;
         if (resp && resp.access_token) {
+          // Google devuelve token IGUAL si el usuario desmarca la casilla del
+          // permiso de Calendar: el token viene sin `calendar.app.created` y
+          // recién fallaría después, con un 403 incomprensible. Lo cortamos acá
+          // con un error propio para poder decirle qué le faltó tildar.
+          const granted = ((resp.scope || '') + '');
+          if (granted && granted.indexOf('calendar.app.created') < 0) {
+            if (p) p.reject(new Error('scope_no_otorgado'));
+            return;
+          }
           GCAL._token = resp.access_token;
           GCAL._tokenExp = Date.now() + ((resp.expires_in || 3500) * 1000);
           _gTokSave(LS.GCAL_TOK, GCAL._token, GCAL._tokenExp);
@@ -12847,6 +12862,16 @@ async function gcalRememberEmail(token){
   } catch(_){}
 }
 
+// Error de una llamada a la Calendar API con el status y el cuerpo de Google
+// adjuntos. Sin esto, _gcalErrMsg() no puede distinguir "falta habilitar la
+// API" de "falta el permiso" y cae siempre en el mensaje genérico.
+async function _gcalHttpErr(r, what){
+  let detail = ''; try { detail = await r.text(); } catch(_){}
+  const err = new Error(what + ' ' + r.status);
+  err.status = r.status; err.detail = detail;
+  return err;
+}
+
 // Asegura el calendario "Presupuestos AR": valida el id guardado, y si no
 // existe (o se borró) lo crea. Devuelve el calendarId.
 async function gcalEnsureCalendar(token){
@@ -12855,7 +12880,7 @@ async function gcalEnsureCalendar(token){
     const r = await fetch('https://www.googleapis.com/calendar/v3/calendars/' + encodeURIComponent(id),
       { headers: { Authorization: 'Bearer ' + token } });
     if (r.ok) return id;
-    if (r.status !== 404 && r.status !== 410) throw new Error('cal get ' + r.status);
+    if (r.status !== 404 && r.status !== 410) throw await _gcalHttpErr(r, 'cal get');
     // 404/410: el calendario ya no existe → recrear abajo.
   }
   let tz = 'America/Argentina/Cordoba';
@@ -12864,13 +12889,8 @@ async function gcalEnsureCalendar(token){
     method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
     body: JSON.stringify({ summary: GCAL.CAL_NAME, description: 'Agenda de Presupuestos AR: trabajos, recontactos, vencimientos, seguimientos y notas. Se sincroniza automáticamente desde la app.', timeZone: tz }),
   });
-  if (!r.ok) {
-    // Guardamos el detalle para dar un mensaje útil (API sin habilitar, etc.).
-    let detail = ''; try { detail = await r.text(); } catch(_){}
-    const err = new Error('cal create ' + r.status);
-    err.status = r.status; err.detail = detail;
-    throw err;
-  }
+  // El detalle da el mensaje útil (API sin habilitar, permiso faltante, etc.).
+  if (!r.ok) throw await _gcalHttpErr(r, 'cal create');
   const j = await r.json();
   id = j.id;
   try { localStorage.setItem(LS.GCAL_ID, id); } catch(_){}
@@ -12900,7 +12920,7 @@ async function gcalListEvents(token, calId){
     u.searchParams.set('timeMin', _gcalTimeMin());
     if (pageToken) u.searchParams.set('pageToken', pageToken);
     const r = await fetch(u.toString(), { headers: { Authorization: 'Bearer ' + token } });
-    if (!r.ok) throw new Error('events list ' + r.status);
+    if (!r.ok) throw await _gcalHttpErr(r, 'events list');
     const j = await r.json();
     (j.items || []).forEach(it => {
       const pv = (it.extendedProperties && it.extendedProperties.private) || {};
@@ -12983,10 +13003,10 @@ async function gcalSync(){
       const d = desired[pk], ex = existing[pk];
       if (!ex) {
         const r = await fetch(base, { method: 'POST', headers: H, body: JSON.stringify(d.body) });
-        if (!r.ok) { fallo = fallo || new Error('event insert ' + r.status); continue; }
+        if (!r.ok) { fallo = fallo || await _gcalHttpErr(r, 'event insert'); continue; }
       } else if (ex.hash !== d.hash) {
         const r = await fetch(base + '/' + encodeURIComponent(ex.id), { method: 'PATCH', headers: H, body: JSON.stringify(d.body) });
-        if (!r.ok) { fallo = fallo || new Error('event patch ' + r.status); continue; }
+        if (!r.ok) { fallo = fallo || await _gcalHttpErr(r, 'event patch'); continue; }
       }
     }
     // Borrar lo que ya no está en la agenda (nota borrada, fecha cambiada, etc.).
@@ -13033,16 +13053,34 @@ function _gcalErrMsg(e){
   const detail = ((e && e.detail) || '') + '';
   const status = e && e.status;
   if (msg === 'offline') return 'Sin conexión. Conectá cuando tengas señal.';
+  // Ventana de Google: bloqueada o cerrada. No es un problema de permisos, así
+  // que antes mandaba a revisar Google Cloud al pedo.
+  if (/popup_failed_to_open|popup_blocked/i.test(msg)) {
+    return 'El navegador bloqueó la ventana de Google. Permití las ventanas emergentes para este sitio y reintentá.';
+  }
+  if (/popup_closed|abort/i.test(msg)) {
+    return 'Se cerró la ventana de Google antes de terminar. Reintentá y aceptá el acceso.';
+  }
+  // El usuario llegó a la pantalla de permisos pero no tildó Calendar.
+  if (/scope_no_otorgado/i.test(msg)) {
+    return 'Faltó tildar el permiso de Calendar en la pantalla de Google. Reintentá y marcá la casilla del calendario.';
+  }
   // Errores del token de Google (GIS): permiso no dado o scope no configurado.
-  if (/access_denied|consent|scope|sin_token|popup|interaction_required|invalid/i.test(msg)) {
-    return 'Google no dio el permiso de Calendar. Revisá que el permiso "calendar.app.created" esté agregado en la pantalla de consentimiento, y aceptá el acceso al conectar.';
+  if (/access_denied|invalid_scope|invalid_client|consent|scope|sin_token|interaction_required/i.test(msg)) {
+    return 'Google no dio el permiso de Calendar. Si al conectar no aparece la casilla del calendario, falta agregar el permiso "calendar.app.created" en la pantalla de consentimiento de Google Cloud.';
   }
   // Calendar API sin habilitar en el proyecto (403 con accessNotConfigured).
   if (status === 403 && /accessNotConfigured|has not been used|is disabled|SERVICE_DISABLED|Calendar API/i.test(detail)) {
     return 'Falta habilitar la Google Calendar API en tu proyecto de Google Cloud. Habilitala, esperá unos minutos y reintentá.';
   }
+  // 403 por token sin el scope: conectó antes de agregar el permiso.
+  if (status === 403 && /ACCESS_TOKEN_SCOPE_INSUFFICIENT|insufficientPermissions|insufficient/i.test(detail)) {
+    return 'El acceso de Google no incluye el permiso de Calendar. Desconectá, volvé a conectar y aceptá el permiso del calendario.';
+  }
   if (status === 403) return 'Google rechazó el acceso (403). Revisá que la Calendar API esté habilitada y el permiso "calendar.app.created" agregado.';
   if (status === 401) return 'La sesión de Google expiró. Reintentá conectar.';
+  if (status === 404) return 'No se encontró el calendario en tu cuenta. Desconectá y volvé a conectar para recrearlo.';
+  if (status === 429 || status === 503) return 'Google está limitando los pedidos. Se reintenta solo más tarde.';
   return 'No se pudo conectar con Google Calendar. Revisá la Calendar API y el permiso en Google Cloud.';
 }
 
