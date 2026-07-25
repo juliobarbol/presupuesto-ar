@@ -13074,6 +13074,16 @@ function scheduleGcalSync(){
   }, 45000);
 }
 
+// ¿Corre como app instalada (manifest display:standalone) y no como pestaña?
+// Cambia qué se le puede pedir al usuario: ahí el popup de Google no es viable.
+function _esAppInstalada(){
+  try {
+    if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) return true;
+    if (window.matchMedia && window.matchMedia('(display-mode: fullscreen)').matches) return true;
+    return window.navigator.standalone === true;   // iOS
+  } catch(_){ return false; }
+}
+
 // Código técnico corto de lo que respondió Google (el mismo que muestra la
 // ventana de permisos, o el `reason` de la API). Se agrega al final del
 // mensaje: sin esto, diagnosticar desde el celular es adivinar — el mensaje
@@ -13114,6 +13124,14 @@ function _gcalErrBase(e){
     return 'El navegador bloqueó la ventana de Google. Permití las ventanas emergentes para este sitio y reintentá.';
   }
   if (/popup_closed|abort/i.test(msg)) {
+    // OJO: `popup_closed` solo dice que la ventana se fue sin responder, no por
+    // qué. Puede ser que Google mostrara adentro un error (la Calendar API sin
+    // habilitar hace justo eso) o que en la app instalada el popup se abra
+    // afuera de la ventana. Por eso el mensaje ofrece los dos caminos en vez de
+    // afirmar una causa que no está probada.
+    if (_esAppInstalada()) {
+      return 'La ventana de Google se cerró sin responder. Si adentro apareció un error, revisá que la Calendar API esté habilitada; si ni llegó a mostrarse, probá conectar desde Chrome (mismo link) y volvé a la app.';
+    }
     return 'Se cerró la ventana de Google antes de terminar. Reintentá y aceptá el acceso.';
   }
   // El usuario llegó a la pantalla de permisos pero no tildó Calendar.
@@ -13160,7 +13178,14 @@ async function gcalConnect(){
   }
   try {
     toast('Conectando con Google Calendar…', 'info', 3000);
-    const token = await gcalGetToken({ interactive: true });
+    // Primero SIN ventana. Si esta cuenta ya dio el permiso alguna vez, Google
+    // devuelve el token callado y no hace falta ningún popup. Es el camino que
+    // importa en la app instalada (display:standalone): ahí Android abre el
+    // popup afuera de la ventana de la app y GIS lo da por cerrado al toque
+    // (`popup_closed`), así que la ventana no es una opción confiable.
+    let token = null;
+    try { token = await gcalGetToken({ interactive: false }); } catch(_){}
+    if (!token) token = await gcalGetToken({ interactive: true });
     try { localStorage.setItem(LS.GCAL_ON, '1'); } catch(_){}
     await gcalRememberEmail(token);
     await gcalSync();
