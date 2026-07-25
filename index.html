@@ -1907,20 +1907,15 @@ input[type=number]{-moz-appearance:textfield}
     }
   }
   *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  #app,
-  #moverlay,
-  #confirm-overlay,
-  #note-edit-overlay,
-  #agenda-overlay,
-  #share-overlay,
-  #day-alert-overlay,
-  #clima-overlay,
-  #notif-overlay,
-  #photo-viewer-overlay,
-  #phrases-overlay,
-  #notes-overlay,
-  #sticky-totals,
-  #toast-container{display:none!important}
+  /* Al imprimir, lo ÚNICO que existe es el documento (#print-zone). Antes esto
+     era una lista blanca de ids a ocultar (#app, cada overlay, …) y bastaba
+     agregar un elemento nuevo al <body> para que se colara en el PDF: así se
+     imprimió el FAB "Subir" (círculo con flechita) sobre el papel. La regla
+     por descarte no se puede desactualizar: cualquier cosa suelta en el body
+     (FAB, overlays, toasts, lo que venga) queda fuera del PDF sin tener que
+     acordarse de nada. Los <symbol> del sprite SVG siguen resolviendo desde
+     <use> aunque su contenedor esté display:none. */
+  body > *:not(#print-zone){display:none!important}
   #print-zone{display:block!important}
   /* Forzamos esquema claro al imprimir: en tema oscuro el <html> lleva
      color-scheme:dark, lo que hace que el navegador pinte el "canvas" de
