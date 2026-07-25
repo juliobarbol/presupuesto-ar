@@ -12811,13 +12811,21 @@ async function gcalEnsureClient(){
           GCAL._tokenExp = Date.now() + ((resp.expires_in || 3500) * 1000);
           _gTokSave(LS.GCAL_TOK, GCAL._token, GCAL._tokenExp);
           if (p) p.resolve(resp.access_token);
-        } else if (p) { p.reject(new Error((resp && resp.error) || 'sin_token')); }
+        } else if (p) {
+          // error_description trae el motivo real de Google (p. ej. qué scope
+          // rechazó): se conserva para poder mostrarlo, no solo el código.
+          const err = new Error((resp && resp.error) || 'sin_token');
+          err.detail = (resp && (resp.error_description || resp.error_uri || '')) + '';
+          p.reject(err);
+        }
       },
       // Errores no-OAuth (popup cerrado, etc.): sin esto el Promise quedaría
       // colgado y el botón "Conectar" no volvería nunca.
       error_callback: (err) => {
         const p = GCAL._pending; GCAL._pending = null;
-        if (p) p.reject(new Error((err && (err.type || err.message)) || 'popup'));
+        const e2 = new Error((err && (err.type || err.message)) || 'popup');
+        e2.detail = (err && err.type && err.message && err.message !== err.type) ? (err.message + '') : '';
+        if (p) p.reject(e2);
       },
     });
   }
@@ -13045,10 +13053,36 @@ function scheduleGcalSync(){
   }, 45000);
 }
 
+// Código técnico corto de lo que respondió Google (el mismo que muestra la
+// ventana de permisos, o el `reason` de la API). Se agrega al final del
+// mensaje: sin esto, diagnosticar desde el celular es adivinar — el mensaje
+// lindo tapaba el único dato que distingue una causa de otra.
+function _gcalErrCode(e){
+  const msg = ((e && e.message) || '') + '';
+  const detail = ((e && e.detail) || '') + '';
+  let reason = '';
+  if (detail) {
+    try {
+      const er = (JSON.parse(detail) || {}).error;
+      if (er) {
+        reason = (er.errors && er.errors[0] && er.errors[0].reason) || er.status || '';
+        if (!reason && typeof er === 'string') reason = er;   // error=invalid_scope
+      }
+    } catch(_){ reason = detail.slice(0, 40); }
+  }
+  const code = (msg + (reason ? ' · ' + reason : '')).trim();
+  return code.length > 90 ? code.slice(0, 90) + '…' : code;
+}
+
 // Botón "Conectar Google Calendar".
 // Traduce un error de conexión/sync a un mensaje accionable (para el toast).
 // Distingue: sin señal, permiso no otorgado / faltante, y API sin habilitar.
 function _gcalErrMsg(e){
+  const code = _gcalErrCode(e);
+  const base = _gcalErrBase(e);
+  return code && code !== 'offline' ? base + ' (Google dijo: ' + code + ')' : base;
+}
+function _gcalErrBase(e){
   const msg = ((e && e.message) || '') + '';
   const detail = ((e && e.detail) || '') + '';
   const status = e && e.status;
@@ -13065,9 +13099,16 @@ function _gcalErrMsg(e){
   if (/scope_no_otorgado/i.test(msg)) {
     return 'Faltó tildar el permiso de Calendar en la pantalla de Google. Reintentá y marcá la casilla del calendario.';
   }
+  // invalid_scope = Google no acepta el permiso PEDIDO. Con el scope ya cargado
+  // en la pantalla de consentimiento, lo que queda es la Calendar API sin
+  // habilitar en el proyecto: el permiso existe pero no corresponde a ninguna
+  // API activa, así que la autorización se rechaza antes de preguntarte nada.
+  if (/invalid_scope/i.test(msg)) {
+    return 'Google rechazó el permiso de Calendar. Casi siempre es la Google Calendar API sin habilitar en el proyecto (el permiso en la pantalla de consentimiento no alcanza).';
+  }
   // Errores del token de Google (GIS): permiso no dado o scope no configurado.
-  if (/access_denied|invalid_scope|invalid_client|consent|scope|sin_token|interaction_required/i.test(msg)) {
-    return 'Google no dio el permiso de Calendar. Si al conectar no aparece la casilla del calendario, falta agregar el permiso "calendar.app.created" en la pantalla de consentimiento de Google Cloud.';
+  if (/access_denied|invalid_client|unauthorized_client|consent|scope|sin_token|interaction_required/i.test(msg)) {
+    return 'Google no dio el permiso de Calendar. Si tu app está en modo Prueba, agregá tu cuenta como usuario de prueba; si no, revisá el permiso "calendar.app.created" en la pantalla de consentimiento.';
   }
   // Calendar API sin habilitar en el proyecto (403 con accessNotConfigured).
   if (status === 403 && /accessNotConfigured|has not been used|is disabled|SERVICE_DISABLED|Calendar API/i.test(detail)) {
@@ -13092,10 +13133,16 @@ async function gcalConnect(){
     try { localStorage.setItem(LS.GCAL_ON, '1'); } catch(_){}
     await gcalRememberEmail(token);
     await gcalSync();
+    // Espejo de gdriveConnect: reconectar limpia la racha de fallos y el aviso,
+    // si no la sección quedaba en rojo hasta la siguiente sync automática.
+    _syncOk(GCAL); GCAL._warned = false;
     toast('Conectado. Tu agenda se sincroniza con el calendario "Presupuestos AR".', 'ok', 5000);
   } catch(e){
     console.error('gcalConnect', e);
     try { localStorage.removeItem(LS.GCAL_ON); } catch(_){}
+    // Se guarda para que gcalUpdateUI lo deje escrito en la sección: un toast de
+    // 9 s no alcanza para leer (ni fotografiar) el motivo.
+    GCAL._lastErr = e;
     toast(_gcalErrMsg(e), 'err', 9000);
   }
   gcalUpdateUI();
@@ -13116,7 +13163,7 @@ async function gcalSyncNow(){
     _syncOk(GCAL); GCAL._warned = false;
     gcalUpdateUI();
     toast('Agenda sincronizada ✓', 'ok', 2500);
-  } catch(e){ console.error('gcalSyncNow', e); toast(_gcalErrMsg(e), 'err', 9000); }
+  } catch(e){ console.error('gcalSyncNow', e); GCAL._lastErr = e; gcalUpdateUI(); toast(_gcalErrMsg(e), 'err', 9000); }
 }
 // Al arrancar: si está conectado y hay señal, sync silenciosa. Nunca pide token
 // con UI (si no renueva callado, queda el botón "Conectar").
@@ -13145,7 +13192,11 @@ function gcalUpdateUI(){
   sec.classList.toggle('is-fail', fallando);
   if (status) {
     if (!on) {
-      status.textContent = 'Creá los eventos de tu agenda automáticamente en un calendario propio de Google ("Presupuestos AR"). Sincroniza con la app abierta y con señal.';
+      // Si el último intento de conectar falló, el motivo queda a la vista (con
+      // el código de Google) en vez de irse con el toast.
+      status.textContent = GCAL._lastErr
+        ? ('⚠️ No se pudo conectar. ' + _gcalErrMsg(GCAL._lastErr))
+        : 'Creá los eventos de tu agenda automáticamente en un calendario propio de Google ("Presupuestos AR"). Sincroniza con la app abierta y con señal.';
     } else {
       let last = ''; try { last = localStorage.getItem(LS.GCAL_LAST) || ''; } catch(_){}
       if (fallando) {
