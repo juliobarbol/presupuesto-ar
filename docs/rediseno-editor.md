@@ -156,18 +156,78 @@ claro/oscuro/auto (`S.themeMode`), color de marca (`applyAccent`), escenarios A/
 
 ## 4. Paleta y tipografía
 
-> **A completar con lo que devuelva Claude Design.** Hasta que esté, no arranca la
-> Fase 0.
+Extraídos del export `Editor_Presupuestos__standalone.html` (Claude Design →
+Project HTML → standalone). **El prototipo no trae tokens**: son estilos inline con
+hex hardcodeados, así que la tabla de abajo es el censo de los valores usados,
+agrupado por rol. Los conteos vienen de separar las maquetas "Claro" y "Oscuro".
 
-### Antes de pegar los tokens: dos cosas que ya existen
+### 4.1 Color
+
+| Rol | Claro | Oscuro | Hoy en la app (claro) |
+|---|---|---|---|
+| Acento | `#064e3b` | `#5fd39a` (texto/borde) · `#17a673` (relleno) | `#064e3b` — **el mismo** |
+| Acento suave | `#a7d8c4`, `#f1f4f1` | `#2f6b56` | `--accent-light` `#d1fae5` |
+| Fondo app | `#f3f1ea` | `#0d1210` | `#f0f4f3` |
+| Superficie / card | `#fffdf7` | `#151a15`, `#191d19` | `#ffffff` |
+| Superficie elevada | `#f5f4ef` | `#2b322b`, `#262d2a` | `#f8faf9` |
+| Borde | `#d8d3c4` | `#4d554e` | `#e2e8f0` |
+| Borde fuerte | `#b9b5a8`, `#cfcabb` | `#2c322c` | — |
+| Texto | `#14171a` | `#eef0ea` | `#1a2e25` |
+| Texto 2 | `#3f4a45`, `#4a5350` | `#c8d0c7` | `#374151` |
+| Atenuado | `#6b756f`, `#5c6660` | `#9aa39c`, `#8d968d` | `#64748b` |
+| Tenue | `#7d867e` | `#7d867e` | `#cbd5e1` |
+| Ámbar / aviso | `#b45309` | `#f0a52e` | — |
+
+**El hallazgo importante: el acento no cambia.** `#064e3b` es exactamente el
+`--accent` que la app ya tiene por defecto. Lo que cambia son los **neutros**: pasan
+de gris azulado frío (`#f0f4f3` / `#e2e8f0` / `#64748b`) a papel cálido (`#f3f1ea` /
+`#d8d3c4` / `#6b756f`). Ese es el rediseño, en una línea.
+
+### 4.2 Tipografía
+
+El prototipo usa **IBM Plex Mono** (231 declaraciones) e **IBM Plex Sans** (el
+default del `body`). IBM Plex Serif aparece 8 veces y **solo en los títulos del
+documento de diseño**, no dentro de las maquetas del teléfono.
+
+Hoy la app usa **DM Sans** (cuerpo) + **DM Serif Display** (logo, títulos de modal).
+
+| Rol | Diseño | Hoy |
+|---|---|---|
+| Texto | IBM Plex Sans | DM Sans |
+| Etiquetas en versalita y **todas las cifras** | IBM Plex Mono | — (no existe) |
+| Display | — (no lo usa en las maquetas) | DM Serif Display |
+
+Escala de tamaños del prototipo, por frecuencia: **12px** (102) · **15px** (66) ·
+**17px** (58) · **11px** (38) · **13px** (34) · **22px** (24) · 20px · 26px · 28px.
+Escala propuesta de 6 pasos: `11 · 12 · 13 · 15 · 17 · 22`, con `26/28` para la
+cifra del total.
+
+El mono no es decorativo: sostiene las etiquetas (`CONDICIONES`, `4 DE 5 SECCIONES`,
+`COMPLETO ✓`), los números de sección (`01`) y **todos los importes**. Con el stack
+del sistema, los importes se desalinean distinto en cada Android.
+
+### 4.3 Forma
+
+Radios usados: `10px` (50) · `999px` (48) · `14px` (22) · `12px` · `8px` · `4px`.
+(El `34px` es el marco del teléfono en la maqueta, no un token.)
+
+Ojo con una diferencia entre direcciones: **2a usa tarjetas cuadradas, sin radio**
+—borde de 1px y una barra de acento de 5px a la izquierda—, mientras 2b y 2c usan
+`10px`/`14px`. El "look ficha técnica" de 2a viene justamente de ahí.
+
+Sombra: una sola, de elevación alta (`0 26px 60px -24px rgba(20,23,26,.5)`), y es la
+del marco del teléfono. **Las maquetas no usan sombra en los componentes**: separan
+con borde y color, no con elevación. La app hoy usa `--shadow-card` en todos lados.
+
+### Antes de aplicar los tokens: cosas que ya existen
 
 **a) El acento NO es un token fijo.** El usuario elige su color de marca (Empresa →
 Estilo → "Color del documento") y `applyAccent()` reescribe en runtime `--accent`,
 `--accent-rgb`, `--accent-dark`, `--accent-2`, `--accent-fg` y `--accent-tint`.
 
-→ La paleta nueva puede proponer un acento **por defecto**, pero no puede
-hardcodearlo ni asumir que es constante. **Decisión pendiente:** ¿se mantiene el
-color de marca configurable? (Recomendado: sí. Es config guardada de los usuarios.)
+→ **Resuelto por los datos:** el acento del diseño (`#064e3b`) ya es el default de
+la app, así que el color de marca configurable **se mantiene sin conflicto**. La
+paleta nueva toca los neutros, no el acento. `applyAccent()` no se toca.
 
 **b) Ya hay un sistema de tokens.** La Fase 0 es en gran parte **completar**, no
 crear. Ya existen en `:root` (con su bloque `[data-theme="dark"]`):
@@ -188,32 +248,50 @@ crear. Ya existen en `:root` (con su bloque `[data-theme="dark"]`):
 IBM Plex Sans, IBM Plex Serif. Si el diseño elige entre estas, no hay que agregar
 ningún `.woff2` nuevo ni tocar `APP_SHELL`.
 
-**c) No hay ninguna fuente mono empaquetada.** Los mockups usan mono para las
-etiquetas en versalita (`CONDICIONES`, `TIPO DE TRABAJO`, `COMPLETO ✓`), los
-números de sección (`01`) y las cifras (`245.000`). Hoy el archivo solo usa el
-stack del sistema (`ui-monospace, monospace`) en un lugar. Dos caminos:
-
-- **Stack del sistema** (gratis, 0 KB): se ve distinto en cada Android. Aceptable
-  para etiquetas, riesgoso para cifras alineadas.
-- **Empaquetar IBM Plex Mono** (~20 KB por peso): consistente, hace juego con las
-  IBM Plex que ya están. Hay que sumarlo a `fonts.css`, a `APP_SHELL` en `sw.js` y
-  subir `CACHE_VERSION`.
-
-Recomendado: empaquetarla. Es la única fuente nueva que pediría este rediseño.
+**c) No hay ninguna fuente mono empaquetada.** IBM Plex Mono es la única fuente
+nueva que pide este rediseño (~20 KB por peso). Va a `fonts/`, a `fonts.css`, a
+`APP_SHELL` en `sw.js`, y con su bump de `CACHE_VERSION`. La alternativa —stack del
+sistema, 0 KB— desalinea los importes distinto en cada Android; para una app cuyo
+producto es una cifra, no compensa.
 
 ---
 
 ## Fase 0 — Tokens
 
-**Dónde:** bloque `:root` y `[data-theme="dark"]` del `<style>`.
+La Fase 0 va **partida en dos**, y el motivo es que si no, su criterio de aceptación
+se vuelve imposible de verificar: no se puede pedir a la vez "que se vea idéntica" y
+"que adopte una paleta nueva".
 
-1. Completar los tokens faltantes (tipografía y espaciado) de la sección 4.
+### Fase 0a — Tokenizar sin cambiar ningún valor
+
+**Dónde:** `<style>`, bloques `:root` y `[data-theme="dark"]`.
+
+1. Agregar los tokens que faltan (tipografía y espaciado) **con los valores actuales
+   de la app**, no con los del diseño.
 2. Reemplazar colores y tamaños hardcodeados del CSS de pantalla por tokens.
 3. No tocar el CSS del documento (`.pdoc*`, `@media print`).
 
-**Aceptación:** la app se ve **idéntica** a antes. Si algo se ve distinto, es un
-error, no una mejora. El color de marca configurable sigue funcionando: cambiar de
-preset repinta la app como hoy.
+**Aceptación:** la app se ve **exactamente igual** que antes. Cualquier diferencia
+visible es un error de tokenización. Esta fase es puro andamiaje y se puede
+desplegar sola sin que nadie note nada.
+
+### Fase 0b — Cambiar los valores a la paleta nueva
+
+**Dónde:** los mismos dos bloques, ahora solo cambiando valores.
+
+1. Neutros fríos → papel cálido, según la tabla 4.1.
+2. Empaquetar IBM Plex Mono y aplicar la escala tipográfica de 4.2.
+3. Revisar los `--c-*` de agenda/historial contra el fondo nuevo (ver abajo).
+
+**Aceptación:** la app cambia de aspecto **a propósito**, en claro y en oscuro, sin
+que se rompa ningún contraste ni el color de marca configurable.
+
+> **Riesgo conocido de la 0b:** los seis colores por concepto de la Agenda y el
+> Historial (`--c-trabajo` violeta, `--c-recontacto` cian, `--c-seguimiento` ámbar,
+> `--c-vence` rojo, `--c-nota` rosa, `--c-visita` azul) fueron elegidos contra un
+> fondo gris azulado frío. Sobre papel cálido (`#f3f1ea`) hay que revisarlos uno por
+> uno: son un sistema de significado, no decoración, y si pierden legibilidad se
+> rompe la lectura de la Agenda. Esta fase toca **toda la app**, no solo el editor.
 
 ---
 
@@ -387,21 +465,28 @@ Una pregunta cuesta un mensaje. Un supuesto equivocado cuesta la fase entera.
 
 - **El orden de carga de los datos no cambia.** Identificación primero, como hoy.
   Ver Fase 1.
+- **El color de marca configurable se mantiene.** El acento del diseño ya es el
+  default de la app (`#064e3b`); `applyAccent()` no se toca.
+- **Se empaqueta IBM Plex Mono.** Sostiene las cifras, que son el producto de la app.
+- **La Fase 0 va partida** en 0a (tokenizar, se ve idéntica) y 0b (cambiar valores,
+  cambia a propósito).
 
 ### Pendientes
 
-1. **Color de marca configurable:** ¿se mantiene? (Recomendado: sí.)
-2. **Fuente mono:** ¿stack del sistema o empaquetar IBM Plex Mono?
-   (Recomendado: empaquetarla.)
-3. **Criterio de "COMPLETO"** por sección.
-4. **Estimativo y Riesgo:** los mockups solo cubren modo Normal. Falta definir cómo
+1. **Tipografía de texto:** el diseño usa IBM Plex Sans; la app usa DM Sans. Las dos
+   están empaquetadas, así que el cambio es gratis en bytes — pero cambia **toda** la
+   app, no solo el editor. ¿Se adopta Plex Sans o se queda DM Sans + Plex Mono?
+2. **Sombras:** las maquetas no usan ninguna (separan con borde y color). La app usa
+   `--shadow-card` en todo. ¿Se sacan las sombras o se mantienen?
+3. **Radios:** 2a es cuadrada (0px, borde + barra de acento a la izquierda); 2b/2c
+   usan 10–14px. Hoy la app usa 8/12px. Depende de qué vista se tome como base.
+4. **Criterio de "COMPLETO"** por sección.
+5. **Estimativo y Riesgo:** los mockups solo cubren modo Normal. Falta definir cómo
    se ven las otras dos, sobre todo las 6 `section-card` del ISA.
-5. **Chips de descuento (`0% · 5% · 10% · Otro`):** primer control que el diseño
+6. **Chips de descuento (`0% · 5% · 10% · Otro`):** primer control que el diseño
    quiere reemplazar en vez de envolver. Se puede hacer sin romper I1 (los chips
    escriben en `#discount`, que queda como está por debajo), pero hay que quererlo.
-6. **Confirmar** que la Fase 3 queda apartada.
-7. **Los tokens de Claude Design** para completar la sección 4 — es lo único que
-   bloquea el arranque de la Fase 0.
+7. **Confirmar** que la Fase 3 queda apartada.
 
 ---
 
