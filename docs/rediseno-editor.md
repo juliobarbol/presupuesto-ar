@@ -179,9 +179,21 @@ agrupado por rol. Los conteos vienen de separar las maquetas "Claro" y "Oscuro".
 | Ámbar / aviso | `#b45309` | `#f0a52e` | — |
 
 **El hallazgo importante: el acento no cambia.** `#064e3b` es exactamente el
-`--accent` que la app ya tiene por defecto. Lo que cambia son los **neutros**: pasan
-de gris azulado frío (`#f0f4f3` / `#e2e8f0` / `#64748b`) a papel cálido (`#f3f1ea` /
-`#d8d3c4` / `#6b756f`). Ese es el rediseño, en una línea.
+`--accent` que la app ya tiene por defecto.
+
+> **DECIDIDO — la paleta de color NO se adopta.** La columna "Claro"/"Oscuro" de
+> arriba queda como referencia de dónde venía el diseño, no como destino. **El
+> fondo blanco se mantiene**: `--panel` / `--card` siguen en `#ffffff` y los neutros
+> siguen siendo los actuales, en claro y en oscuro. El papel cálido (`#fffdf7`,
+> `#f3f1ea`, `#d8d3c4`) **no entra**.
+>
+> Consecuencias, todas buenas:
+> - El riesgo sobre los `--c-*` de Agenda/Historial **desaparece**: siguen sobre el
+>   mismo fondo para el que fueron elegidos.
+> - La Fase 0b deja de ser un repintado de toda la app y se reduce a tipografía.
+> - El carácter del rediseño va a venir de la **estructura** (secciones numeradas,
+>   progreso, barra inferior fija) y del **mono en etiquetas y cifras**, no de un
+>   cambio de piel. Que es, de hecho, de dónde viene en las maquetas.
 
 ### 4.2 Tipografía
 
@@ -191,11 +203,15 @@ documento de diseño**, no dentro de las maquetas del teléfono.
 
 Hoy la app usa **DM Sans** (cuerpo) + **DM Serif Display** (logo, títulos de modal).
 
-| Rol | Diseño | Hoy |
-|---|---|---|
-| Texto | IBM Plex Sans | DM Sans |
-| Etiquetas en versalita y **todas las cifras** | IBM Plex Mono | — (no existe) |
-| Display | — (no lo usa en las maquetas) | DM Serif Display |
+| Rol | Diseño | Hoy | **Se adopta** |
+|---|---|---|---|
+| Texto | IBM Plex Sans | DM Sans | **DM Sans** (se queda) |
+| Etiquetas en versalita y **todas las cifras** | IBM Plex Mono | — (no existe) | **IBM Plex Mono** (se suma) |
+| Display | — (no lo usa en las maquetas) | DM Serif Display | DM Serif Display (se queda) |
+
+**DECIDIDO:** DM Sans + IBM Plex Mono. No se cambia la tipografía de texto — DM Sans
+ya está afinada contra los tamaños que la app usa, y cambiarla correría layouts que
+hoy entran justos. Lo único nuevo es la mono.
 
 Escala de tamaños del prototipo, por frecuencia: **12px** (102) · **15px** (66) ·
 **17px** (58) · **11px** (38) · **13px** (34) · **22px** (24) · 20px · 26px · 28px.
@@ -218,6 +234,11 @@ Ojo con una diferencia entre direcciones: **2a usa tarjetas cuadradas, sin radio
 Sombra: una sola, de elevación alta (`0 26px 60px -24px rgba(20,23,26,.5)`), y es la
 del marco del teléfono. **Las maquetas no usan sombra en los componentes**: separan
 con borde y color, no con elevación. La app hoy usa `--shadow-card` en todos lados.
+
+**DECIDIDO:** se mantienen las sombras y los radios actuales (`--radius-field` 8px,
+`--radius-box` 12px, `--shadow-card`). Se toma la barra de acento a la izquierda del
+encabezado de sección de 2a, que es lo que le da carácter, pero sobre la forma que
+la app ya tiene.
 
 ### Antes de aplicar los tokens: cosas que ya existen
 
@@ -275,23 +296,20 @@ se vuelve imposible de verificar: no se puede pedir a la vez "que se vea idénti
 visible es un error de tokenización. Esta fase es puro andamiaje y se puede
 desplegar sola sin que nadie note nada.
 
-### Fase 0b — Cambiar los valores a la paleta nueva
+### Fase 0b — Tipografía mono
 
-**Dónde:** los mismos dos bloques, ahora solo cambiando valores.
+**Ningún color cambia** (ver la decisión en 4.1). Esta fase se redujo a la
+tipografía.
 
-1. Neutros fríos → papel cálido, según la tabla 4.1.
-2. Empaquetar IBM Plex Mono y aplicar la escala tipográfica de 4.2.
-3. Revisar los `--c-*` de agenda/historial contra el fondo nuevo (ver abajo).
+1. Agregar `IBM Plex Mono` a `fonts/` y a `fonts.css`, sumarla a `APP_SHELL` en
+   `sw.js` y subir `CACHE_VERSION`.
+2. Token `--font-mono` y escala tipográfica de 4.2.
+3. Aplicarla donde el diseño la usa: etiquetas en versalita, números de sección y
+   **las cifras** (totales, precios de ítem).
 
-**Aceptación:** la app cambia de aspecto **a propósito**, en claro y en oscuro, sin
-que se rompa ningún contraste ni el color de marca configurable.
-
-> **Riesgo conocido de la 0b:** los seis colores por concepto de la Agenda y el
-> Historial (`--c-trabajo` violeta, `--c-recontacto` cian, `--c-seguimiento` ámbar,
-> `--c-vence` rojo, `--c-nota` rosa, `--c-visita` azul) fueron elegidos contra un
-> fondo gris azulado frío. Sobre papel cálido (`#f3f1ea`) hay que revisarlos uno por
-> uno: son un sistema de significado, no decoración, y si pierden legibilidad se
-> rompe la lectura de la Agenda. Esta fase toca **toda la app**, no solo el editor.
+**Aceptación:** las cifras se ven alineadas y consistentes; ningún texto de la app
+cambia de familia salvo lo enumerado; la app sigue andando offline con la fuente
+nueva cacheada (`node test/pwa.test.cjs`).
 
 ---
 
@@ -468,25 +486,24 @@ Una pregunta cuesta un mensaje. Un supuesto equivocado cuesta la fase entera.
 - **El color de marca configurable se mantiene.** El acento del diseño ya es el
   default de la app (`#064e3b`); `applyAccent()` no se toca.
 - **Se empaqueta IBM Plex Mono.** Sostiene las cifras, que son el producto de la app.
-- **La Fase 0 va partida** en 0a (tokenizar, se ve idéntica) y 0b (cambiar valores,
-  cambia a propósito).
+- **La Fase 0 va partida** en 0a (tokenizar, se ve idéntica) y 0b (mono).
+- **La paleta de color NO se adopta. El fondo blanco se mantiene**, en claro y en
+  oscuro. El rediseño es de estructura y tipografía, no de piel.
+- **Tipografía: DM Sans se queda**, se suma IBM Plex Mono para etiquetas y cifras.
+- **Sombras y radios actuales se mantienen.** Se toma la barra de acento a la
+  izquierda del encabezado de sección.
 
 ### Pendientes
 
-1. **Tipografía de texto:** el diseño usa IBM Plex Sans; la app usa DM Sans. Las dos
-   están empaquetadas, así que el cambio es gratis en bytes — pero cambia **toda** la
-   app, no solo el editor. ¿Se adopta Plex Sans o se queda DM Sans + Plex Mono?
-2. **Sombras:** las maquetas no usan ninguna (separan con borde y color). La app usa
-   `--shadow-card` en todo. ¿Se sacan las sombras o se mantienen?
-3. **Radios:** 2a es cuadrada (0px, borde + barra de acento a la izquierda); 2b/2c
-   usan 10–14px. Hoy la app usa 8/12px. Depende de qué vista se tome como base.
-4. **Criterio de "COMPLETO"** por sección.
-5. **Estimativo y Riesgo:** los mockups solo cubren modo Normal. Falta definir cómo
+1. **Criterio de "COMPLETO"** por sección.
+2. **Estimativo y Riesgo:** los mockups solo cubren modo Normal. Falta definir cómo
    se ven las otras dos, sobre todo las 6 `section-card` del ISA.
-6. **Chips de descuento (`0% · 5% · 10% · Otro`):** primer control que el diseño
+3. **Chips de descuento (`0% · 5% · 10% · Otro`):** primer control que el diseño
    quiere reemplazar en vez de envolver. Se puede hacer sin romper I1 (los chips
    escriben en `#discount`, que queda como está por debajo), pero hay que quererlo.
-7. **Confirmar** que la Fase 3 queda apartada.
+4. **Confirmar** que la Fase 3 queda apartada.
+
+Ninguna bloquea el arranque de la Fase 0a.
 
 ---
 
