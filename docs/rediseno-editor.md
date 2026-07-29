@@ -188,6 +188,19 @@ crear. Ya existen en `:root` (con su bloque `[data-theme="dark"]`):
 IBM Plex Sans, IBM Plex Serif. Si el diseño elige entre estas, no hay que agregar
 ningún `.woff2` nuevo ni tocar `APP_SHELL`.
 
+**c) No hay ninguna fuente mono empaquetada.** Los mockups usan mono para las
+etiquetas en versalita (`CONDICIONES`, `TIPO DE TRABAJO`, `COMPLETO ✓`), los
+números de sección (`01`) y las cifras (`245.000`). Hoy el archivo solo usa el
+stack del sistema (`ui-monospace, monospace`) en un lugar. Dos caminos:
+
+- **Stack del sistema** (gratis, 0 KB): se ve distinto en cada Android. Aceptable
+  para etiquetas, riesgoso para cifras alineadas.
+- **Empaquetar IBM Plex Mono** (~20 KB por peso): consistente, hace juego con las
+  IBM Plex que ya están. Hay que sumarlo a `fonts.css`, a `APP_SHELL` en `sw.js` y
+  subir `CACHE_VERSION`.
+
+Recomendado: empaquetarla. Es la única fuente nueva que pediría este rediseño.
+
 ---
 
 ## Fase 0 — Tokens
@@ -217,19 +230,40 @@ preset repinta la app como hoy.
 2. **Numeración en runtime** según el modo activo, calculada sobre las secciones
    visibles. Se engancha en `applyMode()`, que ya decide qué se muestra.
 3. **Barra de progreso** en el encabezado, sobre las secciones visibles.
-4. Estado nuevo `vistaEditor: 'fichas' | 'clasica'` en `DEF` + `CFG_GLOBAL_FIELDS`
-   + lista blanca en `js/sanitize.js` (invariantes I4 e I5).
-   - `'fichas'` → secciones colapsables, arranca con la primera abierta.
+4. Estado nuevo `vistaEditor` en `DEF` + `CFG_GLOBAL_FIELDS` + lista blanca en
+   `js/sanitize.js` (invariantes I4 e I5). Valores:
    - `'clasica'` → todas abiertas, sin colapsar, sin barra de progreso.
-5. Default: **`'clasica'`** durante el desarrollo; se cambia a `'fichas'` recién al
-   cerrar la Fase 4, cuando el usuario pueda elegir desde la UI.
+   - `'fichas'` → secciones colapsables, arranca con la primera abierta (2a).
+   - `'consola'` → tres etapas Datos · Trabajos · Cierre (2b, ver Fase 1b).
+5. Default: **`'clasica'`** durante el desarrollo; se cambia recién al cerrar la
+   Fase 4, cuando el usuario pueda elegir desde la UI.
 
-**Decisión pendiente:** la lista y el orden exacto de secciones, y qué cuenta como
-"COMPLETO" en cada una.
+**DECIDIDO — el orden de carga no cambia.** Los mockups de Claude Design muestran
+`01 Cliente y lugar` / `02 Identificación`, invertido respecto de la app. **Se
+mantiene el orden actual**: Identificación primero. El usuario ya tiene el flujo
+incorporado y este rediseño es visual, no de flujo. La numeración se calcula sobre
+el orden que ya existe.
+
+**Decisión pendiente:** qué cuenta como "COMPLETO" en cada sección.
 
 **Aceptación:** cambiando un solo valor de estado se pasa de una vista a la otra
 **sin recargar y sin perder lo escrito**; en `'clasica'` la pantalla es
-funcionalmente idéntica a la de hoy; las 6 combinaciones modo × vista funcionan.
+funcionalmente idéntica a la de hoy; todas las combinaciones modo × vista funcionan.
+
+---
+
+## Fase 1b — Vista `consola` (opcional, después de la 1)
+
+La dirección **2b** de Claude Design parte el editor en tres etapas navegables
+(`DATOS · TRABAJOS · CIERRE`) con header sólido y tabs subrayadas.
+
+Es **el mismo mecanismo que `fichas`**: agrupar los contenedores de la Fase 1 y
+mostrar un grupo por vez. No toca el interior de ninguna sección (I1), así que el
+costo marginal una vez que el shell existe es chico. Por eso `vistaEditor` es un
+enum de tres valores y no un booleano.
+
+**Pendiente de definir:** dónde caen las 6 `section-card` del informe ISA en un
+flujo de 3 etapas — ¿cuarta etapa, o dentro de "Datos"?
 
 ---
 
@@ -347,13 +381,26 @@ Una pregunta cuesta un mensaje. Un supuesto equivocado cuesta la fase entera.
 
 ---
 
-## Decisiones pendientes
+## Decisiones
+
+### Tomadas
+
+- **El orden de carga de los datos no cambia.** Identificación primero, como hoy.
+  Ver Fase 1.
+
+### Pendientes
 
 1. **Color de marca configurable:** ¿se mantiene? (Recomendado: sí.)
-2. **Lista y orden de las secciones del editor** para la Fase 1, y criterio de
-   "COMPLETO" por sección.
-3. **Confirmar** que la Fase 3 queda apartada.
-4. **Los tokens de Claude Design** para completar la sección 4 — es lo único que
+2. **Fuente mono:** ¿stack del sistema o empaquetar IBM Plex Mono?
+   (Recomendado: empaquetarla.)
+3. **Criterio de "COMPLETO"** por sección.
+4. **Estimativo y Riesgo:** los mockups solo cubren modo Normal. Falta definir cómo
+   se ven las otras dos, sobre todo las 6 `section-card` del ISA.
+5. **Chips de descuento (`0% · 5% · 10% · Otro`):** primer control que el diseño
+   quiere reemplazar en vez de envolver. Se puede hacer sin romper I1 (los chips
+   escriben en `#discount`, que queda como está por debajo), pero hay que quererlo.
+6. **Confirmar** que la Fase 3 queda apartada.
+7. **Los tokens de Claude Design** para completar la sección 4 — es lo único que
    bloquea el arranque de la Fase 0.
 
 ---
