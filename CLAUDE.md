@@ -15,7 +15,7 @@
 
 ## Estructura de archivos
 - `index.html` — **toda la app** (markup + `<style>` + `<script>`).
-- `sw.js` — Service Worker (offline + actualizaciones). **`CACHE_VERSION` actual: `presupuesto-v191`**.
+- `sw.js` — Service Worker (offline + actualizaciones). **`CACHE_VERSION` actual: `presupuesto-v192`**.
 - `manifest.webmanifest`, `*.png` — PWA (instalación, iconos).
 - `push-worker/` — Cloudflare Worker **opcional** para notificaciones push de seguimiento (avisos con la app cerrada). No es parte del PWA shell; se despliega aparte. Ver `docs/push-setup.md`. La app es inerte a esto hasta rellenar `PUSH_WORKER_URL` / `PUSH_VAPID_KEY` en `index.html`.
 
@@ -36,7 +36,7 @@ grep -n "===== js/" index.html
 | `js/clients.js` | DBs de clientes, especies y servicios (autocompletar) |
 | `js/phrases.js` | Biblioteca de frases reusables |
 | `js/items.js` | Ítems del presupuesto (árbol/servicio/nota), recargo, escenarios A/B |
-| `js/ui.js` | restoreUI/syncFromUI, pestañas, modos, fechas, numeración, vista previa. **Shell del editor** (`S.vistaEditor`: `clasica`/`fichas`): cada sección va envuelta en un `.esec` con encabezado propio (número · título · estado) y `editorShellSync()` decide qué ficha se ve, con qué número y cuál está abierta — solo con clases/`hidden`, nunca reconstruyendo el DOM. En `clasica` el shell es inerte y la pantalla es la de siempre. Ver `docs/rediseno-editor.md` y `test/editor-shell.test.cjs` |
+| `js/ui.js` | restoreUI/syncFromUI, pestañas, modos, fechas, numeración, vista previa. **Barra inferior fija** (`#sticky-totals`): única barra de totales del editor (el `#totals-bar` inline se sacó) — dos filas, cifra en mono 28px **peso 600** (IBM Plex Mono no trae 700) + acciones de cierre; cuatro variantes vía `_stickyShowVariant()`. Su alto NO se hardcodea: `reserveStickySpace()` lo mide y publica `--sticky-h`, de donde salen el padding de `#main` y la posición del FAB de "subir". **Shell del editor** (`S.vistaEditor`: `clasica`/`fichas`): cada sección va envuelta en un `.esec` con encabezado propio (número · título · estado) y `editorShellSync()` decide qué ficha se ve, con qué número y cuál está abierta — solo con clases/`hidden`, nunca reconstruyendo el DOM. En `clasica` el shell es inerte y la pantalla es la de siempre. Ver `docs/rediseno-editor.md` y `test/editor-shell.test.cjs` |
 | `js/history.js` | Historial de presupuestos, seguimiento, WhatsApp | **Rendimiento:** `getH()` cachea el parseo validando contra el string en disco (los snapshots son el 94% de los bytes; un render llama 9 veces). El buscador usa `renderHistoryDebounced()` (180 ms). Los meses colapsados NO generan su HTML: se llena al desplegarlos. Con filtros activos el listado se rinde plano y visible. Ver `test/perf-historial.test.cjs`.
 | `js/exportimport.js` | Export/import JSON, `buildBackupObject`/`applyBackupObject`, **módulo GDRIVE (Google Drive)** |
 | `js/pdf.js` | `buildDoc`/`buildEstDoc`/`buildRiskDoc` (documento para imprimir/PDF), `printDoc` |
@@ -90,7 +90,7 @@ El CSS vive en el `<style>` (líneas ~16–1711). Hay dos bloques de estilos del
 > versión nueva la próxima vez que abran la app con conexión.
 
 1. Desarrollar en la rama de trabajo (`claude/...`), no en `main`.
-2. **Subir `CACHE_VERSION` en `sw.js`** en cada cambio que se despliegue (si no, los dispositivos siguen con la versión vieja en caché). Formato: `presupuesto-vNN`. **Versión actual: v191**.
+2. **Subir `CACHE_VERSION` en `sw.js`** en cada cambio que se despliegue (si no, los dispositivos siguen con la versión vieja en caché). Formato: `presupuesto-vNN`. **Versión actual: v192**.
 3. Si agregás un archivo nuevo (ej. otro `.js` o `.css`), **agregarlo a `APP_SHELL` en `sw.js`** o se rompe el offline.
 4. **Mergear a `main`** → Cloudflare despliega solo.
 

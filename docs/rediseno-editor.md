@@ -12,7 +12,7 @@
 | 0b — Tipografía mono | ✅ en producción (v189) |
 | 1 — Shell del editor | ✅ en producción (v190) |
 | 4 — Selector visible | ✅ en producción (v191) |
-| 2 — Barra inferior fija | pendiente — **re-alcanzada**, ver la fase |
+| 2 — Barra inferior fija | ✅ en producción (v192) |
 | 1b — Vista `consola` | pendiente (opcional) |
 | 3 — Pantalla "Cargar trabajo" | apartada (ver más abajo) |
 
@@ -21,8 +21,9 @@ podía activar desde una consola, y en la PWA instalada en Android eso pide
 depuración USB — la Fase 1 quedaba desplegada pero **no verificable**, que es
 justo lo que la Restricción 2 pide antes de seguir.
 
-**Lo que queda por hacer es la Fase 2** (y, si se quiere, la 1b). El orden
-original 2 → 4 ya no aplica.
+**El plan está terminado**, salvo dos cosas que son opcionales o decisión del
+usuario: la **Fase 1b** (vista `consola`) y el **cambio de default a `fichas`**.
+La Fase 3 sigue apartada. Ver Pendientes al final.
 
 Verificación visual: `node test/visual-snap.cjs base|check` compara 14 escenas
 píxel a píxel. Las invariantes del shell las cubre `node test/editor-shell.test.cjs`.
@@ -634,6 +635,56 @@ de barra en total); no tapa ningún campo ni el FAB de "subir"; ningún overlay
 queda por debajo; y en un teléfono real la barra no se come más de lo que
 aporta.
 
+### Cómo quedó implementada (v192)
+
+**Decidido:** dos filas (el diseño 2a completo) y **se sacaron los duplicados**.
+
+La barra mide **111 px** en 412×915 (antes 55). Estructura:
+
+- **Fila 1 — cifras.** `TOTAL · N ÍTEMS` en mono versalita y el importe en
+  **mono 28px**. A la derecha, una columna de apoyo en mono 12px con
+  `Subtotal` / `Desc.` / `Recargo`, y **cada renglón aparece solo si aporta
+  algo**: sin descuento ni recargo el subtotal es el total, y repetirlo al lado
+  de una cifra de 28px es ruido. Ahí está la información que antes daba el
+  `#totals-bar` inline, que se fue.
+- **Fila 2 — acciones.** `Imprimir / PDF` que se estira + vista previa y
+  WhatsApp como botones de ícono de 44×44 (con `title` y `aria-label`).
+- **Cuatro variantes**, una visible a la vez vía `_stickyShowVariant()`:
+  normal, riesgo (misma que normal), estimativo (con la nota "valor
+  referencial") y A/B (los dos totales a 20px, el activo resaltado con
+  opacity).
+
+**El peso de la cifra es 600, no el 700 del spec.** IBM Plex Mono está
+empaquetada en 400 y 600: un 700 lo sintetizaría el navegador y a 28px el
+engordado falso se nota, además de rendir distinto en cada Android. El CSS que
+se borró ya traía esa advertencia y se conservó.
+
+**Lo que se sacó del flujo del editor** (−188 px en normal y riesgo, −206 px en
+estimativo): el `#totals-bar` inline con sus `.tbar-*`, el CTA `.btn-cta`
+"Imprimir / PDF" y la fila de "Vista previa · Enviar por WhatsApp". Quedan el
+aviso de autoguardado y "Guardar como borrador · Nuevo presupuesto", que no
+estaban duplicados. También se limpiaron las escrituras a `tb-*` de
+`updateTotalsBar()` y el manejo de `#tb-normal-cols`/`#tb-est-cols` de
+`applyMode()`: sin markup detrás eran no-ops silenciosos.
+
+> **El bug que esta fase iba a introducir:** el CSS posicionaba el FAB de
+> "subir" con `bottom:calc(56px + safe-area)` — una constante que servía para la
+> barra de una fila. Con 111 px el FAB quedaba **encima** de la barra. Ahora
+> `reserveStickySpace()` publica el alto medido en `--sticky-h` y el CSS calcula
+> desde ahí; el `56px` sobrevive solo como fallback por si el JS todavía no
+> corrió. Cubierto por test.
+
+**Esta fase movió píxeles de `clasica` a propósito** — la primera. Verificado
+que el cambio está confinado: de las 14 escenas de `visual-snap` cambiaron
+**solo las 5 del editor**, y solo en alto. Las otras 9 (Empresa, Estilo,
+Historial, Agenda, Facturas, claro y oscuro) siguen idénticas píxel a píxel, y
+los 21 documentos del PDF siguen byte por byte iguales.
+
+**Riesgo asumido, a mirar en el teléfono:** "Enviar por WhatsApp" pasó de botón
+con texto a ícono. Es cómo se le manda el presupuesto al cliente, así que si
+cuesta encontrarlo, volver a ponerle la etiqueta es un cambio de CSS (el
+`.stb-ico` deja de ser cuadrado y el `aria-label` ya está escrito).
+
 ---
 
 ## Fase 3 — Pantalla "Cargar trabajo" (APARTADA)
@@ -806,18 +857,21 @@ Una pregunta cuesta un mensaje. Un supuesto equivocado cuesta la fase entera.
    (`vistaEditor`), más el bump de `CACHE_VERSION`. Si se cambia, revisar que
    `test/editor-shell.test.cjs` siga afirmando lo correcto: hoy tiene checks que
    dan por sentado que el default es `'clasica'`.
-2. **Chips de descuento (`0% · 5% · 10% · Otro`):** primer control que el diseño
+2. **¿"Enviar por WhatsApp" vuelve a tener etiqueta?** En la barra fija quedó
+   como ícono, siguiendo el spec. Es la acción con la que se le manda el
+   presupuesto al cliente; si en el teléfono cuesta encontrarla, se le devuelve
+   el texto (cambio de CSS, ver Fase 2).
+3. **Fase 1b — ¿se hace la vista `consola`?** Si sí, falta definir dónde caen las
+   6 `section-card` del ISA en un flujo de 3 etapas. Si no, sacar `'consola'` de
+   `EDITOR_VIEWS` y del test.
+4. **Chips de descuento (`0% · 5% · 10% · Otro`):** primer control que el diseño
    quiere reemplazar en vez de envolver. Se puede hacer sin romper I1 (los chips
-   escriben en `#discount`, que queda como está por debajo), pero hay que quererlo.
-   Cae naturalmente dentro de la Fase 2, que ya toca "Ajustes de precio" y el
-   recargo.
-3. **`#totals-bar` inline: ¿se queda o se va?** Hoy duplica lo que muestra la
-   barra fija. Decisión de la Fase 2, ahí está el detalle.
-4. **Confirmar** que la Fase 3 queda apartada.
-5. **Fase 1b:** dónde caen las secciones del ISA en un flujo de 3 etapas. Si se
-   descarta la vista `consola`, sacarla de `EDITOR_VIEWS`.
+   escriben en `#discount`, que queda como está por debajo), pero hay que
+   quererlo. Quedó fuera de la Fase 2 — no era parte de la barra.
+5. **Confirmar** que la Fase 3 queda apartada.
 
-Ninguna bloquea el arranque de la **Fase 2**.
+Ninguna es bloqueante: **el plan ya está entregado**. Lo que queda son
+decisiones de uso, no trabajo pendiente.
 
 ---
 

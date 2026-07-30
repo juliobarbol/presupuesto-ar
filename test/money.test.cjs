@@ -63,7 +63,7 @@ async function nuevaPagina(browser) {
         ];
         noSync = true; restoreUI(); noSync = false; renderEstItems();
         updateTotalsBar();
-        const barra = (document.getElementById('tb-est-total')||{}).textContent;
+        const barra = (document.getElementById('st-est-val')||{}).textContent;
         buildEstDoc();
         const pdf = (document.querySelector('#doc-a4 .ptotal-amt')||{}).textContent;
         setH([]); autoSaveToHistory();
