@@ -10,14 +10,15 @@
 |---|---|
 | 0a — Tokenizar el CSS | ✅ en producción (v188) |
 | 0b — Tipografía mono | ✅ en producción (v189) |
-| 1 — Shell del editor | pendiente |
+| 1 — Shell del editor | ✅ en producción (v190) |
 | 1b — Vista `consola` | pendiente (opcional) |
 | 2 — Barra inferior fija | pendiente |
 | 3 — Pantalla "Cargar trabajo" | apartada (ver más abajo) |
 | 4 — Selector visible | pendiente |
 
 Verificación visual: `node test/visual-snap.cjs base|check` compara 12 escenas
-píxel a píxel. Rollback: `docs/rollback.md`.
+píxel a píxel. Las invariantes del shell las cubre `node test/editor-shell.test.cjs`.
+Rollback: `docs/rollback.md`.
 
 ### Cómo retomar en una sesión nueva
 
@@ -462,6 +463,48 @@ quedan en `04`, y Condiciones/Ajustes en `05`/`06`.
 **sin recargar y sin perder lo escrito**; en `'clasica'` la pantalla es
 funcionalmente idéntica a la de hoy; todas las combinaciones modo × vista funcionan.
 
+### Cómo quedó implementada (v190)
+
+Cada sección va envuelta en `<div class="esec" id="esec-<clave>">` con un
+`<button class="esec-head">` (número · título · estado · chevron) como **hermano**
+del contenido: el markup interno no se tocó (I1). Las claves son `ident`,
+`cliente`, `items`, `risk`, `est-items`, `conditions`, `adjust`, `est-obs`; las
+dos primeras estrenan contenedor (`.esec-body`), el resto reusa el `#section-*`
+que ya existía.
+
+- **En `clasica` el shell es inerte:** `.esec-head` y `.esh` van en `display:none`
+  y `.esec`/`.esec-body` no tienen **ninguna** declaración CSS, así que siguen
+  siendo divs transparentes que no cortan el colapso de márgenes. Verificado:
+  las 12 escenas de `visual-snap` son **idénticas píxel a píxel** a las de `main`
+  (comparación directa entre capturas de las dos versiones), y los 21 documentos
+  del PDF (3 modos × 7 temas) salen byte por byte iguales.
+- **Todo el estilo de la vista nueva cuelga de `#panel-editor[data-vista="fichas"]`.**
+  Ese atributo lo escribe `editorShellSync()`, y ante cualquier excepción cae a
+  `clasica` (I2).
+- **Una sola función coordina:** `editorShellSync()` (en `js/ui.js`) decide qué
+  fichas se ven, con qué número, qué estado y cuál está abierta. Solo toca clases,
+  `hidden` y el texto de los encabezados — nunca reconstruye el DOM ni escribe en
+  `S` (I3). Se engancha en `applyMode()` (después de decidir la visibilidad), en
+  `restoreUI()` y en `sched()`, que es por donde pasa cualquier cambio.
+- **Qué secciones están visibles se lee del DOM**, no de una tabla por modo:
+  `editorShellSync()` mira el `style.display` inline de cada `#section-*`, que es
+  justo lo que `applyMode()` escribe. Así el shell no puede desincronizarse de los
+  modos, y agregar un modo no obliga a tocar dos lugares.
+- **La sección abierta (`_esecOpen`) es estado de pantalla**, no del presupuesto:
+  no se guarda ni viaja en el backup. Si el modo activo esconde la sección
+  abierta, se abre la primera visible.
+- `setVistaEditor(v)` cambia la vista (la UI para elegirla es la Fase 4).
+
+**Desvío respecto de la tabla de arriba, en modo riesgo:** quedó
+`03 Trabajos a cotizar` · `04 Informe de riesgo`, al revés de lo que dice la
+tabla. El motivo es que en el DOM `#section-normal-items` viene **antes** que
+`#section-risk-analysis`, y numerar contra el orden visual es la única forma de
+que los números se lean de arriba abajo. Invertirlo exige mover la sección en el
+DOM, que cambia la pantalla de la vista `clasica` en modo riesgo y rompe I2 — así
+que no se hizo. Siguen siendo **6 secciones**, que es lo que la decisión buscaba.
+Si se quiere el orden de la tabla, es mover un bloque de markup y la numeración
+se recalcula sola.
+
 ---
 
 ## Fase 1b — Vista `consola` (opcional, después de la 1)
@@ -567,6 +610,10 @@ node test/config-global.test.cjs
 
 # 4. Sanitización (que vistaEditor basura caiga a un valor válido)
 node test/security.test.cjs
+
+# 5. Invariantes del shell del editor (I2–I6): numeración por modo, estados,
+#    plegado sin perder lo escrito, fallback a 'clasica'
+node test/editor-shell.test.cjs
 ```
 
 Y a mano, en el teléfono:

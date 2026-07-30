@@ -545,6 +545,91 @@ details.scol>summary::before{
 details.scol[open]>summary .scol-chev{transform:rotate(180deg)}
 .scol-body{padding-top:10px}
 
+/* ═══ SHELL DEL EDITOR (Fase 1 del rediseño) ══════════════════════════
+   Cada sección del editor está envuelta en un .esec con un encabezado
+   propio (.esec-head: número · título · estado). El shell es ADITIVO:
+   en la vista clásica el encabezado y el header del editor no se
+   muestran, y .esec / .esec-body quedan sin una sola declaración —
+   divs transparentes que no cortan el colapso de márgenes ni cambian
+   un píxel (invariante I2 de docs/rediseno-editor.md).
+   La única regla que aplica en las dos vistas es el margen del .st de
+   las secciones nuevas: envolverlo lo volvió :first-child y perdía los
+   20px de arriba que tenía suelto en #panel-editor. */
+.esec-body>.st:first-child{margin-top:20px}
+.esec-head{display:none}
+.esh{display:none}
+.esec[hidden]{display:none!important}
+
+/* ── Vista FICHAS ───────────────────────────────────────────────── */
+/* Encabezado del editor: N° de presupuesto, cliente y píldora del modo,
+   con la barra de progreso sobre las secciones visibles. */
+#panel-editor[data-vista="fichas"] .esh{
+  display:block;background:var(--card);border:1px solid var(--border);
+  border-radius:var(--radius-box);box-shadow:var(--shadow-card);
+  padding:var(--sp-4) var(--sp-5);margin-bottom:var(--sp-4);
+}
+.esh-top{display:flex;align-items:flex-start;gap:var(--sp-3)}
+.esh-id{flex:1;min-width:0}
+.esh-num{font-family:var(--font-mono);font-size:20px;font-weight:600;color:var(--text);line-height:1.15}
+.esh-client{font-size:var(--fs-base);color:var(--text-2);margin-top:2px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.esh-mode{flex-shrink:0;font-family:var(--font-mono);font-size:var(--fs-sm);font-weight:600;
+  text-transform:uppercase;letter-spacing:.08em;
+  background:var(--accent);color:var(--on-accent);
+  border-radius:var(--radius-pill);padding:3px 10px}
+.esh-prog{margin-top:var(--sp-4)}
+.esh-prog-row{display:flex;align-items:baseline;justify-content:space-between;gap:var(--sp-3);
+  font-family:var(--font-mono);font-size:var(--fs-sm);font-weight:600;
+  text-transform:uppercase;letter-spacing:.05em;color:var(--text-2);margin-bottom:var(--sp-2)}
+.esh-prog-note{color:var(--muted);text-align:right}
+.esh-bar{display:flex;gap:4px}
+.esh-seg{flex:1;height:6px;border-radius:3px;background:var(--border)}
+.esh-seg.is-done{background:var(--accent)}
+
+/* La ficha: barra de acento a la izquierda (gris si está pendiente), que
+   es de donde viene el carácter de "ficha técnica" del diseño 2a. */
+#panel-editor[data-vista="fichas"] .esec{
+  background:var(--card);border:1px solid var(--border);
+  border-left:5px solid var(--border);
+  border-radius:var(--radius-box);box-shadow:var(--shadow-card);
+  margin-bottom:var(--sp-4);
+}
+#panel-editor[data-vista="fichas"] .esec.is-done{border-left-color:var(--accent)}
+#panel-editor[data-vista="fichas"] .esec.is-open{
+  border-color:var(--text);border-left-color:var(--accent);
+  border-width:2px;border-left-width:6px;
+}
+#panel-editor[data-vista="fichas"] .esec-head{
+  display:flex;align-items:center;gap:var(--sp-4);
+  width:100%;min-height:60px;padding:var(--sp-5);
+  background:none;border:0;border-radius:inherit;
+  font-family:var(--font-text);text-align:left;color:inherit;cursor:pointer;
+}
+#panel-editor[data-vista="fichas"] .esec.is-open>.esec-head{
+  border-bottom:1px solid var(--border);border-radius:0;
+}
+.esec-num{font-family:var(--font-mono);font-size:var(--fs-md);font-weight:600;color:var(--muted);flex-shrink:0}
+.esec-title{flex:1;min-width:0;font-size:17px;font-weight:600;color:var(--text)}
+.esec-status{flex-shrink:0;font-family:var(--font-mono);font-size:var(--fs-sm);font-weight:600;
+  text-transform:uppercase;letter-spacing:.04em;color:var(--accent-fg);text-align:right}
+.esec.is-pending .esec-status{color:var(--muted)}
+.esec-chev{display:none;flex-shrink:0;color:var(--muted);font-size:var(--fs-sm)}
+#panel-editor[data-vista="fichas"] .esec.is-open .esec-chev{display:inline;transform:rotate(180deg)}
+/* Cuerpo: el único hermano del encabezado. Se le da el padding acá para no
+   tocar el markup interno de la sección. */
+#panel-editor[data-vista="fichas"] .esec>.esec-head~*{padding:14px var(--sp-5)}
+#panel-editor[data-vista="fichas"] .esec:not(.is-open)>.esec-head~*{display:none!important}
+/* El título .st de cada sección ya lo dice el encabezado de la ficha. */
+#panel-editor[data-vista="fichas"] .esec .st{display:none}
+/* Excepción: el .st de "Cliente y Lugar" lleva adentro el botón "Importar".
+   Se colapsa a una fila de acción — el texto se apaga con font-size:0, el
+   botón conserva el suyo. */
+#panel-editor[data-vista="fichas"] .esec .st.st-with-action{
+  display:flex;font-size:0;letter-spacing:0;
+  margin:0;padding:0;border-bottom:0;
+}
+#panel-editor[data-vista="fichas"] .esec .st.st-with-action::before{display:none}
+
 /* BUTTONS */
 .btn{display:inline-flex;align-items:center;gap:5px;padding:8px 14px;border-radius:var(--radius-field);border:none;cursor:pointer;font-family:var(--font-text);font-size:13px;font-weight:500;transition:.15s}
 .btn-p{background:var(--accent);color:#fff}.btn-p:hover{background:var(--accent-dark)}
@@ -3038,6 +3123,39 @@ input[type=number]{-moz-appearance:textfield}
           </button>
         </div>
 
+        <!-- ══ SHELL DEL EDITOR (Fase 1 del rediseño) ══
+             Encabezado (N° · cliente · modo) + barra de progreso sobre las
+             secciones visibles. Solo se ve en la vista "fichas": en la clásica
+             queda oculto por CSS y la pantalla es la de siempre (invariante I2
+             de docs/rediseno-editor.md). Lo rellena editorShellSync(). -->
+        <div class="esh" id="editor-shell-head">
+          <div class="esh-top">
+            <div class="esh-id">
+              <div class="esh-num" id="esh-num">—</div>
+              <div class="esh-client" id="esh-client">Sin cliente</div>
+            </div>
+            <span class="esh-mode" id="esh-mode">Normal</span>
+          </div>
+          <div class="esh-prog">
+            <div class="esh-prog-row">
+              <span id="esh-count">0 de 0 secciones</span>
+              <span class="esh-prog-note" id="esh-note">Precios cerrados</span>
+            </div>
+            <div class="esh-bar" id="esh-bar"></div>
+          </div>
+        </div>
+
+        <!-- Cada sección del editor va envuelta en un .esec con su encabezado
+             propio (número · título · estado). El interior NO se toca: el
+             encabezado es un hermano que solo se muestra en la vista fichas. -->
+        <div class="esec" id="esec-ident">
+          <button type="button" class="esec-head" onclick="editorToggleSection('ident')" aria-expanded="true">
+            <span class="esec-num">01</span>
+            <span class="esec-title">Identificación</span>
+            <span class="esec-status"></span>
+            <span class="esec-chev" aria-hidden="true">▾</span>
+          </button>
+          <div class="esec-body">
         <div class="st">Identificación</div>
         <div class="r4">
           <div class="fg"><label>N° Presupuesto</label><input type="text" id="quote-number" readonly style="color:var(--accent-fg);font-weight:700"></div>
@@ -3060,7 +3178,17 @@ input[type=number]{-moz-appearance:textfield}
             </select>
           </div>
         </div>
+          </div>
+        </div><!-- /esec-ident -->
 
+        <div class="esec" id="esec-cliente">
+          <button type="button" class="esec-head" onclick="editorToggleSection('cliente')" aria-expanded="false">
+            <span class="esec-num">02</span>
+            <span class="esec-title">Cliente y lugar</span>
+            <span class="esec-status"></span>
+            <span class="esec-chev" aria-hidden="true">▾</span>
+          </button>
+          <div class="esec-body">
         <div class="st st-with-action">Cliente y Lugar
           <button type="button" id="btn-import-contact" class="btn btn-g btn-sm" onclick="importFromContacts()" style="display:none"><svg class="ic"><use href="#i-idcard"></use></svg> Importar</button>
         </div>
@@ -3092,8 +3220,17 @@ input[type=number]{-moz-appearance:textfield}
             <option value="1 semana"></option>
           </datalist>
         </div>
+          </div>
+        </div><!-- /esec-cliente -->
 
         <!-- SECCIÓN ÍTEMS — MODO NORMAL -->
+        <div class="esec" id="esec-items">
+          <button type="button" class="esec-head" onclick="editorToggleSection('items')" aria-expanded="false">
+            <span class="esec-num">03</span>
+            <span class="esec-title">Trabajos a cotizar</span>
+            <span class="esec-status"></span>
+            <span class="esec-chev" aria-hidden="true">▾</span>
+          </button>
         <div id="section-normal-items">
           <!-- ══ ESCENARIOS A/B ══
                Cuando está apagado, ocupa una sola línea compacta.
@@ -3142,8 +3279,18 @@ input[type=number]{-moz-appearance:textfield}
             <button class="btn btn-g btn-sm" onclick="addItem('note')">+ Nota</button>
           </div>
         </div>
+        </div><!-- /esec-items -->
 
-        <!-- SECCIÓN ANÁLISIS DE RIESGO -->
+        <!-- SECCIÓN ANÁLISIS DE RIESGO — las 6 section-card del informe ISA
+             cuentan como UNA sola sección numerada del editor (si no, el modo
+             riesgo tendría 11 y la numeración deja de leerse de un vistazo). -->
+        <div class="esec" id="esec-risk">
+          <button type="button" class="esec-head" onclick="editorToggleSection('risk')" aria-expanded="false">
+            <span class="esec-num">04</span>
+            <span class="esec-title">Informe de riesgo</span>
+            <span class="esec-status"></span>
+            <span class="esec-chev" aria-hidden="true">▾</span>
+          </button>
         <div id="section-risk-analysis" style="display:none">
 
           <!-- Datos del árbol -->
@@ -3270,8 +3417,16 @@ input[type=number]{-moz-appearance:textfield}
           </div>
 
         </div><!-- fin #section-risk-analysis -->
+        </div><!-- /esec-risk -->
 
         <!-- SECCIÓN ÍTEMS — MODO ESTIMATIVO -->
+        <div class="esec" id="esec-est-items">
+          <button type="button" class="esec-head" onclick="editorToggleSection('est-items')" aria-expanded="false">
+            <span class="esec-num">03</span>
+            <span class="esec-title">Trabajos estimados</span>
+            <span class="esec-status"></span>
+            <span class="esec-chev" aria-hidden="true">▾</span>
+          </button>
         <div id="section-est-items" style="display:none">
           <div class="st">Trabajos estimados <span id="est-items-count" class="nbadge" style="float:right">0</span></div>
           <div id="est-items-list"></div>
@@ -3281,7 +3436,15 @@ input[type=number]{-moz-appearance:textfield}
             <button class="btn btn-g btn-sm" onclick="addEstNote()">+ Nota</button>
           </div>
         </div>
+        </div><!-- /esec-est-items -->
 
+        <div class="esec" id="esec-conditions">
+          <button type="button" class="esec-head" onclick="editorToggleSection('conditions')" aria-expanded="false">
+            <span class="esec-num">04</span>
+            <span class="esec-title">Condiciones y observaciones</span>
+            <span class="esec-status"></span>
+            <span class="esec-chev" aria-hidden="true">▾</span>
+          </button>
         <div id="section-conditions">
           <div class="st">Condiciones y Observaciones</div>
           <div class="r2">
@@ -3301,11 +3464,19 @@ input[type=number]{-moz-appearance:textfield}
             </div>
           </div>
         </div>
+        </div><!-- /esec-conditions -->
 
         <!-- ══ AJUSTES DE PRECIO ══
              Recargo interno (arriba) + Descuento (abajo). Se ubican al final
              del flujo, después de Observaciones, porque suelen decidirse al
              cerrar el presupuesto. Solo en modo normal/riesgo (no estimativo). -->
+        <div class="esec" id="esec-adjust">
+          <button type="button" class="esec-head" onclick="editorToggleSection('adjust')" aria-expanded="false">
+            <span class="esec-num">05</span>
+            <span class="esec-title">Ajustes de precio</span>
+            <span class="esec-status"></span>
+            <span class="esec-chev" aria-hidden="true">▾</span>
+          </button>
         <div id="section-adjustments">
           <div class="st">Ajustes de precio</div>
           <div class="surcharge-panel surcharge-collapsed" id="surcharge-panel">
@@ -3329,7 +3500,15 @@ input[type=number]{-moz-appearance:textfield}
           </div>
           <div class="fg" id="discount-row" style="margin-top:10px"><label>Descuento (%)</label><input type="number" id="discount" min="0" max="100" value="0" inputmode="decimal"></div>
         </div>
+        </div><!-- /esec-adjust -->
 
+        <div class="esec" id="esec-est-obs">
+          <button type="button" class="esec-head" onclick="editorToggleSection('est-obs')" aria-expanded="false">
+            <span class="esec-num">04</span>
+            <span class="esec-title">Observaciones</span>
+            <span class="esec-status"></span>
+            <span class="esec-chev" aria-hidden="true">▾</span>
+          </button>
         <div id="section-est-observations" style="display:none">
           <div class="st">Observaciones del presupuesto estimativo</div>
           <div class="fg">
@@ -3337,6 +3516,7 @@ input[type=number]{-moz-appearance:textfield}
             <textarea id="est-observations" rows="3" placeholder="Alguna aclaración adicional sobre el estimado..."></textarea>
           </div>
         </div>
+        </div><!-- /esec-est-obs -->
 
         <details class="scol">
           <summary>Opciones del documento <span class="scol-hint">plan · criterios · firmas</span><span class="scol-chev" aria-hidden="true">▾</span></summary>
@@ -4440,6 +4620,14 @@ const DEF = {
   // fotos/firmas/pie quedan al final; solo estas secciones intermedias se
   // reordenan. Ver DOC_SECTIONS / sanitizeSectionOrder / buildDoc.
   docSectionOrder: ['duration','details','total','plan','criteria','observations','payment','validity','notes'],
+  // Vista del EDITOR (preferencia del usuario, no dato del presupuesto):
+  //   'clasica' → la pantalla de siempre, todo desplegado en una lista.
+  //   'fichas'  → secciones plegables con número, estado y barra de progreso.
+  //   'consola' → tres etapas (pendiente, Fase 1b: hoy cae a 'clasica').
+  // Es configuración: va en CFG_GLOBAL_FIELDS para que abrir un presupuesto
+  // viejo del historial no te cambie la vista. Lista blanca: EDITOR_VIEWS
+  // (js/sanitize.js). Ver docs/rediseno-editor.md (invariantes I4 e I5).
+  vistaEditor: 'clasica',
 };
 
 // ─── CONFIGURACIÓN GLOBAL vs. DATOS DEL PRESUPUESTO ──────────
@@ -4465,6 +4653,7 @@ const CFG_GLOBAL_FIELDS = [
   'coTechNotes','coFooter','logo',
   // Diseño del documento y de la app
   'accentColor','customColors','pdfTheme','pdfCompact','pdfFont','themeMode',
+  'vistaEditor',
   // Textos editables del PDF (Empresa → Textos del PDF)
   'docTitle','docTitleEst','docTitleRisk','docEstBanner','docDisclaimer',
   'docDisclaimerSvc','docCriteria','docGreeting','docCriteriaTitle',
@@ -5075,6 +5264,9 @@ function sched() {
     }
   }, 700);
   updateTotalsBar();
+  // Shell del editor (Fase 1): sched() es el punto por el que pasa cualquier
+  // cambio del presupuesto, así que los estados de las fichas se refrescan acá.
+  if (typeof editorShellSync === 'function') editorShellSync();
 }
 
 // Renderiza el badge de estado de guardado con tiempo relativo.
@@ -5694,6 +5886,9 @@ const SAN_ID_RE = /^[\w-]{1,40}$/;
 // Listas blancas de los enums que van a parar a un atributo HTML.
 const PDF_THEMES = ['clasico','profesional','calido','minimalista','lateral','tecnico','elegante'];
 const PDF_FONTS  = ['auto','dm','plex','lora-inter','inter'];
+// Vistas del editor (S.vistaEditor). Va a un atributo del DOM
+// (#panel-editor[data-vista]), así que no puede entrar sin lista blanca.
+const EDITOR_VIEWS = ['clasica','fichas','consola'];
 const NOTE_TIPOS = ['visita'];   // sin tipo = nota común
 const NOTIF_KINDS = ['info','ok','warn','err'];
 
@@ -5775,6 +5970,7 @@ function sanitizeStateObj(raw) {
   const s = Object.assign({}, raw);
   s.pdfTheme = sanEnum(raw.pdfTheme, PDF_THEMES, 'clasico');
   s.pdfFont  = sanEnum(raw.pdfFont,  PDF_FONTS,  'auto');
+  s.vistaEditor = sanEnum(raw.vistaEditor, EDITOR_VIEWS, 'clasica');
   s.accentColor = (typeof safeColor === 'function') ? safeColor(raw.accentColor) : '#064e3b';
   s.currency = sanEnum(raw.currency, ['ARS','USD','EUR'], 'ARS');
   if (!Array.isArray(s.items))     s.items = [];
@@ -5963,8 +6159,11 @@ function migrateSanitizeStored() {
   const tema = sanEnum(S.pdfTheme, PDF_THEMES, 'clasico');
   const fuente = sanEnum(S.pdfFont, PDF_FONTS, 'auto');
   const color = (typeof safeColor === 'function') ? safeColor(S.accentColor) : S.accentColor;
-  if (tema !== S.pdfTheme || fuente !== S.pdfFont || color !== S.accentColor) {
-    S.pdfTheme = tema; S.pdfFont = fuente; S.accentColor = color;
+  // La vista del editor también: va a un atributo del DOM y un valor basura
+  // tiene que caer a 'clasica' (la vista conocida-buena).
+  const vista = sanEnum(S.vistaEditor, EDITOR_VIEWS, 'clasica');
+  if (tema !== S.pdfTheme || fuente !== S.pdfFont || color !== S.accentColor || vista !== S.vistaEditor) {
+    S.pdfTheme = tema; S.pdfFont = fuente; S.accentColor = color; S.vistaEditor = vista;
     arreglados++;
     try { localStorage.setItem(LS.STATE, JSON.stringify(S)); } catch(_){}
   }
@@ -8389,6 +8588,9 @@ function restoreUI() {
   // Sincronizar los dropdowns y fechas propias con los valores recién cargados.
   refreshCustomSelects();
   refreshCustomDates();
+  // Shell del editor: el estado de cada ficha se deriva de S, que acaba de
+  // cambiar (arranque de la app, cargar del historial, importar).
+  if (typeof editorShellSync === 'function') editorShellSync();
 }
 
 // ─── SYNC FROM UI TO STATE ───────────────────
@@ -8695,6 +8897,151 @@ function updateScenarioUI() {
   }
 }
 
+// ─── SHELL DEL EDITOR (Fase 1 del rediseño) ──
+// Las secciones del editor, EN EL ORDEN EN QUE APARECEN EN EL DOM: la
+// numeración se calcula sobre las visibles y tiene que leerse de arriba abajo.
+// `body` es el elemento cuya visibilidad decide applyMode() (null = la sección
+// se ve en los tres modos). Las 6 section-card del informe ISA cuentan como
+// UNA sección; ver docs/rediseno-editor.md.
+const EDITOR_SECTIONS = [
+  { key:'ident',      body:null },
+  { key:'cliente',    body:null },
+  { key:'items',      body:'section-normal-items' },
+  { key:'risk',       body:'section-risk-analysis' },
+  { key:'est-items',  body:'section-est-items' },
+  { key:'conditions', body:'section-conditions' },
+  { key:'adjust',     body:'section-adjustments' },
+  { key:'est-obs',    body:'section-est-observations' },
+];
+
+// Sección abierta en la vista "fichas". Es estado de pantalla, no del
+// presupuesto: no se guarda ni viaja en el backup (invariante I3).
+let _esecOpen = 'ident';
+
+// La vista efectiva. Cualquier valor que no esté en la lista blanca cae a
+// 'clasica', que es la pantalla conocida-buena (invariante I2).
+function currentVistaEditor() {
+  return (EDITOR_VIEWS.indexOf(S.vistaEditor) >= 0) ? S.vistaEditor : 'clasica';
+}
+
+// Cambia la vista del editor. La UI para elegirla llega en la Fase 4; por
+// ahora se usa desde la consola y desde los tests.
+function setVistaEditor(v) {
+  S.vistaEditor = (EDITOR_VIEWS.indexOf(v) >= 0) ? v : 'clasica';
+  if (!_esecOpen) _esecOpen = 'ident';
+  editorShellSync();
+  saveLS();
+}
+
+function editorToggleSection(key) {
+  if (currentVistaEditor() !== 'fichas') return;   // en clásica no hay plegado
+  _esecOpen = (_esecOpen === key) ? '' : key;
+  editorShellSync();
+}
+
+// Estado que muestra cada sección a la derecha de su encabezado. `done` es lo
+// que cuenta para la barra de progreso y para pintar la barra de acento.
+// El texto va en minúsculas: el versalita lo pone el CSS.
+function _esecEstado(key) {
+  const lleno = v => !!String(v == null ? '' : v).trim();
+  const items = n => n ? { txt:(n + (n === 1 ? ' ítem' : ' ítems')), done:true }
+                       : { txt:'Pendiente', done:false };
+  switch (key) {
+    // Se autocompleta: siempre está lista, y lo útil es ver el número.
+    case 'ident':      return { txt:S.quoteNumber || '—', done:true };
+    case 'cliente':    return lleno(S.clientName) ? { txt:'Completo ✓', done:true }
+                                                  : { txt:'Pendiente', done:false };
+    case 'items':      return items((activeItemsArr() || []).length);
+    case 'est-items':  return items((S.estItems || []).length);
+    case 'risk': {
+      const rd = S.riskData || {};
+      const lvl = calcRiskLevel(rd.failureProbability, rd.impactProbability, rd.consequences);
+      return lvl ? { txt:'Riesgo ' + (RISK_LABELS.riskLevel[lvl] || lvl), done:true }
+                 : { txt:'Pendiente', done:false };
+    }
+    case 'conditions': return (lleno(S.paymentConditions) || lleno(S.observations))
+                              ? { txt:'Completo ✓', done:true } : { txt:'Pendiente', done:false };
+    case 'est-obs':    return lleno(S.estObservations) ? { txt:'Completo ✓', done:true }
+                                                      : { txt:'Pendiente', done:false };
+    // Vacío es una respuesta válida: sin ajustes también está resuelta.
+    case 'adjust': {
+      const partes = [];
+      const sur = Number(S.surcharge) || 0, dsc = Number(S.discount) || 0;
+      if (sur > 0) partes.push('+' + sur + '%');
+      if (dsc > 0) partes.push('−' + dsc + '%');
+      return { txt: partes.length ? partes.join(' · ') : 'Sin ajustes', done:true };
+    }
+  }
+  return { txt:'', done:true };
+}
+
+// Encabezado del editor + barra de progreso. `flags` es un booleano por
+// sección visible (en orden): así el segmento pintado es el de la sección
+// resuelta, no los N primeros.
+function _eshRender(flags) {
+  const set = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+  const modo = currentMode();
+  set('esh-num', S.quoteNumber || '—');
+  set('esh-client', String(S.clientName || '').trim() || 'Sin cliente');
+  set('esh-mode', modo === 'estimativo' ? 'Estimativo' : modo === 'riesgo' ? 'Riesgo' : 'Normal');
+  set('esh-note', modo === 'estimativo' ? 'Valor referencial'
+                : modo === 'riesgo'     ? 'Informe ISA' : 'Precios cerrados');
+  const hechas = flags.filter(Boolean).length;
+  set('esh-count', hechas + ' de ' + flags.length + ' secciones');
+  const bar = document.getElementById('esh-bar');
+  if (!bar) return;
+  if (bar.children.length !== flags.length) {
+    bar.innerHTML = flags.map(() => '<span class="esh-seg"></span>').join('');
+  }
+  Array.from(bar.children).forEach((seg, i) => seg.classList.toggle('is-done', !!flags[i]));
+}
+
+// Aplica la vista al editor: qué fichas se ven, con qué número, qué estado y
+// cuál está abierta. SOLO toca clases, atributos y texto de los encabezados —
+// nunca reconstruye el DOM del editor ni toca S (invariante I3).
+// Se llama desde applyMode(), restoreUI() y sched().
+function editorShellSync() {
+  const panel = document.getElementById('panel-editor');
+  if (!panel) return;
+  const vista = currentVistaEditor();
+  try {
+    panel.dataset.vista = vista;
+    // Visibles = las que applyMode() no ocultó. Se lee el display inline, que
+    // es justamente lo que applyMode escribe.
+    const vis = [];
+    EDITOR_SECTIONS.forEach(sec => {
+      const wrap = document.getElementById('esec-' + sec.key);
+      if (!wrap) return;
+      const body = sec.body ? document.getElementById(sec.body) : null;
+      const oculta = !!(body && body.style.display === 'none');
+      wrap.hidden = oculta;
+      if (!oculta) vis.push({ sec, wrap });
+    });
+    // Si la sección abierta quedó fuera del modo activo, abrir la primera.
+    if (!vis.some(v => v.sec.key === _esecOpen)) _esecOpen = vis.length ? vis[0].sec.key : '';
+    const flags = [];
+    vis.forEach((v, i) => {
+      const est = _esecEstado(v.sec.key);
+      flags.push(!!est.done);
+      const nEl = v.wrap.querySelector('.esec-num');
+      if (nEl) nEl.textContent = String(i + 1).padStart(2, '0');
+      const sEl = v.wrap.querySelector('.esec-status'); if (sEl) sEl.textContent = est.txt;
+      v.wrap.classList.toggle('is-done', !!est.done);
+      v.wrap.classList.toggle('is-pending', !est.done);
+      // En clásica no hay plegado: todas cuentan como abiertas.
+      const abierta = (vista !== 'fichas') || (v.sec.key === _esecOpen);
+      v.wrap.classList.toggle('is-open', abierta);
+      const hEl = v.wrap.querySelector('.esec-head');
+      if (hEl) hEl.setAttribute('aria-expanded', abierta ? 'true' : 'false');
+    });
+    _eshRender(flags);
+  } catch (e) {
+    // Invariante I2: ante cualquier error, la vista conocida-buena.
+    console.warn('editorShellSync', e);
+    panel.dataset.vista = 'clasica';
+  }
+}
+
 function applyMode(mode) {
   const isEst  = (mode === 'estimativo');
   const isRisk = (mode === 'riesgo');
@@ -8745,6 +9092,9 @@ function applyMode(mode) {
   if (typeof renderQuickServices === 'function') renderQuickServices();
 
   updateTotalsBar();
+  // Shell del editor: la numeración y el progreso se calculan sobre las
+  // secciones que quedaron visibles, así que va DESPUÉS de decidirlo.
+  editorShellSync();
 }
 
 // ─── RIESGO: DEFECTOS ────────────────────────
