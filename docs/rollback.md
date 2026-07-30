@@ -90,6 +90,40 @@ Técnicamente volver a un número viejo también funciona —`activate` borra to
 cuyo nombre no sea el actual, así que no queda nada pegado—, pero ir siempre para
 adelante evita confundirse al mirar qué versión tiene un teléfono.
 
+## Si el despliegue no aparece
+
+Pasó el 30/07/2026: se mergeó a `main`, el commit llegó bien a GitHub, y en
+Cloudflare la implementación activa seguía siendo la de cuatro días antes. **La
+integración con el repositorio se había desconectado sola.**
+
+Cómo distinguir "todavía está construyendo" de "no se disparó":
+
+```bash
+# ¿Qué versión está sirviendo producción AHORA?
+curl -s https://presupuesto-ar.juliobarribolbo.workers.dev/sw.js | grep -m1 CACHE_VERSION
+```
+
+Si después de ~5 minutos sigue mostrando la versión vieja, no es demora. Revisar,
+en este orden:
+
+1. **Cloudflare → Workers y Pages → presupuesto-ar → Implementaciones.** Si la
+   activa es vieja y no hay ninguna en curso, el build no se disparó.
+2. **Configuración → Compilaciones (Builds).** Verificar que el repositorio siga
+   conectado. Es lo que falló esa vez.
+3. Si hay una implementación con error, el log dice por qué.
+
+> **Al reconectar la integración, el commit que ya estaba NO se construye solo.**
+> Cloudflare empieza a observar desde el push siguiente. Hay que empujar un commit
+> nuevo a `main` (o lanzar la implementación a mano desde el dashboard) para que
+> agarre el trabajo pendiente.
+
+Salida de emergencia si la integración no coopera — el proyecto tiene `wrangler`
+configurado (`wrangler.jsonc`), así que se puede desplegar a mano:
+
+```bash
+npx wrangler deploy
+```
+
 ## Verificar que el rollback llegó
 
 1. Abrir `https://presupuesto-ar.juliobarribolbo.workers.dev` en una pestaña nueva.
