@@ -666,7 +666,8 @@ details.scol[open]>summary .scol-chev{transform:rotate(180deg)}
    En `clasica` nada de esto aplica: el selector queda igual que siempre. */
 #panel-editor[data-vista="fichas"] .mode-switch,
 #panel-editor[data-vista="consola"] .mode-switch{
-  flex-direction:row;gap:0;padding:3px;
+  flex-direction:row;gap:0;padding:4px;
+  background:var(--card);
   border-radius:var(--radius-field);margin-bottom:var(--sp-4);
 }
 #panel-editor[data-vista="fichas"] .mode-btn,
@@ -675,14 +676,29 @@ details.scol[open]>summary .scol-chev{transform:rotate(180deg)}
   flex-direction:row;align-items:center;justify-content:center;
   gap:0;padding:8px 4px;min-height:44px;text-align:center;
 }
+/* El modo activo va con RELLENO de marca (no la píldora blanca sobre pista
+   gris de la vista clásica): sobre pista blanca es lo único que se lee como
+   "elegido". Deja de haber un trato especial para estimativo —era el único con
+   relleno— porque acá lo llevan los tres; en estas vistas el modo igual está
+   dicho dos veces más, en la píldora del encabezado y en el banner. */
+#panel-editor[data-vista="fichas"] .mode-btn.active,
+#panel-editor[data-vista="consola"] .mode-btn.active{
+  background:var(--accent);color:var(--on-accent);
+  box-shadow:0 1px 4px rgba(var(--accent-rgb),.22);
+}
 #panel-editor[data-vista="fichas"] .mode-btn-title,
 #panel-editor[data-vista="consola"] .mode-btn-title,
 #panel-editor[data-vista="fichas"] .mode-btn-sub,
 #panel-editor[data-vista="consola"] .mode-btn-sub{display:none}
+/* Mono en versalita, igual que las tabs de etapa, el botón de Notas y las
+   etiquetas de la barra de totales: en estas vistas los controles hablan todos
+   el mismo idioma tipográfico. */
 #panel-editor[data-vista="fichas"] .mode-btn-short,
 #panel-editor[data-vista="consola"] .mode-btn-short{
   display:inline-flex;align-items:center;gap:5px;
-  font-size:var(--fs-sm);font-weight:600;white-space:nowrap;
+  font-family:var(--font-mono);font-size:var(--fs-xs);font-weight:600;
+  text-transform:uppercase;letter-spacing:.06em;
+  white-space:nowrap;
 }
 #panel-editor[data-vista="fichas"] .mode-btn-short .ic,
 #panel-editor[data-vista="consola"] .mode-btn-short .ic{width:15px;height:15px}
@@ -690,6 +706,41 @@ details.scol[open]>summary .scol-chev{transform:rotate(180deg)}
    selector se lee como parte del mismo bloque de encabezado. */
 #panel-editor[data-vista="fichas"] .notes-bar,
 #panel-editor[data-vista="consola"] .notes-bar{margin:calc(-1 * var(--sp-2)) 0 var(--sp-3)}
+
+/* Notas, alineado al selector: el ámbar queda RESERVADO para riesgo y alertas
+   (el chip de clima, los avisos de seguimiento, el nivel de riesgo). Un botón
+   permanente del encabezado pintado de ámbar competía con eso y prometía una
+   urgencia que no tiene. Acá usa el mismo verde y el mismo mono que el resto de
+   los controles. En `clasica` sigue ámbar, como siempre. */
+#panel-editor[data-vista="fichas"] .notes-btn,
+#panel-editor[data-vista="consola"] .notes-btn{
+  background:var(--card);
+  color:var(--accent-fg);
+  border:1.5px solid var(--accent-fg);
+  border-radius:var(--radius-field);
+  font-family:var(--font-mono);font-size:var(--fs-xs);font-weight:600;
+  text-transform:uppercase;letter-spacing:.08em;
+  gap:8px;padding:0 14px;min-height:44px;
+}
+#panel-editor[data-vista="fichas"] .notes-btn:hover,
+#panel-editor[data-vista="consola"] .notes-btn:hover{
+  background:var(--accent-light);border-color:var(--accent-fg);
+}
+/* El ícono hereda el verde del botón en vez de traerse el ámbar de .ic-c-amber. */
+#panel-editor[data-vista="fichas"] .notes-btn .ic,
+#panel-editor[data-vista="consola"] .notes-btn .ic{color:currentColor;width:16px;height:16px}
+/* Con notas cargadas no hace falta el halo ámbar: ya lo dice el contador. */
+#panel-editor[data-vista="fichas"] .notes-btn.has-notes,
+#panel-editor[data-vista="consola"] .notes-btn.has-notes{
+  border-color:var(--accent-fg);box-shadow:none;
+}
+/* El contador pasa a relleno de marca, como los badges llenos de la app. */
+#panel-editor[data-vista="fichas"] .notes-count,
+#panel-editor[data-vista="consola"] .notes-count{
+  background:var(--accent);color:var(--on-accent);
+  font-family:var(--font-mono);font-size:var(--fs-xs);font-weight:600;
+  min-width:20px;height:20px;border-radius:var(--radius-pill);
+}
 
 /* ── Tabs de etapa (vista consola, dirección 2b) ─────────────────
    Subrayadas y en mono versalita, como el resto de las etiquetas de la app.

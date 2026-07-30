@@ -15,6 +15,7 @@
 | 2 — Barra inferior fija | ✅ en producción (v192) |
 | 1b — Vista `consola` (etapas) | ✅ en producción (v193) |
 | Ajuste — selector de modo compacto | ✅ en producción (v194) |
+| Ajuste — Notas y selector alineados | ✅ en producción (v195) |
 | 3 — Pantalla "Cargar trabajo" | ❌ descartada (ver más abajo) |
 
 La **Fase 4 se adelantó a la 2** a propósito: sin el selector, `fichas` solo se
@@ -27,7 +28,7 @@ eligen desde Empresa → Estilo. La Fase 3 quedó descartada por decisión del
 usuario (no por costo técnico). Lo único abierto es **si el default pasa de
 `clasica` a otra vista**, que depende de usarlas; ver Pendientes al final.
 
-Verificación visual: `node test/visual-snap.cjs base|check` compara 14 escenas
+Verificación visual: `node test/visual-snap.cjs base|check` compara 18 escenas
 píxel a píxel. Las invariantes del shell las cubre `node test/editor-shell.test.cjs`.
 Rollback: `docs/rollback.md`.
 
@@ -636,10 +637,57 @@ la explicación larga de cada modo sigue viva en el `title` de cada botón.
   `clasica` — sin depender del orden en la hoja.
 
 **En `clasica` el selector queda exactamente como estaba**, 152 px apilados y
-con los subtítulos: las 14 escenas de `visual-snap` siguen idénticas píxel a
+con los subtítulos: las escenas de `visual-snap` siguen idénticas píxel a
 píxel. Cubierto por 5 checks en `test/editor-shell.test.cjs`, incluido que desde
 la versión compacta se sigue cambiando de modo y que el nombre accesible no se
 perdió.
+
+---
+
+## Ajuste v195 — Notas y el selector hablan el mismo idioma
+
+Pedido con un mockup: el botón de Notas alineado al selector.
+
+**El ámbar queda RESERVADO para riesgo y alertas** — el chip de clima, los
+avisos de seguimiento, el nivel de riesgo del informe. Un botón permanente del
+encabezado pintado de ámbar competía con eso y prometía una urgencia que no
+tiene. En `fichas` y `consola` pasa a caja blanca con borde y texto en el verde
+de marca, mono versalita, contador con relleno de marca y 44 px de alto. En
+`clasica` sigue ámbar, igual que siempre.
+
+De paso, el selector de modo se alineó al mockup: pista blanca, modo activo con
+**relleno** de marca y etiquetas en mono versalita. Deja de haber trato especial
+para estimativo (era el único con relleno) porque ahora lo llevan los tres; en
+estas vistas el modo igual está dicho dos veces más, en la píldora del
+encabezado y en el banner.
+
+### `getComputedStyle` MIENTE en el navegador headless (no perder el rato)
+
+Verificando esto se fue un buen rato en una pista falsa, así que queda escrito:
+para este botón, `getComputedStyle()` devolvía **valores desactualizados** de
+`color`, `border-color` y `border-radius` — reportaba el ámbar y
+`border-radius:999px` mientras la captura mostraba verde y 8 px. Y no era un
+problema de resolución de `var()`: **ni un estilo inline
+(`el.style.color='#f0f'`) ni un `#id{color:…}` inyectado al final del documento
+cambiaban lo que reportaba.** Forzar reflow con `void document.body.offsetHeight`
+tampoco.
+
+Lo que sí es confiable: **medir los píxeles de una captura.** Así se confirmó que
+el botón mide 113×44 px CSS con radio de 7,3 px (= `--radius-field`, no la
+píldora de 22 px que reportaba el computed style) y texto verde (42,83,46).
+
+Consecuencias, ya aplicadas:
+
+1. **`test/editor-shell.test.cjs` no verifica colores.** Solo propiedades que
+   resultaron consistentes con lo que se ve (`font-family`, `text-transform`,
+   alto). Los asserts de color que había pasaban por casualidad — habrían dado
+   verde con el estilo roto.
+2. **`visual-snap` estrena 4 escenas de las vistas nuevas** (`editor-fichas`,
+   `editor-fichas-d`, `editor-etapas`, `editor-etapas-r`), con soporte de
+   `s.vista(...)` en el runner. Hasta la v194 las 14 escenas usaban todas el
+   default `clasica`: **nada miraba en píxeles el shell de fichas/etapas, el
+   selector compacto ni el botón de Notas.** Ahora son 18 y esa es la
+   verificación real de esos estilos.
 
 ---
 

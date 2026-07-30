@@ -75,6 +75,16 @@ const SCENES = [
   { id: 'historial',      theme: 'light', setup: s => s.tab('historial') },
   { id: 'agenda',         theme: 'light', setup: s => s.tab('agenda') },
   { id: 'facturacion',    theme: 'light', setup: s => s.tab('facturacion') },
+  // Las vistas nuevas del editor (S.vistaEditor). No alcanza con las escenas de
+  // arriba: todas usan el default `clasica`, así que sin esto nada mira en
+  // píxeles el shell de fichas/etapas, el selector de modo compacto ni el botón
+  // de Notas. Y en el navegador headless getComputedStyle devuelve colores
+  // desactualizados, así que la captura es la ÚNICA verificación confiable de
+  // esos estilos. Ver docs/rediseno-editor.md.
+  { id: 'editor-fichas',   theme: 'light', setup: s => { s.mode('normal'); s.vista('fichas'); } },
+  { id: 'editor-fichas-d', theme: 'dark',  setup: s => { s.mode('normal'); s.vista('fichas'); } },
+  { id: 'editor-etapas',   theme: 'light', setup: s => { s.mode('normal'); s.vista('consola'); } },
+  { id: 'editor-etapas-r', theme: 'light', setup: s => { s.mode('riesgo'); s.vista('consola'); } },
   { id: 'editor-normal-d', theme: 'dark', setup: s => s.mode('normal') },
   { id: 'editor-riesgo-d', theme: 'dark', setup: s => s.mode('riesgo') },
   { id: 'empresa-d',       theme: 'dark', setup: s => s.tab('empresa') },
@@ -178,14 +188,16 @@ async function run() {
     await page.evaluate(() => new Promise(r => setTimeout(r, 400)));
 
     // Llevar la app a la escena pedida.
-    const target = { mode: null, tab: null, subtab: null };
+    const target = { mode: null, tab: null, subtab: null, vista: null };
     scene.setup({
       mode: m => (target.mode = m),
       tab: t => (target.tab = t),
       subtab: s => (target.subtab = s),
+      vista: v => (target.vista = v),
     });
     await page.evaluate(t => {
       if (t.mode && typeof setMode === 'function') setMode(t.mode);
+      if (t.vista && typeof setVistaEditor === 'function') setVistaEditor(t.vista);
       if (t.tab && typeof switchTab === 'function') switchTab(t.tab);
       if (t.subtab && typeof switchSubtab === 'function') switchSubtab(t.subtab);
     }, target);

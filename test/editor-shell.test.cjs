@@ -579,6 +579,50 @@ const SEMBRAR = RESET + `
       await page.close();
     }
 
+    // ── Notas deja el ámbar en las vistas nuevas ──
+    // El ámbar está reservado para riesgo y alertas (clima, seguimientos, nivel
+    // de riesgo). Un botón permanente del encabezado pintado de ámbar competía
+    // con eso. En clásica se queda como estaba.
+    //
+    // OJO — acá NO se verifican colores. En el navegador headless
+    // getComputedStyle() devuelve valores desactualizados para color /
+    // border-color / border-radius de este botón: reportaba el ámbar y
+    // border-radius:999px mientras la captura mostraba verde y 8px, y ni un
+    // estilo inline ni un `#id{color:…}` inyectado cambiaban lo que reportaba.
+    // Los colores los cubren las escenas `editor-fichas*` / `editor-etapas*` de
+    // test/visual-snap.cjs, que comparan píxeles. Acá solo van las propiedades
+    // que resultaron consistentes con lo que se ve.
+    {
+      const page = await nuevaPagina(browser);
+      const r = await page.evaluate(new Function(`
+        ${SEMBRAR}
+        S.intNote = 'Acceso por el fondo'; updateNotesButton();
+        const cs = sel => getComputedStyle(document.querySelector(sel));
+        const leer = () => {
+          const b = cs('#btn-notes-panel');
+          return { mono: /Plex Mono/.test(b.fontFamily), caja: b.textTransform,
+                   alto: Math.round(document.querySelector('#btn-notes-panel')
+                          .getBoundingClientRect().height) };
+        };
+        const out = {};
+        ['clasica','fichas','consola'].forEach(v => { setVistaEditor(v); out[v] = leer(); });
+        out.contador = document.getElementById('notes-count').textContent;
+        out.oculto = document.getElementById('notes-count').hidden;
+        return out;
+      `));
+      check('En clásica el botón de Notas queda como siempre (ni mono ni versalita)',
+        !r.clasica.mono && r.clasica.caja === 'none', JSON.stringify(r.clasica));
+      check('En fichas y etapas pasa a mono versalita, como el resto de los controles',
+        ['fichas','consola'].every(v => r[v].mono && r[v].caja === 'uppercase'),
+        JSON.stringify([r.fichas, r.consola]));
+      check('…y crece al área de toque mínima de 44 px',
+        r.fichas.alto >= 44 && r.consola.alto >= 44 && r.clasica.alto < 44,
+        'clasica=' + r.clasica.alto + ' fichas=' + r.fichas.alto);
+      check('El contador sigue mostrando cuántas notas hay',
+        r.contador === '1' && r.oculto === false, r.contador + ' oculto=' + r.oculto);
+      await page.close();
+    }
+
     // ── El FAB de "subir" se apoya en el alto MEDIDO de la barra ──
     // Con la barra de una fila alcanzaba un 56px a mano en el CSS; con las dos
     // filas de la Fase 2 el FAB quedaba encima de la barra.
