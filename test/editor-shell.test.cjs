@@ -345,6 +345,37 @@ const SEMBRAR = RESET + `
       await page.close();
     }
 
+    // ── Fase 4: el selector de Empresa → Estilo ──
+    {
+      const page = await nuevaPagina(browser);
+      const r = await page.evaluate(new Function(`
+        ${RESET}
+        const btns = () => Array.from(document.querySelectorAll('#vista-editor-mode .theme-mode-btn'))
+          .map(b => b.dataset.vista + (b.classList.contains('active') ? '*' : ''));
+        const enEstilo = !!document.querySelector('#subpanel-estilo #vista-editor-mode');
+        const inicial = btns();
+        // Tocar el botón, como el usuario
+        document.querySelector('#vista-editor-mode [data-vista="fichas"]').click();
+        const traTocar = { botones: btns(), S: S.vistaEditor,
+                           dom: document.getElementById('panel-editor').dataset.vista };
+        // Y que quede guardado en localStorage (vía saveLS → safeSetLS)
+        const enDisco = JSON.parse(localStorage.getItem(LS.STATE) || '{}').vistaEditor;
+        document.querySelector('#vista-editor-mode [data-vista="clasica"]').click();
+        return { enEstilo, inicial, traTocar, enDisco, traVolver: btns() };
+      `));
+      check('El selector vive en Empresa → Estilo', r.enEstilo);
+      check('Arranca marcando Clásica (el default no cambió en esta fase)',
+        r.inicial.join() === 'clasica*,fichas', r.inicial.join());
+      check('Tocar "Fichas" cambia la vista y marca el botón',
+        r.traTocar.botones.join() === 'clasica,fichas*' &&
+        r.traTocar.S === 'fichas' && r.traTocar.dom === 'fichas',
+        JSON.stringify(r.traTocar));
+      check('…y queda persistido en localStorage', r.enDisco === 'fichas', r.enDisco);
+      check('Volver a "Clásica" también', r.traVolver.join() === 'clasica*,fichas',
+        r.traVolver.join());
+      await page.close();
+    }
+
     // ── La vista viaja en el backup (por CFG_GLOBAL_FIELDS, sin código extra) ──
     {
       const page = await nuevaPagina(browser);

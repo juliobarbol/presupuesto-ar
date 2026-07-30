@@ -67,6 +67,11 @@ const SCENES = [
   { id: 'editor-est',     theme: 'light', setup: s => s.mode('estimativo') },
   { id: 'editor-riesgo',  theme: 'light', setup: s => s.mode('riesgo') },
   { id: 'empresa',        theme: 'light', setup: s => s.tab('empresa') },
+  // Sub-pestaña "Estilo": es donde vive la configuración de apariencia (tema,
+  // vista del editor, color, diseño y tipografía del PDF). Los .subpanel sin
+  // .active van en display:none, así que la escena `empresa` NO la cubre.
+  { id: 'estilo',         theme: 'light', setup: s => { s.tab('empresa'); s.subtab('estilo'); } },
+  { id: 'estilo-d',       theme: 'dark',  setup: s => { s.tab('empresa'); s.subtab('estilo'); } },
   { id: 'historial',      theme: 'light', setup: s => s.tab('historial') },
   { id: 'agenda',         theme: 'light', setup: s => s.tab('agenda') },
   { id: 'facturacion',    theme: 'light', setup: s => s.tab('facturacion') },
@@ -173,11 +178,16 @@ async function run() {
     await page.evaluate(() => new Promise(r => setTimeout(r, 400)));
 
     // Llevar la app a la escena pedida.
-    const target = { mode: null, tab: null };
-    scene.setup({ mode: m => (target.mode = m), tab: t => (target.tab = t) });
+    const target = { mode: null, tab: null, subtab: null };
+    scene.setup({
+      mode: m => (target.mode = m),
+      tab: t => (target.tab = t),
+      subtab: s => (target.subtab = s),
+    });
     await page.evaluate(t => {
       if (t.mode && typeof setMode === 'function') setMode(t.mode);
       if (t.tab && typeof switchTab === 'function') switchTab(t.tab);
+      if (t.subtab && typeof switchSubtab === 'function') switchSubtab(t.subtab);
     }, target);
 
     // Congelar todo lo que se mueve o depende del reloj: sin esto la
