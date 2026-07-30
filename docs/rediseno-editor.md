@@ -18,6 +18,28 @@
 
 Verificación visual: `node test/visual-snap.cjs base|check` compara 12 escenas
 píxel a píxel. Rollback: `docs/rollback.md`.
+
+### Cómo retomar en una sesión nueva
+
+Todo lo necesario está en el repo; **no hace falta nada de la conversación
+anterior**. Los mockups de Claude Design ya están traducidos a medidas concretas
+(sección 4 y "Especificación visual del shell"), así que tampoco hacen falta las
+capturas.
+
+1. Rama de trabajo: `claude/editor-format-options-redesign-akjunb`.
+2. Leer este documento entero. Las invariantes I1–I6 son lo que evita romper la app;
+   las decisiones ya tomadas no se reabren.
+3. Rehacer la referencia visual antes de tocar nada — vive en `/tmp`, no en el repo,
+   así que cada sesión arranca con la suya:
+   ```bash
+   node test/visual-snap.cjs base    # referencia = estado actual de main
+   # ... hacer los cambios ...
+   node test/visual-snap.cjs check   # comparar
+   ```
+   En las fases que cambian cosas a propósito, el objetivo no es cero diferencias
+   sino **revisar cada una** (hay un recorte de apoyo en el historial de la Fase 0b).
+4. Cerrar cada fase con: sintaxis JS, `node test/pwa.test.cjs`, subir
+   `CACHE_VERSION` y mergear a `main`.
 >
 > Este documento reemplaza al borrador original (`REDISENOEDITOR.md`), que fue
 > escrito sin conocer la estructura real del repo y describía archivos que acá no
@@ -355,7 +377,78 @@ mantiene el orden actual**: Identificación primero. El usuario ya tiene el fluj
 incorporado y este rediseño es visual, no de flujo. La numeración se calcula sobre
 el orden que ya existe.
 
-**Decisión pendiente:** qué cuenta como "COMPLETO" en cada sección.
+### Especificación visual del shell (dirección 2a)
+
+Medidas tomadas del export de Claude Design. **Ya ajustadas a las decisiones de
+este proyecto**: se mantienen los radios y las sombras actuales de la app, así que
+donde el mockup usa esquinas rectas acá va `--radius-box`. Lo que sí se toma tal
+cual es la **barra de acento a la izquierda**, que es de donde viene el carácter de
+"ficha técnica".
+
+**Encabezado del editor**
+- Número de presupuesto: mono, 20px, peso 600.
+- Cliente debajo: 14px, `--text-2`.
+- Píldora del modo a la derecha: fondo `--accent`, texto `--on-accent`, mono 12px
+  600 en versalita con `letter-spacing:.08em`, `--radius-pill`.
+
+**Barra de progreso**
+- Fila superior, mono 12px, `--text-2`: a la izquierda `N DE M SECCIONES`, a la
+  derecha una etiqueta del modo (`PRECIOS CERRADOS` en normal).
+- Debajo, segmentos de ancho igual (`flex:1`), 6px de alto, `gap:4px`. Completos en
+  `--accent`, pendientes en `--border`.
+
+**Sección colapsada**
+- Card `--card`, borde 1px `--border`, **borde izquierdo 5px `--accent`** (o
+  `--border` si la sección está vacía), padding 16px, `min-height:60px`.
+- Número: mono 13px 600, `--muted`.
+- Título: 17px 600, `flex:1`.
+- Estado a la derecha: mono 12px 600 en `--accent-fg`; si está pendiente, `--muted`.
+
+**Sección abierta**
+- Borde 2px `--text` + borde izquierdo 6px `--accent`; el encabezado suma un
+  chevron y una línea divisoria 1px `--border`.
+- Cuerpo: padding 14px 16px.
+
+**Fila de ítem dentro de una sección**
+- Nombre 16px 600; subtítulo mono 12px `--text-2`; precio mono 17px 700 a la
+  derecha; separador 1px punteado `--border`.
+- Botones de alta: borde punteado 1.5px `--muted`, `min-height:50px`, texto 15px
+  600 `--accent-fg`.
+
+**Barra inferior** (Fase 2)
+- Borde superior 2px, fondo `--card`.
+- `TOTAL · N ÍTEMS` en mono 11px versalita; cifra en mono 28px 700; el recargo a la
+  derecha en mono 12px.
+- Botón primario ancho + dos botones de ícono.
+
+### Propuesta para las secciones y el criterio de "COMPLETO"
+
+Pendiente de tu confirmación. Respeta el orden de carga actual (Identificación
+primero) y usa datos que ya existen.
+
+**Modo normal — 5 secciones**
+
+| N° | Sección | Estado que muestra | "Completo" cuando |
+|---|---|---|---|
+| 01 | Identificación | el N° de presupuesto | siempre (se autocompleta) |
+| 02 | Cliente y lugar | `COMPLETO ✓` / `PENDIENTE` | hay nombre de cliente |
+| 03 | Trabajos a cotizar | `N ÍTEMS` / `PENDIENTE` | hay al menos un ítem |
+| 04 | Condiciones y observaciones | `COMPLETO ✓` / `PENDIENTE` | alguno de los dos textos tiene contenido |
+| 05 | Ajustes de precio | `+12% · −5%` / `SIN AJUSTES` | siempre (vacío es una respuesta válida) |
+
+"Opciones del documento" queda como está —un `<details>` plegable— y **no** cuenta
+como sección numerada: son toggles, no carga de datos.
+
+**Modo estimativo — 4 secciones:** 01 Identificación · 02 Cliente y lugar ·
+03 Trabajos estimados · 04 Observaciones. Sin Ajustes de precio, que ya hoy no
+aplica.
+
+**Modo riesgo — 6 secciones.** Las 6 `section-card` del informe ISA **no** se
+numeran una por una: se agrupan en **una sola sección** `03 Informe de riesgo`, con
+las seis tarjetas actuales adentro sin tocarlas. Su estado muestra el nivel
+calculado (`RIESGO ALTO`) o `PENDIENTE`. Así el modo riesgo tiene 6 secciones en vez
+de 11, y la numeración sigue siendo legible de un vistazo. Los ítems del presupuesto
+quedan en `04`, y Condiciones/Ajustes en `05`/`06`.
 
 **Aceptación:** cambiando un solo valor de estado se pasa de una vista a la otra
 **sin recargar y sin perder lo escrito**; en `'clasica'` la pantalla es
