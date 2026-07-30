@@ -13,17 +13,18 @@
 | 1 — Shell del editor | ✅ en producción (v190) |
 | 4 — Selector visible | ✅ en producción (v191) |
 | 2 — Barra inferior fija | ✅ en producción (v192) |
-| 1b — Vista `consola` | pendiente (opcional) |
-| 3 — Pantalla "Cargar trabajo" | apartada (ver más abajo) |
+| 1b — Vista `consola` (etapas) | ✅ en producción (v193) |
+| 3 — Pantalla "Cargar trabajo" | ❌ descartada (ver más abajo) |
 
 La **Fase 4 se adelantó a la 2** a propósito: sin el selector, `fichas` solo se
 podía activar desde una consola, y en la PWA instalada en Android eso pide
 depuración USB — la Fase 1 quedaba desplegada pero **no verificable**, que es
 justo lo que la Restricción 2 pide antes de seguir.
 
-**El plan está terminado**, salvo dos cosas que son opcionales o decisión del
-usuario: la **Fase 1b** (vista `consola`) y el **cambio de default a `fichas`**.
-La Fase 3 sigue apartada. Ver Pendientes al final.
+**El plan está TERMINADO.** Las tres vistas del editor están en producción y se
+eligen desde Empresa → Estilo. La Fase 3 quedó descartada por decisión del
+usuario (no por costo técnico). Lo único abierto es **si el default pasa de
+`clasica` a otra vista**, que depende de usarlas; ver Pendientes al final.
 
 Verificación visual: `node test/visual-snap.cjs base|check` compara 14 escenas
 píxel a píxel. Las invariantes del shell las cubre `node test/editor-shell.test.cjs`.
@@ -555,13 +556,53 @@ Confirmado al cerrar la Fase 1: el andamiaje ya está. `'consola'` está en
 `EDITOR_SECTIONS` en tres etapas, un estado `_esecEtapa`, las tabs, y un bloque
 `#panel-editor[data-vista="consola"]` en el `<style>`. **Ninguna invariante nueva.**
 
-**Pendiente de definir:** dónde caen las 6 `section-card` del informe ISA en un
-flujo de 3 etapas — ¿cuarta etapa, o dentro de "Datos"?
+### Cómo quedó implementada (v193)
 
-**Si se decide NO hacerla,** sacar `'consola'` de `EDITOR_VIEWS` (y de
-`test/editor-shell.test.cjs`, que hoy afirma que la lista tiene tres valores):
-un enum con un valor que no hace nada es una trampa para el próximo que lea el
-código.
+En el selector se llama **"Etapas"** (el nombre interno del valor sigue siendo
+`'consola'`). Tabs subrayadas en mono versalita arriba, y una etapa por pantalla.
+
+**RESUELTO — dónde caen las 6 `section-card` del informe ISA:** en **su propia
+etapa**, no dentro de "Datos". La decisión se tomó midiendo: el informe solo mide
+**~1.934 px** con los campos vacíos. Metido en "Datos" (240 + 402 + 1.934) daba
+una etapa de **~2.576 px** — más larga que el editor completo en modo normal
+(2.970 px con TODO), o sea justo lo que esta vista viene a resolver. Aparte, es
+una etapa de ~640 px y el resto queda corto.
+
+Consecuencia: **las etapas se derivan del modo**, igual que la numeración de las
+secciones. Normal y estimativo tienen **tres** (`Datos · Trabajos · Cierre`);
+riesgo tiene **cuatro** (`Datos · Trabajos · Informe · Cierre`). Una etapa existe
+si tiene al menos una sección visible en el modo activo, así que no hay una tabla
+por modo que se pueda desincronizar.
+
+- `EDITOR_ETAPAS` define las etapas y qué claves de sección agrupa cada una. El
+  orden es el **mismo que el del editor**, así que el número de una sección nunca
+  va para atrás al cambiar de etapa: el informe es `04` en `fichas` y `04` en
+  `consola`.
+- `_esecEtapa` es la etapa activa. Como `_esecOpen`, es estado de pantalla: no se
+  guarda ni viaja en el backup (I3). Si el modo activo no tiene esa etapa, se cae
+  en la primera visible.
+- `editorSetEtapa()` cambia de etapa y **vuelve al tope de `#main`**: cambiar de
+  etapa es cambiar de pantalla, y quedarse a mitad del scroll de la anterior
+  desorienta.
+- **El punto ámbar en una tab** marca que esa etapa tiene secciones sin resolver.
+  Es el aporte propio de esta vista: dice *dónde* falta sin entrar a mirar. En
+  modo riesgo con el informe vacío, es la única tab marcada.
+- **Dentro de la etapa no se pliega nada.** El plegado es de `fichas`; acá lo que
+  agrupa son las etapas. `editorToggleSection()` ya cortaba solo para `fichas`, y
+  `editorShellSync()` ya trataba todo como abierto cuando la vista no es
+  `fichas` — no hubo que tocar ninguna de las dos.
+- Las secciones fuera de la etapa activa se marcan con `.esec-offstage`, **clase
+  aparte de `[hidden]`**: `hidden` significa "este modo no la usa" y sí afecta la
+  numeración; estar fuera de la etapa no.
+- El look de ficha (`.esec`) lo comparten `fichas` y `consola` — lo que las
+  distingue es *qué se ve a la vez*, no cómo se ve cada sección. El realce de
+  "abierta" sí es exclusivo de `fichas`: en `consola` todas las de la etapa están
+  abiertas y realzarlas todas no distingue nada.
+
+**Ninguna invariante nueva**, y no hizo falta tocar el interior de ninguna
+sección (I1). Verificado: de las 14 escenas de `visual-snap` no cambió ninguna
+por esta fase (`consola` no es el default, así que no aparece en ninguna escena)
+y los 21 documentos del PDF siguen idénticos.
 
 ---
 
@@ -680,16 +721,24 @@ que el cambio está confinado: de las 14 escenas de `visual-snap` cambiaron
 Historial, Agenda, Facturas, claro y oscuro) siguen idénticas píxel a píxel, y
 los 21 documentos del PDF siguen byte por byte iguales.
 
-**Riesgo asumido, a mirar en el teléfono:** "Enviar por WhatsApp" pasó de botón
-con texto a ícono. Es cómo se le manda el presupuesto al cliente, así que si
-cuesta encontrarlo, volver a ponerle la etiqueta es un cambio de CSS (el
-`.stb-ico` deja de ser cuadrado y el `aria-label` ya está escrito).
+**Corregido en la v193:** "Enviar por WhatsApp" había quedado como ícono solo,
+siguiendo el spec. Se le devolvió la etiqueta (`.stb-wa`) por decisión del
+usuario: es la acción con la que se le manda el presupuesto al cliente, y un
+ícono suelto al lado de otro ícono no dice cuál es cuál. La fila quedó
+`[Imprimir / PDF …] [👁] [💬 WhatsApp]`.
 
 ---
 
-## Fase 3 — Pantalla "Cargar trabajo" (APARTADA)
+## Fase 3 — Pantalla "Cargar trabajo" (DESCARTADA)
 
-**Estado: fuera del alcance de este plan.** Se decide por separado, después de la 4.
+> **Estado: DESCARTADA por el usuario (v193). No se hace.** No es "más adelante"
+> ni "a decidir": el motivo es de oficio, no técnico — *«no tiene nada que ver
+> con cómo venimos redactando los presupuestos»*. El modelo de tipos y chips que
+> proponía el borrador no es cómo se cotiza poda y extracción en la práctica.
+>
+> Queda escrito abajo para que nadie lo vuelva a proponer sin saber qué implicaba.
+> Si alguna vez se retoma, es un proyecto aparte con su propia decisión de modelo
+> de datos y su propia migración — no una fase de este plan.
 
 El borrador la proponía como una fase más, pero **rompe la invariante I1 y cambia
 el modelo de datos**:
@@ -706,9 +755,8 @@ el modelo de datos**:
 - Los ítems ya guardados en el historial no tienen esos campos: hay que definir el
   fallback antes de escribir nada.
 
-No es imposible ni una mala idea — es **otro proyecto**, con su propia decisión de
-modelo de datos y su propia migración. Las fases 0, 1, 2 y 4 ya entregan el grueso
-del cambio visual sin tocar cómo se guarda un ítem.
+Las fases 0, 1, 1b, 2 y 4 entregaron el cambio visual completo **sin tocar cómo se
+guarda un ítem**, que era el objetivo.
 
 ---
 
@@ -756,11 +804,10 @@ opción de "el selector está bien, pero prefiero arrancar en clásica".
 > sumaron las escenas `estilo` y `estilo-d` (y soporte de `subtab` en el
 > runner). Cualquier fase que toque Empresa → Estilo ya queda cubierta.
 
-**Pendiente menor:** `EDITOR_VIEWS` tiene tres valores y el selector ofrece dos.
-`'consola'` es alcanzable solo desde código (`setVistaEditor('consola')`) y hoy
-se renderiza como `clasica`, porque no tiene CSS propio. Es un estado válido y
-no rompe nada, pero **si la Fase 1b no se hace, hay que sacar `'consola'` de la
-lista blanca** para no dejar un valor que promete algo que no existe.
+**Actualizado en la v193:** el selector tiene las **tres** vistas — Clásica,
+Fichas y **Etapas** (`'consola'`). Cuando se escribió esta fase el selector
+ofrecía dos y `'consola'` era un valor de `EDITOR_VIEWS` inalcanzable desde la
+UI; la Fase 1b lo cerró.
 
 ---
 
@@ -819,7 +866,7 @@ Preguntar en vez de asumir. En particular:
 - Si un token del diseño no tiene equivalente claro en el `:root` actual.
 - Si una sección del editor no encaja en el shell sin modificarla por dentro (I1).
 - Si algo del diseño implica cambiar cómo se guarda o se calcula un dato (eso es
-  Fase 3 y está apartado).
+  Fase 3, y está descartada).
 
 Una pregunta cuesta un mensaje. Un supuesto equivocado cuesta la fase entera.
 
@@ -852,26 +899,26 @@ Una pregunta cuesta un mensaje. Un supuesto equivocado cuesta la fase entera.
 
 ### Pendientes
 
-1. **El default: ¿pasa a `'fichas'`?** Es la decisión que sigue, y depende de
-   usar la vista unos días en trabajos reales. Cambiarlo es una línea en `DEF`
-   (`vistaEditor`), más el bump de `CACHE_VERSION`. Si se cambia, revisar que
-   `test/editor-shell.test.cjs` siga afirmando lo correcto: hoy tiene checks que
-   dan por sentado que el default es `'clasica'`.
-2. **¿"Enviar por WhatsApp" vuelve a tener etiqueta?** En la barra fija quedó
-   como ícono, siguiendo el spec. Es la acción con la que se le manda el
-   presupuesto al cliente; si en el teléfono cuesta encontrarla, se le devuelve
-   el texto (cambio de CSS, ver Fase 2).
-3. **Fase 1b — ¿se hace la vista `consola`?** Si sí, falta definir dónde caen las
-   6 `section-card` del ISA en un flujo de 3 etapas. Si no, sacar `'consola'` de
-   `EDITOR_VIEWS` y del test.
-4. **Chips de descuento (`0% · 5% · 10% · Otro`):** primer control que el diseño
-   quiere reemplazar en vez de envolver. Se puede hacer sin romper I1 (los chips
-   escriben en `#discount`, que queda como está por debajo), pero hay que
-   quererlo. Quedó fuera de la Fase 2 — no era parte de la barra.
-5. **Confirmar** que la Fase 3 queda apartada.
+**Queda UNA sola, y no es trabajo: es una decisión de uso.**
 
-Ninguna es bloqueante: **el plan ya está entregado**. Lo que queda son
-decisiones de uso, no trabajo pendiente.
+1. **El default: ¿pasa de `'clasica'` a `'fichas'` o `'consola'`?** Respondido en
+   la v193: **aún no.** Depende de usar las vistas unos días en trabajos reales.
+   Cambiarlo es una línea en `DEF` (`vistaEditor`) más el bump de
+   `CACHE_VERSION`; si se cambia, revisar `test/editor-shell.test.cjs`, que tiene
+   checks que dan por sentado que el default es `'clasica'`.
+
+### Cerradas
+
+- ~~¿"Enviar por WhatsApp" vuelve a tener etiqueta?~~ **Sí** (v193). Ver Fase 2.
+- ~~¿Se hace la vista `consola`?~~ **Sí** (v193). Es la Fase 1b; el informe ISA
+  quedó en su propia etapa.
+- ~~Chips de descuento (`0% · 5% · 10% · Otro`)~~ — **descartado** por el
+  usuario (v193). El campo `#discount` se queda como está. Era el único punto del
+  diseño que reemplazaba un control en vez de envolverlo, así que con esto **no
+  queda nada del rediseño que rompa I1**.
+- ~~Confirmar que la Fase 3 queda apartada~~ — **descartada**, no apartada
+  (v193). El motivo es de oficio, no de costo: no es cómo se redactan estos
+  presupuestos. Ver la sección de la Fase 3.
 
 ---
 
