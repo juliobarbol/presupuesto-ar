@@ -26,6 +26,11 @@ const OUT = process.env.SNAP_DIR ||
   path.join(process.env.TMPDIR || '/tmp', 'presupuesto-visual-snap');
 const PORT = 8700 + (process.pid % 200);
 
+// Instante fijo para todas las corridas: mediodía del 15/07/2026 en Argentina
+// (UTC-3). Mediodía y no medianoche para que ningún cálculo de fecha local
+// quede pegado a un borde de día.
+const FAKE_NOW = Date.parse('2026-07-15T15:00:00Z');
+
 const MODE = (process.argv[2] || 'base').toLowerCase();
 if (!['base', 'check'].includes(MODE)) {
   console.error('Uso: node test/visual-snap.cjs [base|check]');
@@ -132,7 +137,18 @@ async function run() {
     await page.setViewport({ width: 412, height: 915, deviceScaleFactor: 1 });
 
     // Sembrar localStorage y fijar el tema ANTES de que corra el script inline.
-    await page.evaluateOnNewDocument((seed, theme) => {
+    await page.evaluateOnNewDocument((seed, theme, FAKE_NOW) => {
+      // Congelar el reloj. Sin esto, cualquier campo con la fecha de hoy
+      // (el datepicker de Facturas, los banners) cambia al cruzar la
+      // medianoche y la comparación da un falso positivo: pasó, y perdí un
+      // rato buscando una regresión de CSS que era el 29 volviéndose 30.
+      const RealDate = Date;
+      class FrozenDate extends RealDate {
+        constructor(...a) { super(...(a.length ? a : [FAKE_NOW])); }
+        static now() { return FAKE_NOW; }
+      }
+      // eslint-disable-next-line no-global-assign
+      Date = FrozenDate;
       try {
         // Claves reales del objeto LS (pq_s / pq_h, no las *_LEGACY).
         localStorage.setItem('pq_theme', theme);
@@ -143,7 +159,7 @@ async function run() {
         localStorage.setItem('pq_onboarded', '1');
         localStorage.setItem('pq_day_alert_seen', '2999-01-01');
       } catch (e) {}
-    }, seed, scene.theme);
+    }, seed, scene.theme, FAKE_NOW);
 
     await page.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: 'load' });
     // El SW de una corrida anterior puede servir HTML viejo: no lo dejamos actuar.
