@@ -527,6 +527,58 @@ const SEMBRAR = RESET + `
       await page.close();
     }
 
+    // ── El selector de modo se compacta en las vistas nuevas ──
+    // En clásica son tres bloques apilados con título y subtítulo (~370 px en el
+    // teléfono); al lado de las fichas eso se leía como un resto del estilo viejo.
+    {
+      const page = await nuevaPagina(browser);
+      // Ancho de teléfono: el apilado de la vista clásica lo hace el
+      // @media(max-width:600px), así que a ancho de escritorio no habría nada
+      // que comparar. Las media queries se reevalúan al redimensionar.
+      await page.setViewport({ width: 412, height: 915 });
+      const r = await page.evaluate(new Function(`
+        ${SEMBRAR}
+        const vis = sel => getComputedStyle(document.querySelector(sel)).display !== 'none';
+        const leer = () => ({
+          alto: Math.round(document.getElementById('mode-switch').getBoundingClientRect().height),
+          fila: getComputedStyle(document.getElementById('mode-switch')).flexDirection,
+          titulo: vis('#mode-btn-normal .mode-btn-title'),
+          sub: vis('#mode-btn-normal .mode-btn-sub'),
+          corta: vis('#mode-btn-normal .mode-btn-short'),
+          activo: document.querySelector('.mode-btn.active').id,
+        });
+        const out = {};
+        ['clasica','fichas','consola'].forEach(v => { setVistaEditor(v); out[v] = leer(); });
+        // El nombre accesible NO se pierde: la etiqueta corta va aria-hidden y el
+        // título largo sigue en el DOM.
+        out.aria = document.querySelector('#mode-btn-normal .mode-btn-short')
+                     .getAttribute('aria-hidden');
+        out.tituloEnDOM = document.querySelector('#mode-btn-normal .mode-btn-title')
+                            .textContent.trim();
+        // Y sigue cambiando de modo desde la vista compacta
+        setVistaEditor('fichas'); setMode('riesgo');
+        out.trasCambiarModo = leer();
+        return out;
+      `));
+      check('En clásica el selector de modo queda EXACTAMENTE como estaba',
+        r.clasica.titulo && r.clasica.sub && !r.clasica.corta,
+        JSON.stringify(r.clasica));
+      check('En fichas y etapas se compacta a una fila con etiqueta corta',
+        ['fichas','consola'].every(v => r[v].corta && !r[v].titulo && !r[v].sub &&
+                                        r[v].fila === 'row'),
+        JSON.stringify([r.fichas, r.consola]));
+      check('…y en el teléfono mide bastante menos que apilado',
+        r.clasica.fila === 'column' && r.fichas.alto < r.clasica.alto * 0.5,
+        'clasica=' + r.clasica.alto + 'px (' + r.clasica.fila + ')  fichas=' +
+        r.fichas.alto + 'px (' + r.fichas.fila + ')');
+      check('La etiqueta corta no se lleva el nombre accesible',
+        r.aria === 'true' && /Presupuesto Normal/.test(r.tituloEnDOM),
+        r.aria + ' / ' + r.tituloEnDOM);
+      check('Y desde la vista compacta se sigue cambiando de modo',
+        r.trasCambiarModo.activo === 'mode-btn-riesgo', r.trasCambiarModo.activo);
+      await page.close();
+    }
+
     // ── El FAB de "subir" se apoya en el alto MEDIDO de la barra ──
     // Con la barra de una fila alcanzaba un 56px a mano en el CSS; con las dos
     // filas de la Fase 2 el FAB quedaba encima de la barra.

@@ -653,6 +653,44 @@ details.scol[open]>summary .scol-chev{transform:rotate(180deg)}
 #panel-editor[data-vista="fichas"] .esec .st.st-with-action::before,
 #panel-editor[data-vista="consola"] .esec .st.st-with-action::before{display:none}
 
+/* ── Selector de modo en las vistas nuevas ───────────────────────
+   En `clasica` el selector son tres bloques apilados con título y subtítulo
+   (~370 px en el teléfono). Al lado de las fichas y del encabezado eso se lee
+   como un resto del estilo viejo, y encima es lo más alto de la pantalla antes
+   de empezar a cargar datos. Acá se compacta al mismo segmentado que usan
+   Apariencia y Vista del editor: una fila, 44 px, etiquetas cortas.
+
+   No se pierde información: el subtítulo de cada modo lo dice el encabezado del
+   editor (`.esh-prog-note`: PRECIOS CERRADOS / VALOR REFERENCIAL / INFORME ISA)
+   para el modo activo, y la explicación larga sigue en el `title` de cada botón.
+   En `clasica` nada de esto aplica: el selector queda igual que siempre. */
+#panel-editor[data-vista="fichas"] .mode-switch,
+#panel-editor[data-vista="consola"] .mode-switch{
+  flex-direction:row;gap:0;padding:3px;
+  border-radius:var(--radius-field);margin-bottom:var(--sp-4);
+}
+#panel-editor[data-vista="fichas"] .mode-btn,
+#panel-editor[data-vista="consola"] .mode-btn{
+  flex:1;min-width:0;
+  flex-direction:row;align-items:center;justify-content:center;
+  gap:0;padding:8px 4px;min-height:44px;text-align:center;
+}
+#panel-editor[data-vista="fichas"] .mode-btn-title,
+#panel-editor[data-vista="consola"] .mode-btn-title,
+#panel-editor[data-vista="fichas"] .mode-btn-sub,
+#panel-editor[data-vista="consola"] .mode-btn-sub{display:none}
+#panel-editor[data-vista="fichas"] .mode-btn-short,
+#panel-editor[data-vista="consola"] .mode-btn-short{
+  display:inline-flex;align-items:center;gap:5px;
+  font-size:var(--fs-sm);font-weight:600;white-space:nowrap;
+}
+#panel-editor[data-vista="fichas"] .mode-btn-short .ic,
+#panel-editor[data-vista="consola"] .mode-btn-short .ic{width:15px;height:15px}
+/* El botón de Notas quedaba solo en su renglón, lejos de todo. Pegado al
+   selector se lee como parte del mismo bloque de encabezado. */
+#panel-editor[data-vista="fichas"] .notes-bar,
+#panel-editor[data-vista="consola"] .notes-bar{margin:calc(-1 * var(--sp-2)) 0 var(--sp-3)}
+
 /* ── Tabs de etapa (vista consola, dirección 2b) ─────────────────
    Subrayadas y en mono versalita, como el resto de las etiquetas de la app.
    El punto marca las etapas que todavía tienen secciones sin resolver: dice
@@ -1240,6 +1278,8 @@ input[type=number]{-moz-appearance:textfield}
 .mode-btn.active{background:var(--card);color:var(--accent-fg);box-shadow:0 1px 4px rgba(0,0,0,.10)}
 .mode-btn.active.est{background:var(--accent);color:#fff;box-shadow:0 1px 6px rgba(var(--accent-rgb),.25)}
 .mode-btn.active .mode-btn-sub{opacity:.85}
+/* La etiqueta corta solo existe para las vistas fichas/etapas. */
+.mode-btn-short{display:none}
 
 /* ESTIMATIVE BANNER */
 #est-banner{background:linear-gradient(135deg,var(--accent),var(--accent-2));border-radius:var(--radius-box);padding:12px 16px;margin-bottom:16px;align-items:flex-start;gap:10px;display:none}
@@ -3181,17 +3221,25 @@ input[type=number]{-moz-appearance:textfield}
         <div id="morning-banner" class="morning-banner" style="display:none"></div>
 
         <div class="mode-switch" id="mode-switch">
+          <!-- `.mode-btn-short` es la etiqueta para las vistas fichas/etapas,
+               donde el selector se compacta a un segmentado de una línea. Va
+               con aria-hidden porque el nombre accesible ya lo da el título
+               largo de al lado; en la vista clásica está en display:none y no
+               cambia nada. Ver docs/rediseno-editor.md. -->
           <button class="mode-btn active" id="mode-btn-normal" onclick="setMode('normal')" title="Lo más común: ya viste el árbol y pones un precio cerrado por cada trabajo.">
             <span class="mode-btn-title"><svg class="ic"><use href="#i-clipboard"></use></svg> Presupuesto Normal</span>
             <span class="mode-btn-sub">Precios cerrados por trabajo</span>
+            <span class="mode-btn-short" aria-hidden="true"><svg class="ic"><use href="#i-clipboard"></use></svg> Normal</span>
           </button>
           <button class="mode-btn est" id="mode-btn-est" onclick="setMode('estimativo')" title="Cuando el cliente te manda fotos o videos y todavía no fuiste al lugar. El PDF aclara que es un valor referencial, sujeto a inspección presencial.">
             <span class="mode-btn-title"><svg class="ic"><use href="#i-camera"></use></svg> Presupuesto Estimativo</span>
             <span class="mode-btn-sub">Basado en fotos · valor referencial</span>
+            <span class="mode-btn-short" aria-hidden="true"><svg class="ic"><use href="#i-camera"></use></svg> Estimativo</span>
           </button>
           <button class="mode-btn" id="mode-btn-riesgo" onclick="setMode('riesgo')" title="Para árboles peligrosos: suma un informe técnico de riesgo (método ISA) que justifica la extracción o intervención ante el cliente.">
             <span class="mode-btn-title"><svg class="ic"><use href="#i-tree"></use></svg> Con Informe de Riesgo</span>
             <span class="mode-btn-sub">Incluye evaluación técnica ISA</span>
+            <span class="mode-btn-short" aria-hidden="true"><svg class="ic"><use href="#i-tree"></use></svg> Riesgo</span>
           </button>
         </div>
 

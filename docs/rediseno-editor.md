@@ -14,6 +14,7 @@
 | 4 — Selector visible | ✅ en producción (v191) |
 | 2 — Barra inferior fija | ✅ en producción (v192) |
 | 1b — Vista `consola` (etapas) | ✅ en producción (v193) |
+| Ajuste — selector de modo compacto | ✅ en producción (v194) |
 | 3 — Pantalla "Cargar trabajo" | ❌ descartada (ver más abajo) |
 
 La **Fase 4 se adelantó a la 2** a propósito: sin el selector, `fichas` solo se
@@ -603,6 +604,42 @@ por modo que se pueda desincronizar.
 sección (I1). Verificado: de las 14 escenas de `visual-snap` no cambió ninguna
 por esta fase (`consola` no es el default, así que no aparece en ninguna escena)
 y los 21 documentos del PDF siguen idénticos.
+
+---
+
+## Ajuste v194 — el selector de modo también se adapta a la vista
+
+Reportado desde el teléfono al usar `fichas`: el selector de arriba
+(`#mode-switch`, "Presupuesto Normal / Estimativo / Con Informe de Riesgo")
+**se quedó con el estilo viejo**. En el teléfono son tres bloques apilados con
+título y subtítulo — **152 px** — y al lado del encabezado y de las fichas se
+leía como un resto de otra época. Encima era lo más alto de la pantalla antes de
+poder cargar el primer dato.
+
+En `fichas` y `consola` pasa a ser el **mismo segmentado** que usan "Apariencia
+de la app" y "Vista del editor": una fila, **52 px**, etiquetas cortas
+(`Normal · Estimativo · Riesgo`) con su ícono. El botón de Notas se sube pegado
+al selector, que antes quedaba solo en su renglón.
+
+**No se pierde información**, y esto es lo que hizo que el recorte fuera barato:
+el subtítulo del modo activo ya lo dice el encabezado del editor
+(`.esh-prog-note`: `PRECIOS CERRADOS` / `VALOR REFERENCIAL` / `INFORME ISA`), y
+la explicación larga de cada modo sigue viva en el `title` de cada botón.
+
+- La etiqueta corta es un `<span class="mode-btn-short" aria-hidden="true">`
+  nuevo dentro de cada botón, en `display:none` salvo en las vistas nuevas. Va
+  `aria-hidden` porque **el nombre accesible lo sigue dando el título largo**,
+  que queda en el DOM aunque no se vea. No se tocó ningún `id`, `onclick` ni
+  nada que lea `applyMode()` (I1).
+- Las reglas van prefijadas con `#panel-editor[data-vista="…"]`, que gana en
+  especificidad sobre el `@media(max-width:600px)` que apila el selector en
+  `clasica` — sin depender del orden en la hoja.
+
+**En `clasica` el selector queda exactamente como estaba**, 152 px apilados y
+con los subtítulos: las 14 escenas de `visual-snap` siguen idénticas píxel a
+píxel. Cubierto por 5 checks en `test/editor-shell.test.cjs`, incluido que desde
+la versión compacta se sigue cambiando de modo y que el nombre accesible no se
+perdió.
 
 ---
 
