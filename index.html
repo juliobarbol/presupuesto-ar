@@ -182,7 +182,7 @@ body{background-color:var(--bg)}
 .ic-c-amber{color:var(--ic-amber)}
 .ic-c-red{color:var(--ic-red)}
 /* Exenciones: sobre fondos llenos el icono hereda el color del texto (blanco). */
-#topbar .ic,.btn-p .ic,.btn-cta .ic,#est-banner .ic,.mode-btn.active.est .ic{color:inherit}
+#topbar .ic,.btn-p .ic,.stb-print .ic,#est-banner .ic,.mode-btn.active.est .ic{color:inherit}
 /* Círculo de nivel de riesgo (reemplaza 🔴🟠🟡🟢) — color semántico */
 .ic-dot{width:.85em;height:.85em;display:inline-block;vertical-align:-0.05em;border-radius:50%;flex-shrink:0}
 .ic-dot.lvl-extremo{background:var(--red)}
@@ -903,11 +903,6 @@ details.scol[open]>summary .scol-chev{transform:rotate(180deg)}
 .alert-success{background:rgba(5,150,105,.10);border-color:rgba(5,150,105,.28);color:#065f46}
 .alert-warning{background:rgba(217,119,6,.10);border-color:rgba(217,119,6,.30);color:#92400e}
 .alert-error{background:rgba(220,38,38,.08);border-color:rgba(220,38,38,.28);color:#991b1b}
-.btn-cta{
-  width:100%;padding:14px 16px;font-size:15px;font-weight:700;
-  margin-bottom:10px;
-  box-shadow:0 2px 8px rgba(var(--accent-rgb),.18);
-}
 .actions-secondary{
   display:flex;gap:8px;
 }
@@ -1008,32 +1003,81 @@ details.scol[open]>summary .scol-chev{transform:rotate(180deg)}
    - st-ab: dos totales (modo escenarios A/B activo)
    - st-est: total estimativo único (modo estimativo)
    Solo se muestra cuando la pestaña activa es "editor" (ver switchTab). */
+/* Borde superior de 2px (spec 2a): la barra tiene que leerse como un piso, no
+   como una tarjeta más. */
 .sticky-totals{
   position:fixed;bottom:0;left:0;right:0;
   background:var(--card);
-  border-top:1px solid var(--border);
+  border-top:2px solid var(--border);
   box-shadow:0 -2px 12px rgba(0,0,0,.06);
-  padding:10px 14px env(safe-area-inset-bottom,10px);
+  padding:8px 14px env(safe-area-inset-bottom,8px);
   z-index:30;
 }
 .sticky-totals-inner{
   max-width:900px;margin:0 auto;
-  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  display:flex;flex-direction:column;gap:8px;
 }
-.st-cols{display:flex;align-items:center;gap:18px;flex:1;justify-content:space-around}
-.st-item{display:flex;flex-direction:column;gap:1px;min-width:0}
-.st-lbl{font-family:var(--font-mono);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)}
-.st-val{font-family:var(--font-mono);font-size:15px;font-weight:600;color:var(--text);white-space:nowrap}
-.st-val.accent{color:var(--accent-fg);font-size:17px}
-.st-total .st-val{font-size:17px}
-.st-total .st-val.accent{font-size:19px}
-/* En móvil más compacto */
-@media (max-width:600px){
-  .sticky-totals{padding:8px 10px env(safe-area-inset-bottom,8px)}
-  .st-cols{gap:10px}
-  .st-val{font-size:14px}
-  .st-val.accent,.st-total .st-val{font-size:15px}
-  .st-total .st-val.accent{font-size:16px}
+/* Fila 1 — cifras. Una variante visible a la vez (_stickyShowVariant le pone
+   display:flex a la que corresponde). */
+.stb-row{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+.stb-main{min-width:0}
+.stb-lbl{
+  font-family:var(--font-mono);font-size:var(--fs-xs);font-weight:600;
+  text-transform:uppercase;letter-spacing:.08em;color:var(--text-2);
+  white-space:nowrap;
+}
+.stb-sep{color:var(--faint)}
+/* La cifra: 28px como pide el spec, pero peso 600 y NO 700 — IBM Plex Mono está
+   empaquetada en 400 y 600, así que un 700 lo sintetizaría el navegador
+   (engordado falso, distinto en cada Android). Mismo criterio que .tbar-val
+   tenía antes. A 28px la diferencia entre 600 y un 700 sintético se nota. */
+.stb-amt{
+  font-family:var(--font-mono);font-size:28px;font-weight:600;
+  color:var(--accent-fg);line-height:1.05;white-space:nowrap;
+  margin-top:1px;
+}
+.stb-amt-sm{font-size:20px}
+/* A/B: dos totales que comparten el ancho; el activo lo resalta updateTotalsBar
+   con opacity (ver _stickyShowVariant). */
+.stb-main-b{text-align:right}
+#st-ab{align-items:flex-end}
+#st-ab .stb-main{flex:1}
+/* Columna de apoyo a la derecha: subtotal / descuento / recargo, o la nota del
+   estimativo. Mono chico — es información secundaria, no compite con la cifra. */
+.stb-side{
+  display:flex;flex-direction:column;align-items:flex-end;gap:1px;
+  flex-shrink:0;font-family:var(--font-mono);font-size:var(--fs-sm);
+  color:var(--muted);line-height:1.3;
+}
+.stb-side-row{display:flex;gap:6px;white-space:nowrap}
+.stb-side-k{color:var(--faint)}
+.stb-side-v{color:var(--text-2);font-weight:600}
+.stb-side-v.is-red{color:var(--red)}
+.stb-side-note{
+  font-family:var(--font-text);font-size:var(--fs-xs);font-style:italic;
+  color:var(--muted);text-align:right;line-height:1.25;
+}
+/* Fila 2 — acciones. El primario se estira; los dos de ícono son cuadrados de
+   44px (área de toque mínima con una mano, a la intemperie). */
+.stb-actions{display:flex;align-items:stretch;gap:8px}
+.stb-print{
+  flex:1;justify-content:center;
+  padding:11px 14px;font-size:15px;font-weight:700;min-height:44px;
+  box-shadow:0 2px 8px rgba(var(--accent-rgb),.18);
+}
+.stb-ico{
+  flex:0 0 44px;width:44px;min-height:44px;padding:0;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--surface-2);color:var(--text);border:1px solid var(--border);
+}
+.stb-ico:hover{background:var(--surface-hover)}
+.stb-ico .ic{width:20px;height:20px}
+/* En pantallas angostas la cifra baja un punto para que la columna de apoyo no
+   la empuje fuera. */
+@media (max-width:400px){
+  .stb-amt{font-size:24px}
+  .stb-amt-sm{font-size:18px}
+  .stb-print{font-size:14px}
 }
 /* El espacio para que el contenido no quede tapado por la barra fija se reserva
    ahora DENTRO del scroller (#main) desde JS (reserveStickySpace), midiendo el
@@ -1057,9 +1101,11 @@ details.scol[open]>summary .scol-chev{transform:rotate(180deg)}
 .scrolltop-fab.show{opacity:1;transform:none;pointer-events:auto}
 .scrolltop-fab:active{transform:scale(.94)}
 .scrolltop-fab .ic{width:20px;height:20px}
-/* En el Editor, elevarse por encima de la barra de totales fija (≈44px de alto
-   + su safe-area) para no taparla. */
-body.has-sticky-totals .scrolltop-fab{bottom:calc(56px + env(safe-area-inset-bottom))}
+/* En el Editor, elevarse por encima de la barra de totales fija. El alto lo
+   publica reserveStickySpace() en --sticky-h midiendo la barra real (ya incluye
+   la safe-area): con dos filas ya no hay una constante que sirva. El 56px del
+   fallback es solo para el caso de que el JS no haya corrido todavía. */
+body.has-sticky-totals .scrolltop-fab{bottom:calc(var(--sticky-h,56px) + 12px)}
 
 /* LOGO */
 .lu-area{border:2px dashed var(--border);border-radius:var(--radius-box);padding:20px;text-align:center;cursor:pointer;margin-bottom:10px;transition:.15s;background:var(--surface)}
@@ -1114,17 +1160,10 @@ input[type=file]{display:none}
 .adj-badge{display:inline-flex;align-items:center;gap:4px;margin-top:4px;font-size:10px;font-weight:700;color:#92400e;background:#fef3c7;border:1px solid #fcd34d;border-radius:var(--radius-field);padding:2px 7px}
 .adj-badge .adj-orig{text-decoration:line-through;opacity:.6;font-weight:400}
 
-/* LIVE TOTALS */
-#totals-bar{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-box);padding:12px 16px;margin-bottom:16px;display:flex;gap:16px;flex-wrap:wrap;align-items:center}
-.tbar-item{display:flex;flex-direction:column;gap:1px}
-/* Etiqueta y cifra en mono: la etiqueta porque ya es versalita con tracking
-   (para eso está la mono), y la cifra porque los dígitos tabulares mantienen
-   el ancho al tipear y los importes no bailan. Peso 600 y no 700: IBM Plex
-   Mono trae 400 y 600, pedir 700 lo sintetizaría. */
-.tbar-lbl{font-family:var(--font-mono);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
-.tbar-val{font-family:var(--font-mono);font-size:15px;font-weight:600;color:var(--text)}
-.tbar-val.accent{color:var(--accent-fg)}
-.tbar-sep{height:32px;width:1px;background:var(--border);flex-shrink:0}
+/* El #totals-bar inline y sus .tbar-* se fueron en la Fase 2: repetían las
+   mismas cifras 15 px más arriba de la barra fija. Lo que sobrevive de ese
+   criterio está en .stb-* (arriba, junto a .sticky-totals): etiqueta y cifra en
+   mono, y peso 600 y no 700 porque IBM Plex Mono viene en 400 y 600. */
 
 /* HISTORY SEARCH */
 .hsearch{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-field);font-family:var(--font-text);font-size:13px;color:var(--text);background:var(--card);outline:none;transition:.15s;margin-bottom:12px;-webkit-appearance:none;appearance:none}
@@ -1610,7 +1649,7 @@ input[type=number]{-moz-appearance:textfield}
 /* ═══ ELEVACIÓN DE CARDS ════════════════════════════════════════════
    Sombra sutil + leve "levantada" en hover para las cards principales,
    dándoles el look flotante y limpio de daisyUI sin recargar la UI.    */
-.icard,.hitem,.svc-row,#totals-bar,.hmonth,.client-card{box-shadow:var(--shadow-card)}
+.icard,.hitem,.svc-row,.hmonth,.client-card{box-shadow:var(--shadow-card)}
 .icard,.hmonth{transition:box-shadow .15s,border-color .15s,background .15s,transform .15s}
 .icard:hover,.hmonth:hover{box-shadow:var(--shadow-card-hover)}
 /* La card arrastrándose no debe "flotar" (se ve raro con opacity). */
@@ -3536,37 +3575,18 @@ input[type=number]{-moz-appearance:textfield}
 
         <div class="divider"></div>
 
-        <!-- TOTALES EN VIVO -->
-        <div id="totals-bar">
-          <div id="tb-normal-cols" style="display:flex;flex:1;align-items:center;gap:16px;flex-wrap:wrap">
-            <div class="tbar-item"><div class="tbar-lbl">Subtotal</div><div class="tbar-val" id="tb-sub">$ 0,00</div></div>
-            <div class="tbar-sep"></div>
-            <div class="tbar-item"><div class="tbar-lbl">Descuento</div><div class="tbar-val" id="tb-disc" style="color:var(--red)">— 0,00</div></div>
-            <div class="tbar-sep"></div>
-            <div class="tbar-item"><div class="tbar-lbl">Total</div><div class="tbar-val accent" id="tb-total">$ 0,00</div></div>
-          </div>
-          <div id="tb-est-cols" style="display:none;flex:1;align-items:center;gap:16px">
-            <div class="tbar-item" style="flex:1"><div class="tbar-lbl">Costo Estimado Total</div><div class="tbar-val accent" id="tb-est-total">$ 0,00</div></div>
-            <div style="font-size:11px;color:var(--muted);font-style:italic">Valor referencial · sujeto a inspección presencial</div>
-          </div>
-        </div>
+        <!-- Los totales EN VIVO y las acciones de cierre (Imprimir / Vista
+             previa / WhatsApp) ya NO viven acá: se mudaron a la barra fija de
+             abajo (#sticky-totals), que los tiene a mano sin scrollear los
+             ~3.000 px del editor. Fase 2 del rediseño; ver
+             docs/rediseno-editor.md. Lo que quedaba acá repetía las mismas
+             cifras 15 px más arriba de la barra. -->
 
         <!-- HINT antes de las acciones: el usuario lee la lógica
              ANTES de tomar la decisión, no después. -->
         <div class="alert alert-info" style="margin-bottom:10px">
           <span class="alert-ico"><svg class="ic ic-c-amber"><use href="#i-bulb"></use></svg></span>
           <span>El presupuesto se guarda automáticamente al imprimir o al crear uno nuevo.</span>
-        </div>
-
-        <!-- ACCIÓN PRIMARIA: Imprimir es la acción típica de cierre.
-             Acción única destacada — no compite con otras. -->
-        <button class="btn btn-p btn-cta" onclick="printDoc()"><svg class="ic"><use href="#i-printer"></use></svg> Imprimir / PDF</button>
-
-        <!-- Antes de imprimir: ver cómo queda y/o avisar al cliente por
-             WhatsApp (el PDF se adjunta a mano, ver el aviso al tocar). -->
-        <div class="actions-secondary">
-          <button class="btn btn-g btn-sm" onclick="previewCurrent()"><svg class="ic"><use href="#i-eye"></use></svg> Vista previa</button>
-          <button class="btn btn-g btn-sm" onclick="sendCurrentWhatsapp()"><svg class="ic ic-c-green"><use href="#i-message"></use></svg> Enviar por WhatsApp</button>
         </div>
 
         <!-- ACCIONES SECUNDARIAS: más chicas, ancho compartido.
@@ -4456,24 +4476,62 @@ input[type=number]{-moz-appearance:textfield}
 </div>
 
 <!-- ════════════════════ STICKY TOTALS BAR ════════════════════
-     Barra fija en el borde inferior de la pantalla mientras se edita
-     el presupuesto. Muestra el total en vivo sin tener que scrollear
-     hasta el fondo del editor. Se actualiza desde updateTotalsBar()
-     en sync con el #totals-bar interno. Se oculta automáticamente
-     fuera de la pestaña Editor (ver switchTab en ui.js). -->
+     Barra fija en el borde inferior de la pantalla mientras se edita el
+     presupuesto: el total en vivo y las acciones de cierre, sin scrollear
+     los ~3.000 px del editor. Se oculta fuera de la pestaña Editor (ver
+     switchTab en ui.js) y se actualiza desde updateTotalsBar().
+
+     DOS FILAS (Fase 2 del rediseño, dirección 2a):
+       1. Cifras: TOTAL · N ÍTEMS + el importe en mono grande; a la derecha,
+          en chico, subtotal / descuento / recargo — pero SOLO los renglones
+          que aportan algo (un descuento de 0 no es información).
+       2. Acciones: Imprimir / PDF ancho + vista previa y WhatsApp en ícono.
+
+     Tres variantes según el modo, una sola visible a la vez
+     (_stickyShowVariant): #st-normal, #st-ab (escenarios A/B, los dos
+     totales en simultáneo) y #st-est. El alto de la barra NO está
+     hardcodeado en ningún lado: reserveStickySpace() lo mide y de ahí sale
+     el padding de #main y la posición del FAB de "subir". -->
 <div id="sticky-totals" class="sticky-totals" style="display:none">
   <div class="sticky-totals-inner">
-    <div id="st-normal" class="st-cols">
-      <div class="st-item"><span class="st-lbl">Subtotal</span><span class="st-val" id="st-sub">$ 0</span></div>
-      <div class="st-item"><span class="st-lbl">Desc.</span><span class="st-val" id="st-disc" style="color:var(--red)">—</span></div>
-      <div class="st-item st-total"><span class="st-lbl">Total</span><span class="st-val accent" id="st-total">$ 0</span></div>
+
+    <div id="st-normal" class="stb-row">
+      <div class="stb-main">
+        <div class="stb-lbl">Total <span class="stb-sep" aria-hidden="true">·</span> <span id="st-count">0 ítems</span></div>
+        <div class="stb-amt" id="st-total">$ 0</div>
+      </div>
+      <div class="stb-side">
+        <div class="stb-side-row" id="st-sub-row" style="display:none"><span class="stb-side-k">Subtotal</span><span class="stb-side-v" id="st-sub">$ 0</span></div>
+        <div class="stb-side-row" id="st-disc-row" style="display:none"><span class="stb-side-k">Desc.</span><span class="stb-side-v is-red" id="st-disc">—</span></div>
+        <div class="stb-side-row" id="st-surcharge-row" style="display:none"><span class="stb-side-k">Recargo</span><span class="stb-side-v" id="st-surcharge">+0%</span></div>
+      </div>
     </div>
-    <div id="st-ab" class="st-cols" style="display:none">
-      <div class="st-item"><span class="st-lbl">Opción A</span><span class="st-val accent" id="st-a">$ 0</span></div>
-      <div class="st-item st-total"><span class="st-lbl">Opción B</span><span class="st-val accent" id="st-b">$ 0</span></div>
+
+    <div id="st-ab" class="stb-row" style="display:none">
+      <div class="stb-main">
+        <div class="stb-lbl">Opción A</div>
+        <div class="stb-amt stb-amt-sm" id="st-a">$ 0</div>
+      </div>
+      <div class="stb-main stb-main-b">
+        <div class="stb-lbl">Opción B</div>
+        <div class="stb-amt stb-amt-sm" id="st-b">$ 0</div>
+      </div>
     </div>
-    <div id="st-est" class="st-cols" style="display:none">
-      <div class="st-item st-total"><span class="st-lbl">Costo Estimado</span><span class="st-val accent" id="st-est-val">$ 0</span></div>
+
+    <div id="st-est" class="stb-row" style="display:none">
+      <div class="stb-main">
+        <div class="stb-lbl">Estimado <span class="stb-sep" aria-hidden="true">·</span> <span id="st-est-count">0 ítems</span></div>
+        <div class="stb-amt" id="st-est-val">$ 0</div>
+      </div>
+      <div class="stb-side">
+        <div class="stb-side-note">Valor referencial<br>sujeto a inspección</div>
+      </div>
+    </div>
+
+    <div class="stb-actions">
+      <button class="btn btn-p stb-print" onclick="printDoc()"><svg class="ic"><use href="#i-printer"></use></svg> Imprimir / PDF</button>
+      <button class="btn stb-ico" onclick="previewCurrent()" title="Vista previa" aria-label="Vista previa"><svg class="ic"><use href="#i-eye"></use></svg></button>
+      <button class="btn stb-ico" onclick="sendCurrentWhatsapp()" title="Enviar por WhatsApp" aria-label="Enviar por WhatsApp"><svg class="ic ic-c-green"><use href="#i-message"></use></svg></button>
     </div>
   </div>
 </div>
@@ -5416,42 +5474,50 @@ function calcEstTotals(arr) {
   };
 }
 
+// Pinta la barra fija de totales (#sticky-totals). Desde la Fase 2 es el ÚNICO
+// lugar donde se muestran los totales en el editor: el #totals-bar inline que
+// repetía las mismas cifras se sacó.
 function updateTotalsBar() {
   const cur = S.currency || 'ARS';
 
-  // Helpers para setear texto si el elemento existe
+  // Helpers para setear texto / visibilidad si el elemento existe
   const setTxt = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  const showRow = (id, on) => { const el = document.getElementById(id); if (el) el.style.display = on ? '' : 'none'; };
+  const cnt = arr => { const n = (arr || []).length; return n + (n === 1 ? ' ítem' : ' ítems'); };
+
+  // Columna de apoyo del modo normal/riesgo. Cada renglón aparece SOLO si
+  // aporta algo: sin descuento ni recargo, el subtotal es el total y repetirlo
+  // es ruido al lado de una cifra de 28px.
+  const sideNormal = (subtotal, discAmt) => {
+    const sur = Number(S.surcharge) || 0;
+    setTxt('st-sub',  fmtM(subtotal, cur));
+    setTxt('st-disc', '− ' + fmtM(discAmt, cur));
+    setTxt('st-surcharge', '+' + sur + '%');
+    showRow('st-sub-row', discAmt > 0 || sur > 0);
+    showRow('st-disc-row', discAmt > 0);
+    showRow('st-surcharge-row', sur > 0);
+  };
 
   if (S.isRisk) {
     // Modo riesgo usa los mismos ítems normales
     const {subtotal, discAmt, total} = calcTotals(S.items);
-    setTxt('tb-sub',  fmtM(subtotal, cur));
-    setTxt('tb-disc', discAmt > 0 ? `— ${fmtM(discAmt, cur)}` : '—');
-    setTxt('tb-total', fmtM(total, cur));
-    // Sticky: mismo formato que normal
-    setTxt('st-sub',  fmtM(subtotal, cur));
-    setTxt('st-disc', discAmt > 0 ? `— ${fmtM(discAmt, cur)}` : '—');
     setTxt('st-total', fmtM(total, cur));
+    setTxt('st-count', cnt(S.items));
+    sideNormal(subtotal, discAmt);
     _stickyShowVariant('normal');
   } else if (S.isEstimative) {
     const estTotal = calcEstTotals(S.estItems).total;
-    setTxt('tb-est-total', fmtM(estTotal, cur));
     setTxt('st-est-val',   fmtM(estTotal, cur));
+    setTxt('st-est-count', cnt(S.estItems));
     _stickyShowVariant('est');
   } else if (S.scenariosEnabled) {
-    // Modo A/B: mostrar AMBOS totales en simultáneo en el sticky.
-    // La barra interna sigue mostrando el escenario activo
-    // (lo que el usuario está editando ahora).
-    const {subtotal, discAmt, total} = calcTotals();
-    setTxt('tb-sub',  fmtM(subtotal, cur));
-    setTxt('tb-disc', discAmt > 0 ? `— ${fmtM(discAmt, cur)}` : '—');
-    setTxt('tb-total', fmtM(total, cur));
-    // Sticky muestra A y B comparados, indicando cuál está activo
+    // Modo A/B: los DOS totales en simultáneo, resaltando el que se está
+    // editando. Acá no va la columna de apoyo — con dos cifras no entra, y lo
+    // que importa es comparar A contra B.
     const totalA = calcTotals(S.items || []).total;
     const totalB = calcTotals(S.itemsB || []).total;
     setTxt('st-a', fmtM(totalA, cur));
     setTxt('st-b', fmtM(totalB, cur));
-    // Resaltar el escenario activo
     const stA = document.getElementById('st-a');
     const stB = document.getElementById('st-b');
     if (stA && stB) {
@@ -5461,12 +5527,9 @@ function updateTotalsBar() {
     _stickyShowVariant('ab');
   } else {
     const {subtotal, discAmt, total} = calcTotals();
-    setTxt('tb-sub',  fmtM(subtotal, cur));
-    setTxt('tb-disc', discAmt > 0 ? `— ${fmtM(discAmt, cur)}` : '—');
-    setTxt('tb-total', fmtM(total, cur));
-    setTxt('st-sub',  fmtM(subtotal, cur));
-    setTxt('st-disc', discAmt > 0 ? `— ${fmtM(discAmt, cur)}` : '—');
     setTxt('st-total', fmtM(total, cur));
+    setTxt('st-count', cnt(activeItemsArr()));
+    sideNormal(subtotal, discAmt);
     _stickyShowVariant('normal');
   }
 }
@@ -8808,7 +8871,13 @@ function reserveStickySpace() {
   const bar  = document.getElementById('sticky-totals');
   if (!main || !bar) return;
   const shown = document.body.classList.contains('has-sticky-totals') && bar.style.display !== 'none';
-  main.style.paddingBottom = shown ? (bar.offsetHeight + 16) + 'px' : '';
+  const alto = bar.offsetHeight;   // incluye la safe-area del dispositivo
+  main.style.paddingBottom = shown ? (alto + 16) + 'px' : '';
+  // Y el FAB de "subir" se apoya en el alto MEDIDO, no en una constante. Antes
+  // el CSS tenía 56px a mano, que alcanzaba para la barra de una fila; con las
+  // dos filas de la Fase 2 el FAB quedaba encima de la barra. Se publica como
+  // custom property para que el cálculo siga viviendo en el CSS.
+  document.documentElement.style.setProperty('--sticky-h', (shown ? alto : 0) + 'px');
 }
 
 // Vuelve #main al tope con scroll suave (botón "subir").
@@ -9089,11 +9158,9 @@ function applyMode(mode) {
   if (condSec)   condSec.style.display   = isEst ? 'none' : '';
   if (estObsSec) estObsSec.style.display = isEst ? '' : 'none';
 
-  // Barra de totales
-  const tbNormal = document.getElementById('tb-normal-cols');
-  const tbEst    = document.getElementById('tb-est-cols');
-  if (tbNormal) tbNormal.style.display = (isNorm || isRisk) ? 'flex' : 'none';
-  if (tbEst)    tbEst.style.display    = isEst ? 'flex' : 'none';
+  // La barra de totales ya no se toca acá: desde la Fase 2 la única es la fija
+  // (#sticky-totals) y su variante la elige _stickyShowVariant() desde
+  // updateTotalsBar(), que corre al final de esta función.
 
   // Sección "Ajustes de precio" (recargo interno + descuento): visible en
   // modo normal/riesgo, oculta en estimativo.

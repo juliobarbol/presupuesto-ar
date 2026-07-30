@@ -85,7 +85,10 @@ const SEMBRAR = RESET + `
   S.clientName = 'Consorcio Rivadavia 2210';
   S.items = [{ id:1, type:'tree', species:'Tipuana', price:'245000', qty:1 },
              { id:2, type:'service', desc:'Retiro', price:'51000', qty:1 }];
-  S.estItems = [{ id:3, type:'tree', species:'Fresno', price:'180000', qty:1 }];
+  // OJO: en el modo estimativo los trabajos son type:'work' (no 'tree', que es
+  // del modo normal). calcEstTotals solo suma 'work' y 'service'; con 'tree' el
+  // total da 0. Ver addEstItem().
+  S.estItems = [{ id:3, type:'work', desc:'Poda estimada por fotos', price:'180000' }];
   S.paymentConditions = '50% al inicio, 50% contra entrega.';
   S.estObservations = 'Sujeto a inspección.';
   S.surcharge = 12; S.discount = 5;
@@ -227,7 +230,7 @@ const SEMBRAR = RESET + `
       const r = await page.evaluate(new Function(`
         ${SEMBRAR}
         const antes = JSON.stringify(S);
-        const totalAntes = document.getElementById('tb-total').textContent;
+        const totalAntes = document.getElementById('st-total').textContent;
         setVistaEditor('fichas');
         // Lo que el usuario acaba de tipear, todavía sin sincronizar.
         const inp = document.getElementById('observations');
@@ -245,7 +248,7 @@ const SEMBRAR = RESET + `
           estadoIntacto: JSON.stringify(previo) === JSON.stringify(despues),
           // Los nodos siguen siendo los mismos: el shell no reconstruye el DOM.
           mismoNodo: inp === document.getElementById('observations'),
-          totalAntes, totalDespues: document.getElementById('tb-total').textContent,
+          totalAntes, totalDespues: document.getElementById('st-total').textContent,
         };
       `));
       check('Plegar y cambiar de vista NO pierde lo escrito en pantalla',
@@ -373,6 +376,98 @@ const SEMBRAR = RESET + `
       check('…y queda persistido en localStorage', r.enDisco === 'fichas', r.enDisco);
       check('Volver a "Clásica" también', r.traVolver.join() === 'clasica*,fichas',
         r.traVolver.join());
+      await page.close();
+    }
+
+    // ── Fase 2: la barra inferior fija es la única barra de totales ──
+    {
+      const page = await nuevaPagina(browser);
+      const r = await page.evaluate(new Function(`
+        ${SEMBRAR}
+        const txt = id => (document.getElementById(id) || {}).textContent;
+        const visible = id => { const e = document.getElementById(id);
+          return !!e && getComputedStyle(e).display !== 'none'; };
+        const leer = () => ({
+          total: txt('st-total'), count: txt('st-count'),
+          sub: visible('st-sub-row') ? txt('st-sub') : null,
+          desc: visible('st-disc-row') ? txt('st-disc') : null,
+          rec: visible('st-surcharge-row') ? txt('st-surcharge') : null,
+          variante: ['st-normal','st-ab','st-est'].filter(visible).join(),
+        });
+        const conAjustes = leer();
+        S.discount = 0; S.surcharge = 0; sched();
+        const sinAjustes = leer();
+        setMode('estimativo');
+        const est = { val: txt('st-est-val'), count: txt('st-est-count'),
+                      variante: ['st-normal','st-ab','st-est'].filter(visible).join() };
+        setMode('normal');
+        S.scenariosEnabled = true; updateTotalsBar();
+        const ab = { a: txt('st-a'), b: txt('st-b'),
+                     variante: ['st-normal','st-ab','st-est'].filter(visible).join() };
+        S.scenariosEnabled = false; updateTotalsBar();
+        return {
+          conAjustes, sinAjustes, est, ab,
+          // Las acciones viven en la barra
+          acciones: Array.from(document.querySelectorAll('#sticky-totals .stb-actions button'))
+            .map(b => (b.getAttribute('aria-label') || b.textContent).trim()),
+          // Y lo que se sacó del flujo ya no está
+          restos: ['totals-bar','tb-total','tb-sub','tb-disc','tb-est-total',
+                   'tb-normal-cols','tb-est-cols'].filter(id => document.getElementById(id)),
+          ctaVieja: document.querySelectorAll('#panel-editor .btn-cta').length,
+        };
+      `));
+      check('La barra muestra TOTAL + cantidad de ítems',
+        /\d/.test(r.conAjustes.total) && r.conAjustes.count === '2 ítems',
+        r.conAjustes.total + ' / ' + r.conAjustes.count);
+      check('Con descuento y recargo, la columna de apoyo los muestra',
+        r.conAjustes.sub && r.conAjustes.desc && r.conAjustes.rec === '+12%',
+        JSON.stringify(r.conAjustes));
+      check('Sin ajustes, la columna de apoyo desaparece entera',
+        !r.sinAjustes.sub && !r.sinAjustes.desc && !r.sinAjustes.rec,
+        JSON.stringify(r.sinAjustes));
+      check('Estimativo: su propia variante, con total y cantidad',
+        r.est.variante === 'st-est' && /180/.test(r.est.val) && r.est.count === '1 ítem',
+        JSON.stringify(r.est));
+      check('Escenarios A/B: la variante de dos totales',
+        r.ab.variante === 'st-ab' && /\d/.test(r.ab.a) && /\d/.test(r.ab.b),
+        JSON.stringify(r.ab));
+      check('Solo una variante visible a la vez',
+        r.conAjustes.variante === 'st-normal', r.conAjustes.variante);
+      check('Imprimir / PDF, vista previa y WhatsApp están en la barra',
+        r.acciones.length === 3 && /Imprimir/.test(r.acciones[0]) &&
+        r.acciones[1] === 'Vista previa' && /WhatsApp/.test(r.acciones[2]),
+        JSON.stringify(r.acciones));
+      check('El #totals-bar inline y sus tb-* ya no existen',
+        r.restos.length === 0, r.restos.join());
+      check('…ni el CTA duplicado al final del flujo', r.ctaVieja === 0);
+      await page.close();
+    }
+
+    // ── El FAB de "subir" se apoya en el alto MEDIDO de la barra ──
+    // Con la barra de una fila alcanzaba un 56px a mano en el CSS; con las dos
+    // filas de la Fase 2 el FAB quedaba encima de la barra.
+    {
+      const page = await nuevaPagina(browser);
+      const r = await page.evaluate(new Function(`
+        ${SEMBRAR}
+        switchTab('editor'); reserveStickySpace();
+        const bar = document.getElementById('sticky-totals');
+        const fab = document.querySelector('.scrolltop-fab');
+        const alto = Math.round(bar.getBoundingClientRect().height);
+        const px = v => parseFloat(v) || 0;
+        return {
+          alto,
+          stickyVar: px(getComputedStyle(document.documentElement).getPropertyValue('--sticky-h')),
+          fabBottom: px(getComputedStyle(fab).bottom),
+          padMain: px(getComputedStyle(document.getElementById('main')).paddingBottom),
+        };
+      `));
+      check('--sticky-h refleja el alto real de la barra',
+        r.stickyVar === r.alto && r.alto > 0, r.stickyVar + ' vs ' + r.alto);
+      check('El FAB de "subir" queda POR ENCIMA de la barra',
+        r.fabBottom >= r.alto, 'fab=' + r.fabBottom + ' barra=' + r.alto);
+      check('…y #main reserva espacio para que la barra no tape nada',
+        r.padMain >= r.alto, 'padding=' + r.padMain + ' barra=' + r.alto);
       await page.close();
     }
 
