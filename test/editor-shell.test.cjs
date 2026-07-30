@@ -363,18 +363,25 @@ const SEMBRAR = RESET + `
                            dom: document.getElementById('panel-editor').dataset.vista };
         // Y que quede guardado en localStorage (vía saveLS → safeSetLS)
         const enDisco = JSON.parse(localStorage.getItem(LS.STATE) || '{}').vistaEditor;
+        document.querySelector('#vista-editor-mode [data-vista="consola"]').click();
+        const traEtapas = { botones: btns(), S: S.vistaEditor,
+                            dom: document.getElementById('panel-editor').dataset.vista };
         document.querySelector('#vista-editor-mode [data-vista="clasica"]').click();
-        return { enEstilo, inicial, traTocar, enDisco, traVolver: btns() };
+        return { enEstilo, inicial, traTocar, traEtapas, enDisco, traVolver: btns() };
       `));
       check('El selector vive en Empresa → Estilo', r.enEstilo);
-      check('Arranca marcando Clásica (el default no cambió en esta fase)',
-        r.inicial.join() === 'clasica*,fichas', r.inicial.join());
+      check('Las tres vistas están en el selector, marcando Clásica (el default no cambió)',
+        r.inicial.join() === 'clasica*,fichas,consola', r.inicial.join());
       check('Tocar "Fichas" cambia la vista y marca el botón',
-        r.traTocar.botones.join() === 'clasica,fichas*' &&
+        r.traTocar.botones.join() === 'clasica,fichas*,consola' &&
         r.traTocar.S === 'fichas' && r.traTocar.dom === 'fichas',
         JSON.stringify(r.traTocar));
+      check('Tocar "Etapas" también',
+        r.traEtapas.botones.join() === 'clasica,fichas,consola*' &&
+        r.traEtapas.S === 'consola' && r.traEtapas.dom === 'consola',
+        JSON.stringify(r.traEtapas));
       check('…y queda persistido en localStorage', r.enDisco === 'fichas', r.enDisco);
-      check('Volver a "Clásica" también', r.traVolver.join() === 'clasica*,fichas',
+      check('Volver a "Clásica" también', r.traVolver.join() === 'clasica*,fichas,consola',
         r.traVolver.join());
       await page.close();
     }
@@ -414,6 +421,7 @@ const SEMBRAR = RESET + `
           restos: ['totals-bar','tb-total','tb-sub','tb-disc','tb-est-total',
                    'tb-normal-cols','tb-est-cols'].filter(id => document.getElementById(id)),
           ctaVieja: document.querySelectorAll('#panel-editor .btn-cta').length,
+          waTexto: (document.querySelector('#sticky-totals .stb-wa') || {}).textContent.trim(),
         };
       `));
       check('La barra muestra TOTAL + cantidad de ítems',
@@ -437,9 +445,85 @@ const SEMBRAR = RESET + `
         r.acciones.length === 3 && /Imprimir/.test(r.acciones[0]) &&
         r.acciones[1] === 'Vista previa' && /WhatsApp/.test(r.acciones[2]),
         JSON.stringify(r.acciones));
+      // WhatsApp es cómo se le manda el presupuesto al cliente: un ícono suelto
+      // al lado de otro ícono no dice cuál es cuál.
+      check('…y el de WhatsApp tiene etiqueta visible, no solo ícono',
+        /WhatsApp/.test(r.waTexto), JSON.stringify(r.waTexto));
       check('El #totals-bar inline y sus tb-* ya no existen',
         r.restos.length === 0, r.restos.join());
       check('…ni el CTA duplicado al final del flujo', r.ctaVieja === 0);
+      await page.close();
+    }
+
+    // ── Fase 1b: la vista `consola` (etapas) ──
+    {
+      const page = await nuevaPagina(browser);
+      const r = await page.evaluate(new Function(`
+        ${SEMBRAR}
+        const leer = () => ({
+          tabs: Array.from(document.querySelectorAll('.econ-tab')).filter(b => !b.hidden)
+            .map(b => b.dataset.etapa + (b.classList.contains('is-active') ? '*' : '')
+                                      + (b.classList.contains('is-pending') ? '!' : '')),
+          enPantalla: Array.from(document.querySelectorAll('#panel-editor .esec'))
+            .filter(w => !w.hidden && !w.classList.contains('esec-offstage'))
+            .map(w => w.querySelector('.esec-num').textContent + ' ' + w.id.replace('esec-','')),
+        });
+        setVistaEditor('consola');
+        const datos = leer();
+        editorSetEtapa('trabajos'); const trabajos = leer();
+        editorSetEtapa('cierre');   const cierre   = leer();
+        setMode('riesgo');          const riesgo   = leer();
+        editorSetEtapa('informe');  const informe  = leer();
+        // Una etapa que el modo no tiene: cae en la primera visible
+        setMode('estimativo');      const est      = leer();
+        editorSetEtapa('informe');  const estFallback = leer();
+        // Cambiar de etapa no pierde lo escrito ni toca S más que la vista
+        setMode('normal'); editorSetEtapa('datos');
+        const inp = document.getElementById('client-name');
+        inp.value = 'Escrito en la etapa Datos';
+        inp.dispatchEvent(new Event('input', { bubbles:true }));
+        editorSetEtapa('cierre'); editorSetEtapa('datos');
+        const persistencia = { dom: document.getElementById('client-name').value,
+                               mismoNodo: inp === document.getElementById('client-name') };
+        // Y en consola NO se pliega
+        editorToggleSection('cliente');
+        const trasIntentarPlegar = leer();
+        return { datos, trabajos, cierre, riesgo, informe, est, estFallback,
+                 persistencia, trasIntentarPlegar,
+                 enLista: EDITOR_VIEWS.indexOf('consola') >= 0,
+                 enSelector: !!document.querySelector('#vista-editor-mode [data-vista="consola"]') };
+      `));
+      check('`consola` está en la lista blanca y en el selector',
+        r.enLista && r.enSelector);
+      check('Normal: tres etapas, Datos · Trabajos · Cierre',
+        r.datos.tabs.map(t => t.replace(/[*!]/g,'')).join() === 'datos,trabajos,cierre',
+        r.datos.tabs.join(' '));
+      check('Cada etapa muestra solo sus secciones',
+        r.datos.enPantalla.join() === '01 ident,02 cliente' &&
+        r.trabajos.enPantalla.join() === '03 items' &&
+        r.cierre.enPantalla.join() === '04 conditions,05 adjust',
+        JSON.stringify([r.datos.enPantalla, r.trabajos.enPantalla, r.cierre.enPantalla]));
+      check('Riesgo: cuatro etapas — el informe ISA va en la suya',
+        r.riesgo.tabs.map(t => t.replace(/[*!]/g,'')).join() === 'datos,trabajos,informe,cierre',
+        r.riesgo.tabs.join(' '));
+      check('…y el informe es la única etapa marcada como pendiente',
+        r.riesgo.tabs.filter(t => t.includes('!')).map(t => t.replace(/[*!]/g,'')).join() === 'informe',
+        r.riesgo.tabs.join(' '));
+      check('La numeración es la misma que en fichas (el informe sigue siendo 04)',
+        r.informe.enPantalla.join() === '04 risk', r.informe.enPantalla.join());
+      check('Estimativo: tres etapas, sin la de informe',
+        r.est.tabs.map(t => t.replace(/[*!]/g,'')).join() === 'datos,trabajos,cierre',
+        r.est.tabs.join(' '));
+      check('Pedir una etapa que el modo no tiene cae en la primera',
+        r.estFallback.tabs.filter(t => t.includes('*')).join() === 'datos*!' ||
+        r.estFallback.tabs.filter(t => t.includes('*')).join() === 'datos*',
+        r.estFallback.tabs.join(' '));
+      check('Cambiar de etapa no pierde lo escrito ni recrea los nodos',
+        r.persistencia.dom === 'Escrito en la etapa Datos' && r.persistencia.mismoNodo,
+        JSON.stringify(r.persistencia));
+      check('En `consola` no se pliega: el plegado es de `fichas`',
+        r.trasIntentarPlegar.enPantalla.join() === '01 ident,02 cliente',
+        r.trasIntentarPlegar.enPantalla.join());
       await page.close();
     }
 

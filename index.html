@@ -563,11 +563,15 @@ details.scol[open]>summary .scol-chev{transform:rotate(180deg)}
 /* ── Vista FICHAS ───────────────────────────────────────────────── */
 /* Encabezado del editor: N° de presupuesto, cliente y píldora del modo,
    con la barra de progreso sobre las secciones visibles. */
-#panel-editor[data-vista="fichas"] .esh{
+#panel-editor[data-vista="fichas"] .esh,
+#panel-editor[data-vista="consola"] .esh{
   display:block;background:var(--card);border:1px solid var(--border);
   border-radius:var(--radius-box);box-shadow:var(--shadow-card);
   padding:var(--sp-4) var(--sp-5);margin-bottom:var(--sp-4);
 }
+/* En `consola` el encabezado va pegado a las tabs, que son su continuación
+   natural (el "header sólido" de la dirección 2b). */
+#panel-editor[data-vista="consola"] .esh{margin-bottom:var(--sp-2)}
 .esh-top{display:flex;align-items:flex-start;gap:var(--sp-3)}
 .esh-id{flex:1;min-width:0}
 .esh-num{font-family:var(--font-mono);font-size:20px;font-weight:600;color:var(--text);line-height:1.15}
@@ -587,27 +591,38 @@ details.scol[open]>summary .scol-chev{transform:rotate(180deg)}
 .esh-seg.is-done{background:var(--accent)}
 
 /* La ficha: barra de acento a la izquierda (gris si está pendiente), que
-   es de donde viene el carácter de "ficha técnica" del diseño 2a. */
-#panel-editor[data-vista="fichas"] .esec{
+   es de donde viene el carácter de "ficha técnica" del diseño 2a. La comparten
+   `fichas` y `consola` — lo que las distingue es QUÉ se muestra a la vez
+   (una ficha abierta vs. una etapa entera), no cómo se ve cada sección. */
+#panel-editor[data-vista="fichas"] .esec,
+#panel-editor[data-vista="consola"] .esec{
   background:var(--card);border:1px solid var(--border);
   border-left:5px solid var(--border);
   border-radius:var(--radius-box);box-shadow:var(--shadow-card);
   margin-bottom:var(--sp-4);
 }
-#panel-editor[data-vista="fichas"] .esec.is-done{border-left-color:var(--accent)}
+#panel-editor[data-vista="fichas"] .esec.is-done,
+#panel-editor[data-vista="consola"] .esec.is-done{border-left-color:var(--accent)}
+/* El realce de "abierta" es de `fichas`: en `consola` todas las de la etapa
+   están abiertas y realzarlas todas no distingue nada. */
 #panel-editor[data-vista="fichas"] .esec.is-open{
   border-color:var(--text);border-left-color:var(--accent);
   border-width:2px;border-left-width:6px;
 }
-#panel-editor[data-vista="fichas"] .esec-head{
+#panel-editor[data-vista="fichas"] .esec-head,
+#panel-editor[data-vista="consola"] .esec-head{
   display:flex;align-items:center;gap:var(--sp-4);
   width:100%;min-height:60px;padding:var(--sp-5);
   background:none;border:0;border-radius:inherit;
   font-family:var(--font-text);text-align:left;color:inherit;cursor:pointer;
 }
-#panel-editor[data-vista="fichas"] .esec.is-open>.esec-head{
+#panel-editor[data-vista="fichas"] .esec.is-open>.esec-head,
+#panel-editor[data-vista="consola"] .esec>.esec-head{
   border-bottom:1px solid var(--border);border-radius:0;
 }
+/* En `consola` el encabezado es un rótulo, no un botón: no pliega nada
+   (editorToggleSection corta si la vista no es `fichas`). */
+#panel-editor[data-vista="consola"] .esec-head{cursor:default;min-height:52px}
 .esec-num{font-family:var(--font-mono);font-size:var(--fs-md);font-weight:600;color:var(--muted);flex-shrink:0}
 .esec-title{flex:1;min-width:0;font-size:17px;font-weight:600;color:var(--text)}
 .esec-status{flex-shrink:0;font-family:var(--font-mono);font-size:var(--fs-sm);font-weight:600;
@@ -617,18 +632,51 @@ details.scol[open]>summary .scol-chev{transform:rotate(180deg)}
 #panel-editor[data-vista="fichas"] .esec.is-open .esec-chev{display:inline;transform:rotate(180deg)}
 /* Cuerpo: el único hermano del encabezado. Se le da el padding acá para no
    tocar el markup interno de la sección. */
-#panel-editor[data-vista="fichas"] .esec>.esec-head~*{padding:14px var(--sp-5)}
+#panel-editor[data-vista="fichas"] .esec>.esec-head~*,
+#panel-editor[data-vista="consola"] .esec>.esec-head~*{padding:14px var(--sp-5)}
 #panel-editor[data-vista="fichas"] .esec:not(.is-open)>.esec-head~*{display:none!important}
+/* Fuera de la etapa activa (vista consola): la sección sigue en el DOM con sus
+   valores, solo no se muestra. Clase aparte de [hidden], que significa "este
+   modo no la usa" y sí afecta la numeración. */
+.esec.esec-offstage{display:none!important}
 /* El título .st de cada sección ya lo dice el encabezado de la ficha. */
-#panel-editor[data-vista="fichas"] .esec .st{display:none}
+#panel-editor[data-vista="fichas"] .esec .st,
+#panel-editor[data-vista="consola"] .esec .st{display:none}
 /* Excepción: el .st de "Cliente y Lugar" lleva adentro el botón "Importar".
    Se colapsa a una fila de acción — el texto se apaga con font-size:0, el
    botón conserva el suyo. */
-#panel-editor[data-vista="fichas"] .esec .st.st-with-action{
+#panel-editor[data-vista="fichas"] .esec .st.st-with-action,
+#panel-editor[data-vista="consola"] .esec .st.st-with-action{
   display:flex;font-size:0;letter-spacing:0;
   margin:0;padding:0;border-bottom:0;
 }
-#panel-editor[data-vista="fichas"] .esec .st.st-with-action::before{display:none}
+#panel-editor[data-vista="fichas"] .esec .st.st-with-action::before,
+#panel-editor[data-vista="consola"] .esec .st.st-with-action::before{display:none}
+
+/* ── Tabs de etapa (vista consola, dirección 2b) ─────────────────
+   Subrayadas y en mono versalita, como el resto de las etiquetas de la app.
+   El punto marca las etapas que todavía tienen secciones sin resolver: dice
+   dónde falta sin tener que entrar a mirar. */
+.econ-tabs{display:none}
+#panel-editor[data-vista="consola"] .econ-tabs{
+  display:flex;gap:2px;margin-bottom:var(--sp-4);
+  border-bottom:2px solid var(--border);
+}
+.econ-tab{
+  flex:1;position:relative;min-width:0;
+  padding:11px 6px 10px;min-height:44px;
+  background:none;border:0;border-bottom:2px solid transparent;margin-bottom:-2px;
+  font-family:var(--font-mono);font-size:var(--fs-xs);font-weight:600;
+  text-transform:uppercase;letter-spacing:.05em;
+  color:var(--muted);cursor:pointer;
+}
+.econ-tab.is-active{color:var(--accent-fg);border-bottom-color:var(--accent)}
+.econ-tab:hover:not(.is-active){color:var(--text-2)}
+.econ-tab.is-pending::after{
+  content:'';position:absolute;top:8px;right:6px;
+  width:6px;height:6px;border-radius:50%;background:var(--c-seguimiento);
+}
+.econ-tab[hidden]{display:none}
 
 /* BUTTONS */
 .btn{display:inline-flex;align-items:center;gap:5px;padding:8px 14px;border-radius:var(--radius-field);border:none;cursor:pointer;font-family:var(--font-text);font-size:13px;font-weight:500;transition:.15s}
@@ -1072,6 +1120,8 @@ details.scol[open]>summary .scol-chev{transform:rotate(180deg)}
 }
 .stb-ico:hover{background:var(--surface-hover)}
 .stb-ico .ic{width:20px;height:20px}
+/* WhatsApp: mismo botón pero con etiqueta, así que crece con el texto. */
+.stb-wa{flex:0 0 auto;width:auto;gap:6px;padding:0 12px;font-size:var(--fs-md);font-weight:600}
 /* En pantallas angostas la cifra baja un punto para que la columna de apoyo no
    la empuje fuera. */
 @media (max-width:400px){
@@ -3184,6 +3234,18 @@ input[type=number]{-moz-appearance:textfield}
           </div>
         </div>
 
+        <!-- ══ ETAPAS (vista consola, Fase 1b) ══
+             Tabs subrayadas que parten el editor en etapas y muestran una por
+             vez. Solo se ven en la vista `consola`; las rellena
+             editorShellSync() (cuáles existen depende del modo) y el punto
+             marca las etapas con secciones sin resolver. -->
+        <div class="econ-tabs" id="editor-etapas" role="tablist" aria-label="Etapas del presupuesto">
+          <button type="button" class="econ-tab" data-etapa="datos"    role="tab" onclick="editorSetEtapa('datos')">Datos</button>
+          <button type="button" class="econ-tab" data-etapa="trabajos" role="tab" onclick="editorSetEtapa('trabajos')">Trabajos</button>
+          <button type="button" class="econ-tab" data-etapa="informe"  role="tab" onclick="editorSetEtapa('informe')">Informe</button>
+          <button type="button" class="econ-tab" data-etapa="cierre"   role="tab" onclick="editorSetEtapa('cierre')">Cierre</button>
+        </div>
+
         <!-- Cada sección del editor va envuelta en un .esec con su encabezado
              propio (número · título · estado). El interior NO se toca: el
              encabezado es un hermano que solo se muestra en la vista fichas. -->
@@ -3838,8 +3900,9 @@ input[type=number]{-moz-appearance:textfield}
         <div class="theme-mode" id="vista-editor-mode" role="group" aria-label="Vista del editor">
           <button type="button" class="theme-mode-btn" data-vista="clasica" onclick="setVistaEditor('clasica')"><svg class="ic"><use href="#i-file"></use></svg> Clásica</button>
           <button type="button" class="theme-mode-btn" data-vista="fichas" onclick="setVistaEditor('fichas')"><svg class="ic"><use href="#i-clipboard"></use></svg> Fichas</button>
+          <button type="button" class="theme-mode-btn" data-vista="consola" onclick="setVistaEditor('consola')"><svg class="ic"><use href="#i-folder"></use></svg> Etapas</button>
         </div>
-        <p class="hint" style="margin-bottom:16px"><b>Clásica</b>: todo desplegado en una sola lista, como siempre. <b>Fichas</b>: las secciones se plegan y el editor muestra arriba cuántas llevás completas. Es solo la forma de cargar los datos — el presupuesto y el PDF salen igual.</p>
+        <p class="hint" style="margin-bottom:16px"><b>Clásica</b>: todo desplegado en una sola lista, como siempre. <b>Fichas</b>: las secciones se plegan y arriba ves cuántas llevás completas. <b>Etapas</b>: el presupuesto partido en Datos · Trabajos · Cierre, una pantalla por vez. Es solo la forma de cargar los datos — el presupuesto y el PDF salen igual.</p>
 
         <div class="st">Color del documento</div>
         <div class="cpresets" id="color-presets">
@@ -4531,7 +4594,10 @@ input[type=number]{-moz-appearance:textfield}
     <div class="stb-actions">
       <button class="btn btn-p stb-print" onclick="printDoc()"><svg class="ic"><use href="#i-printer"></use></svg> Imprimir / PDF</button>
       <button class="btn stb-ico" onclick="previewCurrent()" title="Vista previa" aria-label="Vista previa"><svg class="ic"><use href="#i-eye"></use></svg></button>
-      <button class="btn stb-ico" onclick="sendCurrentWhatsapp()" title="Enviar por WhatsApp" aria-label="Enviar por WhatsApp"><svg class="ic ic-c-green"><use href="#i-message"></use></svg></button>
+      <!-- WhatsApp lleva etiqueta y no solo ícono: es la acción con la que se le
+           manda el presupuesto al cliente, y un ícono suelto al lado de otro
+           ícono no dice cuál es cuál. -->
+      <button class="btn stb-ico stb-wa" onclick="sendCurrentWhatsapp()" title="Enviar por WhatsApp" aria-label="Enviar por WhatsApp"><svg class="ic ic-c-green"><use href="#i-message"></use></svg> WhatsApp</button>
     </div>
   </div>
 </div>
@@ -8994,9 +9060,27 @@ const EDITOR_SECTIONS = [
   { key:'est-obs',    body:'section-est-observations' },
 ];
 
-// Sección abierta en la vista "fichas". Es estado de pantalla, no del
-// presupuesto: no se guarda ni viaja en el backup (invariante I3).
+// ── ETAPAS de la vista `consola` (Fase 1b) ──
+// Cada etapa agrupa secciones del editor y se muestra una por vez. El orden es
+// el MISMO que el del editor (y que la numeración de las fichas), así que un
+// número nunca va para atrás al cambiar de etapa.
+//
+// La etapa `informe` existe solo en modo riesgo, y va aparte y no dentro de
+// `datos` por una razón medida: las 6 tarjetas del ISA suman ~1.900 px. Metidas
+// en `datos` daban una etapa de ~2.600 px — más larga que el editor completo en
+// modo normal, o sea justo lo que esta vista viene a resolver.
+const EDITOR_ETAPAS = [
+  { key:'datos',    label:'Datos',    secs:['ident','cliente'] },
+  { key:'trabajos', label:'Trabajos', secs:['items','est-items'] },
+  { key:'informe',  label:'Informe',  secs:['risk'] },
+  { key:'cierre',   label:'Cierre',   secs:['conditions','adjust','est-obs'] },
+];
+
+// Sección abierta en la vista "fichas" y etapa activa en la vista "consola".
+// Las dos son estado de pantalla, no del presupuesto: no se guardan ni viajan
+// en el backup (invariante I3).
 let _esecOpen = 'ident';
+let _esecEtapa = 'datos';
 
 // La vista efectiva. Cualquier valor que no esté en la lista blanca cae a
 // 'clasica', que es la pantalla conocida-buena (invariante I2).
@@ -9014,9 +9098,20 @@ function setVistaEditor(v) {
 }
 
 function editorToggleSection(key) {
-  if (currentVistaEditor() !== 'fichas') return;   // en clásica no hay plegado
+  if (currentVistaEditor() !== 'fichas') return;   // en clásica/consola no hay plegado
   _esecOpen = (_esecOpen === key) ? '' : key;
   editorShellSync();
+}
+
+// Cambia de etapa (vista consola). Vuelve al tope: cambiar de etapa es cambiar
+// de pantalla, y quedarse a mitad de scroll de la anterior desorienta.
+function editorSetEtapa(key) {
+  if (currentVistaEditor() !== 'consola') return;
+  if (!EDITOR_ETAPAS.some(e => e.key === key)) return;
+  _esecEtapa = key;
+  editorShellSync();
+  const main = document.getElementById('main');
+  if (main) main.scrollTop = 0;
 }
 
 // Estado que muestra cada sección a la derecha de su encabezado. `done` es lo
@@ -9076,6 +9171,26 @@ function _eshRender(flags) {
   Array.from(bar.children).forEach((seg, i) => seg.classList.toggle('is-done', !!flags[i]));
 }
 
+// Tabs de etapa de la vista `consola`. Los cuatro botones están en el markup;
+// acá se decide cuáles corresponden al modo, cuál está activa y cuáles tienen
+// secciones sin resolver (el punto).
+function _econRenderTabs(etapas, vis) {
+  const cont = document.getElementById('editor-etapas');
+  if (!cont) return;
+  const hay = etapas.map(e => e.key);
+  cont.querySelectorAll('.econ-tab').forEach(btn => {
+    const k = btn.dataset.etapa;
+    const enModo = hay.indexOf(k) >= 0;
+    btn.hidden = !enModo;
+    const act = enModo && (k === _esecEtapa);
+    btn.classList.toggle('is-active', act);
+    btn.setAttribute('aria-selected', act ? 'true' : 'false');
+    const def = EDITOR_ETAPAS.find(e => e.key === k);
+    const falta = !!def && vis.some(v => def.secs.indexOf(v.sec.key) >= 0 && !v.done);
+    btn.classList.toggle('is-pending', enModo && falta);
+  });
+}
+
 // Aplica la vista al editor: qué fichas se ven, con qué número, qué estado y
 // cuál está abierta. SOLO toca clases, atributos y texto de los encabezados —
 // nunca reconstruye el DOM del editor ni toca S (invariante I3).
@@ -9099,22 +9214,36 @@ function editorShellSync() {
     });
     // Si la sección abierta quedó fuera del modo activo, abrir la primera.
     if (!vis.some(v => v.sec.key === _esecOpen)) _esecOpen = vis.length ? vis[0].sec.key : '';
-    const flags = [];
+    // Numeración, estado y realce. La numeración es GLOBAL a las secciones
+    // visibles del modo, no por etapa: así el número de una sección es el mismo
+    // en las tres vistas.
     vis.forEach((v, i) => {
       const est = _esecEstado(v.sec.key);
-      flags.push(!!est.done);
+      v.done = !!est.done;
       const nEl = v.wrap.querySelector('.esec-num');
       if (nEl) nEl.textContent = String(i + 1).padStart(2, '0');
       const sEl = v.wrap.querySelector('.esec-status'); if (sEl) sEl.textContent = est.txt;
-      v.wrap.classList.toggle('is-done', !!est.done);
-      v.wrap.classList.toggle('is-pending', !est.done);
-      // En clásica no hay plegado: todas cuentan como abiertas.
+      v.wrap.classList.toggle('is-done', v.done);
+      v.wrap.classList.toggle('is-pending', !v.done);
+      // Solo `fichas` pliega; en clásica y consola todas cuentan como abiertas.
       const abierta = (vista !== 'fichas') || (v.sec.key === _esecOpen);
       v.wrap.classList.toggle('is-open', abierta);
       const hEl = v.wrap.querySelector('.esec-head');
       if (hEl) hEl.setAttribute('aria-expanded', abierta ? 'true' : 'false');
     });
-    _eshRender(flags);
+    // Etapas (vista consola). Una etapa existe si tiene al menos una sección
+    // visible en el modo activo — por eso `informe` aparece solo en riesgo.
+    const claves = vis.map(v => v.sec.key);
+    const etapas = EDITOR_ETAPAS.filter(e => e.secs.some(k => claves.indexOf(k) >= 0));
+    if (!etapas.some(e => e.key === _esecEtapa)) _esecEtapa = etapas.length ? etapas[0].key : '';
+    const activa = EDITOR_ETAPAS.find(e => e.key === _esecEtapa);
+    vis.forEach(v => {
+      const fuera = (vista === 'consola') &&
+                    !!activa && activa.secs.indexOf(v.sec.key) < 0;
+      v.wrap.classList.toggle('esec-offstage', fuera);
+    });
+    _econRenderTabs(etapas, vis);
+    _eshRender(vis.map(v => v.done));
   } catch (e) {
     // Invariante I2: ante cualquier error, la vista conocida-buena.
     console.warn('editorShellSync', e);
