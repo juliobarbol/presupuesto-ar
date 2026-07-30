@@ -135,7 +135,7 @@ extra (ver `test/config-global.test.cjs`).
 ### I5 — Entra por la puerta de sanitize
 
 `vistaEditor` es un enum: se valida con `sanEnum` contra una lista blanca
-(`EDITOR_VIEWS = ['fichas','clasica']`), igual que `PDF_THEMES` en
+(`EDITOR_VIEWS = ['clasica','fichas','consola']`), igual que `PDF_THEMES` en
 `js/sanitize.js`. Un backup ajeno con `vistaEditor: "<script>"` cae a `'clasica'`.
 Nada entra al estado sin pasar por ahí.
 
@@ -156,13 +156,15 @@ claro/oscuro/auto (`S.themeMode`), color de marca (`applyAccent`), escenarios A/
 
 **Tomar:**
 
-- Tokens de color, en claro y oscuro.
-- Escala tipográfica y pareo de familias (display / texto / mono para cifras).
-- Radios, sombras, escala de espaciado.
-- Aspecto de los componentes: encabezado de sección con estado, barra de progreso,
-  chips, toggles, botones segmentados, barra inferior de totales.
+- La **estructura**: encabezado de sección con número y estado, barra de progreso,
+  barra inferior de totales, barra de acento a la izquierda.
+- La **tipografía mono** para etiquetas en versalita y cifras.
 
 **No tomar:**
+
+- **La paleta de color.** Decidido: el fondo blanco se mantiene (ver 4.1).
+- **Los radios y las sombras del prototipo.** Se conservan los de la app (ver 4.3).
+- **La tipografía de texto.** DM Sans se queda (ver 4.2).
 
 - La estructura del DOM del prototipo. No conoce la lógica real de la app.
 - Los nombres de clase nuevos. Usar los que ya existen (`.st`, `.fg`, `.r2`,
@@ -252,8 +254,12 @@ hoy entran justos. Lo único nuevo es la mono.
 
 Escala de tamaños del prototipo, por frecuencia: **12px** (102) · **15px** (66) ·
 **17px** (58) · **11px** (38) · **13px** (34) · **22px** (24) · 20px · 26px · 28px.
-Escala propuesta de 6 pasos: `11 · 12 · 13 · 15 · 17 · 22`, con `26/28` para la
-cifra del total.
+
+**Implementado** (Fase 0a): la escala del `:root` no salió del prototipo sino de los
+tamaños que la app ya usaba, para poder tokenizar sin cambiar nada —
+`--fs-2xs:10` · `--fs-xs:11` · `--fs-sm:12` · `--fs-md:13` · `--fs-base:14` ·
+`--fs-lg:16` · `--fs-xl:18` · `--fs-2xl:22`. Coincide con el prototipo en casi todo.
+Los tamaños sueltos (9, 15, 17, 19…) quedaron literales a propósito.
 
 El mono no es decorativo: sostiene las etiquetas (`CONDICIONES`, `4 DE 5 SECCIONES`,
 `COMPLETO ✓`), los números de sección (`01`) y **todos los importes**. Con el stack
@@ -287,8 +293,9 @@ Estilo → "Color del documento") y `applyAccent()` reescribe en runtime `--acce
 la app, así que el color de marca configurable **se mantiene sin conflicto**. La
 paleta nueva toca los neutros, no el acento. `applyAccent()` no se toca.
 
-**b) Ya hay un sistema de tokens.** La Fase 0 es en gran parte **completar**, no
-crear. Ya existen en `:root` (con su bloque `[data-theme="dark"]`):
+**b) Ya había un sistema de tokens** antes de empezar; la Fase 0a lo completó en vez
+de crear uno nuevo. Lo que ya existía en `:root` (con su bloque
+`[data-theme="dark"]`):
 
 | Grupo | Tokens que ya existen |
 |---|---|
@@ -299,12 +306,13 @@ crear. Ya existen en `:root` (con su bloque `[data-theme="dark"]`):
 | Forma | `--radius-field`, `--radius-box`, `--radius-pill`, `--shadow-card`, `--shadow-card-hover` |
 | Concepto (agenda/historial) | `--c-trabajo`, `--c-recontacto`, `--c-seguimiento`, `--c-vence`, `--c-nota`, `--c-visita` (+ `-bg`/`-fg`) |
 
-**Falta** (y es lo que la Fase 0 tiene que aportar): familias tipográficas
-(display / texto / mono), escala de 5 tamaños, y escala de espaciado de 6 pasos.
+Lo que faltaba y **aportó la Fase 0a**: familias (`--font-text`, `--font-display`,
+`--font-mono`), escala de tamaños (`--fs-*`), escala de espaciado (`--sp-1..6`) y
+`--on-accent`.
 
-**Fuentes ya empaquetadas** en `fonts/`: DM Sans, DM Serif Display, Inter, Lora,
-IBM Plex Sans, IBM Plex Serif. Si el diseño elige entre estas, no hay que agregar
-ningún `.woff2` nuevo ni tocar `APP_SHELL`.
+**Fuentes empaquetadas** en `fonts/`: DM Sans, DM Serif Display, Inter, Lora,
+IBM Plex Sans, IBM Plex Serif y —desde la Fase 0b— **IBM Plex Mono** (pesos 400
+y 600). Cualquier fuente nueva va también a `APP_SHELL` en `sw.js`.
 
 **c) No hay ninguna fuente mono empaquetada.** IBM Plex Mono es la única fuente
 nueva que pide este rediseño (~20 KB por peso). Va a `fonts/`, a `fonts.css`, a
@@ -421,10 +429,10 @@ cual es la **barra de acento a la izquierda**, que es de donde viene el carácte
   derecha en mono 12px.
 - Botón primario ancho + dos botones de ícono.
 
-### Propuesta para las secciones y el criterio de "COMPLETO"
+### Secciones y criterio de "COMPLETO" (DECIDIDO)
 
-Pendiente de tu confirmación. Respeta el orden de carga actual (Identificación
-primero) y usa datos que ya existen.
+Aprobado. Respeta el orden de carga actual (Identificación primero) y usa datos que
+ya existen.
 
 **Modo normal — 5 secciones**
 
@@ -600,18 +608,21 @@ Una pregunta cuesta un mensaje. Un supuesto equivocado cuesta la fase entera.
 - **Tipografía: DM Sans se queda**, se suma IBM Plex Mono para etiquetas y cifras.
 - **Sombras y radios actuales se mantienen.** Se toma la barra de acento a la
   izquierda del encabezado de sección.
+- **Las secciones y el criterio de "COMPLETO"**, en los tres modos: la tabla está en
+  la Fase 1. Incluye agrupar las 6 `section-card` del ISA en **una sola** sección,
+  para que el modo riesgo tenga 6 secciones y no 11.
 
 ### Pendientes
 
-1. **Criterio de "COMPLETO"** por sección.
-2. **Estimativo y Riesgo:** los mockups solo cubren modo Normal. Falta definir cómo
-   se ven las otras dos, sobre todo las 6 `section-card` del ISA.
-3. **Chips de descuento (`0% · 5% · 10% · Otro`):** primer control que el diseño
+1. **Chips de descuento (`0% · 5% · 10% · Otro`):** primer control que el diseño
    quiere reemplazar en vez de envolver. Se puede hacer sin romper I1 (los chips
    escriben en `#discount`, que queda como está por debajo), pero hay que quererlo.
-4. **Confirmar** que la Fase 3 queda apartada.
+   No bloquea la Fase 1.
+2. **Confirmar** que la Fase 3 queda apartada.
+3. **Fase 1b:** dónde caen las secciones del ISA en un flujo de 3 etapas. Solo
+   aplica si se hace la vista `consola`.
 
-Ninguna bloquea el arranque de la Fase 0a.
+Ninguna bloquea el arranque de la **Fase 1**.
 
 ---
 
