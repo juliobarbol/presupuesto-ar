@@ -2,7 +2,22 @@
 
 > Documento de trabajo para adoptar en el **editor de presupuestos** el lenguaje
 > visual definido en Claude Design.
-> El código vive en `index.html` (archivo único). Estado: **planificado, sin código escrito**.
+> El código vive en `index.html` (archivo único).
+
+## Estado
+
+| Fase | Estado |
+|---|---|
+| 0a — Tokenizar el CSS | ✅ en producción (v188) |
+| 0b — Tipografía mono | ✅ en producción (v189) |
+| 1 — Shell del editor | pendiente |
+| 1b — Vista `consola` | pendiente (opcional) |
+| 2 — Barra inferior fija | pendiente |
+| 3 — Pantalla "Cargar trabajo" | apartada (ver más abajo) |
+| 4 — Selector visible | pendiente |
+
+Verificación visual: `node test/visual-snap.cjs base|check` compara 12 escenas
+píxel a píxel. Rollback: `docs/rollback.md`.
 >
 > Este documento reemplaza al borrador original (`REDISENOEDITOR.md`), que fue
 > escrito sin conocer la estructura real del repo y describía archivos que acá no

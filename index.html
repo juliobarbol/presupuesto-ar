@@ -63,12 +63,12 @@ a{-webkit-tap-highlight-color:transparent}
      relleno sigue siendo oscuro en modo oscuro. */
   --on-accent:#ffffff;
   /* ── TIPOGRAFÍA ──────────────────────────────────────────────────
-     Familias. --font-mono todavía no tiene fuente propia empaquetada: usa el
-     stack del sistema. La Fase 0b la reemplaza por IBM Plex Mono para las
-     etiquetas en versalita y las cifras. Ver docs/rediseno-editor.md. */
+     Familias. --font-mono se usa en las etiquetas en versalita y en las
+     CIFRAS: los importes son el producto de la app y con el stack del
+     sistema se alinean distinto en cada Android. Ver docs/rediseno-editor.md. */
   --font-text:'DM Sans',sans-serif;
   --font-display:'DM Serif Display',serif;
-  --font-mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --font-mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
   /* Escala de tamaños. Son los que la app YA usa: se nombran, no se cambian.
      --fs-base es el del <body>. Los tamaños sueltos (9, 15, 17, 19…) siguen
      literales donde están: meterlos acá haría una "escala" de todos los
@@ -937,8 +937,8 @@ details.scol[open]>summary .scol-chev{transform:rotate(180deg)}
 }
 .st-cols{display:flex;align-items:center;gap:18px;flex:1;justify-content:space-around}
 .st-item{display:flex;flex-direction:column;gap:1px;min-width:0}
-.st-lbl{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)}
-.st-val{font-size:15px;font-weight:700;color:var(--text);white-space:nowrap}
+.st-lbl{font-family:var(--font-mono);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)}
+.st-val{font-family:var(--font-mono);font-size:15px;font-weight:600;color:var(--text);white-space:nowrap}
 .st-val.accent{color:var(--accent-fg);font-size:17px}
 .st-total .st-val{font-size:17px}
 .st-total .st-val.accent{font-size:19px}
@@ -1032,8 +1032,12 @@ input[type=file]{display:none}
 /* LIVE TOTALS */
 #totals-bar{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-box);padding:12px 16px;margin-bottom:16px;display:flex;gap:16px;flex-wrap:wrap;align-items:center}
 .tbar-item{display:flex;flex-direction:column;gap:1px}
-.tbar-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
-.tbar-val{font-size:15px;font-weight:700;color:var(--text)}
+/* Etiqueta y cifra en mono: la etiqueta porque ya es versalita con tracking
+   (para eso está la mono), y la cifra porque los dígitos tabulares mantienen
+   el ancho al tipear y los importes no bailan. Peso 600 y no 700: IBM Plex
+   Mono trae 400 y 600, pedir 700 lo sintetizaría. */
+.tbar-lbl{font-family:var(--font-mono);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
+.tbar-val{font-family:var(--font-mono);font-size:15px;font-weight:600;color:var(--text)}
 .tbar-val.accent{color:var(--accent-fg)}
 .tbar-sep{height:32px;width:1px;background:var(--border);flex-shrink:0}
 
@@ -1354,7 +1358,8 @@ input[type=number]{-moz-appearance:textfield}
   flex-shrink:0;
 }
 .hmonth-total{
-  font-size:12px;font-weight:700;color:var(--accent-fg);
+  font-family:var(--font-mono);
+  font-size:12px;font-weight:600;color:var(--accent-fg);
   flex-shrink:0;
   font-variant-numeric:tabular-nums;
 }

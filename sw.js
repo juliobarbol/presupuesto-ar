@@ -13,7 +13,7 @@
 //
 //  Para forzar actualizacion tras un deploy: subir el CACHE_VERSION.
 
-const CACHE_VERSION = 'presupuesto-v188';
+const CACHE_VERSION = 'presupuesto-v189';
 const APP_SHELL = [
   './',
   './index.html',
@@ -39,6 +39,10 @@ const APP_SHELL = [
   './fonts/ibm-plex-sans-italic-latin.woff2',
   './fonts/ibm-plex-serif-400-latin.woff2',
   './fonts/ibm-plex-serif-600-latin.woff2',
+  // Mono de la UI (etiquetas en versalita y cifras). A diferencia de las de
+  // arriba, esta NO es del selector de tipografía del PDF: la usa la app.
+  './fonts/ibm-plex-mono-400-latin.woff2',
+  './fonts/ibm-plex-mono-600-latin.woff2',
   // Leaflet (mapa de presupuestos), vendorizado. Los TILES del mapa son
   // remotos y necesitan conexión; la librería en sí funciona offline.
   './vendor/leaflet.js',
