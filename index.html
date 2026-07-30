@@ -3810,6 +3810,17 @@ input[type=number]{-moz-appearance:textfield}
         </div>
         <p class="hint" style="margin-bottom:16px">Cambia el tema de la pantalla. «Auto» sigue el modo del teléfono. No afecta al PDF, que siempre se imprime en claro.</p>
 
+        <!-- Vista del editor (Fase 4 del rediseño). Mismo patrón visual que el
+             segmentado de arriba, y es un eje INDEPENDIENTE del tema
+             claro/oscuro. Solo cambia cómo se ve la pantalla de carga: no toca
+             los datos ni el PDF. Ver docs/rediseno-editor.md. -->
+        <div class="st">Vista del editor</div>
+        <div class="theme-mode" id="vista-editor-mode" role="group" aria-label="Vista del editor">
+          <button type="button" class="theme-mode-btn" data-vista="clasica" onclick="setVistaEditor('clasica')"><svg class="ic"><use href="#i-file"></use></svg> Clásica</button>
+          <button type="button" class="theme-mode-btn" data-vista="fichas" onclick="setVistaEditor('fichas')"><svg class="ic"><use href="#i-clipboard"></use></svg> Fichas</button>
+        </div>
+        <p class="hint" style="margin-bottom:16px"><b>Clásica</b>: todo desplegado en una sola lista, como siempre. <b>Fichas</b>: las secciones se plegan y el editor muestra arriba cuántas llevás completas. Es solo la forma de cargar los datos — el presupuesto y el PDF salen igual.</p>
+
         <div class="st">Color del documento</div>
         <div class="cpresets" id="color-presets">
           <div class="cpreset active" data-color="#064e3b" style="background:#064e3b" title="Verde oscuro" onclick="selectColor(this)"></div>
@@ -9040,6 +9051,11 @@ function editorShellSync() {
     console.warn('editorShellSync', e);
     panel.dataset.vista = 'clasica';
   }
+  // El segmentado de Empresa → Estilo. Se lee del atributo ya aplicado, así el
+  // botón marcado es la vista que el usuario está viendo de verdad (incluso si
+  // el fallback de arriba la bajó a 'clasica').
+  document.querySelectorAll('#vista-editor-mode .theme-mode-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.vista === panel.dataset.vista));
 }
 
 function applyMode(mode) {

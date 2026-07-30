@@ -11,12 +11,20 @@
 | 0a — Tokenizar el CSS | ✅ en producción (v188) |
 | 0b — Tipografía mono | ✅ en producción (v189) |
 | 1 — Shell del editor | ✅ en producción (v190) |
+| 4 — Selector visible | ✅ en producción (v191) |
+| 2 — Barra inferior fija | pendiente — **re-alcanzada**, ver la fase |
 | 1b — Vista `consola` | pendiente (opcional) |
-| 2 — Barra inferior fija | pendiente |
 | 3 — Pantalla "Cargar trabajo" | apartada (ver más abajo) |
-| 4 — Selector visible | pendiente |
 
-Verificación visual: `node test/visual-snap.cjs base|check` compara 12 escenas
+La **Fase 4 se adelantó a la 2** a propósito: sin el selector, `fichas` solo se
+podía activar desde una consola, y en la PWA instalada en Android eso pide
+depuración USB — la Fase 1 quedaba desplegada pero **no verificable**, que es
+justo lo que la Restricción 2 pide antes de seguir.
+
+**Lo que queda por hacer es la Fase 2** (y, si se quiere, la 1b). El orden
+original 2 → 4 ya no aplica.
+
+Verificación visual: `node test/visual-snap.cjs base|check` compara 14 escenas
 píxel a píxel. Las invariantes del shell las cubre `node test/editor-shell.test.cjs`.
 Rollback: `docs/rollback.md`.
 
@@ -27,7 +35,8 @@ anterior**. Los mockups de Claude Design ya están traducidos a medidas concreta
 (sección 4 y "Especificación visual del shell"), así que tampoco hacen falta las
 capturas.
 
-1. Rama de trabajo: `claude/editor-format-options-redesign-akjunb`.
+1. Rama de trabajo: `claude/editor-format-options-redesign-akjunb*` (la sesión
+   puede traer un sufijo propio; lo que importa es no trabajar en `main`).
 2. Leer este documento entero. Las invariantes I1–I6 son lo que evita romper la app;
    las decisiones ya tomadas no se reabren.
 3. Rehacer la referencia visual antes de tocar nada — vive en `/tmp`, no en el repo,
@@ -39,8 +48,21 @@ capturas.
    ```
    En las fases que cambian cosas a propósito, el objetivo no es cero diferencias
    sino **revisar cada una** (hay un recorte de apoyo en el historial de la Fase 0b).
-4. Cerrar cada fase con: sintaxis JS, `node test/pwa.test.cjs`, subir
-   `CACHE_VERSION` y mergear a `main`.
+
+   > **Ojo con el flake:** entre corridas separadas, Chrome puede rasterizar
+   > distinto un puñado de píxeles de bordes redondeados (±1 en un canal, sin
+   > mover nada). Pasó en la Fase 1 con `agenda-d`: 29 px que no eran una
+   > regresión. Para descartarlo, en vez de confiar en un `check` contra una
+   > referencia vieja, capturá las dos versiones y comparalas directo:
+   > ```bash
+   > git stash && SNAP_DIR=/tmp/snap-a node test/visual-snap.cjs base && git stash pop
+   > SNAP_DIR=/tmp/snap-b node test/visual-snap.cjs base
+   > # y comparar /tmp/snap-a/base con /tmp/snap-b/base
+   > ```
+   > `test/visual-crop.py` sirve para mirar de cerca una diferencia concreta.
+4. Cerrar cada fase con: sintaxis JS, `node test/pwa.test.cjs`,
+   `node test/editor-shell.test.cjs`, subir `CACHE_VERSION` y mergear a `main`
+   (el checklist completo está al final).
 >
 > Este documento reemplaza al borrador original (`REDISENOEDITOR.md`), que fue
 > escrito sin conocer la estructura real del repo y describía archivos que acá no
@@ -53,25 +75,30 @@ capturas.
 
 El borrador original asumía un proyecto modular (`presupuesto/` con `css/base.css`,
 `css/components.css`, `js/config.js` y un `build.py` que ensambla). **Nada de eso
-existe.** Esta app es un `index.html` de ~18.000 líneas, sin build, sin framework
+existe.** Esta app es un `index.html` de ~18.400 líneas, sin build, sin framework
 — y es una decisión deliberada (ver `CLAUDE.md`).
 
 | El borrador decía | Acá es |
 |---|---|
-| `css/base.css` | el bloque `:root` del `<style>` (~líneas 1620–1700) |
-| `css/components.css` | el resto del `<style>` (~líneas 16–1711) |
-| **`css/print.css` — no se toca** | los dos bloques `@media print` (líneas ~1897 y ~2409), los estilos `.pdoc`/`.pdoc-theme-*` y la sección `// ===== js/pdf.js =====` |
+| `css/base.css` | el bloque `:root` del `<style>` (y su gemelo `:root[data-theme="dark"]`) |
+| `css/components.css` | el resto del `<style>` |
+| **`css/print.css` — no se toca** | los dos bloques `@media print`, los estilos `.pdoc`/`.pdoc-theme-*` y la sección `// ===== js/pdf.js =====` |
 | `js/ui.js`, `js/items.js`, `js/state.js` | las secciones homónimas dentro del `<script>`, marcadas con `// ===== js/<nombre>.js =====` |
-| `js/config.js` | la pestaña **Empresa → sub-pestaña "Estilo"** (`#subpanel-estilo`, ~línea 3586) |
+| `js/config.js` | la pestaña **Empresa → sub-pestaña "Estilo"** (`#subpanel-estilo`) |
 | `build.py` + revisar `PRESUPUESTO_build.html` | `node --check` sobre el script inline + `node test/pwa.test.cjs` + subir `CACHE_VERSION` en `sw.js` |
-| "entregar archivos completos, no diffs" | **no aplica**: el archivo pesa 939 KB. Se trabaja con edits quirúrgicos, verificados por test. |
+| "entregar archivos completos, no diffs" | **no aplica**: el archivo pesa 940 KB. Se trabaja con edits quirúrgicos, verificados por test. |
 | `[data-tema="oscuro"]` | `:root[data-theme="dark"]` (nombre real del atributo) |
 
-Para ubicarse en el archivo, buscar los marcadores de sección — son anclas
-estables, los números de línea no:
+**Este documento no cita números de línea, a propósito.** Cada edición los
+corre y una referencia vieja manda a leer el código equivocado — ya pasó: hasta
+la v191 la tabla de acá arriba decía que `:root` vivía cerca de la línea 1620,
+cuando en realidad está al principio del `<style>`. Para ubicarse, grepear:
 
 ```bash
-grep -na "===== js/" index.html
+grep -na "===== js/" index.html        # secciones del script
+grep -n ':root{\|@media print\|</style>' index.html
+grep -n 'id="panel-editor"\|id="subpanel-estilo"\|id="totals-bar"\|id="sticky-totals"' index.html
+grep -n 'class="esec"\|editorShellSync\|EDITOR_SECTIONS' index.html   # shell del editor
 ```
 
 **Buena noticia sobre el PDF:** los estilos del documento viven en su propio
@@ -315,11 +342,13 @@ Lo que faltaba y **aportó la Fase 0a**: familias (`--font-text`, `--font-displa
 IBM Plex Sans, IBM Plex Serif y —desde la Fase 0b— **IBM Plex Mono** (pesos 400
 y 600). Cualquier fuente nueva va también a `APP_SHELL` en `sw.js`.
 
-**c) No hay ninguna fuente mono empaquetada.** IBM Plex Mono es la única fuente
-nueva que pide este rediseño (~20 KB por peso). Va a `fonts/`, a `fonts.css`, a
-`APP_SHELL` en `sw.js`, y con su bump de `CACHE_VERSION`. La alternativa —stack del
-sistema, 0 KB— desalinea los importes distinto en cada Android; para una app cuyo
-producto es una cifra, no compensa.
+**c) Hacía falta empaquetar una fuente mono** (no había ninguna). IBM Plex Mono
+fue la única fuente nueva que pidió este rediseño (~20 KB por peso) y **ya está
+hecho** en la Fase 0b: `fonts/`, `fonts.css` y `APP_SHELL` en `sw.js`. La
+alternativa —stack del sistema, 0 KB— desalinea los importes distinto en cada
+Android; para una app cuyo producto es una cifra, no compensaba. Queda como
+recordatorio: **cualquier fuente nueva va también a `APP_SHELL`**, o se rompe el
+offline.
 
 ---
 
@@ -361,7 +390,7 @@ nueva cacheada (`node test/pwa.test.cjs`).
 
 ## Fase 1 — Shell del editor
 
-**Dónde:** `#panel-editor` (~línea 2968), `js/ui.js`, `js/state.js`, `<style>`.
+**Dónde:** `#panel-editor`, `js/ui.js`, `js/state.js`, `js/sanitize.js`, `<style>`.
 
 1. **Envolver** cada sección del editor en un contenedor con encabezado propio:
    número, título y estado a la derecha (`COMPLETO ✓` / `3 ÍTEMS` / vacío).
@@ -377,8 +406,8 @@ nueva cacheada (`node test/pwa.test.cjs`).
    - `'clasica'` → todas abiertas, sin colapsar, sin barra de progreso.
    - `'fichas'` → secciones colapsables, arranca con la primera abierta (2a).
    - `'consola'` → tres etapas Datos · Trabajos · Cierre (2b, ver Fase 1b).
-5. Default: **`'clasica'`** durante el desarrollo; se cambia recién al cerrar la
-   Fase 4, cuando el usuario pueda elegir desde la UI.
+5. Default: **`'clasica'`**. Sigue así después de la Fase 4 — cambiarlo es una
+   decisión aparte, ver Pendientes.
 
 **DECIDIDO — el orden de carga no cambia.** Los mockups de Claude Design muestran
 `01 Cliente y lugar` / `02 Identificación`, invertido respecto de la app. **Se
@@ -493,7 +522,8 @@ que ya existía.
 - **La sección abierta (`_esecOpen`) es estado de pantalla**, no del presupuesto:
   no se guarda ni viaja en el backup. Si el modo activo esconde la sección
   abierta, se abre la primera visible.
-- `setVistaEditor(v)` cambia la vista (la UI para elegirla es la Fase 4).
+- `setVistaEditor(v)` cambia la vista; el selector que la expone al usuario lo
+  agregó la Fase 4 (Empresa → Estilo).
 
 **Desvío respecto de la tabla de arriba, en modo riesgo:** quedó
 `03 Trabajos a cotizar` · `04 Informe de riesgo`, al revés de lo que dice la
@@ -517,30 +547,92 @@ mostrar un grupo por vez. No toca el interior de ninguna sección (I1), así que
 costo marginal una vez que el shell existe es chico. Por eso `vistaEditor` es un
 enum de tres valores y no un booleano.
 
+Confirmado al cerrar la Fase 1: el andamiaje ya está. `'consola'` está en
+`EDITOR_VIEWS`, `editorShellSync()` ya sabe que solo `'fichas'` pliega (`vista
+!== 'fichas'` → todo abierto), y hoy `'consola'` se renderiza igual que
+`clasica` porque no tiene CSS propio. Hacerla es: agrupar las claves de
+`EDITOR_SECTIONS` en tres etapas, un estado `_esecEtapa`, las tabs, y un bloque
+`#panel-editor[data-vista="consola"]` en el `<style>`. **Ninguna invariante nueva.**
+
 **Pendiente de definir:** dónde caen las 6 `section-card` del informe ISA en un
 flujo de 3 etapas — ¿cuarta etapa, o dentro de "Datos"?
 
+**Si se decide NO hacerla,** sacar `'consola'` de `EDITOR_VIEWS` (y de
+`test/editor-shell.test.cjs`, que hoy afirma que la lista tiene tres valores):
+un enum con un valor que no hace nada es una trampa para el próximo que lea el
+código.
+
 ---
 
-## Fase 2 — Barra inferior fija
+## Fase 2 — Barra inferior fija (RE-ALCANZADA)
 
-**Dónde:** `<style>`, `js/ui.js`, `#totals-bar` (~línea 3325).
+> **Aviso: la premisa original de esta fase era falsa.** Decía que `#totals-bar`
+> estaba "hoy inline al final del flujo" y que había que **reubicarlo** abajo,
+> revisar z-index y resolver la safe-area. Nada de eso está pendiente: la barra
+> fija **ya existe y funciona**, la hizo un trabajo anterior ajeno a este plan.
+> Lo de abajo es el alcance real, revisado contra el código en la v191.
 
-Barra fija abajo con: cantidad de ítems, total, recargo aplicado en letra chica, y
-botón primario **Imprimir / PDF** más dos botones de ícono (compartir, vista previa).
-Aplica **en las dos vistas**.
+**Dónde:** `<style>`, `js/ui.js`, `#sticky-totals`.
 
-- `#totals-bar` ya existe (hoy inline al final del flujo) y ya se actualiza vía
-  `updateTotalsBar()`. Se reubica, **no se reescribe su lógica**.
-- Tiene dos juegos de columnas (`#tb-normal-cols` / `#tb-est-cols`): el modo
-  estimativo muestra otra cosa. Los dos tienen que entrar en el diseño fijo.
-- Respetar `env(safe-area-inset-bottom)` y dejar padding inferior en el contenedor.
-- **Revisar z-index** contra lo que ya se superpone: topbar, tabs, `#clima-overlay`,
-  `#notif-overlay`, modales y toasts.
+### Lo que YA está hecho (no rehacer)
 
-**Aceptación:** el total es visible sin scrollear desde cualquier punto del editor,
-en ambas vistas y en los tres modos; no tapa ningún campo; ningún overlay queda por
-debajo de la barra.
+`#sticky-totals` es una barra `position:fixed;bottom:0` que se muestra solo en el
+Editor:
+
+- **Tres variantes** que cambian con el modo, vía `_stickyShowVariant()`:
+  `#st-normal` (Subtotal · Desc. · Total), `#st-ab` (escenarios A/B, los dos
+  totales en simultáneo con el activo resaltado) y `#st-est` (Costo Estimado).
+  Ojo: son **tres**, no dos — el plan original solo contaba `#tb-normal-cols` y
+  `#tb-est-cols`, y se olvidaba de A/B.
+- Se actualiza desde `updateTotalsBar()`, junto con el `#totals-bar` de siempre.
+- **`env(safe-area-inset-bottom)` ya está resuelto**, tanto en el padding de la
+  barra como en el `#main` y en el FAB de "subir".
+- **El espacio inferior ya se reserva** con `reserveStickySpace()`, que mide el
+  alto real de la barra y lo escribe como `padding-bottom` de `#main` (el único
+  scroller). No inventar un padding fijo: se recalcula.
+- **El z-index ya está reconciliado.** La barra está en `30` y el FAB de "subir"
+  en `25` (con `body.has-sticky-totals` para elevarlo). Todo lo que se superpone
+  está por encima: topbar `100`, dropdowns/datepicker `1200`/`1201`, modales
+  `1000`–`2300`, `#clima-overlay` y `#notif-overlay` `2300`, toasts `9000`.
+  **Esto ya no hay que investigarlo**; solo no bajarlo.
+- Las cifras ya van en `--font-mono` (`.st-lbl` / `.st-val`, Fase 0b).
+
+### Lo que FALTA de verdad
+
+Es un cambio **estético y de acciones**, no estructural:
+
+1. **Tipografía del spec:** `TOTAL · N ÍTEMS` en mono 11px versalita y la cifra
+   en **mono 28px 700**. Hoy la etiqueta es mono 10px y el valor mono 15px
+   (17/19 el total). Ojo con el `@media` de pantalla chica, que ya baja esos
+   tamaños.
+2. **La cantidad de ítems no está en la barra** y el spec la pide junto al total.
+   El dato ya existe (`#items-count` / `#est-items-count`).
+3. **El recargo aplicado en letra chica a la derecha** — hoy no aparece en la
+   barra fija (está en `#sp-status`, dentro de "Ajustes de precio").
+4. **Las acciones:** botón primario **Imprimir / PDF** + dos botones de ícono
+   (compartir, vista previa) dentro de la barra. Hoy la barra es solo cifras y
+   los botones viven al final del flujo (`printDoc()`, `previewCurrent()`,
+   `sendCurrentWhatsapp()`). **Esto es lo único con riesgo real:** suma alto a
+   una barra fija en un teléfono, y hay que ver que no coma pantalla de más ni
+   pise el FAB de "subir".
+5. **Decidir qué pasa con `#totals-bar`**, el bloque de totales que sigue inline
+   al final del editor. Hoy están los dos y muestran lo mismo. Si la barra fija
+   toma las acciones, el inline queda redundante — pero sacarlo **cambia la
+   vista `clasica`**, así que es una decisión, no un detalle de implementación.
+
+### La diferencia importante con las fases anteriores
+
+**Esta fase mueve píxeles de `clasica` a propósito**, y es la primera que lo
+hace. El criterio de `visual-snap` deja de ser "cero diferencias" y pasa a ser
+**revisar cada diferencia una por una** — las escenas `editor-*` van a cambiar
+sí o sí. Conviene capturar las dos versiones y compararlas directo (ver el aviso
+del flake más arriba).
+
+**Aceptación:** el total sigue visible sin scrollear desde cualquier punto del
+editor, en ambas vistas y en los tres modos (más A/B, que son cuatro variantes
+de barra en total); no tapa ningún campo ni el FAB de "subir"; ningún overlay
+queda por debajo; y en un teléfono real la barra no se come más de lo que
+aporta.
 
 ---
 
@@ -571,7 +663,7 @@ del cambio visual sin tocar cómo se guarda un ítem.
 
 ## Fase 4 — Selector visible
 
-**Dónde:** `#subpanel-estilo` (Empresa → Estilo, ~línea 3586).
+**Dónde:** `#subpanel-estilo` (Empresa → Estilo).
 
 Agregar el selector debajo de "Apariencia de la app", con el mismo patrón visual
 que el segmentado Auto / Claro / Oscuro (`.theme-mode` / `.theme-mode-btn`):
@@ -579,14 +671,45 @@ que el segmentado Auto / Claro / Oscuro (`.theme-mode` / `.theme-mode-btn`):
 - **Fichas** — secciones plegables con progreso.
 - **Clásica** — todo desplegado en una sola lista.
 
-Es un eje independiente del tema claro/oscuro. Al cerrar la fase, recién ahí, el
-default pasa a `'fichas'`.
+Es un eje independiente del tema claro/oscuro.
 
 Persistencia: por I4 ya está resuelta (`CFG_GLOBAL_FIELDS` → backup y Drive).
 Escribir siempre vía `safeSetLS()`.
 
 **Aceptación:** el selector persiste al cerrar la app, viaja en el export y en el
 backup de Drive, y restaurar un backup de otro dispositivo lo trae.
+
+### Cómo quedó implementada (v191)
+
+`#vista-editor-mode`, dos botones (`Clásica` / `Fichas`) con las clases
+`.theme-mode` / `.theme-mode-btn` reusadas tal cual, justo debajo de "Apariencia
+de la app", con su propio `.hint` explicando que solo cambia la forma de cargar
+los datos y que el PDF sale igual. Llaman a `setVistaEditor()`, que ya existía
+de la Fase 1; el botón marcado lo sincroniza `editorShellSync()` leyendo
+`#panel-editor[data-vista]`, o sea la vista que se está viendo **de verdad**
+(si el fallback de I2 la bajó a `clasica`, el botón lo refleja).
+
+`saveLS()` escribe vía `safeSetLS()`, así que la elección dispara el auto-backup
+a Drive como cualquier otro cambio de configuración.
+
+**El default sigue en `'clasica'`.** El plan original decía "al cerrar la fase,
+recién ahí, el default pasa a `'fichas'`" — se separó a propósito en dos
+decisiones: primero el selector, y el cambio de default recién después de usar
+`fichas` unos días en trabajos reales. Meterlos en el mismo deploy sacaba la
+opción de "el selector está bien, pero prefiero arrancar en clásica".
+
+> **Cobertura visual:** hasta la v191 `visual-snap` **no miraba este subpanel**.
+> La escena `empresa` entra por la sub-pestaña "Negocio", y los `.subpanel` sin
+> `.active` van en `display:none`, así que agregar el selector daba 0 píxeles de
+> diferencia — no porque no cambiara nada, sino porque nadie estaba mirando. Se
+> sumaron las escenas `estilo` y `estilo-d` (y soporte de `subtab` en el
+> runner). Cualquier fase que toque Empresa → Estilo ya queda cubierta.
+
+**Pendiente menor:** `EDITOR_VIEWS` tiene tres valores y el selector ofrece dos.
+`'consola'` es alcanzable solo desde código (`setVistaEditor('consola')`) y hoy
+se renderiza como `clasica`, porque no tiene CSS propio. Es un estado válido y
+no rompe nada, pero **si la Fase 1b no se hace, hay que sacar `'consola'` de la
+lista blanca** para no dejar un valor que promete algo que no existe.
 
 ---
 
@@ -612,9 +735,20 @@ node test/config-global.test.cjs
 node test/security.test.cjs
 
 # 5. Invariantes del shell del editor (I2–I6): numeración por modo, estados,
-#    plegado sin perder lo escrito, fallback a 'clasica'
+#    plegado sin perder lo escrito, fallback a 'clasica', selector de la Fase 4
 node test/editor-shell.test.cjs
+
+# 6. Apariencia: 14 escenas píxel a píxel (ver el aviso del flake más arriba)
+node test/visual-snap.cjs base   # antes de tocar
+node test/visual-snap.cjs check  # después
 ```
+
+Y si la fase toca tokens, CSS compartido o `js/pdf.js`, comprobar que el
+**documento no cambió**. No hay un test fijo para esto porque depende de qué se
+toque; lo que se hizo en la Fase 1 fue construir los 21 documentos (3 modos × 7
+temas) en las dos versiones y diffear el `innerHTML` de `#doc-a4`. Sale en unas
+líneas con puppeteer-core y es la única forma de firmar "el PDF salió igual" sin
+mirar siete PDFs a ojo.
 
 Y a mano, en el teléfono:
 
@@ -658,18 +792,32 @@ Una pregunta cuesta un mensaje. Un supuesto equivocado cuesta la fase entera.
 - **Las secciones y el criterio de "COMPLETO"**, en los tres modos: la tabla está en
   la Fase 1. Incluye agrupar las 6 `section-card` del ISA en **una sola** sección,
   para que el modo riesgo tenga 6 secciones y no 11.
+- **La Fase 4 va antes que la 2.** Sin selector, `fichas` no se podía probar en
+  el teléfono y la Fase 1 no se podía cerrar. Ver el Estado, arriba.
+- **El default se cambia en un deploy aparte del selector.** Son dos decisiones
+  distintas; meterlas juntas quita la opción de quedarse en `clasica`.
+- **En modo riesgo la numeración sigue el orden del DOM** (`03` ítems, `04`
+  informe), no el de la tabla de la Fase 1. Mover la sección rompería I2.
 
 ### Pendientes
 
-1. **Chips de descuento (`0% · 5% · 10% · Otro`):** primer control que el diseño
+1. **El default: ¿pasa a `'fichas'`?** Es la decisión que sigue, y depende de
+   usar la vista unos días en trabajos reales. Cambiarlo es una línea en `DEF`
+   (`vistaEditor`), más el bump de `CACHE_VERSION`. Si se cambia, revisar que
+   `test/editor-shell.test.cjs` siga afirmando lo correcto: hoy tiene checks que
+   dan por sentado que el default es `'clasica'`.
+2. **Chips de descuento (`0% · 5% · 10% · Otro`):** primer control que el diseño
    quiere reemplazar en vez de envolver. Se puede hacer sin romper I1 (los chips
    escriben en `#discount`, que queda como está por debajo), pero hay que quererlo.
-   No bloquea la Fase 1.
-2. **Confirmar** que la Fase 3 queda apartada.
-3. **Fase 1b:** dónde caen las secciones del ISA en un flujo de 3 etapas. Solo
-   aplica si se hace la vista `consola`.
+   Cae naturalmente dentro de la Fase 2, que ya toca "Ajustes de precio" y el
+   recargo.
+3. **`#totals-bar` inline: ¿se queda o se va?** Hoy duplica lo que muestra la
+   barra fija. Decisión de la Fase 2, ahí está el detalle.
+4. **Confirmar** que la Fase 3 queda apartada.
+5. **Fase 1b:** dónde caen las secciones del ISA en un flujo de 3 etapas. Si se
+   descarta la vista `consola`, sacarla de `EDITOR_VIEWS`.
 
-Ninguna bloquea el arranque de la **Fase 1**.
+Ninguna bloquea el arranque de la **Fase 2**.
 
 ---
 
