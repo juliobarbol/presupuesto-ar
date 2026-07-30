@@ -192,6 +192,10 @@ async function run() {
       *,*::before,*::after{transition:none!important;animation:none!important;
         caret-color:transparent!important;scroll-behavior:auto!important}
       #toast-wrap,.toast,#clima-overlay,#notif-overlay{display:none!important}
+      /* El indicador de guardado alterna entre "Guardando…" y "✓ Guardado"
+         según si había un save en vuelo al disparar la captura. Se oculta
+         con visibility para no mover el layout. */
+      #save-status{visibility:hidden!important}
       #app{height:auto!important;overflow:visible!important}
       /* padding-bottom lo escribe reserveStickySpace() midiendo la barra de
          totales; esa medición varía unos px según cuándo corra y metía falsos
