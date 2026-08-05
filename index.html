@@ -2423,17 +2423,20 @@ input[type=number]{-moz-appearance:textfield}
   .pobs-t,.pcond-t,.pnotes-t{font-size:var(--fs-h3);font-weight:700;text-transform:uppercase;letter-spacing:var(--ls-label);color:var(--c-muted);margin-bottom:7px;padding-bottom:0;border:none}
   .pobs-txt{font-size:var(--fs-small);color:var(--c-text-2);line-height:1.65;padding:12px 14px;background:var(--c-bg-soft);border-radius:var(--r-sm);border-left:2.5pt solid var(--c-divider)}
   .pcond-txt{font-size:var(--fs-small);color:var(--c-text-2);line-height:1.65}
-  /* CÓMO PAGAR — dato para copiar, no prosa. El alias va en mono y un punto
-     más grande porque el cliente lo tipea a mano en el homebanking; el resto
-     hereda la zona administrativa (mismo título gris que Observaciones). */
+  /* CÓMO PAGAR — es zona ADMINISTRATIVA, no la cifra del presupuesto. La
+     jerarquía la manda el total; esto es un dato de referencia y tiene que
+     pesar lo mismo que Observaciones (--fs-small, borde gris neutro). Lo único
+     que lo distingue es la mono del alias, que ayuda a transcribirlo sin
+     confundir l/1 ni O/0 — no el tamaño ni el color de marca. */
   .ppago-rows{display:flex;flex-wrap:wrap;gap:4px 26px;padding:10px 14px;
-    background:var(--c-bg-soft);border-radius:var(--r-sm);border-left:2.5pt solid var(--pdoc-accent,var(--c-divider))}
+    background:var(--c-bg-soft);border-radius:var(--r-sm);border-left:2.5pt solid var(--c-divider)}
   .ppago-row{display:flex;flex-direction:column;gap:1px;min-width:0}
   .ppago-lbl{font-size:var(--fs-micro);font-weight:700;text-transform:uppercase;letter-spacing:var(--ls-label);color:var(--c-muted-2)}
-  .ppago-val{font-size:var(--fs-body);color:var(--c-text);font-weight:600;word-break:break-all}
-  /* Mono en peso 600: IBM Plex Mono viene auto-hospedada en 400 y 600 (ver
-     fonts.css); pedir 700 la haría sintética y desalinearía los caracteres. */
-  .ppago-alias .ppago-val{font-family:var(--font-mono);letter-spacing:.01em}
+  .ppago-val{font-size:var(--fs-small);color:var(--c-text-2);font-weight:500;word-break:break-all}
+  /* Mono en 600: IBM Plex Mono viene auto-hospedada en 400 y 600 (ver
+     fonts.css) y a igual peso se ve más liviana que la sans, así que 600 acá
+     empareja con el 500 del titular en vez de gritar. */
+  .ppago-alias .ppago-val{font-family:var(--font-mono);font-weight:600;color:var(--c-text);letter-spacing:.01em}
   .pnotes ul{padding-left:16px;margin:0}
   .pnotes li{font-size:var(--fs-small);color:var(--c-text-2);line-height:1.7}
 
@@ -3893,6 +3896,18 @@ input[type=number]{-moz-appearance:textfield}
             <p class="fu-help">Se usa en el botón de WhatsApp del aviso de recontacto: cuando un cliente aceptó el presupuesto pero quedaron en coordinar la fecha del trabajo más adelante.</p>
             <div class="fg">
               <textarea id="wa-recontacto-template" rows="4" onchange="saveRecontactoTemplate()" oninput="saveRecontactoTemplate()"></textarea>
+              <span class="fu-vars">Variables: <code>{cliente}</code> <code>{numero}</code> <code>{empresa}</code> <code>{alias}</code> <code>{titular}</code></span>
+            </div>
+          </div>
+
+          <!-- ── MENSAJE DE COBRO (trabajo terminado) ── -->
+          <div class="fu-config">
+            <div class="fu-config-head">
+              <span class="st" style="margin:0;border:none;padding:0"><svg class="ic ic-c-green"><use href="#i-message"></use></svg> Mensaje de cobro</span>
+            </div>
+            <p class="fu-help">Se usa en el botón “Datos de pago” que aparece al marcar un trabajo como realizado. Requiere tener cargado el alias en “Datos para cobrar”.</p>
+            <div class="fg">
+              <textarea id="wa-cobro-template" rows="5" onchange="saveCobroTemplate()" oninput="saveCobroTemplate()"></textarea>
               <span class="fu-vars">Variables: <code>{cliente}</code> <code>{numero}</code> <code>{empresa}</code> <code>{alias}</code> <code>{titular}</code></span>
             </div>
           </div>
@@ -5760,6 +5775,12 @@ const FOLLOWUP_DEF = {
   // Plantilla del mensaje de RECONTACTO: el cliente aceptó pero quedaron en
   // coordinar la fecha del trabajo más adelante. Mismas variables.
   waRecontactoTemplate: 'Hola {cliente}! ¿Cómo andás? Te escribo para coordinar la fecha del trabajo que habíamos hablado. ¿Cómo venís de tiempos?',
+  // Plantilla del mensaje de COBRO: sale del toast que aparece al marcar el
+  // trabajo como realizado, con el trabajo recién terminado y el cliente
+  // todavía en el lugar. Suma {alias} y {titular} a las variables de siempre.
+  // El alias va en su propia línea: en WhatsApp "Copiar" toma el mensaje
+  // ENTERO, así que cuanto más suelto esté, menos tiene que limpiar el cliente.
+  waCobroTemplate: 'Hola {cliente}! Ya terminamos el trabajo. Te paso los datos para el pago:\n\nAlias: {alias}\nTitular: {titular}\n\nCualquier cosa avisame. ¡Gracias!',
 };
 
 function getFollowupCfg() {
@@ -10383,10 +10404,11 @@ function setEstadoHistory(id, nuevoEstado) {
   // recontacto (salteable con "Todavía no sé"): es el momento natural,
   // recién se cerró con el cliente. Si ya tiene algo agendado, no molestar.
   if (nuevoEstado === 'aceptado' && !e.fechaTrabajo && !e.recontactoEn) openAgendaDlg(id, { fromAccept: true });
-  // Al marcar "realizado", ofrecer registrar la factura del trabajo: conecta
-  // el pipeline comercial con la pestaña Facturación (control de tope), para
-  // no volver a tipear cliente + monto que ya están en el presupuesto.
-  if (nuevoEstado === 'realizado') _ofrecerRegistrarFactura(e);
+  // Al marcar "realizado", ofrecer las dos cosas que se hacen recién terminado
+  // el trabajo: mandarle al cliente los datos para pagar (está ahí, en el
+  // lugar) y registrar la factura, que conecta el pipeline comercial con la
+  // pestaña Facturación (control de tope) sin volver a tipear cliente + monto.
+  if (nuevoEstado === 'realizado') _ofrecerCierreTrabajo(e);
   // Marcar "realizado" es la acción que más se toca sin querer (banner del día,
   // dropdown del historial). Dejamos el aviso en el centro de notificaciones con
   // botón "Deshacer" para volver al estado previo con un toque.
@@ -10845,22 +10867,63 @@ function agendaGcal() {
 // presupuesto y marcarlo como facturado al confirmar el registro.
 let _pendingFacturaQuote = null; // { id, quoteNumber } o null
 
-// Ofrece, con un toast accionable, registrar la factura de un presupuesto
-// recién marcado como "realizado". No molesta si ya se facturó o si no hay
-// monto que facturar.
-function _ofrecerRegistrarFactura(entry) {
-  if (!entry || entry.facturado || !(entry.total > 0)) return;
+// Ofrece, con un toast accionable, las dos cosas que se hacen apenas termina
+// un trabajo: mandarle al cliente los datos para pagar (está ahí, en el lugar)
+// y registrar la factura. Cada botón aparece solo si tiene sentido — sin alias
+// cargado no hay datos que mandar, y sin monto (o ya facturado) no hay factura
+// que registrar. Si no queda ninguno, no se muestra nada.
+function _ofrecerCierreTrabajo(entry) {
+  if (!entry) return;
+  const puedeFacturar = !entry.facturado && entry.total > 0;
+  const puedeCobrar   = !!(S.coAliasPago || '').trim();
+  if (!puedeFacturar && !puedeCobrar) return;
   const c = document.getElementById('toast-container');
   if (!c) return;
   const el = document.createElement('div');
   el.className = 'toast toast-info toast-action';
-  el.innerHTML = `<span>¿Registrar la factura de este trabajo?</span>
-    <button type="button" class="toast-btn">Registrar factura</button>`;
+  el.innerHTML = `<span>Trabajo terminado. ¿Qué querés hacer?</span>
+    ${puedeCobrar   ? `<button type="button" class="toast-btn" data-act="cobro">Datos de pago</button>` : ''}
+    ${puedeFacturar ? `<button type="button" class="toast-btn" data-act="factura">Registrar factura</button>` : ''}`;
   c.appendChild(el);
   requestAnimationFrame(()=>{ requestAnimationFrame(()=>el.classList.add('show')); });
   const close = () => { el.classList.remove('show'); setTimeout(()=>el.remove(), 300); };
-  el.querySelector('.toast-btn').onclick = () => { irARegistrarFactura(entry.id); close(); };
-  setTimeout(close, 9000);
+  el.querySelectorAll('.toast-btn').forEach(btn => {
+    btn.onclick = () => {
+      if (btn.dataset.act === 'cobro') enviarDatosDePago(entry.id);
+      else                             irARegistrarFactura(entry.id);
+      close();
+    };
+  });
+  // Dos decisiones en vez de una: un poco más de aire para leerlas.
+  setTimeout(close, 12000);
+}
+
+// Abre WhatsApp con el mensaje de cobro (plantilla editable en Empresa) para
+// el cliente del presupuesto. Reusa buildWhatsappLink, que ya resuelve el
+// teléfono desde el snapshot y cae al selector de contactos si no hay.
+//
+// Además deja el alias SOLO en el portapapeles: en WhatsApp, "Copiar" toma el
+// mensaje entero, así que la única forma de que el cliente copie el alias de
+// un toque es que llegue como mensaje suelto. Con esto, mandarlo es pegar.
+function enviarDatosDePago(id) {
+  const e = getH().find(x => x.id === id);
+  if (!e) return;
+  const alias = (S.coAliasPago || '').trim();
+  if (!alias) { toast('Cargá tu alias en Empresa → Datos para cobrar', 'info', 5000); return; }
+  const cfg = (typeof getFollowupCfg === 'function') ? getFollowupCfg() : FOLLOWUP_DEF;
+  const tpl = (cfg.waCobroTemplate && cfg.waCobroTemplate.trim()) ? cfg.waCobroTemplate : FOLLOWUP_DEF.waCobroTemplate;
+  // El portapapeles ANTES de abrir WhatsApp: después la pestaña pierde el foco
+  // y el navegador rechaza la escritura.
+  let copiado = false;
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(alias); copiado = true;
+    }
+  } catch(_){}
+  window.open(buildWhatsappLink(e, tpl), '_blank', 'noopener');
+  toast(copiado
+    ? 'Alias copiado: mandalo como segundo mensaje suelto y lo copia de un toque'
+    : 'Se abrió WhatsApp con los datos de pago', 'info', 6000);
 }
 
 // Lleva a la pestaña Facturación con el formulario precargado desde un
@@ -12102,6 +12165,8 @@ function loadFollowupUI() {
   if (sendTpl) sendTpl.value = cfg.waSendTemplate || FOLLOWUP_DEF.waSendTemplate;
   const recTpl = document.getElementById('wa-recontacto-template');
   if (recTpl) recTpl.value = cfg.waRecontactoTemplate || FOLLOWUP_DEF.waRecontactoTemplate;
+  const cobroTpl = document.getElementById('wa-cobro-template');
+  if (cobroTpl) cobroTpl.value = cfg.waCobroTemplate || FOLLOWUP_DEF.waCobroTemplate;
   document.querySelectorAll('.fu-estados input[type=checkbox]').forEach(chk => {
     chk.checked = cfg.estados.includes(chk.value);
   });
@@ -12159,6 +12224,14 @@ function saveRecontactoTemplate() {
   const t = document.getElementById('wa-recontacto-template');
   const cfg = getFollowupCfg();
   cfg.waRecontactoTemplate = (t && t.value.trim()) ? t.value : FOLLOWUP_DEF.waRecontactoTemplate;
+  setFollowupCfg(cfg);
+}
+
+// Guarda la plantilla del mensaje de COBRO (campo propio, ídem).
+function saveCobroTemplate() {
+  const t = document.getElementById('wa-cobro-template');
+  const cfg = getFollowupCfg();
+  cfg.waCobroTemplate = (t && t.value.trim()) ? t.value : FOLLOWUP_DEF.waCobroTemplate;
   setFollowupCfg(cfg);
 }
 
