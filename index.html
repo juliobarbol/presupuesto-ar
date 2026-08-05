@@ -3819,10 +3819,14 @@ input[type=number]{-moz-appearance:textfield}
             <div class="fu-config-head">
               <span class="st" style="margin:0;border:none;padding:0"><svg class="ic ic-c-green"><use href="#i-save"></use></svg> Datos para cobrar</span>
             </div>
-            <p class="fu-help">Se imprimen en el presupuesto en la sección “Cómo pagar” y podés usarlos en los mensajes de WhatsApp con la variable <code>{alias}</code>. Si los dejás vacíos, no aparecen en ningún lado.</p>
+            <p class="fu-help">Se imprimen en el presupuesto en la sección “Cómo pagar” y se usan en el mensaje de cobro por WhatsApp. Cargá lo que tengas: lo que dejes vacío no aparece en ningún lado. El CUIT se toma del campo de arriba.</p>
             <div class="r2">
-              <div class="fg"><label>Alias o CBU</label><input type="text" id="co-alias-pago" placeholder="podas.del.sur.mp" maxlength="100" autocomplete="off"></div>
+              <div class="fg"><label>Alias</label><input type="text" id="co-alias-pago" placeholder="podas.del.sur.mp" maxlength="100" autocomplete="off"></div>
               <div class="fg"><label>Titular de la cuenta</label><input type="text" id="co-alias-titular" placeholder="Ej: Juan Pérez" maxlength="120" autocomplete="off"></div>
+            </div>
+            <div class="r2">
+              <div class="fg"><label>CBU / CVU</label><input type="text" id="co-cbu" placeholder="0110123430001234567890" maxlength="40" inputmode="numeric" autocomplete="off"></div>
+              <div class="fg"><label>Banco / Billetera</label><input type="text" id="co-banco" placeholder="Ej: Banco Nación" maxlength="80" autocomplete="off"></div>
             </div>
           </div>
 
@@ -3905,10 +3909,10 @@ input[type=number]{-moz-appearance:textfield}
             <div class="fu-config-head">
               <span class="st" style="margin:0;border:none;padding:0"><svg class="ic ic-c-green"><use href="#i-message"></use></svg> Mensaje de cobro</span>
             </div>
-            <p class="fu-help">Se usa en el botón “Datos de pago” que aparece al marcar un trabajo como realizado. Requiere tener cargado el alias en “Datos para cobrar”.</p>
+            <p class="fu-help">Se usa en el botón “Datos de pago” que aparece al marcar un trabajo como realizado. Requiere tener cargado el alias o el CBU en “Datos para cobrar”. <code>{datos_pago}</code> arma solo el bloque de datos de la cuenta con lo que tengas cargado; si preferís acomodarlos a mano, usá las variables sueltas. Las líneas cuyo dato esté vacío se borran solas.</p>
             <div class="fg">
-              <textarea id="wa-cobro-template" rows="5" onchange="saveCobroTemplate()" oninput="saveCobroTemplate()"></textarea>
-              <span class="fu-vars">Variables: <code>{cliente}</code> <code>{numero}</code> <code>{empresa}</code> <code>{alias}</code> <code>{titular}</code></span>
+              <textarea id="wa-cobro-template" rows="9" onchange="saveCobroTemplate()" oninput="saveCobroTemplate()"></textarea>
+              <span class="fu-vars">Variables: <code>{datos_pago}</code> <code>{importe}</code> <code>{cliente}</code> <code>{numero}</code> <code>{empresa}</code> <code>{titular}</code> <code>{cuit}</code> <code>{banco}</code> <code>{cbu}</code> <code>{alias}</code></span>
             </div>
           </div>
 
@@ -4832,9 +4836,11 @@ const DEF = {
   coCuit:'', coWhatsapp:'', coCity:'', coEmail:'',
   // Datos de cobro (Empresa → Mi negocio). Son del NEGOCIO, no del
   // presupuesto: van en CFG_GLOBAL_FIELDS y alimentan la sección "Cómo pagar"
-  // del documento y la variable {alias} de las plantillas de WhatsApp. Si el
-  // alias está vacío, la sección no se dibuja y todo queda como antes.
-  coAliasPago:'', coAliasTitular:'',
+  // del documento y las variables de cobro de las plantillas de WhatsApp. Sin
+  // alias NI CBU la sección no se dibuja y todo queda como antes.
+  // El CUIT no se repite acá: ya está en coCuit (sale en el encabezado del
+  // documento) y las plantillas lo toman de ahí con {cuit}.
+  coAliasPago:'', coAliasTitular:'', coCbu:'', coBanco:'',
   coTechNotes:'', coFooter:'',
   showTechNotes:true, showFooter:true,
   accentColor:'#064e3b', pdfTheme:'clasico', pdfCompact:false, pdfFont:'auto', customColors:[], pushEnabled:false, validityDays:30, showExpiry:true,
@@ -4930,7 +4936,7 @@ const DEF = {
 const CFG_GLOBAL_FIELDS = [
   // Identidad y contacto de la empresa
   'coName','coOwner','coSubtitle','coCuit','coWhatsapp','coCity','coEmail',
-  'coAliasPago','coAliasTitular','coTechNotes','coFooter','logo',
+  'coAliasPago','coAliasTitular','coCbu','coBanco','coTechNotes','coFooter','logo',
   // Diseño del documento y de la app
   'accentColor','customColors','pdfTheme','pdfCompact','pdfFont','themeMode',
   'vistaEditor',
@@ -5777,10 +5783,15 @@ const FOLLOWUP_DEF = {
   waRecontactoTemplate: 'Hola {cliente}! ¿Cómo andás? Te escribo para coordinar la fecha del trabajo que habíamos hablado. ¿Cómo venís de tiempos?',
   // Plantilla del mensaje de COBRO: sale del toast que aparece al marcar el
   // trabajo como realizado, con el trabajo recién terminado y el cliente
-  // todavía en el lugar. Suma {alias} y {titular} a las variables de siempre.
-  // El alias va en su propia línea: en WhatsApp "Copiar" toma el mensaje
-  // ENTERO, así que cuanto más suelto esté, menos tiene que limpiar el cliente.
-  waCobroTemplate: 'Hola {cliente}! Ya terminamos el trabajo. Te paso los datos para el pago:\n\nAlias: {alias}\nTitular: {titular}\n\nCualquier cosa avisame. ¡Gracias!',
+  // todavía en el lugar.
+  //
+  // El formato imita el de una factura, que es como se pasan los datos de una
+  // transferencia acá: bloque etiquetado (titular · CUIT · banco · CBU ·
+  // alias) + importe + a qué corresponde. No es adorno — al transferir, el
+  // banco le muestra al cliente a quién le está por pagar, y sin el titular no
+  // tiene con qué verificarlo. {datos_pago} arma ese bloque con lo que esté
+  // cargado, y las líneas cuya variable quede vacía se caen solas.
+  waCobroTemplate: 'Hola {cliente}, ya terminamos el trabajo. Te paso los datos para la transferencia:\n\n{datos_pago}\n\nImporte: {importe}\nPresupuesto: {numero}\n\nCuando la hagas avisame así te confirmo la recepción. ¡Gracias!\n{empresa}',
 };
 
 function getFollowupCfg() {
@@ -5915,12 +5926,41 @@ function marcarVencimientoVisto(id) {
 // config global, que no depende del presupuesto.
 function fillWaTemplate(tpl, vars) {
   const v = vars || {};
-  return (tpl || '')
-    .replace(/\{cliente\}/g, v.cliente || '')
-    .replace(/\{numero\}/g,  v.numero  || '')
-    .replace(/\{empresa\}/g, v.empresa || '')
-    .replace(/\{alias\}/g,   (S.coAliasPago || '').trim())
-    .replace(/\{titular\}/g, (S.coAliasTitular || '').trim());
+  const out = (tpl || '')
+    .replace(/\{cliente\}/g,    v.cliente || '')
+    .replace(/\{numero\}/g,     v.numero  || '')
+    .replace(/\{empresa\}/g,    v.empresa || '')
+    .replace(/\{importe\}/g,    v.importe || '')
+    .replace(/\{datos_pago\}/g, _datosDePagoTexto())
+    .replace(/\{alias\}/g,      (S.coAliasPago || '').trim())
+    .replace(/\{cbu\}/g,        (S.coCbu || '').trim())
+    .replace(/\{titular\}/g,    (S.coAliasTitular || '').trim())
+    .replace(/\{banco\}/g,      (S.coBanco || '').trim())
+    .replace(/\{cuit\}/g,       (S.coCuit || '').trim());
+  // Una plantilla con etiquetas ("CBU: {cbu}") queda coja si el dato no está
+  // cargado: sobra la etiqueta sola. Se cae la línea entera, y de paso los
+  // huecos de más que deja al desaparecer.
+  return out
+    .split('\n')
+    .filter(l => !/^\s*[\wÁÉÍÓÚÜÑáéíóúüñ /.()]{1,30}:\s*$/.test(l))
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+// Bloque de datos de cobro para los mensajes: una línea por dato cargado, con
+// etiqueta. Es el formato con el que se pasan los datos de una transferencia
+// en Argentina — el cliente los va leyendo y copiando de arriba a abajo en el
+// homebanking. Titular y CUIT no son burocracia: al transferir, el banco le
+// muestra a quién le está por pagar y necesita poder verificarlo.
+function _datosDePagoTexto() {
+  return [
+    ['Titular',   (S.coAliasTitular || '').trim()],
+    ['CUIT',      (S.coCuit || '').trim()],
+    ['Banco',     (S.coBanco || '').trim()],
+    ['CBU/CVU',   (S.coCbu || '').trim()],
+    ['Alias',     (S.coAliasPago || '').trim()],
+  ].filter(([, val]) => val).map(([lbl, val]) => `${lbl}: ${val}`).join('\n');
 }
 
 // Construye el enlace wa.me con el mensaje predeterminado para un entry.
@@ -5931,7 +5971,10 @@ function buildWhatsappLink(entry, tpl) {
   const cliente = (entry.clientName || '').trim() || 'cliente';
   const numero  = entry.quoteNumber || '';
   const empresa = (S.coName || 'Poda en Altura AR').trim();
-  let msg = fillWaTemplate(tpl || cfg.waTemplate, { cliente, numero, empresa });
+  // El importe sale del total YA GUARDADO en la entrada, no de recalcularlo:
+  // es el que vio el cliente en el PDF que se le mandó.
+  const importe = entry.total > 0 ? fmtM(entry.total, entry.currency || 'ARS') : '';
+  let msg = fillWaTemplate(tpl || cfg.waTemplate, { cliente, numero, empresa, importe });
   // El contacto del cliente vive en el snapshot (clientContact).
   const rawPhone = (entry.snapshot && entry.snapshot.clientContact) || '';
   const phone = normalizeArgPhone(rawPhone);
@@ -6288,6 +6331,8 @@ function sanitizeStateObj(raw) {
   // nada que no sea texto.
   s.coAliasPago    = sanStr(raw.coAliasPago, 100);
   s.coAliasTitular = sanStr(raw.coAliasTitular, 120);
+  s.coCbu          = sanStr(raw.coCbu, 40);   // CBU/CVU: 22 dígitos, con aire por si lo pegan con espacios
+  s.coBanco        = sanStr(raw.coBanco, 80);
   return s;
 }
 
@@ -8829,6 +8874,8 @@ function restoreUI() {
   sv('co-email', S.coEmail);
   sv('co-alias-pago', S.coAliasPago);
   sv('co-alias-titular', S.coAliasTitular);
+  sv('co-cbu', S.coCbu);
+  sv('co-banco', S.coBanco);
   sv('co-tech-notes', S.coTechNotes);
   sv('co-footer', S.coFooter);
   sc('show-tech-notes', S.showTechNotes);
@@ -8934,6 +8981,8 @@ function syncFromUI() {
   S.coEmail           = gv('co-email');
   S.coAliasPago       = gv('co-alias-pago');
   S.coAliasTitular    = gv('co-alias-titular');
+  S.coCbu             = gv('co-cbu');
+  S.coBanco           = gv('co-banco');
   S.coTechNotes       = gv('co-tech-notes');
   S.coFooter          = gv('co-footer');
   S.showTechNotes     = gc('show-tech-notes');
@@ -10875,7 +10924,7 @@ let _pendingFacturaQuote = null; // { id, quoteNumber } o null
 function _ofrecerCierreTrabajo(entry) {
   if (!entry) return;
   const puedeFacturar = !entry.facturado && entry.total > 0;
-  const puedeCobrar   = !!(S.coAliasPago || '').trim();
+  const puedeCobrar   = !!((S.coAliasPago || '').trim() || (S.coCbu || '').trim());
   if (!puedeFacturar && !puedeCobrar) return;
   const c = document.getElementById('toast-container');
   if (!c) return;
@@ -10908,8 +10957,11 @@ function _ofrecerCierreTrabajo(entry) {
 function enviarDatosDePago(id) {
   const e = getH().find(x => x.id === id);
   if (!e) return;
-  const alias = (S.coAliasPago || '').trim();
-  if (!alias) { toast('Cargá tu alias en Empresa → Datos para cobrar', 'info', 5000); return; }
+  // Se copia el alias; si no hay, el CBU. Es la clave que el cliente pega en
+  // el homebanking — el resto de los datos son para que verifique, no para
+  // copiar.
+  const clave = (S.coAliasPago || '').trim() || (S.coCbu || '').trim();
+  if (!clave) { toast('Cargá tu alias o CBU en Empresa → Datos para cobrar', 'info', 5000); return; }
   const cfg = (typeof getFollowupCfg === 'function') ? getFollowupCfg() : FOLLOWUP_DEF;
   const tpl = (cfg.waCobroTemplate && cfg.waCobroTemplate.trim()) ? cfg.waCobroTemplate : FOLLOWUP_DEF.waCobroTemplate;
   // El portapapeles ANTES de abrir WhatsApp: después la pestaña pierde el foco
@@ -10917,12 +10969,13 @@ function enviarDatosDePago(id) {
   let copiado = false;
   try {
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(alias); copiado = true;
+      navigator.clipboard.writeText(clave); copiado = true;
     }
   } catch(_){}
   window.open(buildWhatsappLink(e, tpl), '_blank', 'noopener');
+  const qué = (S.coAliasPago || '').trim() ? 'Alias' : 'CBU';
   toast(copiado
-    ? 'Alias copiado: mandalo como segundo mensaje suelto y lo copia de un toque'
+    ? `${qué} copiado: mandalo como segundo mensaje suelto y lo copia de un toque`
     : 'Se abrió WhatsApp con los datos de pago', 'info', 6000);
 }
 
@@ -11513,10 +11566,12 @@ function sendCurrentWhatsapp() {
   // variables reemplazadas por los datos del presupuesto actual.
   const cfg = (typeof getFollowupCfg === 'function') ? getFollowupCfg() : FOLLOWUP_DEF;
   const tpl = (cfg.waSendTemplate && cfg.waSendTemplate.trim()) ? cfg.waSendTemplate : FOLLOWUP_DEF.waSendTemplate;
+  const t = S.isEstimative ? calcEstTotals(S.estItems).total : calcTotals().total;
   const msg = fillWaTemplate(tpl, {
     cliente: (S.clientName || '').trim(),
     numero:  S.quoteNumber || '',
     empresa: (S.coName || '').trim(),
+    importe: t > 0 ? fmtM(t, S.currency) : '',
   });
   // Dejamos registro en el historial (igual que al imprimir).
   if (typeof autoSaveToHistory === 'function') autoSaveToHistory();
@@ -14536,21 +14591,27 @@ function _buildDurationHTML(){
 // riesgo, que arman su HTML sin depender del tema.
 function _buildPagoHTML(color){
   const alias = (S.coAliasPago || '').trim();
-  if (!alias) return '';
-  const titular = (S.coAliasTitular || '').trim();
+  const cbu   = (S.coCbu || '').trim();
+  // Sin ninguna de las dos claves de transferencia no hay nada que mostrar:
+  // titular y banco solos no sirven para pagar.
+  if (!alias && !cbu) return '';
+  // Orden: primero con qué se transfiere, después a quién. `mono` marca los
+  // datos que el cliente tipea a mano en el homebanking.
+  const filas = [
+    { lbl:'Alias',   val:alias,                        mono:true },
+    { lbl:'CBU / CVU', val:cbu,                        mono:true },
+    { lbl:'Titular', val:(S.coAliasTitular||'').trim()           },
+    { lbl:'Banco',   val:(S.coBanco||'').trim()                  },
+  ].filter(f => f.val);
   const style = color ? ` style="color:${color};border-color:${color}"` : '';
   return `
     <div class="pcond">
       <div class="pcond-t"${style}>Cómo pagar</div>
       <div class="ppago-rows">
-        <div class="ppago-row ppago-alias">
-          <span class="ppago-lbl">Alias / CBU</span>
-          <span class="ppago-val">${esc(alias)}</span>
-        </div>
-        ${titular ? `<div class="ppago-row">
-          <span class="ppago-lbl">Titular</span>
-          <span class="ppago-val">${esc(titular)}</span>
-        </div>` : ''}
+        ${filas.map(f => `<div class="ppago-row${f.mono ? ' ppago-alias' : ''}">
+          <span class="ppago-lbl">${esc(f.lbl)}</span>
+          <span class="ppago-val">${esc(f.val)}</span>
+        </div>`).join('')}
       </div>
     </div>`;
 }
