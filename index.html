@@ -2423,6 +2423,17 @@ input[type=number]{-moz-appearance:textfield}
   .pobs-t,.pcond-t,.pnotes-t{font-size:var(--fs-h3);font-weight:700;text-transform:uppercase;letter-spacing:var(--ls-label);color:var(--c-muted);margin-bottom:7px;padding-bottom:0;border:none}
   .pobs-txt{font-size:var(--fs-small);color:var(--c-text-2);line-height:1.65;padding:12px 14px;background:var(--c-bg-soft);border-radius:var(--r-sm);border-left:2.5pt solid var(--c-divider)}
   .pcond-txt{font-size:var(--fs-small);color:var(--c-text-2);line-height:1.65}
+  /* CÓMO PAGAR — dato para copiar, no prosa. El alias va en mono y un punto
+     más grande porque el cliente lo tipea a mano en el homebanking; el resto
+     hereda la zona administrativa (mismo título gris que Observaciones). */
+  .ppago-rows{display:flex;flex-wrap:wrap;gap:4px 26px;padding:10px 14px;
+    background:var(--c-bg-soft);border-radius:var(--r-sm);border-left:2.5pt solid var(--pdoc-accent,var(--c-divider))}
+  .ppago-row{display:flex;flex-direction:column;gap:1px;min-width:0}
+  .ppago-lbl{font-size:var(--fs-micro);font-weight:700;text-transform:uppercase;letter-spacing:var(--ls-label);color:var(--c-muted-2)}
+  .ppago-val{font-size:var(--fs-body);color:var(--c-text);font-weight:600;word-break:break-all}
+  /* Mono en peso 600: IBM Plex Mono viene auto-hospedada en 400 y 600 (ver
+     fonts.css); pedir 700 la haría sintética y desalinearía los caracteres. */
+  .ppago-alias .ppago-val{font-family:var(--font-mono);letter-spacing:.01em}
   .pnotes ul{padding-left:16px;margin:0}
   .pnotes li{font-size:var(--fs-small);color:var(--c-text-2);line-height:1.7}
 
@@ -3797,6 +3808,21 @@ input[type=number]{-moz-appearance:textfield}
           </div>
           <div class="fg"><label>Email</label><input type="text" id="co-email" placeholder="hola@empresa.com"></div>
 
+          <!-- ── DATOS PARA COBRAR ── -->
+          <!-- Config del negocio (no del presupuesto): alimenta la sección
+               "Cómo pagar" del documento y la variable {alias} de las
+               plantillas de WhatsApp. Vacío = no aparece en ningún lado. -->
+          <div class="fu-config">
+            <div class="fu-config-head">
+              <span class="st" style="margin:0;border:none;padding:0"><svg class="ic ic-c-green"><use href="#i-save"></use></svg> Datos para cobrar</span>
+            </div>
+            <p class="fu-help">Se imprimen en el presupuesto en la sección “Cómo pagar” y podés usarlos en los mensajes de WhatsApp con la variable <code>{alias}</code>. Si los dejás vacíos, no aparecen en ningún lado.</p>
+            <div class="r2">
+              <div class="fg"><label>Alias o CBU</label><input type="text" id="co-alias-pago" placeholder="podas.del.sur.mp" maxlength="100" autocomplete="off"></div>
+              <div class="fg"><label>Titular de la cuenta</label><input type="text" id="co-alias-titular" placeholder="Ej: Juan Pérez" maxlength="120" autocomplete="off"></div>
+            </div>
+          </div>
+
           <!-- ── SEGUIMIENTO COMERCIAL ── -->
           <div class="fu-config">
             <div class="fu-config-head">
@@ -3829,7 +3855,7 @@ input[type=number]{-moz-appearance:textfield}
               <div class="fg">
                 <label>Mensaje de seguimiento (editable)</label>
                 <textarea id="fu-template" rows="4" onchange="saveFollowupFromUI()" oninput="saveFollowupFromUI()"></textarea>
-                <span class="fu-vars">Variables: <code>{cliente}</code> <code>{numero}</code> <code>{empresa}</code></span>
+                <span class="fu-vars">Variables: <code>{cliente}</code> <code>{numero}</code> <code>{empresa}</code> <code>{alias}</code> <code>{titular}</code></span>
               </div>
             </div>
           </div>
@@ -3855,7 +3881,7 @@ input[type=number]{-moz-appearance:textfield}
             <p class="fu-help">Es el texto que se arma al tocar “Enviar por WhatsApp” en el editor. Editalo a tu gusto.</p>
             <div class="fg">
               <textarea id="wa-send-template" rows="4" onchange="saveSendTemplate()" oninput="saveSendTemplate()"></textarea>
-              <span class="fu-vars">Variables: <code>{cliente}</code> <code>{numero}</code> <code>{empresa}</code></span>
+              <span class="fu-vars">Variables: <code>{cliente}</code> <code>{numero}</code> <code>{empresa}</code> <code>{alias}</code> <code>{titular}</code></span>
             </div>
           </div>
 
@@ -3867,7 +3893,7 @@ input[type=number]{-moz-appearance:textfield}
             <p class="fu-help">Se usa en el botón de WhatsApp del aviso de recontacto: cuando un cliente aceptó el presupuesto pero quedaron en coordinar la fecha del trabajo más adelante.</p>
             <div class="fg">
               <textarea id="wa-recontacto-template" rows="4" onchange="saveRecontactoTemplate()" oninput="saveRecontactoTemplate()"></textarea>
-              <span class="fu-vars">Variables: <code>{cliente}</code> <code>{numero}</code> <code>{empresa}</code></span>
+              <span class="fu-vars">Variables: <code>{cliente}</code> <code>{numero}</code> <code>{empresa}</code> <code>{alias}</code> <code>{titular}</code></span>
             </div>
           </div>
 
@@ -4789,6 +4815,11 @@ const DEF = {
   coOwner:'',
   coSubtitle:'Poda en Altura y Extracción de Árboles',
   coCuit:'', coWhatsapp:'', coCity:'', coEmail:'',
+  // Datos de cobro (Empresa → Mi negocio). Son del NEGOCIO, no del
+  // presupuesto: van en CFG_GLOBAL_FIELDS y alimentan la sección "Cómo pagar"
+  // del documento y la variable {alias} de las plantillas de WhatsApp. Si el
+  // alias está vacío, la sección no se dibuja y todo queda como antes.
+  coAliasPago:'', coAliasTitular:'',
   coTechNotes:'', coFooter:'',
   showTechNotes:true, showFooter:true,
   accentColor:'#064e3b', pdfTheme:'clasico', pdfCompact:false, pdfFont:'auto', customColors:[], pushEnabled:false, validityDays:30, showExpiry:true,
@@ -4884,7 +4915,7 @@ const DEF = {
 const CFG_GLOBAL_FIELDS = [
   // Identidad y contacto de la empresa
   'coName','coOwner','coSubtitle','coCuit','coWhatsapp','coCity','coEmail',
-  'coTechNotes','coFooter','logo',
+  'coAliasPago','coAliasTitular','coTechNotes','coFooter','logo',
   // Diseño del documento y de la app
   'accentColor','customColors','pdfTheme','pdfCompact','pdfFont','themeMode',
   'vistaEditor',
@@ -4923,6 +4954,7 @@ const DOC_SECTIONS = [
   { id:'criteria',     label:'Cómo trabajamos (criterios)' },
   { id:'observations', label:'Observaciones' },
   { id:'payment',      label:'Condiciones de pago' },
+  { id:'pago',         label:'Cómo pagar (alias / CBU)' },
   { id:'validity',     label:'Vigencia' },
   { id:'notes',        label:'Notas adicionales' },
 ];
@@ -5854,6 +5886,22 @@ function marcarVencimientoVisto(id) {
   if (S.pushEnabled && typeof syncPushFollowups === 'function') syncPushFollowups().catch(() => {});
 }
 
+// Reemplaza las variables de una plantilla de WhatsApp. Único lugar donde se
+// define qué variables existen: antes cada vía (el botón del editor y los
+// avisos del historial) hacía su propio .replace() y era fácil que una
+// ofreciera una variable que la otra no. `cliente`/`numero`/`empresa` los pasa
+// el llamador —cada uno tiene su fallback— y los datos de cobro salen de la
+// config global, que no depende del presupuesto.
+function fillWaTemplate(tpl, vars) {
+  const v = vars || {};
+  return (tpl || '')
+    .replace(/\{cliente\}/g, v.cliente || '')
+    .replace(/\{numero\}/g,  v.numero  || '')
+    .replace(/\{empresa\}/g, v.empresa || '')
+    .replace(/\{alias\}/g,   (S.coAliasPago || '').trim())
+    .replace(/\{titular\}/g, (S.coAliasTitular || '').trim());
+}
+
 // Construye el enlace wa.me con el mensaje predeterminado para un entry.
 // Reemplaza las variables de la plantilla con los datos del presupuesto.
 // `tpl` (opcional) permite usar otra plantilla (ej: la de recontacto).
@@ -5862,10 +5910,7 @@ function buildWhatsappLink(entry, tpl) {
   const cliente = (entry.clientName || '').trim() || 'cliente';
   const numero  = entry.quoteNumber || '';
   const empresa = (S.coName || 'Poda en Altura AR').trim();
-  let msg = (tpl || cfg.waTemplate)
-    .replace(/\{cliente\}/g, cliente)
-    .replace(/\{numero\}/g, numero)
-    .replace(/\{empresa\}/g, empresa);
+  let msg = fillWaTemplate(tpl || cfg.waTemplate, { cliente, numero, empresa });
   // El contacto del cliente vive en el snapshot (clientContact).
   const rawPhone = (entry.snapshot && entry.snapshot.clientContact) || '';
   const phone = normalizeArgPhone(rawPhone);
@@ -6217,6 +6262,11 @@ function sanitizeStateObj(raw) {
   if (!Array.isArray(s.estItems))  s.estItems = [];
   if (!Array.isArray(s.customColors)) s.customColors = [];
   if (s.logo != null && typeof s.logo !== 'string') s.logo = '';
+  // Datos de cobro: texto plano y corto. Se imprimen en el documento del
+  // cliente, así que un backup ajeno no puede meter acá un bloque largo ni
+  // nada que no sea texto.
+  s.coAliasPago    = sanStr(raw.coAliasPago, 100);
+  s.coAliasTitular = sanStr(raw.coAliasTitular, 120);
   return s;
 }
 
@@ -8756,6 +8806,8 @@ function restoreUI() {
   sv('co-whatsapp', S.coWhatsapp);
   sv('co-city', S.coCity);
   sv('co-email', S.coEmail);
+  sv('co-alias-pago', S.coAliasPago);
+  sv('co-alias-titular', S.coAliasTitular);
   sv('co-tech-notes', S.coTechNotes);
   sv('co-footer', S.coFooter);
   sc('show-tech-notes', S.showTechNotes);
@@ -8859,6 +8911,8 @@ function syncFromUI() {
   S.coWhatsapp        = gv('co-whatsapp');
   S.coCity            = gv('co-city');
   S.coEmail           = gv('co-email');
+  S.coAliasPago       = gv('co-alias-pago');
+  S.coAliasTitular    = gv('co-alias-titular');
   S.coTechNotes       = gv('co-tech-notes');
   S.coFooter          = gv('co-footer');
   S.showTechNotes     = gc('show-tech-notes');
@@ -11396,10 +11450,11 @@ function sendCurrentWhatsapp() {
   // variables reemplazadas por los datos del presupuesto actual.
   const cfg = (typeof getFollowupCfg === 'function') ? getFollowupCfg() : FOLLOWUP_DEF;
   const tpl = (cfg.waSendTemplate && cfg.waSendTemplate.trim()) ? cfg.waSendTemplate : FOLLOWUP_DEF.waSendTemplate;
-  const msg = tpl
-    .replace(/\{cliente\}/g, (S.clientName || '').trim())
-    .replace(/\{numero\}/g,  S.quoteNumber || '')
-    .replace(/\{empresa\}/g, (S.coName || '').trim());
+  const msg = fillWaTemplate(tpl, {
+    cliente: (S.clientName || '').trim(),
+    numero:  S.quoteNumber || '',
+    empresa: (S.coName || '').trim(),
+  });
   // Dejamos registro en el historial (igual que al imprimir).
   if (typeof autoSaveToHistory === 'function') autoSaveToHistory();
   const base = phone ? `https://wa.me/${phone}` : 'https://wa.me/';
@@ -14400,6 +14455,33 @@ function _buildDurationHTML(){
   return `<div class="pdur">Tiempo estimado de trabajo: <span class="pdur-val">${esc(d)}</span></div>`;
 }
 
+// Bloque "Cómo pagar": los datos de cobro del titular (Empresa → Mi negocio).
+// A diferencia de "Condiciones de pago" —que se escribe por presupuesto— esto
+// es configuración fija del negocio, así que no se tipea en cada trabajo.
+// Devuelve '' si no hay alias cargado: sin dato no hay sección, igual que
+// duración o notas. `color` opcional pinta el borde en los modos estimativo y
+// riesgo, que arman su HTML sin depender del tema.
+function _buildPagoHTML(color){
+  const alias = (S.coAliasPago || '').trim();
+  if (!alias) return '';
+  const titular = (S.coAliasTitular || '').trim();
+  const style = color ? ` style="color:${color};border-color:${color}"` : '';
+  return `
+    <div class="pcond">
+      <div class="pcond-t"${style}>Cómo pagar</div>
+      <div class="ppago-rows">
+        <div class="ppago-row ppago-alias">
+          <span class="ppago-lbl">Alias / CBU</span>
+          <span class="ppago-val">${esc(alias)}</span>
+        </div>
+        ${titular ? `<div class="ppago-row">
+          <span class="ppago-lbl">Titular</span>
+          <span class="ppago-val">${esc(titular)}</span>
+        </div>` : ''}
+      </div>
+    </div>`;
+}
+
 function _buildWorkPlanHTML(color){
   if (S.showWorkPlan === false) return '';
   const useCustom = !!S.workPlanOverride;
@@ -14526,6 +14608,7 @@ function buildDoc() {
     criteria:     critH,
     observations: obsH,
     payment:      payH,
+    pago:         _buildPagoHTML(),
     validity:     validH,
     notes:        notesH,
   };
@@ -14835,6 +14918,8 @@ function buildRiskDoc() {
       <div class="pcond-txt">${esc(S.paymentConditions).replace(/\n/g,'<br>')}</div>
     </div>` : ''}
 
+    ${_buildPagoHTML(color)}
+
     ${S.showExpiry !== false ? `<div class="pvalid">
       <span>${pdfIcon('warning')} PRESUPUESTO CON ${S.validityDays} DÍAS DE VIGENCIA</span>
       <span class="pvalid-date">Vence el ${fmtD(S.dateExpiry)}</span>
@@ -15032,6 +15117,8 @@ function buildEstDoc() {
     </div>`:''}
 
     ${fotosH}
+
+    ${_buildPagoHTML(color)}
 
     <div class="pest-greeting">
       ${esc(S.docGreeting||'Saludos,')}
