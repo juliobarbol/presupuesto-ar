@@ -104,6 +104,19 @@ extra por evento:
   (`_neFechaSync`). Sin fecha válida no guarda. El disparador fue real: alerta de
   viento el día de una poda agendada. Ver `test/nota-fecha.test.cjs`.
 
+- **Actualizar el pronóstico a mano** (v200). El cache de clima tiene TTL de 3 h
+  y TODOS los caminos automáticos lo respetan (abrir la app, volver del segundo
+  plano, agendar, abrir el panel): dentro de esa ventana no se vuelve a pedir
+  nada. Bien para no golpear la API, mal para el usuario, que veía "hace 2 h" en
+  el pie del panel sin manera de refrescar — justo después de mover un trabajo de
+  día, que es cuando más ganas de mirar el pronóstico hay. Ahora el pie trae
+  **"Actualizar"** (`climaRefrescarAhora` → `climaForceRefresh`), único camino con
+  `{ force:true }`: baja de nuevo TODAS las zonas con trabajos/visitas próximos
+  (una sola llamada en la práctica), repinta Agenda + banner + Historial y deja
+  el pie en "recién actualizado". Sin señal lo dice y no toca lo cacheado.
+  Además, mover una visita de día o de lugar ahora llama a `climaEnsureNota`: el
+  día nuevo puede caer fuera de lo bajado, o el lugar nuevo ser otra zona.
+
 ## Ideas futuras (no comprometidas)
 - Botón "Hoy" también en la vista Agenda (scroll al grupo Hoy).
 - Umbral de "seguimiento reciente" configurable (hoy fijo en 30 días en `renderCalList`).
