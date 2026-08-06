@@ -199,6 +199,8 @@ body{background-color:var(--bg)}
 .save-status{transition:opacity .25s,color .25s}
 .save-status.saving{color:rgba(255,255,255,.85);font-style:italic}
 .save-status.saved{color:rgba(255,255,255,.85)}
+/* Conexión en mal estado: el mismo cartelito del topbar, en ámbar. */
+.save-status.net-mala{color:#fcd34d;font-weight:600}
 .tbtn{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22);color:#fff;padding:5px 12px;border-radius:var(--radius-field);cursor:pointer;font-size:12px;font-family:var(--font-text);font-weight:500;transition:.15s}
 .tbtn:hover{background:rgba(255,255,255,.26)}
 .tbtn-menu{padding:4px 9px;font-size:18px;line-height:1;font-weight:700}
@@ -3207,6 +3209,9 @@ input[type=number]{-moz-appearance:textfield}
 .mapa-su-addr { font-size:12px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .mapa-su-acts { display:flex; flex-direction:column; gap:4px; flex:0 0 auto; }
 .mapa-hint { font-size:12px; color:var(--muted); padding:6px 0; }
+.mapa-neti{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;line-height:1.4;color:#92400e;background:#fef3c7;border:1px solid #fcd34d;border-radius:var(--radius-field);padding:8px 11px;margin-bottom:8px}
+:root[data-theme="dark"] .mapa-neti{color:#fde68a;background:rgba(251,191,36,.12);border-color:rgba(251,191,36,.4)}
+.mapa-neti .btn{flex:none}
 .mapa-error { display:flex; align-items:center; justify-content:center; height:100%; padding:20px; text-align:center; color:var(--muted); font-size:14px; }
 :root[data-theme="dark"] .leaflet-popup-content-wrapper,
 :root[data-theme="dark"] .leaflet-popup-tip { background:var(--card); color:var(--fg,#e5e7eb); }
@@ -4306,6 +4311,10 @@ input[type=number]{-moz-appearance:textfield}
             <button class="btn btn-g btn-sm" id="mapa-cerca-btn" onclick="mapaCercaMio(this)"><svg class="ic"><use href="#i-pin"></use></svg> Cerca mío</button>
           </div>
         </div>
+        <!-- Fondo del mapa no cargado por conexión mala: los TILES son decenas
+             de pedidos y son lo primero que hay que sacrificar. Los pins se
+             dibujan igual (son del navegador, no de la red). -->
+        <p class="mapa-neti" id="mapa-neti" hidden></p>
         <div id="map-canvas"></div>
         <div class="mapa-zonastats" id="mapa-zonastats"></div>
         <div id="mapa-cerca-panel" class="mapa-cerca-panel" hidden></div>
@@ -5594,7 +5603,17 @@ function sched() {
 // Renderiza el badge de estado de guardado con tiempo relativo.
 function _renderSaveStatus() {
   const el = document.getElementById('save-status');
-  if (!el || !_lastSaveAt) return;
+  if (!el) return;
+  // Sin nada guardado todavía el cartelito está vacío, pero el estado de la
+  // red igual tiene que verse (es lo que explica una app que "no carga").
+  if (!_lastSaveAt) {
+    const n0 = (typeof netEtiqueta === 'function') ? netEtiqueta() : '';
+    el.textContent = n0;
+    el.className = 'save-status' + (n0 ? ' net-mala' : '');
+    el.onclick = n0 ? (() => { try { netExplicar(); } catch (_) {} }) : null;
+    el.style.cursor = n0 ? 'pointer' : '';
+    return;
+  }
   const secs = Math.round((Date.now() - _lastSaveAt) / 1000);
   let txt;
   if (secs < 5)       txt = '✓ Guardado';
@@ -5606,8 +5625,18 @@ function _renderSaveStatus() {
     const h = Math.floor(secs / 3600);
     txt = `✓ Guardado · hace ${h}h`;
   }
-  el.textContent = txt;
-  el.className = 'save-status saved';
+  // Estado de la red pegado al guardado: si la conexión está mal, es lo más
+  // útil que puede decir ese rincón del topbar (y explica por qué la app dejó
+  // de pedir cosas). Tocarlo abre la explicación + "Reintentar".
+  const neti = (typeof netEtiqueta === 'function') ? netEtiqueta() : '';
+  // Con la red mal se recorta el "hace X min" del guardado: en el topbar de un
+  // celular no entran las dos cosas, y el estado de la conexión es lo que
+  // explica por qué la app no está trayendo nada.
+  el.textContent = neti ? `✓ Guardado · ${neti}` : txt;
+  el.className = 'save-status saved' + (neti ? ' net-mala' : '');
+  el.onclick = neti ? (() => { try { netExplicar(); } catch (_) {} }) : null;
+  el.style.cursor = neti ? 'pointer' : '';
+  el.title = neti ? 'Tocá para ver el estado de la conexión' : '';
 }
 
 // ─── TOAST ───────────────────────────────────
@@ -6145,7 +6174,7 @@ async function syncPushFollowups(sub) {
       ? getFollowupCfg() : { enabled: false, estados: [], days: 10 };
     const followups = cfg.enabled ? _buildPushFollowups(cfg) : [];
     const expiries = (cfg.enabled && cfg.expiryEnabled) ? _buildPushExpiries(cfg) : [];
-    await fetch(PUSH_WORKER_URL + '/subscribe', {
+    await netFetch(PUSH_WORKER_URL + '/subscribe', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ deviceId: _pushDeviceId(), subscription: subscription.toJSON(), followups, expiries }),
@@ -6184,7 +6213,7 @@ async function pushUnsubscribe() {
   try {
     const deviceId = _pushDeviceId();
     if (PUSH_WORKER_URL) {
-      fetch(PUSH_WORKER_URL + '/subscribe', {
+      netFetch(PUSH_WORKER_URL + '/subscribe', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ deviceId }),
@@ -6232,6 +6261,214 @@ async function initPush() {
     S.pushEnabled = false;
     saveLS();
   }
+}
+
+// ===== js/net.js =====
+// ═══════════════════════════════════════════════════════════════════════════
+// NET.JS — Salud de la conexión: no pelear contra una red que no está.
+//
+// El caso real: el celular se queda sin datos pero sigue "conectado" (la barra
+// marca 4G, el saldo se acabó o estás en un hueco de señal). Los pedidos salen,
+// nunca vuelven, y todo se siente trabado. `navigator.onLine` NO sirve para
+// esto: sigue en true — solo detecta modo avión o wifi caído.
+//
+// Tres piezas, de menos a más importante:
+//
+//   1. LEER LO QUE EL NAVEGADOR YA SABE (Network Information API,
+//      `navigator.connection`): tipo de red efectivo (2g/3g/4g), ida y vuelta
+//      estimada, ancho de banda y si el usuario prendió "Ahorro de datos".
+//      Chrome Android la trae; donde no exista se asume red sana y manda (2).
+//
+//   2. TIMEOUT EN TODO PEDIDO (`netFetch`). Es lo que faltaba: sin timeout, un
+//      fetch en red moribunda se queda esperando sin fin, y de paso deja
+//      trabado el candado del módulo que lo llamó — `CLIMA._fetching` en true
+//      para siempre dejaba el clima muerto por el resto de la sesión.
+//
+//   3. CORTACIRCUITOS: 2 fallos de red seguidos y la conexión se marca CAÍDA
+//      por unos minutos. Mientras dure, lo AUTOMÁTICO (clima, copia a Drive,
+//      sync de Calendar, fondo del mapa) ni lo intenta.
+//
+// Regla de oro: automático ≠ manual. Si el usuario toca un botón se intenta
+// igual, aunque la red esté para el demonio — él sabrá si le conviene esperar,
+// y un éxito cierra el corte al instante. Lo que no se hace es gastarle los
+// pocos kilobytes que le quedan en cosas que no pidió.
+//
+// La app es offline-first: nada de esto le quita funciones. Presupuestar,
+// agendar, ver el historial y generar el PDF no tocan la red.
+
+const NET = {
+  TIMEOUT_MS:       12000,          // corte normal de un pedido
+  TIMEOUT_LENTA_MS: 25000,          // en red declarada lenta, más aire
+  FAILS_ABRE:       2,              // fallos de red seguidos que abren el corte
+  CORTE_MS:         3 * 60 * 1000,  // cuánto dura el corte
+  RTT_LENTA:        1000,           // ms de ida y vuelta: de acá para arriba, lenta
+  DOWN_LENTA:       0.12,           // Mbps: de acá para abajo, lenta
+  _fails: 0,
+  _corteHasta: 0,
+  _avisado: 0,                      // timestamp del último toast (1 por corte)
+};
+
+function _netConn() {
+  try {
+    return navigator.connection || navigator.mozConnection || navigator.webkitConnection || null;
+  } catch (_) { return null; }
+}
+
+// ¿El navegador declara una conexión mala? `saveData` (Ahorro de datos
+// prendido) cuenta como tal: el usuario ya pidió que no se gaste.
+function netEsLenta() {
+  const c = _netConn();
+  if (!c) return false;
+  if (c.saveData) return true;
+  const et = c.effectiveType || '';
+  if (et === 'slow-2g' || et === '2g') return true;
+  if (typeof c.rtt === 'number' && c.rtt >= NET.RTT_LENTA) return true;
+  if (typeof c.downlink === 'number' && c.downlink > 0 && c.downlink < NET.DOWN_LENTA) return true;
+  return false;
+}
+
+// ¿El cortacircuitos está abierto (hubo fallos y todavía no venció)?
+function netCortada() { return Date.now() < NET._corteHasta; }
+
+// Estado de la conexión: 'offline' | 'cortada' | 'lenta' | 'ok'.
+function netEstado() {
+  try { if (navigator.onLine === false) return 'offline'; } catch (_) {}
+  if (netCortada()) return 'cortada';
+  if (netEsLenta()) return 'lenta';
+  return 'ok';
+}
+
+// ¿Puede salir a la red algo que el usuario NO pidió? Solo con red sana.
+// Este es el gate de lo automático PRESCINDIBLE: clima, fondo del mapa,
+// precarga de la librería de Google.
+function netPuedeAuto() { return netEstado() === 'ok'; }
+
+// Gate de lo automático IMPORTANTE: la copia a Drive y la sync de Calendar.
+// Son datos del usuario en una app sin backend — perderlos es mucho peor que
+// gastar unos kilobytes. Por eso a estos NO los frena el "Ahorro de datos"
+// (que es una preferencia de consumo, no una red rota): solo los frena una red
+// que de verdad no está — sin señal, 2G/rtt por el piso o cortacircuitos
+// abierto. Si el backup se frenara solo porque el usuario dejó el Ahorro
+// prendido, volveríamos al peor escenario de esta app: la copia fallando en
+// silencio mientras la pantalla dice "Conectado ✓".
+function netPuedeAutoImportante() {
+  const e = netEstado();
+  if (e === 'offline' || e === 'cortada') return false;
+  const c = _netConn();
+  if (!c) return true;
+  const et = c.effectiveType || '';
+  if (et === 'slow-2g' || et === '2g') return false;
+  if (typeof c.rtt === 'number' && c.rtt >= NET.RTT_LENTA) return false;
+  if (typeof c.downlink === 'number' && c.downlink > 0 && c.downlink < NET.DOWN_LENTA) return false;
+  return true;
+}
+
+// Etiqueta corta para el topbar. '' cuando la red está bien (no molestar).
+function netEtiqueta() {
+  switch (netEstado()) {
+    case 'offline': return 'Sin conexión';
+    case 'cortada': return 'Sin datos';
+    case 'lenta':   return 'Red lenta';
+    default:        return '';
+  }
+}
+
+function _netOk() {
+  const veniaMal = NET._fails > 0 || netCortada();
+  NET._fails = 0;
+  NET._corteHasta = 0;
+  if (veniaMal) netRenderEstado();
+}
+
+function _netFail() {
+  NET._fails++;
+  if (NET._fails >= NET.FAILS_ABRE && !netCortada()) {
+    NET._corteHasta = Date.now() + NET.CORTE_MS;
+    netRenderEstado();
+    // Un aviso por corte: que se entienda que la app dejó de intentar a
+    // propósito, y que eso NO la deja rota.
+    if (Date.now() - NET._avisado > NET.CORTE_MS && typeof toast === 'function') {
+      NET._avisado = Date.now();
+      toast('Parece que no hay datos: la app deja de pedir cosas por unos minutos. Todo lo tuyo sigue funcionando sin conexión.', 'info', 6000);
+    }
+  }
+}
+
+// ÚNICA puerta de salida a internet de la app. `o.timeout` pisa el corte por
+// defecto. Un 404 o un 500 NO cuentan como fallo de red (el server contestó:
+// la conexión anda); sí cuentan el timeout y el error de transporte.
+async function netFetch(url, opts, o) {
+  const ms = (o && o.timeout) || (netEsLenta() ? NET.TIMEOUT_LENTA_MS : NET.TIMEOUT_MS);
+  let ac = null;
+  try { ac = new AbortController(); } catch (_) {}
+  const t = setTimeout(() => { try { if (ac) ac.abort(); } catch (_) {} }, ms);
+  try {
+    const res = await fetch(url, ac ? Object.assign({}, opts || {}, { signal: ac.signal }) : opts);
+    _netOk();
+    return res;
+  } catch (e) {
+    _netFail();
+    throw (e && e.name === 'AbortError')
+      ? new Error('La conexión tardó demasiado (más de ' + Math.max(1, Math.round(ms / 1000)) + ' s)')
+      : e;
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+// Borra el corte y vuelve a intentar lo que hubiera quedado pendiente. Lo usan
+// el botón del aviso y la vuelta de la conexión.
+function netReintentar() {
+  NET._fails = 0;
+  NET._corteHasta = 0;
+  netRenderEstado();
+  try { if (typeof climaRefresh === 'function') climaRefresh(); } catch (_) {}
+  try {
+    if (typeof GDRIVE !== 'undefined' && GDRIVE._dirty &&
+        typeof gdriveConfigured === 'function' && gdriveConfigured() && gdriveConnected()) {
+      clearTimeout(GDRIVE._timer); gdriveAutoUpload();
+    }
+  } catch (_) {}
+  try {
+    if (typeof GCAL !== 'undefined' && GCAL._dirty &&
+        typeof gcalConfigured === 'function' && gcalConfigured() && gcalConnected()) {
+      clearTimeout(GCAL._timer); gcalAutoSync();
+    }
+  } catch (_) {}
+}
+
+// El estado de la red se muestra pegado al "✓ Guardado" del topbar: es el
+// único cartelito permanente que ya existe, y ahí se lee sin robar espacio.
+// Guardado y conexión no compiten — guardar es local y siempre funciona.
+function netRenderEstado() {
+  try { if (typeof _renderSaveStatus === 'function') _renderSaveStatus(); } catch (_) {}
+}
+
+// Explica el estado y ofrece reintentar. Se abre tocando el cartelito.
+async function netExplicar() {
+  const est = netEstado();
+  if (est === 'ok') { toast('La conexión está bien', 'ok', 2000); return; }
+  const txt = {
+    offline: 'El teléfono no tiene conexión. La app funciona igual: presupuestos, agenda, historial y PDF no necesitan internet. Lo que quede pendiente (copia a Drive, Calendar) se sube solo cuando vuelva la señal.',
+    cortada: 'Los últimos pedidos no llegaron a destino, así que la app dejó de intentar por unos minutos para no trabarse ni gastarte datos. Todo lo tuyo sigue funcionando sin conexión.',
+    lenta:   'El teléfono informa una conexión muy lenta (o tenés el Ahorro de datos prendido). La app no va a pedir nada por su cuenta —clima, copia a Drive, fondo del mapa— para no trabarse. Los botones que toques vos igual funcionan.',
+  }[est];
+  const ok = await confirmDlg(netEtiqueta(), txt, 'Reintentar ahora', 'btn-p');
+  if (ok) { netReintentar(); toast('Reintentando…', 'info', 2000); }
+}
+
+// Enganches: cambios de tipo de red y de conexión. Cuando el navegador avisa
+// que volvió una red buena, se cierra el corte y se retoma lo pendiente.
+function netInit() {
+  const c = _netConn();
+  if (c && typeof c.addEventListener === 'function') {
+    c.addEventListener('change', () => {
+      if (!netEsLenta() && netCortada()) netReintentar();
+      else netRenderEstado();
+    });
+  }
+  window.addEventListener('online',  () => { netReintentar(); });
+  window.addEventListener('offline', () => { netRenderEstado(); });
 }
 
 // ===== js/sanitize.js =====
@@ -13373,6 +13610,10 @@ function loadGIS(){
 // primera conexión de Calendar arranca SIEMPRE con la librería fría.
 function preloadGIS(){
   if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+  // Con red lenta o caída no se precarga: es un script de ~90 KB de un tercero
+  // que nadie pidió todavía. Si el usuario toca "Conectar", gcalConnect ya
+  // sabe pedir un segundo toque mientras la librería llega.
+  if (typeof netPuedeAuto === 'function' && !netPuedeAuto()) return;
   if (typeof gdriveConfigured === 'function' && !gdriveConfigured()) return;
   loadGIS().then(() => {
     // Armar los clients también es parte del costo del primer tap (initTokenClient
@@ -13446,7 +13687,7 @@ function gdriveGetToken(opts){
 // (about.get) y nunca rompe si falla.
 async function gdriveRememberEmail(token){
   try {
-    const r = await fetch('https://www.googleapis.com/drive/v3/about?fields=user(emailAddress)', {
+    const r = await netFetch('https://www.googleapis.com/drive/v3/about?fields=user(emailAddress)', {
       headers: { Authorization: 'Bearer ' + token } });
     if (!r.ok) return;
     const j = await r.json();
@@ -13458,7 +13699,7 @@ async function gdriveRememberEmail(token){
 async function gdriveFindFile(token){
   const q = encodeURIComponent(`name='${GDRIVE.FILE}'`);
   const url = `https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=${q}&fields=files(id,modifiedTime)`;
-  const r = await fetch(url, { headers: { Authorization: 'Bearer ' + token } });
+  const r = await netFetch(url, { headers: { Authorization: 'Bearer ' + token } });
   if (!r.ok) throw new Error('Drive list ' + r.status);
   const j = await r.json();
   return (j.files && j.files[0]) || null;
@@ -13470,7 +13711,7 @@ async function gdriveUpload(){
   const body = JSON.stringify(buildBackupObject());
   const existing = await gdriveFindFile(token);
   if (existing) {
-    const r = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${existing.id}?uploadType=media`, {
+    const r = await netFetch(`https://www.googleapis.com/upload/drive/v3/files/${existing.id}?uploadType=media`, {
       method: 'PATCH', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body });
     if (!r.ok) throw new Error('Drive update ' + r.status);
   } else {
@@ -13479,7 +13720,7 @@ async function gdriveUpload(){
     const multipart =
       `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${meta}\r\n` +
       `--${boundary}\r\nContent-Type: application/json\r\n\r\n${body}\r\n--${boundary}--`;
-    const r = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+    const r = await netFetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
       method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': `multipart/related; boundary=${boundary}` }, body: multipart });
     if (!r.ok) throw new Error('Drive create ' + r.status);
   }
@@ -13492,7 +13733,7 @@ async function gdriveDownload(){
   const token = await gdriveGetToken();
   const f = await gdriveFindFile(token);
   if (!f) return null;
-  const r = await fetch(`https://www.googleapis.com/drive/v3/files/${f.id}?alt=media`, { headers: { Authorization: 'Bearer ' + token } });
+  const r = await netFetch(`https://www.googleapis.com/drive/v3/files/${f.id}?alt=media`, { headers: { Authorization: 'Bearer ' + token } });
   if (!r.ok) throw new Error('Drive get ' + r.status);
   return await r.json();
 }
@@ -13631,6 +13872,12 @@ function scheduleGdriveBackup(){
   GDRIVE._timer = setTimeout(() => {
     // Sin señal: dejamos el cambio pendiente; se sube al volver la conexión.
     if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+    // Red lenta o caída: tampoco. El backup queda pendiente (_dirty) y sale
+    // solo cuando la conexión se recupere — subirlo por un caño tapado deja
+    // la app trabada y encima suele fallar igual. Ojo: el gate es el de lo
+    // IMPORTANTE (ver netPuedeAutoImportante), no el del clima: el "Ahorro de
+    // datos" prendido NO puede dejarte sin copia de seguridad.
+    if (typeof netPuedeAutoImportante === 'function' && !netPuedeAutoImportante()) return;
     gdriveAutoUpload();
   }, 45000);
 }
@@ -13820,7 +14067,7 @@ function gcalGetToken(opts){
 // scope `email`. Nunca rompe si falla.
 async function gcalRememberEmail(token){
   try {
-    const r = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { Authorization: 'Bearer ' + token } });
+    const r = await netFetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { Authorization: 'Bearer ' + token } });
     if (!r.ok) return;
     const j = await r.json();
     if (j && j.email) { try { localStorage.setItem(LS.GCAL_EMAIL, j.email); } catch(_){} }
@@ -13842,7 +14089,7 @@ async function _gcalHttpErr(r, what){
 async function gcalEnsureCalendar(token){
   let id = ''; try { id = localStorage.getItem(LS.GCAL_ID) || ''; } catch(_){}
   if (id) {
-    const r = await fetch('https://www.googleapis.com/calendar/v3/calendars/' + encodeURIComponent(id),
+    const r = await netFetch('https://www.googleapis.com/calendar/v3/calendars/' + encodeURIComponent(id),
       { headers: { Authorization: 'Bearer ' + token } });
     if (r.ok) return id;
     if (r.status !== 404 && r.status !== 410) throw await _gcalHttpErr(r, 'cal get');
@@ -13850,7 +14097,7 @@ async function gcalEnsureCalendar(token){
   }
   let tz = 'America/Argentina/Cordoba';
   try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || tz; } catch(_){}
-  const r = await fetch('https://www.googleapis.com/calendar/v3/calendars', {
+  const r = await netFetch('https://www.googleapis.com/calendar/v3/calendars', {
     method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
     body: JSON.stringify({ summary: GCAL.CAL_NAME, description: 'Agenda de Presupuestos AR: trabajos, recontactos, vencimientos, seguimientos y notas. Se sincroniza automáticamente desde la app.', timeZone: tz }),
   });
@@ -13884,7 +14131,7 @@ async function gcalListEvents(token, calId){
     u.searchParams.set('singleEvents', 'true');
     u.searchParams.set('timeMin', _gcalTimeMin());
     if (pageToken) u.searchParams.set('pageToken', pageToken);
-    const r = await fetch(u.toString(), { headers: { Authorization: 'Bearer ' + token } });
+    const r = await netFetch(u.toString(), { headers: { Authorization: 'Bearer ' + token } });
     if (!r.ok) throw await _gcalHttpErr(r, 'events list');
     const j = await r.json();
     (j.items || []).forEach(it => {
@@ -13967,17 +14214,17 @@ async function gcalSync(){
     for (const pk of Object.keys(desired)) {
       const d = desired[pk], ex = existing[pk];
       if (!ex) {
-        const r = await fetch(base, { method: 'POST', headers: H, body: JSON.stringify(d.body) });
+        const r = await netFetch(base, { method: 'POST', headers: H, body: JSON.stringify(d.body) });
         if (!r.ok) { fallo = fallo || await _gcalHttpErr(r, 'event insert'); continue; }
       } else if (ex.hash !== d.hash) {
-        const r = await fetch(base + '/' + encodeURIComponent(ex.id), { method: 'PATCH', headers: H, body: JSON.stringify(d.body) });
+        const r = await netFetch(base + '/' + encodeURIComponent(ex.id), { method: 'PATCH', headers: H, body: JSON.stringify(d.body) });
         if (!r.ok) { fallo = fallo || await _gcalHttpErr(r, 'event patch'); continue; }
       }
     }
     // Borrar lo que ya no está en la agenda (nota borrada, fecha cambiada, etc.).
     for (const pk of Object.keys(existing)) {
       if (!desired[pk]) {
-        await fetch(base + '/' + encodeURIComponent(existing[pk].id), { method: 'DELETE', headers: { Authorization: 'Bearer ' + token } });
+        await netFetch(base + '/' + encodeURIComponent(existing[pk].id), { method: 'DELETE', headers: { Authorization: 'Bearer ' + token } });
       }
     }
     // Un evento que no se pudo crear NO debe cortar la pasada: antes el primer
@@ -14006,6 +14253,7 @@ function scheduleGcalSync(){
   clearTimeout(GCAL._timer);
   GCAL._timer = setTimeout(() => {
     if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+    if (typeof netPuedeAutoImportante === 'function' && !netPuedeAutoImportante()) return;   // ver scheduleGdriveBackup
     gcalAutoSync();
   }, 45000);
 }
@@ -15915,6 +16163,49 @@ function entryLatLng(e) {
 
 function _mapaDateOf(e) { return (((e.snapshot && e.snapshot.dateIssue) || e.savedAt || '') + '').slice(0, 10); }
 
+// ─── FONDO DEL MAPA (tiles) ──────────────────────────────────
+// Los tiles de OpenStreetMap son DECENAS de pedidos por pantalla: es lo más
+// caro que hace la app y lo primero que hay que sacrificar cuando la red no da.
+// Con conexión mala el mapa se abre igual —los pins, las zonas y los filtros
+// no necesitan internet— y aparece un aviso con "Cargar el fondo igual" por si
+// el usuario prefiere esperar.
+let _mapaTiles = null;
+
+function _mapaAddTiles(L) {
+  const aviso = document.getElementById('mapa-neti');
+  if (!_mapa || _mapaTiles) return;
+  if (typeof netPuedeAuto === 'function' && !netPuedeAuto()) {
+    if (aviso) {
+      const est = (typeof netEtiqueta === 'function') ? netEtiqueta().toLowerCase() : 'conexión lenta';
+      aviso.innerHTML = `<span>Fondo del mapa sin cargar (${esc(est)}): los pins y las zonas se ven igual.</span>`
+        + `<button type="button" class="btn btn-g btn-sm" onclick="mapaCargarFondo()">Cargar el fondo igual</button>`;
+      aviso.hidden = false;
+    }
+    return;
+  }
+  _mapaTiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap',
+  }).addTo(_mapa);
+  if (aviso) aviso.hidden = true;
+}
+
+// Botón del aviso: el usuario PIDE el fondo, así que se carga aunque la red
+// esté mal (y de paso se levanta el corte, por si ya se recuperó).
+function mapaCargarFondo() {
+  if (typeof netReintentar === 'function') netReintentar();
+  ensureLeaflet().then((L) => {
+    const aviso = document.getElementById('mapa-neti');
+    if (aviso) aviso.hidden = true;
+    if (_mapa && !_mapaTiles) {
+      _mapaTiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap',
+      }).addTo(_mapa);
+    }
+  }).catch(() => {});
+}
+
 // Init lazy: primera entrada a la pestaña carga Leaflet, crea el mapa y dibuja.
 function mapaInit() {
   const canvas = document.getElementById('map-canvas');
@@ -15923,14 +16214,13 @@ function mapaInit() {
     if (!_mapa) {
       mapaBuildFilters();
       _mapa = L.map(canvas, { zoomControl: true }).setView([-34.0, -64.0], 4);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '&copy; OpenStreetMap',
-      }).addTo(_mapa);
       _mapaLayer = L.layerGroup().addTo(_mapa);
       _mapa.on('moveend', mapaUpdateZonaStats);
       _mapa.on('click', mapaOnMapClick);
     }
+    // Fuera del if: si el mapa se creó sin fondo por mala señal, al volver a
+    // entrar con red sana el fondo aparece solo (la función es idempotente).
+    _mapaAddTiles(L);
     mapaRefresh();
     // El contenedor estaba oculto al crearse; Leaflet necesita recalcular.
     setTimeout(() => { if (_mapa) _mapa.invalidateSize(); }, 60);
@@ -16438,6 +16728,10 @@ async function climaEnsureNota(n, cb) {
 async function _climaFetchZonas(zonas, opts) {
   if (CLIMA._fetching || navigator.onLine === false) return false;
   const force = !!(opts && opts.force);
+  // Sin que el usuario lo pida, no se sale a la red si la conexión está mal:
+  // el pronóstico es lo MENOS urgente que hace la app, y en una red moribunda
+  // esos kilobytes son los que hacen que todo lo demás no entre.
+  if (!force && typeof netPuedeAuto === 'function' && !netPuedeAuto()) return false;
   const cache = _climaCache();
   const ahora = Date.now();
   const pendientes = Object.keys(zonas)
@@ -16461,7 +16755,7 @@ async function _climaFetchZonas(zonas, opts) {
           + '&daily=weather_code,precipitation_probability_max,precipitation_sum,temperature_2m_max,temperature_2m_min,wind_speed_10m_max,wind_gusts_10m_max,uv_index_max'
           + '&hourly=temperature_2m,precipitation_probability,precipitation,weather_code,wind_gusts_10m,uv_index'
           + '&timezone=auto&forecast_days=16&forecast_hours=72';
-        const res = await fetch(url);
+        const res = await netFetch(url);
         if (!res.ok) continue;
         const j = await res.json();
         const d = j && j.daily;
@@ -18857,8 +19151,12 @@ window.addEventListener('DOMContentLoaded', async () => {
   // día al abrir, si hay trabajos agendados para hoy.
   if (typeof maybeShowMorningBanner === 'function') maybeShowMorningBanner();
 
+  // Salud de la conexión: escuchar los cambios de red y dejar el indicador del
+  // topbar al día. Va ANTES del clima: es el gate de todo lo automático.
+  if (typeof netInit === 'function') { netInit(); netRenderEstado(); }
+
   // Clima: bajar el pronóstico de los días con trabajos agendados (silencioso,
-  // solo con señal) y avisar si viene lluvia para una poda de hoy o mañana.
+  // solo con señal SANA) y avisar si viene lluvia para una poda de hoy o mañana.
   if (typeof climaRefresh === 'function') climaRefresh();
 
   // Importar de contactos: mostrar el botón solo si el dispositivo soporta

@@ -13,7 +13,7 @@
 //
 //  Para forzar actualizacion tras un deploy: subir el CACHE_VERSION.
 
-const CACHE_VERSION = 'presupuesto-v200';
+const CACHE_VERSION = 'presupuesto-v201';
 const APP_SHELL = [
   './',
   './index.html',
@@ -80,13 +80,37 @@ function cachePut(req, res) {
   return res;
 }
 
+// -- Helper: la red esta para el demonio? ---------------------
+// El caso que importa: el telefono se quedo sin datos pero sigue
+// "conectado". navigator.onLine dice true igual; la Network Information
+// API (que en el worker tambien esta) si lo sabe. Con saveData prendido
+// vale lo mismo: el usuario ya pidio que no se gaste.
+function swNetLenta() {
+  try {
+    const c = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    if (!c) return false;
+    if (c.saveData) return true;
+    const et = c.effectiveType || '';
+    if (et === 'slow-2g' || et === '2g') return true;
+    if (typeof c.rtt === 'number' && c.rtt >= 1000) return true;
+    return false;
+  } catch (e) { return false; }
+}
+
 // -- Helper: fetch con timeout --------------------------------
 // Evita que la apertura quede colgada esperando una red lenta: si no
-// responde a tiempo, caemos a la cache.
+// responde a tiempo, caemos a la cache. ABORTA el pedido al vencer: si
+// solo se rechaza la promesa, la descarga sigue viva chupando el poco
+// ancho de banda que queda — justo lo que hace que todo lo demas no entre.
 function fetchWithTimeout(req, ms) {
   return new Promise((resolve, reject) => {
-    const t = setTimeout(() => reject(new Error('timeout')), ms);
-    fetch(req).then(
+    let ac = null;
+    try { ac = new AbortController(); } catch (e) {}
+    const t = setTimeout(() => {
+      try { if (ac) ac.abort(); } catch (e) {}
+      reject(new Error('timeout'));
+    }, ms);
+    fetch(ac ? new Request(req, { signal: ac.signal }) : req).then(
       (r) => { clearTimeout(t); resolve(r); },
       (e) => { clearTimeout(t); reject(e); }
     );
@@ -130,8 +154,12 @@ self.addEventListener('fetch', (event) => {
   // offline se usa la cacheada — nunca queda colgada ni rota.
   if (req.mode === 'navigate') {
     event.respondWith((async () => {
+      // Con red moribunda no tiene sentido esperar 3,5 s a una version
+      // nueva que no va a llegar: se corta en 1,2 s y se abre de la cache.
+      // Es la diferencia entre "la app tarda un monton en abrir" y "abre".
+      const ms = swNetLenta() ? 1200 : 3500;
       try {
-        const fresh = await fetchWithTimeout(req, 3500);
+        const fresh = await fetchWithTimeout(req, ms);
         cachePut('./index.html', fresh);
         return fresh;
       } catch (e) {
@@ -143,8 +171,12 @@ self.addEventListener('fetch', (event) => {
   }
 
   // Resto del mismo origen: cache-first + revalidacion en segundo plano.
+  // Con red mala NO se revalida: lo cacheado se sirve tal cual y no se
+  // gastan pedidos de fondo (fuentes, iconos, Leaflet) que compiten con lo
+  // que el usuario si esta esperando.
   event.respondWith((async () => {
     const cached = await caches.match(req);
+    if (cached && swNetLenta()) return cached;
     const network = fetch(req)
       .then((res) => cachePut(req, res))
       .catch(() => cached);

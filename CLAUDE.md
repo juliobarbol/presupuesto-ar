@@ -15,7 +15,7 @@
 
 ## Estructura de archivos
 - `index.html` — **toda la app** (markup + `<style>` + `<script>`).
-- `sw.js` — Service Worker (offline + actualizaciones). **`CACHE_VERSION` actual: `presupuesto-v200`**.
+- `sw.js` — Service Worker (offline + actualizaciones). **`CACHE_VERSION` actual: `presupuesto-v201`**.
 - `manifest.webmanifest`, `*.png` — PWA (instalación, iconos).
 - `push-worker/` — Cloudflare Worker **opcional** para notificaciones push de seguimiento (avisos con la app cerrada). No es parte del PWA shell; se despliega aparte. Ver `docs/push-setup.md`. La app es inerte a esto hasta rellenar `PUSH_WORKER_URL` / `PUSH_VAPID_KEY` en `index.html`.
 
@@ -31,6 +31,7 @@ grep -n "===== js/" index.html
 | Sección | De qué se ocupa |
 |---|---|
 | `js/state.js` | Estado global `S`, defaults `DEF`, claves `LS`, helpers (fechas, dinero, `esc`), `saveLS`/`loadLS`, `safeSetLS`, toasts, totales |
+| `js/net.js` | **Salud de la conexión.** El caso que lo pidió: el celular se queda sin datos pero sigue "conectado" (`navigator.onLine` en `true`), los pedidos salen, nunca vuelven y la app se siente trabada. Tres piezas: (1) `netEsLenta()` lee la **Network Information API** (`navigator.connection`: `effectiveType`, `rtt`, `downlink`, `saveData`); (2) **`netFetch()` es la única puerta de salida a internet** — `AbortController` con timeout (12 s, 25 s en red lenta), porque un fetch sin timeout dejaba trabado el candado del módulo que lo llamó (`CLIMA._fetching` en `true` mataba el clima por el resto de la sesión); (3) **cortacircuitos**: 2 fallos de red seguidos marcan la conexión CAÍDA por 3 min (`netEstado()` → `offline`/`cortada`/`lenta`/`ok`). Regla: **automático ≠ manual** — `netPuedeAuto()` frena lo prescindible que el usuario no pidió (clima, tiles del mapa, `preloadGIS`), pero cualquier botón que él toque sale igual y un éxito cierra el corte. `netPuedeAutoImportante()` es el gate de Drive/Calendar: **`saveData` NO los frena** (es una preferencia de consumo, no una red rota; el Ahorro de datos prendido no puede dejarte sin copia). Un HTTP 4xx/5xx no cuenta como fallo de red: el server contestó. El estado se ve en el topbar junto al "✓ Guardado" y se toca para explicarlo/reintentar (`netExplicar`/`netReintentar`). Ver `docs/red-lenta.md` y `test/net-salud.test.cjs` |
 | `js/sanitize.js` | **Validación de todo lo que entra desde afuera** (backup `.json` de un colega, copia de Drive, clave de `localStorage` manipulada). `sanitizeBackup`/`sanitizeHistory`/`sanitizeNotes`/`sanitizeNotifLog`/`sanitizeFacturas`/`sanitizeStateObj`/`sanitizeImport` + helpers (`sanStr`/`sanEnum`/`sanISODate`/`sanNumId`/`sanTextId`) y listas blancas (`PDF_THEMES`, `PDF_FONTS`, `NOTE_TIPOS`). `migrateSanitizeStored()` normaliza al arrancar lo que ya estuviera guardado. **Regla: nada entra al estado ni a `localStorage` sin pasar por acá** — cerró el XSS por backup ajeno y el caso de la app rota por un `history` que no era array. Ver `docs/auditoria-2026-07-24.md` (C1/C3/A2) y `test/security.test.cjs` |
 | `js/photos.js` | Almacén de fotos en **IndexedDB** (`pq_photos`). `item.photo` guarda un ID `p_...`; el binario vive en IDB. `savePhoto`/`getPhotoData`/`hydratePhotoCache`/`migrateInlinePhotosToIDB`/`restorePhotosFromBackup` |
 | `js/clients.js` | DBs de clientes, especies y servicios (autocompletar) |
@@ -58,6 +59,7 @@ El CSS vive en el `<style>` (líneas ~16–1711). Hay dos bloques de estilos del
 - **Total del estimativo:** siempre vía `calcEstTotals(estItems)` (trabajos a precio plano + servicios × cantidad, en centavos). La usan la barra de totales, `buildEstDoc()` y `autoSaveToHistory()`. No recalcularlo a mano en ningún lado: ese fue el origen de C2 (el PDF decía $710.000 y el historial guardaba $470.000).
 - **Fechas en LOCAL, no UTC:** usar `today()` / `toLocalISODate()` / `calcExpiry()`. Nunca `toISOString().slice(0,10)` para fechas de calendario (corre el día en Argentina).
 - **Fotos en IndexedDB, no en localStorage:** `item.photo` guarda un ID `p_...`; el dataURL vive en IDB (`pq_photos`). Para mostrar una foto resolvé con `getPhotoData(item.photo)` y validá con `safeImgSrc()`. Para guardar una foto nueva usá `savePhoto(dataUrl)` (devuelve el ID, o el dataURL embebido si IDB falla). El caché en memoria se hidrata al iniciar con `hydratePhotoCache()` (antes del primer render). Las fotos viejas embebidas (`data:image/...`) siguen funcionando y se migran a IDB con `migrateInlinePhotosToIDB()` al cargar. El backup completo incluye las fotos referenciadas (`photos`) para sobrevivir un cambio de dispositivo.
+- **Nada sale a internet sin `netFetch()`:** todo `fetch` a un tercero (Drive, Calendar, Open-Meteo, push) va por ahí — es lo que le pone timeout y alimenta el cortacircuitos. Un `fetch()` pelado vuelve a traer el bug de origen: el pedido colgado que traba el módulo. Y antes de disparar algo **que el usuario no pidió**, preguntar `netPuedeAuto()` (o `netPuedeAutoImportante()` si son datos suyos, como el backup). Ver `js/net.js`.
 - **XSS:** escapar SIEMPRE los datos del usuario con `esc()` antes de meterlos en `innerHTML`.
 - **Datos importados:** un backup ajeno es input NO confiable. Todo lo que venga de un archivo, de Drive o de `localStorage` pasa por `js/sanitize.js` ANTES de tocar el estado. Los ids se interpolan dentro de atributos (`onclick="fn(ID)"`), así que `esc()` no alcanza: hay que validarlos (o usar `data-*` + listener delegado, como el panel de la campanita).
 - **3 modos de presupuesto:** Normal, Estimativo (fotos) y Riesgo (informe ISA). `buildDoc()` deriva a `buildEstDoc()`/`buildRiskDoc()` según `S.isEstimative`/`S.isRisk`.
@@ -90,7 +92,7 @@ El CSS vive en el `<style>` (líneas ~16–1711). Hay dos bloques de estilos del
 > versión nueva la próxima vez que abran la app con conexión.
 
 1. Desarrollar en la rama de trabajo (`claude/...`), no en `main`.
-2. **Subir `CACHE_VERSION` en `sw.js`** en cada cambio que se despliegue (si no, los dispositivos siguen con la versión vieja en caché). Formato: `presupuesto-vNN`. **Versión actual: v200**.
+2. **Subir `CACHE_VERSION` en `sw.js`** en cada cambio que se despliegue (si no, los dispositivos siguen con la versión vieja en caché). Formato: `presupuesto-vNN`. **Versión actual: v201**.
 3. Si agregás un archivo nuevo (ej. otro `.js` o `.css`), **agregarlo a `APP_SHELL` en `sw.js`** o se rompe el offline.
 4. **Mergear a `main`** → Cloudflare despliega solo.
 
