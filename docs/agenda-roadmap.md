@@ -86,12 +86,23 @@ extra por evento:
   Sale a Google Calendar ("Visita: …") y al `.ics` (pendientes). El selector de
   tipo en el modal de edición es un **segmentado de dos botones** (`.ne-segment`,
   `_neSetTipo`/`_neGetTipo`/`_neSelTipo`), no un `<select>`: dentro del modal
-  (`z-index:2000`) el popup del select personalizado (`.csel-pop`, `z-index:1201`)
-  abría detrás del overlay (v166). Al guardar una nota/visita con cliente + datos,
+  (`z-index:2000`) el popup del select personalizado (`.csel-pop`) abría detrás
+  del overlay (v166). Eso se resolvió de raíz en v199 subiendo `.csel-backdrop`/
+  `.csel-pop`/`.cal-pop` a 2400/2401 —arriba de TODOS los overlays, abajo de los
+  toasts—, pero el segmentado se queda: es más rápido de tocar que un desplegable. Al guardar una nota/visita con cliente + datos,
   se guarda/enriquece la **ficha del cliente** en la DB (`saveNoteClientToDB`):
   teléfono + ubicación (la `ubic` de la nota → `maplink` del cliente); crea el
   cliente si no existe y completa solo los campos vacíos si ya existe, sin pisar
   lo ya cargado (v167).
+
+- **Mover una nota/visita de día desde su propio modal** (v199). "Editar nota"
+  tenía todo menos lo más obvio: la fecha. Para correr un compromiso había que
+  borrar la nota y volver a crearla en el día nuevo. Ahora el modal trae el campo
+  **Fecha** (datepicker propio) con atajos **− 1 día / + 1 día / + 1 semana / Hoy**
+  (`_neFechaMover`, relativos a la fecha ELEGIDA para poder encadenarlos; `hoy` es
+  el único absoluto) y un aviso debajo que dice de dónde a dónde se mueve
+  (`_neFechaSync`). Sin fecha válida no guarda. El disparador fue real: alerta de
+  viento el día de una poda agendada. Ver `test/nota-fecha.test.cjs`.
 
 ## Ideas futuras (no comprometidas)
 - Botón "Hoy" también en la vista Agenda (scroll al grupo Hoy).

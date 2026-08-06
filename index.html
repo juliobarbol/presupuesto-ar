@@ -277,8 +277,11 @@ body.modal-open #main{overflow:hidden}
 #confirm-box .cbtns{display:flex;gap:8px;justify-content:flex-end}
 
 /* Diálogo de agenda (fecha del trabajo de un presupuesto aceptado).
-   z-index MENOR que .csel-backdrop/.cal-pop (1200/1201) a propósito:
-   el calendario del datepicker se abre POR ENCIMA de este modal. */
+   z-index MENOR que .csel-backdrop/.cal-pop (2400/2401) a propósito:
+   el calendario del datepicker se abre POR ENCIMA de este modal. Esos dos
+   popovers están por encima de TODOS los overlays (el más alto es 2300) y por
+   debajo de los toasts (9000): son transitorios y siempre los abre el usuario
+   desde un control del modal que esté arriba. */
 #agenda-overlay{display:none;position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(0,0,0,.45);z-index:1100;align-items:center;justify-content:center}
 #agenda-overlay.open{display:flex}
 #agenda-box{background:var(--card);border-radius:var(--radius-box);padding:24px;width:400px;max-width:92vw;box-shadow:0 20px 60px rgba(0,0,0,.25)}
@@ -430,8 +433,8 @@ body.modal-open #main{overflow:hidden}
 .hacts .csel{width:auto;flex:0 0 auto}
 .hacts .csel-btn{font-weight:700;padding:6px 30px 6px 10px;border-radius:var(--radius-box);background-position:right 10px center}
 /* Popover de opciones */
-.csel-backdrop{position:fixed;inset:0;z-index:1200;background:transparent}
-.csel-pop{position:fixed;z-index:1201;background:var(--card);border:1px solid var(--border);
+.csel-backdrop{position:fixed;inset:0;z-index:2400;background:transparent}
+.csel-pop{position:fixed;z-index:2401;background:var(--card);border:1px solid var(--border);
   border-radius:var(--radius-box);box-shadow:0 12px 34px rgba(0,0,0,.20);
   padding:5px;max-height:min(320px,60vh);overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
 .csel-opt{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:var(--radius-field);
@@ -453,7 +456,7 @@ body.modal-open #main{overflow:hidden}
 /* Vencimiento: display de solo lectura (se calcula solo, no abre calendario). */
 .cdate-btn.cdate-ro{cursor:default;background-color:var(--surface-2)}
 .cdate-btn.cdate-ro .cdate-ico{opacity:.5}
-.cal-pop{position:fixed;z-index:1201;background:var(--card);border:1px solid var(--border);
+.cal-pop{position:fixed;z-index:2401;background:var(--card);border:1px solid var(--border);
   border-radius:var(--radius-box);box-shadow:0 12px 34px rgba(0,0,0,.20);
   padding:12px;width:300px;max-width:calc(100vw - 16px);max-height:calc(100vh - 16px);overflow:auto;overscroll-behavior:contain}
 .cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
@@ -2130,11 +2133,23 @@ input[type=number]{-moz-appearance:textfield}
 /* Modal de edición de nota */
 #note-edit-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2000;align-items:center;justify-content:center}
 #note-edit-overlay.open{display:flex}
-#note-edit-box{background:var(--card);border-radius:var(--radius-box);padding:22px;width:400px;max-width:92vw;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+/* max-height + scroll: con el campo de fecha el modal creció y en pantallas
+   chicas (o con el teclado abierto) los botones Cancelar/Guardar quedaban
+   fuera de la vista. */
+#note-edit-box{background:var(--card);border-radius:var(--radius-box);padding:22px;width:400px;max-width:92vw;max-height:92vh;overflow-y:auto;overscroll-behavior:contain;box-shadow:0 20px 60px rgba(0,0,0,.25)}
 #note-edit-box h4{font-family:var(--font-display);font-size:17px;margin-bottom:14px;color:var(--text)}
 .ne-field{margin-bottom:14px}
 .ne-field>label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:5px}
 #note-edit-box .cbtns{display:flex;gap:8px;justify-content:flex-end;margin-top:4px}
+/* Fecha del recordatorio: el input usa el calendario propio (.cdate) y abajo
+   van los atajos para correr el compromiso sin abrir el calendario. */
+#agc-edit-fecha{width:100%}
+#note-edit-box .cdate{display:block}
+.ne-datequick{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}
+.ne-qbtn{flex:1 1 auto;padding:7px 10px;font-family:var(--font-text);font-size:12.5px;font-weight:600;color:var(--text-2);background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-field);cursor:pointer;white-space:nowrap}
+.ne-qbtn:active{background:var(--accent-light)}
+.ne-datemsg{margin-top:6px;font-size:12px;color:var(--muted);line-height:1.4}
+.ne-datemsg.is-moved{color:var(--accent-fg);font-weight:600}
 /* Selector de tipo (Nota / Visita): segmentado de dos botones en vez de un
    <select> nativo, que dentro del modal abría su lista detrás del overlay. Cada
    opción se tiñe con el color de su concepto cuando está activa. */
@@ -4475,6 +4490,19 @@ input[type=number]{-moz-appearance:textfield}
     <div class="ne-field">
       <label for="agc-edit-text">Recordatorio</label>
       <input type="text" id="agc-edit-text" maxlength="140" placeholder="Texto de la nota" onkeydown="if(event.key==='Enter'){calSaveNoteEdit();}">
+    </div>
+    <!-- Fecha: se puede mover el compromiso a otro día sin borrar y rehacer la
+         nota (ej. lluvia o viento fuerte el día del trabajo). -->
+    <div class="ne-field">
+      <label for="agc-edit-fecha">Fecha</label>
+      <input type="date" id="agc-edit-fecha" aria-label="Fecha del recordatorio" oninput="_neFechaSync()">
+      <div class="ne-datequick">
+        <button type="button" class="ne-qbtn" onclick="_neFechaMover(-1)" title="Un día antes">− 1 día</button>
+        <button type="button" class="ne-qbtn" onclick="_neFechaMover(1)" title="Un día después">+ 1 día</button>
+        <button type="button" class="ne-qbtn" onclick="_neFechaMover(7)" title="Una semana después">+ 1 semana</button>
+        <button type="button" class="ne-qbtn" onclick="_neFechaMover('hoy')" title="Pasar a hoy">Hoy</button>
+      </div>
+      <p class="ne-datemsg" id="agc-edit-fecha-msg"></p>
     </div>
     <div class="ne-field">
       <label>Tipo</label>
@@ -17730,10 +17758,12 @@ async function calCrearPresupuestoDesdeVisita(id) {
 // Permite editar el texto de una nota ya creada y agregarle/cambiar el contacto
 // (cliente + teléfono) para el chat directo.
 let _editNoteId = null;
+let _editNoteFecha = null;   // fecha original, para avisar cuándo se está moviendo
 function calEditNote(id) {
   const n = getNotes().find(x => x.id === id);
   if (!n) return;
   _editNoteId = id;
+  _editNoteFecha = n.fecha || today();
   const ov  = document.getElementById('note-edit-overlay');
   const txt = document.getElementById('agc-edit-text');
   const cli = document.getElementById('agc-edit-cli');
@@ -17744,6 +17774,9 @@ function calEditNote(id) {
   if (cli) cli.value = n.cliente || '';
   if (tel) tel.value = n.tel || '';
   _neSetTipo(n.tipo === 'visita' ? 'visita' : '');
+  const fec = document.getElementById('agc-edit-fecha');
+  if (fec) { fec.value = _editNoteFecha; if (typeof syncCdate === 'function') syncCdate(fec); }
+  _neFechaSync();
   const ubicEl = document.getElementById('agc-edit-ubic');
   if (ubicEl) ubicEl.value = n.ubic || '';
   if (cli) attachClientDropdown(cli, tel);
@@ -17752,12 +17785,15 @@ function calEditNote(id) {
   document.addEventListener('keydown', _calNoteEditKey);
   setTimeout(() => { txt.focus(); }, 50);
 }
-function _calNoteEditKey(e) { if (e.key === 'Escape') calCloseNoteEdit(); }
+// Escape cierra el modal, salvo que esté abierto el calendario del datepicker:
+// ahí el Escape es para cerrar ese popover (lo maneja _cselKey), no el modal.
+function _calNoteEditKey(e) { if (e.key === 'Escape' && !_cselOpen) calCloseNoteEdit(); }
 function calCloseNoteEdit() {
   const ov = document.getElementById('note-edit-overlay');
   if (ov) ov.classList.remove('open');
   document.removeEventListener('keydown', _calNoteEditKey);
   _editNoteId = null;
+  _editNoteFecha = null;
 }
 // Importa un contacto del teléfono hacia los campos del modal de edición.
 function importContactToNoteEdit() {
@@ -17778,6 +17814,32 @@ function _neGetTipo() {
   return b ? (b.dataset.tipo || '') : '';
 }
 function _neSelTipo(btn) { _neSetTipo(btn.dataset.tipo || ''); }
+// ─── FECHA DEL RECORDATORIO (mover el compromiso de día) ─────────────────────
+// El input abre el calendario propio; los atajos corren la fecha ELEGIDA (no la
+// original), así se puede tocar "+ 1 día" varias veces. `hoy` es absoluto.
+function _neFechaMover(n) {
+  const fec = document.getElementById('agc-edit-fecha');
+  if (!fec) return;
+  const base = fec.value || _editNoteFecha || today();
+  fec.value = (n === 'hoy') ? today() : _calAddDays(base, n);
+  if (typeof syncCdate === 'function') syncCdate(fec);
+  _neFechaSync();
+}
+// Debajo del campo: el día de la semana elegido y, si cambió, de dónde se mueve.
+function _neFechaSync() {
+  const fec = document.getElementById('agc-edit-fecha');
+  const msg = document.getElementById('agc-edit-fecha-msg');
+  if (!msg) return;
+  const v = fec ? (fec.value || '') : '';
+  if (!v) { msg.textContent = 'Sin fecha no se puede guardar.'; msg.className = 'ne-datemsg'; return; }
+  const p = v.split('-');
+  const dia = CAL_DIAS[new Date(+p[0], +p[1] - 1, +p[2]).getDay()];
+  const movida = _editNoteFecha && v !== _editNoteFecha;
+  msg.textContent = movida
+    ? `Se mueve al ${dia.toLowerCase()} ${fmtD(v)} (estaba el ${fmtD(_editNoteFecha)}).`
+    : `${dia} ${fmtD(v)}`;
+  msg.className = 'ne-datemsg' + (movida ? ' is-moved' : '');
+}
 function calSaveNoteEdit() {
   if (!_editNoteId) { calCloseNoteEdit(); return; }
   const txt = document.getElementById('agc-edit-text');
@@ -17785,6 +17847,9 @@ function calSaveNoteEdit() {
   const tel = document.getElementById('agc-edit-tel');
   const texto = txt ? (txt.value || '').trim() : '';
   if (!texto) { toast('La nota no puede quedar vacía', 'info', 2200); return; }
+  const fecEl = document.getElementById('agc-edit-fecha');
+  const fecha = sanISODate(fecEl ? fecEl.value : '');
+  if (!fecha) { toast('Elegí una fecha válida', 'info', 2200); return; }
   let cliente = cli ? (cli.value || '').trim() : '';
   let telef   = tel ? (tel.value || '').trim() : '';
   if (!telef && cliente && /^[\d\s()+.\-]+$/.test(cliente) && cliente.replace(/\D/g, '').length >= 6) {
@@ -17799,6 +17864,9 @@ function calSaveNoteEdit() {
   const notes = getNotes();
   const n = notes.find(x => x.id === _editNoteId);
   if (!n) { calCloseNoteEdit(); return; }
+  const movida = n.fecha !== fecha;
+  const antes = n.fecha;
+  n.fecha = fecha;
   n.texto = texto;
   n.cliente = cliente;
   n.tel = telef;
@@ -17808,9 +17876,13 @@ function calSaveNoteEdit() {
   // Guardar/enriquecer el cliente en la DB con lo editado (teléfono + ubicación):
   // si no existe lo crea, si existe completa los campos vacíos sin pisar nada.
   saveNoteClientToDB(cliente, telef, ubic);
+  const eraVisita = _neGetTipo() === 'visita';
   calCloseNoteEdit();
   renderCal();
-  toast('Nota actualizada', 'ok');
+  if (typeof renderMorningBanner === 'function') renderMorningBanner();
+  toast(movida
+    ? `${eraVisita ? 'Visita movida' : 'Nota movida'} del ${fmtD(antes)} al ${fmtD(fecha)}`
+    : 'Nota actualizada', 'ok', movida ? 3200 : undefined);
 }
 function calToggleNote(id) {
   const notes = getNotes();
