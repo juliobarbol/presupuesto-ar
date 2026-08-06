@@ -2053,6 +2053,13 @@ input[type=number]{-moz-appearance:textfield}
 .cw-empty{font-size:13px;color:var(--muted);padding:12px 0;line-height:1.5}
 .cw-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:14px;flex-wrap:wrap}
 .cw-src{font-size:10.5px;color:var(--muted)}
+/* "Actualizar": pedir el pronóstico ahora, sin esperar el TTL de 3 h. Discreto
+   (va al lado de la fuente y la edad del dato), pero con área táctil de botón. */
+.cw-refresh{display:inline-flex;align-items:center;gap:5px;padding:6px 10px;font-family:var(--font-text);font-size:11.5px;font-weight:600;color:var(--accent-fg);background:transparent;border:1px solid var(--border);border-radius:var(--radius-field);cursor:pointer;white-space:nowrap}
+.cw-refresh .ic{width:13px;height:13px;color:var(--accent-fg)}
+.cw-refresh:active{background:var(--surface-2)}
+.cw-refresh.is-busy{color:var(--muted);cursor:default}
+.cw-refresh-sp{width:12px;height:12px;flex:none;border:2px solid var(--border);border-top-color:var(--accent-fg);border-radius:50%;animation:spin .7s linear infinite}
 .cw-btns{display:flex;gap:8px;justify-content:flex-end;flex:1}
 /* ── Centro de notificaciones (campanita) ──
    Badge rojo sobre la campanita del topbar + panel con Pendientes y Recientes.
@@ -16425,12 +16432,16 @@ async function climaEnsureNota(n, cb) {
 // no estén frescas (por TTL o versión de formato vieja). Persiste el cache y
 // devuelve true si algo cambió. NO poda zonas (de eso se encarga climaRefresh
 // con las zonas de los trabajos). No hace nada sin conexión.
-async function _climaFetchZonas(zonas) {
+// `opts.force` saltea el TTL: es el camino del botón "Actualizar" del panel,
+// donde el usuario PIDE dato fresco (movió el trabajo de día, se largó a
+// llover, salió una alerta). Ningún camino automático lo usa.
+async function _climaFetchZonas(zonas, opts) {
   if (CLIMA._fetching || navigator.onLine === false) return false;
+  const force = !!(opts && opts.force);
   const cache = _climaCache();
   const ahora = Date.now();
   const pendientes = Object.keys(zonas)
-    .filter(k => !cache[k] || !cache[k].at || cache[k].v !== CLIMA.VER
+    .filter(k => force || !cache[k] || !cache[k].at || cache[k].v !== CLIMA.VER
               || (ahora - cache[k].at) > CLIMA.TTL_MS);
   if (!pendientes.length) return false;
 
@@ -16527,6 +16538,40 @@ async function climaRefresh() {
     try { if (typeof renderMorningBanner === 'function') renderMorningBanner(); } catch (_) {}
     try { if (typeof renderHistory === 'function') renderHistory(); } catch (_) {}
   }
+}
+
+// Refresco MANUAL (botón "Actualizar" del panel de clima). Todos los caminos
+// automáticos respetan el TTL de 3 h, así que dentro de esa ventana no vuelven
+// a pedir NADA: el panel puede decir "hace 2 h" y no hay forma de destrabarlo.
+// Esto es lo que faltaba — mover un trabajo de día, una alerta meteorológica o
+// simplemente ver el cielo distinto al pronóstico son razones válidas para
+// querer el dato de ahora.
+//
+// Refresca TODAS las zonas con trabajos/visitas próximos (no solo la del panel
+// abierto): en la práctica es una sola llamada, y así quedan al día los chips
+// de la Agenda, el banner y el Historial de una sola vez.
+// Devuelve: 'ok' | 'offline' | 'ocupado' | 'nada' | 'error'.
+async function climaForceRefresh(extraLL) {
+  if (navigator.onLine === false) return 'offline';
+  if (CLIMA._fetching) return 'ocupado';
+  const zonas = {};
+  _climaProximosTrabajos().forEach(t => { const ll = _climaLatLngDe(t.e); if (ll) zonas[_climaKey(ll)] = ll; });
+  _climaProximasVisitas().forEach(n => { const ll = _climaLatLngNota(n); if (ll) zonas[_climaKey(ll)] = ll; });
+  // La zona del panel abierto aunque el trabajo ya no cuente como "próximo"
+  // (p. ej. mirando un día pasado o un presupuesto que todavía no se aceptó).
+  if (extraLL) zonas[_climaKey(extraLL)] = extraLL;
+  if (!Object.keys(zonas).length) return 'nada';
+
+  let cambio = false;
+  try { cambio = await _climaFetchZonas(zonas, { force: true }); }
+  catch (_) { return 'error'; }
+  if (!cambio) return 'error';   // ninguna zona respondió: API caída o sin señal real
+
+  try { _climaAvisar(); } catch (_) {}
+  try { if (typeof renderCal === 'function') renderCal(); } catch (_) {}
+  try { if (typeof renderMorningBanner === 'function') renderMorningBanner(); } catch (_) {}
+  try { if (typeof renderHistory === 'function') renderHistory(); } catch (_) {}
+  return 'ok';
 }
 
 // Asegura el pronóstico de la zona de UN trabajo puntual (aunque todavía no
@@ -16712,6 +16757,28 @@ function climaDetailPick(iso) {
   if (_climaDlg) { _climaDlg.iso = iso; _climaDetailRender(); }
 }
 
+// Botón "Actualizar" del pie del panel. Deja el botón girando mientras baja
+// (una llamada a la API tarda lo que tarda, y sin feedback el usuario toca de
+// nuevo) y repinta el panel con el dato nuevo — incluido el "hace X", que es
+// como se confirma que sirvió.
+async function climaRefrescarAhora(btn) {
+  if (btn && btn.disabled) return;
+  if (btn) {
+    btn.disabled = true;
+    btn.classList.add('is-busy');
+    btn.innerHTML = `<span class="cw-refresh-sp"></span> Actualizando…`;
+  }
+  const tgt = _climaDlgTarget();
+  const r = await climaForceRefresh(tgt && tgt.ll);
+  if (_climaDlg && document.querySelector('#clima-overlay.open')) _climaDetailRender();
+  else if (btn) { btn.disabled = false; btn.classList.remove('is-busy'); btn.innerHTML = `${icon('refresh')} Actualizar`; }
+  if (r === 'ok')            toast('Pronóstico actualizado', 'ok', 2200);
+  else if (r === 'offline')  toast('Sin conexión: se sigue mostrando el último pronóstico guardado', 'info', 3800);
+  else if (r === 'ocupado')  toast('Ya se está actualizando…', 'info', 2000);
+  else if (r === 'nada')     toast('No hay trabajos ni visitas próximos para pronosticar', 'info', 3000);
+  else                       toast('No se pudo actualizar el pronóstico. Probá de nuevo en un rato', 'info', 3800);
+}
+
 // Sujeto del panel abierto (trabajo o visita) + su zona / título / fechas
 // agendadas (para marcarlas en la tira). null si el registro ya no existe.
 function _climaDlgTarget() {
@@ -16864,8 +16931,11 @@ function _climaDetailRender() {
   const repro = (tgt.e && motivo.txt && tieneTel && tgt.fechas.includes(iso))
     ? `<button type="button" class="btn btn-g btn-sm" onclick="climaReprogramarWhatsApp(${tgt.e.id}, '${esc(motivo.txt)}')">${icon('message')} Reprogramar</button>`
     : '';
+  // "Actualizar": el único camino que ignora el TTL de 3 h. Va pegado a la
+  // edad del dato porque es justo ahí donde uno se pregunta "¿y si cambió?".
   const foot = `<div class="cw-foot">
     <span class="cw-src">Open-Meteo${zona && zona.at ? ` · ${esc(_climaHaceTxt(zona.at))}` : ''}</span>
+    <button type="button" class="cw-refresh" id="cw-refresh" onclick="climaRefrescarAhora(this)" title="Volver a pedir el pronóstico ahora mismo">${icon('refresh')} Actualizar</button>
     <div class="cw-btns">${repro}<button type="button" class="btn btn-p btn-sm" onclick="closeClimaDetail()">Listo</button></div>
   </div>`;
 
@@ -17866,6 +17936,7 @@ function calSaveNoteEdit() {
   if (!n) { calCloseNoteEdit(); return; }
   const movida = n.fecha !== fecha;
   const antes = n.fecha;
+  const ubicCambio = (n.ubic || '') !== ubic;
   n.fecha = fecha;
   n.texto = texto;
   n.cliente = cliente;
@@ -17877,6 +17948,12 @@ function calSaveNoteEdit() {
   // si no existe lo crea, si existe completa los campos vacíos sin pisar nada.
   saveNoteClientToDB(cliente, telef, ubic);
   const eraVisita = _neGetTipo() === 'visita';
+  // Si la visita cambió de día o de lugar, asegurar el pronóstico de esa zona:
+  // el día nuevo puede caer fuera de lo cacheado, o el lugar nuevo ser una zona
+  // que todavía no se bajó. Respeta el TTL (no golpea la API por mover un día).
+  if (eraVisita && (movida || ubicCambio) && typeof climaEnsureNota === 'function') {
+    climaEnsureNota(n, () => { try { renderCal(); } catch (_) {} });
+  }
   calCloseNoteEdit();
   renderCal();
   if (typeof renderMorningBanner === 'function') renderMorningBanner();
