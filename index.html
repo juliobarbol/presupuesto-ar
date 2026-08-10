@@ -14603,6 +14603,12 @@ async function gcalSyncNow(){
   if (!gcalConnected()) return;
   try {
     toast('Sincronizando con Google Calendar…', 'info', 2500);
+    // El token PRIMERO y con la escalera interactiva: este botón es un gesto del
+    // usuario, así que puede abrir la ventana de Google. Sin esto, el botón de
+    // reparar no podía reparar el fallo más común —la sesión de Google que dejó
+    // de renovarse callada—: gcalSync() pide el token en modo silencioso y lo
+    // único que lograba era repetir el mismo error.
+    await _gcalTokenParaConectar();
     await gcalSync();
     // El botón manual es también el botón de "arreglalo": re-marca el
     // calendario como visible por si quedó destildado en la cuenta.
@@ -14626,7 +14632,13 @@ function gcalInitOnLoad(){
   if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
   gcalGetToken({ interactive: false })
     .then(() => gcalAutoSync())
-    .catch(() => { /* no renovó callado: la UI ofrece reconectar */ });
+    // Si el token NO renueva callado, la sync no corre nunca y hasta acá eso se
+    // tragaba en silencio: la sección seguía diciendo "Conectado ✓" con la fecha
+    // de la última vez que anduvo, y la agenda podía estar parada días sin que
+    // nada lo dijera (es el mismo escenario que ya nos pasó con Drive). Ahora
+    // cuenta como fallo de sincronización: al segundo, la sección se marca en
+    // rojo y ofrece "Reconectar", que es lo único que lo arregla.
+    .catch((e) => { _syncFail(GCAL, e); gcalUpdateUI(); });
 }
 // Refresca la sección de Calendar (pestaña Empresa).
 function gcalUpdateUI(){
@@ -14661,8 +14673,14 @@ function gcalUpdateUI(){
         // recontactos, vencimientos y seguimientos de hoy en adelante.
         let n = 0; try { n = +(localStorage.getItem(LS.GCAL_N) || 0) || 0; } catch(_){}
         const cuantos = n ? ` · ${n} evento${n > 1 ? 's' : ''} sincronizado${n > 1 ? 's' : ''}` : '';
+        // Red de seguridad para las caídas que no dejan error: si hace más de un
+        // día que no sincroniza teniendo la app conectada, algo pasa aunque
+        // nadie lo haya reportado. Decirlo es mejor que un "Conectado ✓" que
+        // tapa una agenda parada.
+        const viejo = last && (Date.now() - new Date(last).getTime()) > 24 * 3600 * 1000;
         status.textContent = last
-          ? ('Conectado ✓ · Última sincronización: ' + _fmtBackupDate(last) + cuantos)
+          ? ((viejo ? '⚠️ ' : 'Conectado ✓ · ') + 'Última sincronización: ' + _fmtBackupDate(last) + cuantos
+             + (viejo ? '. Tocá "Sincronizar ahora".' : ''))
           : 'Conectado ✓ · Tu agenda se sincroniza con el calendario "Presupuestos AR".';
       }
     }

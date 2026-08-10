@@ -133,6 +133,51 @@ const CORRER = `
     check('Una segunda pasada sin cambios no reescribe nada', r.segunda === 0, r.segunda + ' escritura(s)');
 
     await page.close();
+
+    // ── Una sync PARADA no se puede disfrazar de "Conectado ✓" ──
+    // El escenario que lo pidió: eventos viejos en Google, los nuevos no, y la
+    // app diciendo que está todo bien. Si el token deja de renovarse callado, la
+    // sync no corre NUNCA y antes eso no se veía en ningún lado.
+    const page2 = await browser.newPage();
+    page2.on('pageerror', (e) => { allOk = false; console.log('PAGEERROR', e.message); });
+    await page2.goto(APP, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await new Promise(r2 => setTimeout(r2, 1200));
+    const s = await page2.evaluate(new Function(`return (async () => {
+      localStorage.clear();
+      localStorage.setItem(LS.GCAL_ON, '1');
+      localStorage.setItem(LS.GCAL_LAST, new Date(Date.now() - 5*24*3600*1000).toISOString());
+      localStorage.setItem(LS.GCAL_N, '7');
+      const txt = () => document.getElementById('gcal-status').textContent;
+      const btn = () => document.getElementById('gcal-connect');
+
+      // 1) Conectado, sin errores, pero hace 5 días que no sincroniza.
+      GCAL._fails = 0; GCAL._lastErr = null;
+      gcalUpdateUI();
+      const viejo = txt();
+
+      // 2) El token deja de renovarse callado en dos aperturas seguidas.
+      window.gcalGetToken = () => Promise.reject(new Error('popup_closed'));
+      gcalInitOnLoad(); await new Promise(r => setTimeout(r, 60));
+      const tras1 = { fails: GCAL._fails || 0 };
+      gcalInitOnLoad(); await new Promise(r => setTimeout(r, 60));
+      const tras2 = { fails: GCAL._fails || 0, txt: txt(),
+                      boton: btn().style.display !== 'none' ? btn().textContent : '(oculto)',
+                      rojo: document.getElementById('gcal-section').classList.contains('is-fail') };
+
+      // 3) La ayuda de visibilidad se ve mientras esté conectado.
+      const ayuda = document.getElementById('gcal-visibilidad').style.display !== 'none';
+      return { viejo, tras1, tras2, ayuda };
+    })();`), { timeout: 20000 });
+
+    check('Con la última sync vieja, el estado avisa en vez de decir "Conectado ✓"',
+      /⚠️/.test(s.viejo) && /Sincronizar ahora/.test(s.viejo), s.viejo);
+    check('El estado muestra cuántos eventos se sincronizaron', /7 eventos/.test(s.viejo), s.viejo);
+    check('Un token que no renueva callado cuenta como fallo de sincronización',
+      s.tras1.fails === 1 && s.tras2.fails === 2, 'fallos: ' + s.tras1.fails + ' → ' + s.tras2.fails);
+    check('…y al segundo la sección se marca en rojo y ofrece Reconectar',
+      s.tras2.rojo && /Reconectar/.test(s.tras2.boton), s.tras2.boton + ' rojo=' + s.tras2.rojo);
+    check('La ayuda de "sincroniza pero no lo veo" está a la vista', s.ayuda);
+    await page2.close();
   } finally {
     await browser.close();
   }
