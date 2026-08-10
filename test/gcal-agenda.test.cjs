@@ -154,6 +154,7 @@ const CORRER = `
       GCAL._fails = 0; GCAL._lastErr = null;
       gcalUpdateUI();
       const viejo = txt();
+      const vBoton = btn().style.display !== 'none' ? btn().textContent : '(oculto)';
 
       // 2) El token deja de renovarse callado en dos aperturas seguidas.
       window.gcalGetToken = () => Promise.reject(new Error('popup_closed'));
@@ -166,11 +167,13 @@ const CORRER = `
 
       // 3) La ayuda de visibilidad se ve mientras esté conectado.
       const ayuda = document.getElementById('gcal-visibilidad').style.display !== 'none';
-      return { viejo, tras1, tras2, ayuda };
+      return { viejo, vBoton, tras1, tras2, ayuda };
     })();`), { timeout: 20000 });
 
     check('Con la última sync vieja, el estado avisa en vez de decir "Conectado ✓"',
-      /⚠️/.test(s.viejo) && /Sincronizar ahora/.test(s.viejo), s.viejo);
+      /⚠️/.test(s.viejo) && /venció el permiso/.test(s.viejo), s.viejo);
+    check('…y ofrece Reconectar sin esperar a que se acumulen fallos',
+      /Reconectar/.test(s.vBoton), s.vBoton);
     check('El estado muestra cuántos eventos se sincronizaron', /7 eventos/.test(s.viejo), s.viejo);
     check('Un token que no renueva callado cuenta como fallo de sincronización',
       s.tras1.fails === 1 && s.tras2.fails === 2, 'fallos: ' + s.tras1.fails + ' → ' + s.tras2.fails);

@@ -98,7 +98,9 @@ async function nuevaPagina(browser) {
       const page = await nuevaPagina(browser);
       const r = await page.evaluate(async () => {
         localStorage.setItem('pq_gdrive_on', '1');
-        localStorage.setItem('pq_gdrive_last', new Date(Date.now() - 86400000*120).toISOString());
+        // Copia reciente: acá se prueba el CONTADOR de fallos seguidos. Una copia
+        // vieja marca la sección por sí sola (ver A3d), que es otra cosa.
+        localStorage.setItem('pq_gdrive_last', new Date(Date.now() - 3600000).toISOString());
         switchTab('empresa');
         const sec = document.getElementById('gdrive-section');
         const status = document.getElementById('gdrive-status');
@@ -139,6 +141,53 @@ async function nuevaPagina(browser) {
         r.tras4.fail === false && /Conectado ✓/.test(r.tras4.txt) &&
         /restablecida/.test(r.tras4.toasts) && r.tras4.btn === 'Conectar Google Drive',
         JSON.stringify(r.tras4));
+      await page.close();
+    }
+
+    // ── A3d · La copia parada hace días NO puede decir "Conectado ✓" ──
+    // El caso real (10/08/2026): el permiso de Google venció, el auto-backup
+    // dejó de correr y la sección siguió mostrando "Conectado ✓ · Última copia:
+    // 03/08" durante una semana. El contador de fallos no alcanza: vive en
+    // memoria y se reinicia en cada apertura, así que con un cambio por sesión
+    // nunca llega a 2. La FECHA de la última copia es la que no miente.
+    {
+      const page = await nuevaPagina(browser);
+      const r = await page.evaluate(async () => {
+        localStorage.setItem('pq_gdrive_on', '1');
+        switchTab('empresa');
+        const sec = document.getElementById('gdrive-section');
+        const status = document.getElementById('gdrive-status');
+        const cBtn = document.getElementById('gdrive-connect');
+        const leer = () => ({ fail: sec.classList.contains('is-fail'), txt: status.textContent,
+                              btn: cBtn.style.display !== 'none' ? cBtn.textContent : '(oculto)' });
+        GDRIVE._fails = 0; GDRIVE._lastErr = null;
+
+        localStorage.setItem('pq_gdrive_last', new Date(Date.now() - 7*86400000).toISOString());
+        gdriveUpdateUI();
+        const semana = leer();
+
+        localStorage.setItem('pq_gdrive_last', new Date(Date.now() - 3600000).toISOString());
+        gdriveUpdateUI();
+        const reciente = leer();
+
+        // Y el token que no renueva callado al abrir tampoco se traga.
+        localStorage.setItem('pq_gdrive_last', new Date().toISOString());
+        window.gdriveGetToken = () => Promise.reject(new Error('popup_closed'));
+        setH([]);                       // sin datos locales: initOnLoad intenta bajar la copia
+        gdriveInitOnLoad(); await new Promise(r2 => setTimeout(r2, 60));
+        const trasInit = GDRIVE._fails || 0;
+        return { semana, reciente, trasInit };
+      });
+      check('A3d · una copia de hace una semana se marca sola, sin errores previos',
+        r.semana.fail === true && /⚠️/.test(r.semana.txt), r.semana.txt);
+      check('A3d · …y nombra la causa real (el permiso de Google que caduca)',
+        /venció el permiso/.test(r.semana.txt) && /Prueba/.test(r.semana.txt), r.semana.txt);
+      check('A3d · …y ofrece Reconectar', r.semana.btn === 'Reconectar', r.semana.btn);
+      check('A3d · con una copia reciente vuelve a "Conectado ✓"',
+        r.reciente.fail === false && /Conectado ✓/.test(r.reciente.txt) && r.reciente.btn === '(oculto)',
+        r.reciente.txt);
+      check('A3d · el token que no renueva al abrir cuenta como fallo',
+        r.trasInit === 1, 'fallos=' + r.trasInit);
       await page.close();
     }
 

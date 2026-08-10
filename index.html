@@ -13859,6 +13859,18 @@ async function gdriveRestore(){
 // sección en rojo y se avisa una vez por sesión. Cualquier éxito reinicia todo.
 const SYNC_FAIL_UMBRAL = 2;
 
+// Por qué se "desconecta solo" cada tanto. El navegador NO guarda un refresh
+// token: el permiso de Google se renueva callado mientras el CONSENTIMIENTO
+// siga vigente. Y si el proyecto de Google Cloud está en modo **Prueba**, ese
+// consentimiento caduca a los 7 días — de ahí el patrón "anduvo una semana y
+// paró", que se arregla reconectando (y vuelve a pasar 7 días después). La
+// solución de fondo es del dueño del proyecto: publicar la app en la pantalla
+// de consentimiento. Mientras tanto, al menos hay que DECIRLO en vez de
+// mostrar "Conectado ✓" sobre una copia de hace una semana.
+function _gSesionVencidaMsg(){
+  return 'Parece que venció el permiso de Google (si el proyecto está en modo Prueba, caduca cada 7 días). Tocá "Reconectar".';
+}
+
 function _syncOk(mod){ mod._fails = 0; mod._lastErr = null; }
 function _syncFail(mod, e){
   mod._fails = (mod._fails || 0) + 1;
@@ -13943,7 +13955,12 @@ function gdriveUpdateUI(){
   if (rBtn) rBtn.style.display = on ? '' : 'none';
   if (dBtn) dBtn.style.display = on ? '' : 'none';
   const fallando = on && (GDRIVE._fails || 0) >= SYNC_FAIL_UMBRAL;   // el botón conectar/reconectar se resuelve abajo
-  sec.classList.toggle('is-fail', fallando);
+  // "Hace más de un día que no hay copia" es tan grave como un error explícito,
+  // y no depende del contador en memoria (que se reinicia en cada apertura).
+  let _dLast = ''; try { _dLast = localStorage.getItem(LS.GDRIVE_LAST) || ''; } catch(_){}
+  const viejo = on && !!_dLast && (Date.now() - new Date(_dLast).getTime()) > 24 * 3600 * 1000;
+  const roto = fallando || viejo;
+  sec.classList.toggle('is-fail', roto);
   if (status) {
     if (!on) {
       status.textContent = 'Guardá una copia automática de todos tus datos en tu Google Drive, para no perderlos si cambiás o perdés el teléfono.';
@@ -13955,6 +13972,12 @@ function gdriveUpdateUI(){
         status.textContent = last
           ? ('⚠️ No se pudo copiar desde el ' + _fmtBackupDate(last) + '. Tocá "Reconectar" o exportá un backup a mano.')
           : '⚠️ No se está pudiendo copiar a Google Drive. Tocá "Reconectar" o exportá un backup a mano.';
+      } else if (viejo) {
+        // Red de seguridad: el contador de fallos vive en memoria y se reinicia
+        // en cada apertura, así que "2 fallos SEGUIDOS" puede no alcanzarse
+        // nunca si se hace un cambio por sesión — y la copia queda parada días
+        // diciendo "Conectado ✓". La fecha de la última copia no miente.
+        status.textContent = '⚠️ Última copia: ' + _fmtBackupDate(last) + '. ' + _gSesionVencidaMsg();
       } else {
         status.textContent = last
           ? ('Conectado ✓ · Última copia: ' + _fmtBackupDate(last))
@@ -13965,8 +13988,8 @@ function gdriveUpdateUI(){
   // Cuando está caído, ofrecer volver a conectar sin tener que desconectar
   // primero (gdriveConnect ya es idempotente y pide token interactivo).
   if (cBtn) {
-    cBtn.style.display = (!on || fallando) ? '' : 'none';
-    cBtn.textContent = fallando ? 'Reconectar' : 'Conectar Google Drive';
+    cBtn.style.display = (!on || roto) ? '' : 'none';
+    cBtn.textContent = roto ? 'Reconectar' : 'Conectar Google Drive';
   }
 }
 
@@ -13996,7 +14019,10 @@ function gdriveInitOnLoad(){
         if (ok && applyBackupObject(d)) toast('Datos recuperados desde Drive.', 'ok', 4000);
       }
     } catch(_){}
-  }).catch(() => { /* no se pudo renovar callado: la UI ofrece reconectar */ });
+    // Mismo punto ciego que tenía Calendar: si el token no renueva callado, el
+    // backup no corre y hasta acá la sección seguía diciendo "Conectado ✓" con
+    // la fecha de la última copia buena. Ahora cuenta como fallo y se ve.
+  }).catch((e) => { _syncFail(GDRIVE, e); gdriveUpdateUI(); });
 }
 
 // ═══════════════════════════════════════
@@ -14653,7 +14679,13 @@ function gcalUpdateUI(){
   if (sBtn) sBtn.style.display = on ? '' : 'none';
   if (dBtn) dBtn.style.display = on ? '' : 'none';
   const fallando = on && (GCAL._fails || 0) >= SYNC_FAIL_UMBRAL;
-  sec.classList.toggle('is-fail', fallando);
+  // "Hace más de un día que no sincroniza" vale como caída aunque no haya
+  // quedado ningún error registrado (el contador vive en memoria y se reinicia
+  // en cada apertura). Es lo que destapa una agenda parada hace una semana.
+  let _cLast = ''; try { _cLast = localStorage.getItem(LS.GCAL_LAST) || ''; } catch(_){}
+  const viejo = on && !!_cLast && (Date.now() - new Date(_cLast).getTime()) > 24 * 3600 * 1000;
+  const roto = fallando || viejo;
+  sec.classList.toggle('is-fail', roto);
   if (status) {
     if (!on) {
       // Si el último intento de conectar falló, el motivo queda a la vista (con
@@ -14673,14 +14705,11 @@ function gcalUpdateUI(){
         // recontactos, vencimientos y seguimientos de hoy en adelante.
         let n = 0; try { n = +(localStorage.getItem(LS.GCAL_N) || 0) || 0; } catch(_){}
         const cuantos = n ? ` · ${n} evento${n > 1 ? 's' : ''} sincronizado${n > 1 ? 's' : ''}` : '';
-        // Red de seguridad para las caídas que no dejan error: si hace más de un
-        // día que no sincroniza teniendo la app conectada, algo pasa aunque
-        // nadie lo haya reportado. Decirlo es mejor que un "Conectado ✓" que
-        // tapa una agenda parada.
-        const viejo = last && (Date.now() - new Date(last).getTime()) > 24 * 3600 * 1000;
+        // `viejo` (arriba) es la red de seguridad para las caídas que no dejan
+        // error: decirlo es mejor que un "Conectado ✓" sobre una agenda parada.
         status.textContent = last
           ? ((viejo ? '⚠️ ' : 'Conectado ✓ · ') + 'Última sincronización: ' + _fmtBackupDate(last) + cuantos
-             + (viejo ? '. Tocá "Sincronizar ahora".' : ''))
+             + (viejo ? '. ' + _gSesionVencidaMsg() : ''))
           : 'Conectado ✓ · Tu agenda se sincroniza con el calendario "Presupuestos AR".';
       }
     }
@@ -14691,8 +14720,8 @@ function gcalUpdateUI(){
   const vis = document.getElementById('gcal-visibilidad');
   if (vis) vis.style.display = on ? '' : 'none';
   if (cBtn) {
-    cBtn.style.display = (!on || fallando) ? '' : 'none';
-    cBtn.textContent = fallando ? 'Reconectar' : 'Conectar Google Calendar';
+    cBtn.style.display = (!on || roto) ? '' : 'none';
+    cBtn.textContent = roto ? 'Reconectar' : 'Conectar Google Calendar';
   }
 }
 

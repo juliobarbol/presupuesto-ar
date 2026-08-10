@@ -15,7 +15,7 @@
 
 ## Estructura de archivos
 - `index.html` — **toda la app** (markup + `<style>` + `<script>`).
-- `sw.js` — Service Worker (offline + actualizaciones). **`CACHE_VERSION` actual: `presupuesto-v204`**.
+- `sw.js` — Service Worker (offline + actualizaciones). **`CACHE_VERSION` actual: `presupuesto-v205`**.
 - `manifest.webmanifest`, `*.png` — PWA (instalación, iconos).
 - `push-worker/` — Cloudflare Worker **opcional** para notificaciones push de seguimiento (avisos con la app cerrada). No es parte del PWA shell; se despliega aparte. Ver `docs/push-setup.md`. La app es inerte a esto hasta rellenar `PUSH_WORKER_URL` / `PUSH_VAPID_KEY` en `index.html`.
 
@@ -72,6 +72,7 @@ El CSS vive en el `<style>` (líneas ~16–1711). Hay dos bloques de estilos del
 - El listener `window.addEventListener('online', …)` sube lo pendiente al volver la conexión.
 - Al desconectar (`gdriveDisconnect`) se borra también `LS.GDRIVE_EMAIL`.
 
+- **"Se desconecta solo cada 7 días":** el navegador no guarda refresh token; el permiso se renueva callado mientras el CONSENTIMIENTO siga vigente, y en un proyecto de Google Cloud en modo **Prueba** ese consentimiento **caduca a los 7 días** (caso real: última copia 03/08, se notó el 10/08). La solución de fondo es del dueño: publicar la app en la pantalla de consentimiento. Del lado del código, lo que se arregló es que la app **no oculte** la caída: el fallo del token silencioso al abrir cuenta como fallo (`gdriveInitOnLoad`/`gcalInitOnLoad`, antes `.catch(()=>{})`) y, además, una copia/sync de **más de 24 h** marca la sección sola y muestra `_gSesionVencidaMsg()` — el contador de fallos no alcanzaba porque vive en memoria y se reinicia en cada apertura. Ver `docs/google-permiso-7-dias.md` y `test/backup-sync.test.cjs` (A3d).
 - **Fallos de sincronización:** Drive y Calendar comparten `_autoSync()` (cuenta fallos SEGUIDOS, repinta la UI falle o no, y avisa recién al 2º con un toast una vez por sesión). Un fallo aislado no molesta; una caída real marca la sección en rojo (`.fu-config.is-fail`), dice desde cuándo no hay copia y ofrece "Reconectar". Cualquier éxito reinicia el contador. No volver a poner `.catch(() => {})` en esos caminos: el backup fallando en silencio es el peor escenario de una app sin backend.
 
 ## Módulo GCAL (sincronizar la Agenda con Google Calendar)
@@ -94,7 +95,7 @@ El CSS vive en el `<style>` (líneas ~16–1711). Hay dos bloques de estilos del
 > versión nueva la próxima vez que abran la app con conexión.
 
 1. Desarrollar en la rama de trabajo (`claude/...`), no en `main`.
-2. **Subir `CACHE_VERSION` en `sw.js`** en cada cambio que se despliegue (si no, los dispositivos siguen con la versión vieja en caché). Formato: `presupuesto-vNN`. **Versión actual: v204**.
+2. **Subir `CACHE_VERSION` en `sw.js`** en cada cambio que se despliegue (si no, los dispositivos siguen con la versión vieja en caché). Formato: `presupuesto-vNN`. **Versión actual: v205**.
 3. Si agregás un archivo nuevo (ej. otro `.js` o `.css`), **agregarlo a `APP_SHELL` en `sw.js`** o se rompe el offline.
 4. **Mergear a `main`** → Cloudflare despliega solo.
 
