@@ -13,7 +13,7 @@
 //
 //  Para forzar actualizacion tras un deploy: subir el CACHE_VERSION.
 
-const CACHE_VERSION = 'presupuesto-v201';
+const CACHE_VERSION = 'presupuesto-v202';
 const APP_SHELL = [
   './',
   './index.html',

@@ -1922,6 +1922,7 @@ input[type=number]{-moz-appearance:textfield}
 .agc-col-ev.t-nota{border-left-color:var(--c-nota)}
 .agc-col-ev.t-visita{border-left-color:var(--c-visita);background:var(--c-visita-bg)}
 .agc-col-ev-title{font-size:12px;font-weight:600;color:var(--text);line-height:1.3;overflow-wrap:anywhere}
+.agc-col-ev-h{font-size:11px;font-weight:700;color:var(--text-2);margin-right:4px}
 .agc-col-ev-sub{font-size:10.5px;color:var(--muted);line-height:1.3;margin-top:1px;overflow-wrap:anywhere}
 .agc-col-ev.done .agc-col-ev-title{text-decoration:line-through;opacity:.6}
 .agc-col-empty{font-size:14px;color:var(--faint);text-align:center;padding:6px 0}
@@ -1949,6 +1950,9 @@ input[type=number]{-moz-appearance:textfield}
 .agc-ev.t-visita .agc-ev-kind{color:var(--c-visita-fg)}
 .agc-ev-body{flex:1;min-width:0}
 .agc-ev-kind{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);display:block;margin-bottom:2px}
+/* Hora del compromiso (notas y visitas con hora). Va pegada a la etiqueta del
+   tipo, más marcada que el resto de la línea: es el dato que se busca de reojo. */
+.agc-ev-hora{font-size:11.5px;font-weight:700;color:var(--text);letter-spacing:0;text-transform:none}
 .agc-ev-title{font-size:14px;font-weight:600;color:var(--text);line-height:1.35;word-break:break-word}
 .agc-ev-sub{font-size:12px;color:var(--muted);margin-top:2px;line-height:1.4;word-break:break-word}
 .agc-ev.done .agc-ev-title{text-decoration:line-through;opacity:.6}
@@ -2095,6 +2099,16 @@ input[type=number]{-moz-appearance:textfield}
 .agc-day-empty{font-size:13px;color:var(--muted);padding:6px 2px;line-height:1.5}
 .agc-note-form{display:flex;gap:7px;align-items:stretch;margin-top:8px}
 .agc-note-form input{flex:1;min-width:0}
+/* Segunda fila del alta: hora opcional + los dos botones de alta. El texto se
+   queda solo en su fila (es lo que más se escribe) y la hora no lo comprime. */
+.agc-note-acts{display:flex;gap:7px;align-items:stretch;margin-top:7px;flex-wrap:wrap}
+.agc-note-acts>.btn{flex:1 1 auto}
+.agc-note-hora{display:inline-flex;align-items:center;gap:6px;flex:0 0 auto;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius-field);background:var(--card);color:var(--muted);cursor:pointer}
+.agc-note-hora .ic{width:15px;height:15px;flex:0 0 auto}
+#agc-note-hora{border:none;background:transparent;padding:8px 0;font-family:var(--font-text);font-size:13px;color:var(--text);outline:none;min-width:72px;-webkit-appearance:none;appearance:none}
+/* El reloj del control es el del icono (toda la cajita abre el selector), no el
+   indicador nativo: dos relojes pegados en un campo de 100 px son ruido. */
+#agc-note-hora::-webkit-calendar-picker-indicator{display:none}
 /* Botón "+ Visita" (alta de nota tipo visita) — azul del concepto visita */
 .btn-visita{background:var(--c-visita);border-color:var(--c-visita);color:#fff}
 .btn-visita:active{filter:brightness(.9)}
@@ -2111,8 +2125,8 @@ input[type=number]{-moz-appearance:textfield}
 /* Inputs de las notas (alta, contacto, ubicación) y del modal de edición: look
    consistente con la app (el default del navegador variaba entre Android y
    escritorio). */
-.agc-note-form>input,.agc-note-crow>input,.agc-cli-wrap>input,#agc-note-ubic,#agc-edit-ubic,#agc-edit-text{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-field);font-family:var(--font-text);font-size:13px;color:var(--text);background:var(--card);outline:none;-webkit-appearance:none;appearance:none}
-.agc-note-form>input:focus,.agc-note-crow>input:focus,.agc-cli-wrap>input:focus,#agc-note-ubic:focus,#agc-edit-ubic:focus,#agc-edit-text:focus{border-color:var(--accent-fg)}
+.agc-note-form>input,.agc-note-crow>input,.agc-cli-wrap>input,#agc-note-ubic,#agc-edit-ubic,#agc-edit-text,#agc-edit-hora{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-field);font-family:var(--font-text);font-size:13px;color:var(--text);background:var(--card);outline:none;-webkit-appearance:none;appearance:none}
+.agc-note-form>input:focus,.agc-note-crow>input:focus,.agc-cli-wrap>input:focus,#agc-note-ubic:focus,#agc-edit-ubic:focus,#agc-edit-text:focus,#agc-edit-hora:focus{border-color:var(--accent-fg)}
 .agc-ubic-btns{display:flex;gap:7px;flex-wrap:wrap;margin-top:7px}
 .ne-hint{font-weight:400;font-size:11px;color:var(--muted)}
 /* Dropdown NATIVO de clientes (panel propio, no la barra de sugerencias del teclado) */
@@ -2150,15 +2164,18 @@ input[type=number]{-moz-appearance:textfield}
 .ne-field{margin-bottom:14px}
 .ne-field>label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:5px}
 #note-edit-box .cbtns{display:flex;gap:8px;justify-content:flex-end;margin-top:4px}
-/* Fecha del recordatorio: el input usa el calendario propio (.cdate) y abajo
-   van los atajos para correr el compromiso sin abrir el calendario. */
+/* Fecha del recordatorio: el input usa el calendario propio (.cdate). Mover el
+   compromiso de día se hace ahí (tocar el calendario y elegir), sin atajos. */
 #agc-edit-fecha{width:100%}
 #note-edit-box .cdate{display:block}
-.ne-datequick{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}
-.ne-qbtn{flex:1 1 auto;padding:7px 10px;font-family:var(--font-text);font-size:12.5px;font-weight:600;color:var(--text-2);background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-field);cursor:pointer;white-space:nowrap}
-.ne-qbtn:active{background:var(--accent-light)}
 .ne-datemsg{margin-top:6px;font-size:12px;color:var(--muted);line-height:1.4}
 .ne-datemsg.is-moved{color:var(--accent-fg);font-weight:600}
+/* Hora (opcional): sin hora el evento es de día completo. El botón la borra —
+   el <input type=time> de Android no ofrece forma de volver a "sin hora". */
+.ne-hora-row{display:flex;gap:8px;align-items:center}
+.ne-hora-row>input{flex:1 1 auto;min-width:0}
+.ne-hora-clear{flex:0 0 auto;padding:9px 12px;font-family:var(--font-text);font-size:12.5px;font-weight:600;color:var(--text-2);background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-field);cursor:pointer;white-space:nowrap}
+.ne-hora-clear:active{background:var(--accent-light)}
 /* Selector de tipo (Nota / Visita): segmentado de dos botones en vez de un
    <select> nativo, que dentro del modal abría su lista detrás del overlay. Cada
    opción se tiñe con el color de su concepto cuando está activa. */
@@ -3253,6 +3270,7 @@ input[type=number]{-moz-appearance:textfield}
 <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0" /> <circle cx="12" cy="12" r="3" /></symbol>
 <symbol id="i-image" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2" ry="2" /> <circle cx="9" cy="9" r="2" /> <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" /></symbol>
 <symbol id="i-calendar" viewBox="0 0 24 24"><path d="M8 2v4" /> <path d="M16 2v4" /> <rect width="18" height="18" x="3" y="4" rx="2" /> <path d="M3 10h18" /></symbol>
+<symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /> <path d="M12 6v6l4 2" /></symbol>
 <symbol id="i-zap" viewBox="0 0 24 24"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z" /></symbol>
 <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14" /> <path d="M12 5v14" /></symbol>
 <symbol id="i-arrow-up" viewBox="0 0 24 24"><path d="M12 19V5" /> <path d="m5 12 7-7 7 7" /></symbol>
@@ -4508,17 +4526,21 @@ input[type=number]{-moz-appearance:textfield}
       <input type="text" id="agc-edit-text" maxlength="140" placeholder="Texto de la nota" onkeydown="if(event.key==='Enter'){calSaveNoteEdit();}">
     </div>
     <!-- Fecha: se puede mover el compromiso a otro día sin borrar y rehacer la
-         nota (ej. lluvia o viento fuerte el día del trabajo). -->
+         nota (ej. lluvia o viento fuerte el día del trabajo). Se cambia
+         tocando el campo, que abre el calendario propio. -->
     <div class="ne-field">
       <label for="agc-edit-fecha">Fecha</label>
       <input type="date" id="agc-edit-fecha" aria-label="Fecha del recordatorio" oninput="_neFechaSync()">
-      <div class="ne-datequick">
-        <button type="button" class="ne-qbtn" onclick="_neFechaMover(-1)" title="Un día antes">− 1 día</button>
-        <button type="button" class="ne-qbtn" onclick="_neFechaMover(1)" title="Un día después">+ 1 día</button>
-        <button type="button" class="ne-qbtn" onclick="_neFechaMover(7)" title="Una semana después">+ 1 semana</button>
-        <button type="button" class="ne-qbtn" onclick="_neFechaMover('hoy')" title="Pasar a hoy">Hoy</button>
-      </div>
       <p class="ne-datemsg" id="agc-edit-fecha-msg"></p>
+    </div>
+    <!-- Hora (opcional): sin hora el compromiso es de día completo. Con hora
+         viaja como evento con horario a Google Calendar y al .ics. -->
+    <div class="ne-field">
+      <label for="agc-edit-hora">Hora <span class="ne-hint">opcional — sin hora queda todo el día</span></label>
+      <div class="ne-hora-row">
+        <input type="time" id="agc-edit-hora" aria-label="Hora del recordatorio">
+        <button type="button" class="ne-hora-clear" onclick="_neHoraClear()" title="Dejarlo como recordatorio de todo el día">Sin hora</button>
+      </div>
     </div>
     <div class="ne-field">
       <label>Tipo</label>
@@ -6517,6 +6539,9 @@ function sanBool(v) { return !!v; }
 function sanNum(v) { const n = Number(v); return Number.isFinite(n) ? n : 0; }
 function sanEnum(v, allowed, def) { return allowed.indexOf(v) >= 0 ? v : def; }
 function sanISODate(v) { return (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)) ? v : ''; }
+// Hora del día 'HH:MM' (24 h). Vacío = sin hora (evento de día completo): una
+// hora inválida no puede quedar guardada porque se manda tal cual a Google.
+function sanHoraHM(v) { return (typeof v === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(v)) ? v : ''; }
 // Timestamp ISO completo (savedAt, enviadoEn…). Se conserva si parsea.
 function sanTS(v) { return (typeof v === 'string' && !isNaN(new Date(v).getTime())) ? v : ''; }
 // Id de texto: el original si es seguro, si no uno nuevo (no se pierde el dato).
@@ -6628,6 +6653,8 @@ function sanitizeNotes(raw) {
     const ts = sanTS(n.creadoEn); if (ts) s.creadoEn = ts;
     if (n.ubic != null) s.ubic = sanStr(n.ubic, 500);
     const tipo = sanEnum(n.tipo, NOTE_TIPOS, ''); if (tipo) s.tipo = tipo;
+    // Hora opcional: sin ella el recordatorio es de día completo (como siempre).
+    const hora = sanHoraHM(n.hora); if (hora) s.hora = hora;
     out.push(s);
   });
   return out;
@@ -12086,7 +12113,12 @@ function getTrabajosDeHoy() {
 function getVisitasDeHoy() {
   const hoy = today();
   return (typeof getNotes === 'function' ? getNotes() : [])
-    .filter(n => n && n.tipo === 'visita' && !n.hecho && n.fecha === hoy);
+    .filter(n => n && n.tipo === 'visita' && !n.hecho && n.fecha === hoy)
+    // Las que tienen hora, en orden; las de día completo al final.
+    .sort((a, b) => {
+      const ha = a.hora || '99:99', hb = b.hora || '99:99';
+      return ha < hb ? -1 : (ha > hb ? 1 : 0);
+    });
 }
 
 // Cierra una visita desde el banner: la marca hecha (calToggleNote persiste y
@@ -12272,6 +12304,7 @@ function renderMorningBanner() {
         return `<div class="fub-item fub-item-visita">
           <div class="fub-item-info" onclick="switchTab('agenda')" role="button" tabindex="0" title="Ver la visita en la Agenda">
             <span><span class="fub-item-num">Visita</span> <span class="fub-item-client">${esc(v.texto || '')}</span></span>
+            ${v.hora ? `<span class="fub-item-days">${icon('clock')} ${esc(v.hora)} hs</span>` : ''}
             ${(v.cliente || '').trim() ? `<span class="fub-item-days">${icon('user')} ${esc(v.cliente)}</span>` : ''}
             ${clima ? `<span>${clima}</span>` : ''}
           </div>
@@ -14084,6 +14117,12 @@ async function _gcalHttpErr(r, what){
   return err;
 }
 
+// Zona horaria del dispositivo: la del calendario que se crea y la de los
+// eventos con horario. Fallback a Córdoba si el navegador no la da.
+function _gcalTz(){
+  try { return Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Argentina/Cordoba'; }
+  catch(_){ return 'America/Argentina/Cordoba'; }
+}
 // Asegura el calendario "Presupuestos AR": valida el id guardado, y si no
 // existe (o se borró) lo crea. Devuelve el calendarId.
 async function gcalEnsureCalendar(token){
@@ -14095,8 +14134,7 @@ async function gcalEnsureCalendar(token){
     if (r.status !== 404 && r.status !== 410) throw await _gcalHttpErr(r, 'cal get');
     // 404/410: el calendario ya no existe → recrear abajo.
   }
-  let tz = 'America/Argentina/Cordoba';
-  try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || tz; } catch(_){}
+  const tz = _gcalTz();
   const r = await netFetch('https://www.googleapis.com/calendar/v3/calendars', {
     method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
     body: JSON.stringify({ summary: GCAL.CAL_NAME, description: 'Agenda de Presupuestos AR: trabajos, recontactos, vencimientos, seguimientos y notas. Se sincroniza automáticamente desde la app.', timeZone: tz }),
@@ -14181,11 +14219,24 @@ function _gcalBuildDesired(){
       const dstart = iso.replace(/-/g, '');
       const dendISO = _calAddDays(iso, 1);
       const info = _gcalEvInfo(ev, ev.entryId != null ? byId[ev.entryId] : null);
-      let key = (ev.entryId != null ? 'e' + ev.entryId + '-' + ev.tipo : 'n' + (ev.noteId || '')) + '-' + dstart;
+      // Con hora → evento con horario (1 h); sin hora → día completo.
+      const hora = ev.hora || '';
+      const tz = _gcalTz();
+      const fin = hora ? _calHoraMas(iso, hora, CAL_EV_MINS) : null;
+      const start = hora ? { dateTime: iso + 'T' + hora + ':00', timeZone: tz } : { date: iso };
+      const end   = hora ? { dateTime: fin.fecha + 'T' + fin.hora + ':00', timeZone: tz } : { date: dendISO };
+      // La hora forma parte de la CLAVE, no solo del hash: un PATCH que cambia
+      // un evento de día completo a uno con horario deja start.date y
+      // start.dateTime conviviendo y Google lo rechaza. Con la hora en la clave,
+      // poner o cambiar la hora se resuelve como borrar + insertar. Los eventos
+      // sin hora conservan la clave (y el hash) de siempre: nada se re-escribe.
+      let key = (ev.entryId != null ? 'e' + ev.entryId + '-' + ev.tipo : 'n' + (ev.noteId || '')) + '-' + dstart
+        + (hora ? '-t' + hora.replace(':', '') : '');
       const rep = (seen[key] = (seen[key] || 0) + 1);
       const pqKey = key + (rep > 1 ? '-' + rep : '');
-      const hash = _gcalHash(info.summary + '|' + info.desc + '|' + info.loc + '|' + iso + '|' + dendISO);
-      const body = { summary: info.summary, start: { date: iso }, end: { date: dendISO },
+      const hash = _gcalHash(info.summary + '|' + info.desc + '|' + info.loc + '|' + iso + '|' + dendISO
+        + (hora ? '|' + hora : ''));
+      const body = { summary: info.summary, start: start, end: end,
         extendedProperties: { private: { pqKey: pqKey, pqHash: hash } } };
       if (info.desc) body.description = info.desc;
       if (info.loc)  body.location = info.loc;
@@ -17466,6 +17517,8 @@ let _calOverdueOpen = false;      // sección "Atrasado" desplegada (colapsada p
 // Cada nota: { id, fecha:'YYYY-MM-DD', texto, hecho:bool, creadoEn }.
 // Campo opcional tipo:'visita' → evaluación presencial / ir a presupuestar
 // (se muestra como concepto propio en la Agenda; sin tipo = nota común).
+// Campo opcional hora:'HH:MM' → compromiso con horario; sin hora es de día
+// completo (como fue siempre). La hora viaja a Google Calendar y al .ics.
 function getNotes() {
   try {
     const a = JSON.parse(localStorage.getItem(LS.NOTES) || '[]');
@@ -17489,6 +17542,20 @@ function _calAddDays(iso, n) {
   if (p.length !== 3) return iso;
   const d = new Date(+p[0], +p[1] - 1, +p[2] + (n || 0));
   return toLocalISODate(d);
+}
+// ─── HORA DE UN COMPROMISO ───────────────────────────────────
+// Cuánto dura, por defecto, una nota/visita con hora (Google y el .ics piden un
+// fin). Una hora es lo razonable para una evaluación o un recordatorio.
+const CAL_EV_MINS = 60;
+// Suma minutos a { iso, 'HH:MM' } y devuelve { fecha, hora } — puede caer al día
+// siguiente (una visita a las 23:30 termina el día después).
+function _calHoraMas(iso, hm, mins) {
+  const p = String(hm || '00:00').split(':');
+  const t = (+p[0] || 0) * 60 + (+p[1] || 0) + (mins || 0);
+  const dias = Math.floor(t / 1440);
+  const rest = ((t % 1440) + 1440) % 1440;
+  const p2 = n => String(n).padStart(2, '0');
+  return { fecha: dias ? _calAddDays(iso, dias) : iso, hora: p2(Math.floor(rest / 60)) + ':' + p2(rest % 60) };
 }
 // ISO local a partir de un timestamp (e.enviadoEn se guarda como ISO UTC con
 // hora; para el calendario nos importa el DÍA local en que se envió).
@@ -17609,13 +17676,20 @@ function calBuildIndex() {
     push(n.fecha, {
       tipo: esVisita ? 'visita' : 'nota', title: titulo, sub: (titulo === cliente) ? '' : cliente,
       noteId: n.id, done: !!n.hecho, tel: (n.tel || '').trim(),
+      hora: sanHoraHM(n.hora),
       ubic, mapUrl: ubic && typeof mapsUrlFor === 'function' ? mapsUrlFor(ubic, '') : '',
       clima
     });
   });
 
-  // Ordenar cada día por prioridad de tipo.
-  Object.keys(idx).forEach(k => idx[k].sort((a, b) => (CAL_TIPO_ORD[a.tipo] || 9) - (CAL_TIPO_ORD[b.tipo] || 9)));
+  // Ordenar cada día por prioridad de tipo y, dentro del mismo tipo, por hora
+  // (los que no tienen hora van después: son de día completo).
+  Object.keys(idx).forEach(k => idx[k].sort((a, b) => {
+    const d = (CAL_TIPO_ORD[a.tipo] || 9) - (CAL_TIPO_ORD[b.tipo] || 9);
+    if (d) return d;
+    const ha = a.hora || '99:99', hb = b.hora || '99:99';
+    return ha < hb ? -1 : (ha > hb ? 1 : 0);
+  }));
   return idx;
 }
 
@@ -17810,11 +17884,12 @@ function renderCalCols() {
 // alterna la nota. Barra de color por tipo (patrón `t-<tipo>`).
 function _calColEv(ev) {
   const sub = ev.sub ? `<div class="agc-col-ev-sub">${esc(ev.sub)}</div>` : '';
+  const hora = ev.hora ? `<span class="agc-col-ev-h">${esc(ev.hora)}</span>` : '';
   let act = '';
   if (ev.entryId != null) act = `onclick="goToHistoryEntry(${ev.entryId})" title="Ver el presupuesto"`;
   else if (ev.noteId != null) act = `onclick="calToggleNote('${ev.noteId}')" title="${ev.done ? 'Marcar pendiente' : 'Marcar hecho'}"`;
   return `<button type="button" class="agc-col-ev t-${ev.tipo}${ev.done ? ' done' : ''}" ${act}>`
-    + `<div class="agc-col-ev-title">${esc(ev.title)}</div>${sub}</button>`;
+    + `<div class="agc-col-ev-title">${hora}${esc(ev.title)}</div>${sub}</button>`;
 }
 
 // Markup de una tarjeta de evento (reusado por el detalle del día y la lista de
@@ -17822,7 +17897,8 @@ function _calColEv(ev) {
 // tipo — útil en la sección "Atrasado", donde cada fila es de un día distinto.
 function _calEvHTML(ev, dateLabel) {
   const kind = CAL_TIPO_LBL[ev.tipo] || '';
-  const kindTxt = dateLabel ? `${kind} · ${esc(dateLabel)}` : kind;
+  const kindTxt = (dateLabel ? `${kind} · ${esc(dateLabel)}` : kind)
+    + (ev.hora ? ` · <span class="agc-ev-hora">${esc(ev.hora)}</span>` : '');
   const sub = ev.sub ? `<div class="agc-ev-sub">${esc(ev.sub)}</div>` : '';
   let acts = '';
   // Botón de chat directo por WhatsApp cuando el evento tiene un teléfono
@@ -17910,6 +17986,12 @@ function renderCalDay(noList) {
     ${list}
     <div class="agc-note-form">
       <input type="text" id="agc-note-input" placeholder="Anotá un recordatorio para este día…" maxlength="140" onkeydown="if(event.key==='Enter'){calSaveNote();}">
+    </div>
+    <div class="agc-note-acts">
+      <label class="agc-note-hora" onclick="_calHoraPick(event)" title="Hora (opcional): sin hora queda como recordatorio de todo el día">
+        ${icon('clock')}
+        <input type="time" id="agc-note-hora" aria-label="Hora (opcional)">
+      </label>
       <button class="btn btn-p btn-sm" onclick="calSaveNote()">${icon('plus')} Nota</button>
       <button class="btn btn-visita btn-sm" onclick="calSaveNote('visita')" title="Guardar como visita: evaluación presencial / ir a presupuestar">${icon('plus')} Visita</button>
     </div>
@@ -17941,6 +18023,14 @@ function _calSetupNoteContact() {
   if (cli) attachClientDropdown(cli, tel);
   const imp = document.getElementById('agc-note-import');
   if (imp) imp.style.display = (typeof contactPickerSupported === 'function' && contactPickerSupported()) ? 'inline-flex' : 'none';
+}
+// El campo de hora vacío es un blanco chico ("--:--"): que toda la cajita —el
+// icono del reloj incluido— abra el selector, no solo los dígitos.
+function _calHoraPick(ev) {
+  const inp = document.getElementById('agc-note-hora');
+  if (!inp || (ev && ev.target === inp)) return;   // tocando el input ya se abre solo
+  try { if (inp.showPicker) { inp.showPicker(); return; } } catch (e) { /* sin showPicker → foco */ }
+  inp.focus();
 }
 // Importa un contacto del teléfono hacia los campos del alta de nota.
 function importContactToNote() {
@@ -18047,6 +18137,9 @@ function calSaveNote(tipo) {
   }
   const ubicEl = document.getElementById('agc-note-ubic');
   const ubic = ubicEl ? (ubicEl.value || '').trim() : '';
+  // Hora opcional: sin ella el recordatorio es de día completo.
+  const horaEl = document.getElementById('agc-note-hora');
+  const hora = sanHoraHM(horaEl ? (horaEl.value || '').trim() : '');
   // Validación: una nota común necesita texto. Una visita se explica sola (es
   // una evaluación presencial), así que puede guardarse sin título mientras
   // esté anclada a algo —un contacto o una ubicación—; sin nada de eso pedimos
@@ -18062,6 +18155,7 @@ function calSaveNote(tipo) {
     cliente: cliente, tel: tel
   };
   if (ubic) nueva.ubic = ubic;
+  if (hora) nueva.hora = hora;
   if (esVisita) nueva.tipo = 'visita';
   notes.push(nueva);
   setNotes(notes);
@@ -18075,10 +18169,12 @@ function calSaveNote(tipo) {
   if (cliEl) cliEl.value = '';
   if (telEl) telEl.value = '';
   if (ubicEl) ubicEl.value = '';
+  if (horaEl) horaEl.value = '';
   renderCal();
   // Visitas: asegurar el pronóstico de la zona para pintar el chip de clima.
   if (esVisita && typeof climaEnsureNota === 'function') climaEnsureNota(nueva, () => renderCal());
-  toast(esVisita ? 'Visita agendada' : 'Nota agendada', 'ok');
+  const cuando = hora ? ' a las ' + hora : '';
+  toast((esVisita ? 'Visita agendada' : 'Nota agendada') + cuando, 'ok');
 }
 // Abre el chat de WhatsApp del contacto vinculado a una nota.
 function calChatNote(id) {
@@ -18141,6 +18237,8 @@ function calEditNote(id) {
   const fec = document.getElementById('agc-edit-fecha');
   if (fec) { fec.value = _editNoteFecha; if (typeof syncCdate === 'function') syncCdate(fec); }
   _neFechaSync();
+  const hor = document.getElementById('agc-edit-hora');
+  if (hor) hor.value = sanHoraHM(n.hora);
   const ubicEl = document.getElementById('agc-edit-ubic');
   if (ubicEl) ubicEl.value = n.ubic || '';
   if (cli) attachClientDropdown(cli, tel);
@@ -18179,16 +18277,9 @@ function _neGetTipo() {
 }
 function _neSelTipo(btn) { _neSetTipo(btn.dataset.tipo || ''); }
 // ─── FECHA DEL RECORDATORIO (mover el compromiso de día) ─────────────────────
-// El input abre el calendario propio; los atajos corren la fecha ELEGIDA (no la
-// original), así se puede tocar "+ 1 día" varias veces. `hoy` es absoluto.
-function _neFechaMover(n) {
-  const fec = document.getElementById('agc-edit-fecha');
-  if (!fec) return;
-  const base = fec.value || _editNoteFecha || today();
-  fec.value = (n === 'hoy') ? today() : _calAddDays(base, n);
-  if (typeof syncCdate === 'function') syncCdate(fec);
-  _neFechaSync();
-}
+// El campo abre el calendario propio y ahí se elige el día nuevo. Antes había
+// además atajos (− 1 día / + 1 día / + 1 semana / Hoy): se sacaron porque con
+// el calendario alcanza y ocupaban media pantalla del modal.
 // Debajo del campo: el día de la semana elegido y, si cambió, de dónde se mueve.
 function _neFechaSync() {
   const fec = document.getElementById('agc-edit-fecha');
@@ -18203,6 +18294,13 @@ function _neFechaSync() {
     ? `Se mueve al ${dia.toLowerCase()} ${fmtD(v)} (estaba el ${fmtD(_editNoteFecha)}).`
     : `${dia} ${fmtD(v)}`;
   msg.className = 'ne-datemsg' + (movida ? ' is-moved' : '');
+}
+// ─── HORA DEL RECORDATORIO ───────────────────────────────────────────────────
+// "Sin hora" vuelve el compromiso a día completo: el <input type="time"> de
+// Android no ofrece manera de vaciarlo una vez que se eligió una hora.
+function _neHoraClear() {
+  const h = document.getElementById('agc-edit-hora');
+  if (h) { h.value = ''; h.focus(); }
 }
 function calSaveNoteEdit() {
   if (!_editNoteId) { calCloseNoteEdit(); return; }
@@ -18225,6 +18323,8 @@ function calSaveNoteEdit() {
   }
   const ubicEl = document.getElementById('agc-edit-ubic');
   const ubic = ubicEl ? (ubicEl.value || '').trim() : '';
+  const horaEl = document.getElementById('agc-edit-hora');
+  const hora = sanHoraHM(horaEl ? (horaEl.value || '').trim() : '');
   const notes = getNotes();
   const n = notes.find(x => x.id === _editNoteId);
   if (!n) { calCloseNoteEdit(); return; }
@@ -18236,6 +18336,7 @@ function calSaveNoteEdit() {
   n.cliente = cliente;
   n.tel = telef;
   if (ubic) n.ubic = ubic; else delete n.ubic;
+  if (hora) n.hora = hora; else delete n.hora;
   if (_neGetTipo() === 'visita') n.tipo = 'visita'; else delete n.tipo;
   setNotes(notes);
   // Guardar/enriquecer el cliente en la DB con lo editado (teléfono + ubicación):
@@ -18283,7 +18384,7 @@ function _calShareText(ev) {
     const anio = String(ev._iso).split('-')[0] || '';
     fecha = _calLongDate(ev._iso) + (anio ? ` de ${anio}` : '');
   }
-  const lines = [`${emo} ${kind}${fecha ? ' · ' + fecha : ''}`];
+  const lines = [`${emo} ${kind}${fecha ? ' · ' + fecha : ''}${ev.hora ? ' · ' + ev.hora + ' hs' : ''}`];
   if (ev.title) lines.push(ev.title);
   // No repetir el contacto cuando el título ya lo contiene (p. ej. una visita
   // "Presupuesto Mara Cejas" con el contacto "Mara Cejas" vinculado).
@@ -18515,6 +18616,12 @@ function _icsFold(line) {
   while (rest.length > 73) { out += rest.slice(0, 73) + '\r\n '; rest = rest.slice(73); }
   return out + rest;
 }
+// Fecha+hora LOCAL "flotante" (sin Z ni TZID): el evento cae a esa hora del
+// reloj en el calendario que lo importe, que es justo lo que se quiere para un
+// compromiso local. Con TZID habría que embeber un VTIMEZONE completo.
+function _icsLocalDT(iso, hm) {
+  return String(iso).replace(/-/g, '') + 'T' + String(hm).replace(':', '') + '00';
+}
 function _icsStamp() {
   const d = new Date(), p = n => String(n).padStart(2, '0');
   return d.getUTCFullYear() + p(d.getUTCMonth() + 1) + p(d.getUTCDate())
@@ -18579,8 +18686,16 @@ function calExportIcs() {
       body.push('BEGIN:VEVENT');
       body.push('UID:' + _icsEsc(uid));
       body.push('DTSTAMP:' + stamp);
-      body.push('DTSTART;VALUE=DATE:' + dstart);
-      body.push('DTEND;VALUE=DATE:' + dend);
+      // Con hora → evento con horario (una hora de duración); sin hora → día
+      // completo, como fue siempre.
+      if (ev.hora) {
+        const fin = _calHoraMas(iso, ev.hora, CAL_EV_MINS);
+        body.push('DTSTART:' + _icsLocalDT(iso, ev.hora));
+        body.push('DTEND:' + _icsLocalDT(fin.fecha, fin.hora));
+      } else {
+        body.push('DTSTART;VALUE=DATE:' + dstart);
+        body.push('DTEND;VALUE=DATE:' + dend);
+      }
       body.push('SUMMARY:' + _icsEsc(summary));
       if (desc.length) body.push('DESCRIPTION:' + _icsEsc(desc.join('\n')));
       if (loc) body.push('LOCATION:' + _icsEsc(loc));
@@ -18716,10 +18831,11 @@ function notifBuildPendientes(){
     getVisitasDeHoy().forEach(n => {
       const cli = (n.cliente || '').trim();
       const t = (n.texto || '').trim() || cli || 'Visita';
+      const cuando = n.hora ? `${n.hora} hs` : '';
       out.push({ icon: '📍', kind: 'visita', key: `visita|${n.id}`,
         bucket: 'hoy', ord: NOTIF_ORD.visita,
         text: `Visita de hoy: ${t}`,
-        sub: (cli && t !== cli) ? cli : '',
+        sub: [cuando, (cli && t !== cli) ? cli : ''].filter(Boolean).join(' · '),
         action: { type: 'tab', tab: 'agenda' } });
     });
   }
