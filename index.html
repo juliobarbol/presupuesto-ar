@@ -3995,6 +3995,10 @@ input[type=number]{-moz-appearance:textfield}
             </div>
             <p class="fu-help" id="gcal-status">Creá los eventos de tu agenda automáticamente en un calendario propio de Google ("Presupuestos AR"). Sincroniza con la app abierta y con señal.</p>
             <p class="fu-help" style="margin-top:-2px">Es de una sola vía (app → Google): la app maneja ese calendario, así que no edites esos eventos a mano en Google.</p>
+            <!-- El caso confuso: los eventos están en Google pero la app de
+                 Android no muestra un calendario nuevo hasta activarlo a mano.
+                 Es un interruptor del dispositivo: no hay API que lo prenda. -->
+            <p class="fu-help" id="gcal-visibilidad" style="display:none;margin-top:-2px">¿Sincroniza pero no ves los eventos en tu celular? En la app de Google Calendar entrá a <b>☰ → Configuración → tu cuenta → "Presupuestos AR"</b> y activá <b>Sincronización</b>: los calendarios nuevos vienen apagados en el teléfono.</p>
             <div class="arow" id="gcal-actions">
               <button type="button" class="btn btn-p btn-sm" id="gcal-connect" onclick="gcalConnect()">Conectar Google Calendar</button>
               <button type="button" class="btn btn-g btn-sm" id="gcal-sync" onclick="gcalSyncNow()" style="display:none">Sincronizar ahora</button>
@@ -4852,6 +4856,8 @@ const LS = {
   GCAL_ON:        'pq_gcal_on',
   GCAL_ID:        'pq_gcal_id',
   GCAL_LAST:      'pq_gcal_last',
+  GCAL_N:         'pq_gcal_n',      // cuántos eventos dejó la última sync (diagnóstico, no va al backup)
+  GCAL_VIS:       'pq_gcal_vis',    // ya se marcó el calendario como visible en la cuenta (una vez por dispositivo)
   GCAL_EMAIL:     'pq_gcal_email',
   GCAL_TOK:       'pq_gcal_tok',
   PDF_THEME:      'pq_pdf_theme',
@@ -14130,7 +14136,10 @@ async function gcalEnsureCalendar(token){
   if (id) {
     const r = await netFetch('https://www.googleapis.com/calendar/v3/calendars/' + encodeURIComponent(id),
       { headers: { Authorization: 'Bearer ' + token } });
-    if (r.ok) return id;
+    // El calendario ya existía: igual hay que asegurarse UNA VEZ de que esté
+    // tildado en la cuenta. Los que se crearon antes de este arreglo pueden
+    // llevar meses recibiendo eventos que el usuario nunca vio.
+    if (r.ok) { await _gcalEnsureVisible(token, id, true); return id; }
     if (r.status !== 404 && r.status !== 410) throw await _gcalHttpErr(r, 'cal get');
     // 404/410: el calendario ya no existe → recrear abajo.
   }
@@ -14144,7 +14153,29 @@ async function gcalEnsureCalendar(token){
   const j = await r.json();
   id = j.id;
   try { localStorage.setItem(LS.GCAL_ID, id); } catch(_){}
+  await _gcalEnsureVisible(token, id);
   return id;
+}
+
+// Deja el calendario MARCADO COMO VISIBLE en la cuenta (`selected`). Un
+// calendario creado por API entra a la lista de la cuenta, pero puede quedar
+// destildado: entonces los eventos existen y el usuario no ve ninguno, que se
+// parece mucho a "la app no sincroniza". Best-effort: si la cuenta no deja
+// tocar la calendarList, la sync sigue igual (los eventos ya están).
+// OJO: en la app de Android hay además un interruptor POR DISPOSITIVO
+// (☰ → Configuración → la cuenta → "Presupuestos AR" → Sincronización) que
+// ninguna API puede activar; por eso la sección de config lo explica.
+// `soloUnaVez`: no repetir el pedido en cada sync (queda anotado en LS.GCAL_VIS
+// al primer éxito). El botón "Sincronizar ahora" lo llama SIN esa bandera: es el
+// camino de reparación cuando el usuario dice "no veo nada en Google".
+async function _gcalEnsureVisible(token, calId, soloUnaVez){
+  if (soloUnaVez) { try { if (localStorage.getItem(LS.GCAL_VIS) === '1') return; } catch(_){} }
+  try {
+    const r = await netFetch('https://www.googleapis.com/calendar/v3/users/me/calendarList/' + encodeURIComponent(calId),
+      { method: 'PATCH', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ selected: true, hidden: false }) });
+    if (r && r.ok) { try { localStorage.setItem(LS.GCAL_VIS, '1'); } catch(_){} }
+  } catch(_){ /* no es crítico: los eventos se sincronizan igual */ }
 }
 
 // timeMin (RFC3339) = medianoche local de hoy → solo lo que viene.
@@ -14285,6 +14316,11 @@ async function gcalSync(){
     if (fallo) throw fallo;
     GCAL._dirty = false;
     try { localStorage.setItem(LS.GCAL_LAST, new Date().toISOString()); } catch(_){}
+    // Cuántos eventos quedaron arriba. Es el dato que contesta la pregunta
+    // "¿la app no los manda, o Google no me los muestra?": si acá dice 7 y en
+    // el teléfono no se ve ninguno, el problema es la visibilidad del
+    // calendario, no la sincronización.
+    try { localStorage.setItem(LS.GCAL_N, String(Object.keys(desired).length)); } catch(_){}
   } finally { GCAL._syncing = false; }
 }
 
@@ -14568,9 +14604,17 @@ async function gcalSyncNow(){
   try {
     toast('Sincronizando con Google Calendar…', 'info', 2500);
     await gcalSync();
+    // El botón manual es también el botón de "arreglalo": re-marca el
+    // calendario como visible por si quedó destildado en la cuenta.
+    try {
+      const calId = localStorage.getItem(LS.GCAL_ID) || '';
+      if (calId) await _gcalEnsureVisible(await gcalGetToken(), calId);
+    } catch(_){}
     _syncOk(GCAL); GCAL._warned = false;
     gcalUpdateUI();
-    toast('Agenda sincronizada ✓', 'ok', 2500);
+    let n = 0; try { n = +(localStorage.getItem(LS.GCAL_N) || 0) || 0; } catch(_){}
+    toast(n ? `Agenda sincronizada ✓ · ${n} evento${n > 1 ? 's' : ''} en "Presupuestos AR"` : 'Agenda sincronizada ✓',
+      'ok', n ? 4000 : 2500);
   } catch(e){ console.error('gcalSyncNow', e); GCAL._lastErr = e; gcalUpdateUI(); toast(_gcalErrMsg(e), 'err', 9000); }
 }
 // Al arrancar: si está conectado y hay señal, sync silenciosa. Nunca pide token
@@ -14611,12 +14655,23 @@ function gcalUpdateUI(){
         status.textContent = (last ? '⚠️ Sin sincronizar desde el ' + _fmtBackupDate(last) + '. ' : '⚠️ La agenda no se está sincronizando. ')
           + _gcalErrMsg(GCAL._lastErr);
       } else {
+        // Cuántos eventos dejó arriba la última pasada: sin ese número, "no veo
+        // nada en Google" no se puede diagnosticar (¿no se mandaron, o no se
+        // muestran?). Incluye TODO lo de la Agenda: trabajos, visitas, notas,
+        // recontactos, vencimientos y seguimientos de hoy en adelante.
+        let n = 0; try { n = +(localStorage.getItem(LS.GCAL_N) || 0) || 0; } catch(_){}
+        const cuantos = n ? ` · ${n} evento${n > 1 ? 's' : ''} sincronizado${n > 1 ? 's' : ''}` : '';
         status.textContent = last
-          ? ('Conectado ✓ · Última sincronización: ' + _fmtBackupDate(last))
+          ? ('Conectado ✓ · Última sincronización: ' + _fmtBackupDate(last) + cuantos)
           : 'Conectado ✓ · Tu agenda se sincroniza con el calendario "Presupuestos AR".';
       }
     }
   }
+  // Ayuda del caso más confuso: los eventos SÍ están en Google pero la app de
+  // Android no muestra el calendario nuevo hasta que se lo activa a mano (es un
+  // interruptor del dispositivo, ninguna API lo puede tocar).
+  const vis = document.getElementById('gcal-visibilidad');
+  if (vis) vis.style.display = on ? '' : 'none';
   if (cBtn) {
     cBtn.style.display = (!on || fallando) ? '' : 'none';
     cBtn.textContent = fallando ? 'Reconectar' : 'Conectar Google Calendar';

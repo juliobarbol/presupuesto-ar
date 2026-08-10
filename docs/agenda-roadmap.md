@@ -135,6 +135,20 @@ extra por evento:
   insertar. Los eventos sin hora conservan clave y hash de siempre: desplegar
   esto no reescribe nada de lo ya sincronizado. Ver `test/nota-hora.test.cjs`.
 
+- **"Las visitas no me quedan en Google Calendar"** (v203). La sync siempre las
+  empujó —quedó demostrado con `test/gcal-agenda.test.cjs`, que corre una
+  `gcalSync()` entera con la API interceptada y verifica que salgan los cinco
+  conceptos—, así que el problema estaba del otro lado: **el calendario puede
+  quedar destildado**. Un calendario creado por API entra a la cuenta pero puede
+  venir con `selected:false`, y encima la app de Android tiene su propio
+  interruptor por dispositivo (☰ → Configuración → la cuenta → "Presupuestos AR"
+  → Sincronización) que ninguna API puede activar. Ahora `_gcalEnsureVisible()`
+  lo marca visible (una vez por dispositivo, `LS.GCAL_VIS`; "Sincronizar ahora"
+  lo fuerza siempre), la sección de config explica el interruptor del teléfono, y
+  cada sync anota **cuántos eventos dejó arriba** (`LS.GCAL_N`, visible en el
+  estado): sin ese número no hay manera de distinguir "no se mandaron" de "no se
+  muestran".
+
 ## Ideas futuras (no comprometidas)
 - Botón "Hoy" también en la vista Agenda (scroll al grupo Hoy).
 - Umbral de "seguimiento reciente" configurable (hoy fijo en 30 días en `renderCalList`).
