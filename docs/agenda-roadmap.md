@@ -98,11 +98,13 @@ extra por evento:
 - **Mover una nota/visita de día desde su propio modal** (v199). "Editar nota"
   tenía todo menos lo más obvio: la fecha. Para correr un compromiso había que
   borrar la nota y volver a crearla en el día nuevo. Ahora el modal trae el campo
-  **Fecha** (datepicker propio) con atajos **− 1 día / + 1 día / + 1 semana / Hoy**
-  (`_neFechaMover`, relativos a la fecha ELEGIDA para poder encadenarlos; `hoy` es
-  el único absoluto) y un aviso debajo que dice de dónde a dónde se mueve
-  (`_neFechaSync`). Sin fecha válida no guarda. El disparador fue real: alerta de
-  viento el día de una poda agendada. Ver `test/nota-fecha.test.cjs`.
+  **Fecha** (datepicker propio) y un aviso debajo que dice de dónde a dónde se
+  mueve (`_neFechaSync`). Sin fecha válida no guarda. El disparador fue real:
+  alerta de viento el día de una poda agendada. Ver `test/nota-fecha.test.cjs`.
+  En v202 se sacaron los atajos relativos que acompañaban al campo
+  (− 1 día / + 1 día / + 1 semana / Hoy, `_neFechaMover`): con tocar el
+  calendario alcanza y ocupaban media pantalla del modal, que ahora entra
+  entero sin scroll.
 
 - **Actualizar el pronóstico a mano** (v200). El cache de clima tiene TTL de 3 h
   y TODOS los caminos automáticos lo respetan (abrir la app, volver del segundo
@@ -117,10 +119,26 @@ extra por evento:
   Además, mover una visita de día o de lugar ahora llama a `climaEnsureNota`: el
   día nuevo puede caer fuera de lo bajado, o el lugar nuevo ser otra zona.
 
+- **Hora en notas y visitas** (v202). Hasta acá todo lo manual de la Agenda era
+  de día completo: "visita a Amalia el lunes", sin decir a qué hora. Ahora el
+  alta (fila de botones **+ Nota / + Visita**) y el modal de edición traen un
+  campo **Hora opcional** (`hora:'HH:MM'` en la nota, validado por `sanHoraHM`;
+  sin hora se comporta exactamente como antes). La hora se ve en la tarjeta del
+  evento (`VISITA · 14:30`), en las columnas de Semana/3-días, en el banner del
+  día y en la campanita; ordena los eventos dentro del día; y sale al mundo:
+  **Google Calendar** como evento con horario (`start.dateTime` + `timeZone` del
+  dispositivo, 1 h de duración por defecto — `CAL_EV_MINS`) y el `.ics` como
+  fecha-hora local flotante. La hora forma parte de la **clave** `pqKey` del
+  evento de Google, no solo del hash: un PATCH que convierte un evento de día
+  completo en uno con horario deja `start.date` y `start.dateTime` conviviendo y
+  Google lo rechaza, así que poner/cambiar la hora se resuelve como borrar +
+  insertar. Los eventos sin hora conservan clave y hash de siempre: desplegar
+  esto no reescribe nada de lo ya sincronizado. Ver `test/nota-hora.test.cjs`.
+
 ## Ideas futuras (no comprometidas)
 - Botón "Hoy" también en la vista Agenda (scroll al grupo Hoy).
 - Umbral de "seguimiento reciente" configurable (hoy fijo en 30 días en `renderCalList`).
-- Notas con hora / recordatorio push (ya hay `push-worker/` para seguimientos).
+- Recordatorio push de una nota/visita con hora (ya hay `push-worker/` para seguimientos).
 - Filtro por tipo en la vista Agenda (mostrar solo trabajos, etc.).
 
 ## Descartado a propósito (rompen offline / poco valor)

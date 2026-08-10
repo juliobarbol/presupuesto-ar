@@ -2,12 +2,13 @@
 //
 // Caso real: hay una poda agendada como visita y sale alerta de viento para ese
 // día. Antes había que borrar la nota y volver a crearla en la fecha nueva; el
-// modal de "Editar nota" ahora trae el campo Fecha + atajos (− 1 día / + 1 día /
-// + 1 semana / Hoy).
+// modal de "Editar nota" trae el campo Fecha, que abre el calendario propio.
+// (Hubo atajos − 1 día / + 1 día / + 1 semana / Hoy: se sacaron porque con el
+// calendario alcanza y ocupaban media pantalla del modal.)
 //
 // Lo que se protege acá:
 //   1. El modal carga la fecha de la nota que se está editando.
-//   2. Los atajos corren la fecha ELEGIDA (encadenables), y "Hoy" es absoluto.
+//   2. Cambiar la fecha avisa debajo del campo de dónde a dónde se mueve.
 //   3. Guardar persiste la fecha nueva en LS.NOTES sin tocar el resto (tipo,
 //      contacto, ubicación) y sin cambiar el id.
 //   4. Una fecha vacía o inválida NO guarda (la nota no puede quedar sin día).
@@ -58,7 +59,7 @@ const SEMBRAR = `
   });
   try {
 
-    // ── 1 y 2: el modal carga la fecha y los atajos la corren ──
+    // ── 1 y 2: el modal carga la fecha y avisa cuando se mueve ──
     {
       const page = await nuevaPagina(browser);
       const r = await page.evaluate(new Function(`
@@ -66,25 +67,25 @@ const SEMBRAR = `
         calEditNote('n_test1');
         const inp = document.getElementById('agc-edit-fecha');
         const out = { alAbrir: inp.value, visible: !document.getElementById('note-edit-overlay').hidden };
-        _neFechaMover(1);  out.mas1  = inp.value;
-        _neFechaMover(1);  out.mas2  = inp.value;   // encadenable
-        _neFechaMover(7);  out.mas7  = inp.value;
-        _neFechaMover(-1); out.menos1 = inp.value;
+        // Los atajos se sacaron: el modal no debe traer ningún botón relativo.
+        out.atajos = document.querySelectorAll('#note-edit-box .ne-qbtn, #note-edit-box .ne-datequick').length;
+        out.hayFn = typeof _neFechaMover;
+        inp.value = '2026-08-14'; _neFechaSync();
         out.msg = document.getElementById('agc-edit-fecha-msg').textContent;
         out.movida = document.getElementById('agc-edit-fecha-msg').className.includes('is-moved');
-        _neFechaMover('hoy'); out.hoy = inp.value; out.today = today();
-        out.msgHoy = document.getElementById('agc-edit-fecha-msg').textContent;
+        inp.value = '2026-08-06'; _neFechaSync();
+        out.msgIgual = document.getElementById('agc-edit-fecha-msg').textContent;
+        out.movidaIgual = document.getElementById('agc-edit-fecha-msg').className.includes('is-moved');
         calCloseNoteEdit();
         return out;
       `));
       check('El modal abre con la fecha de la nota', r.alAbrir === '2026-08-06', r.alAbrir);
-      check('"+ 1 día" corre un día y se puede encadenar',
-        r.mas1 === '2026-08-07' && r.mas2 === '2026-08-08', r.mas1 + ' → ' + r.mas2);
-      check('"+ 1 semana" suma 7 días a la fecha elegida', r.mas7 === '2026-08-15', r.mas7);
-      check('"− 1 día" vuelve para atrás', r.menos1 === '2026-08-14', r.menos1);
+      check('Ya no hay atajos de ± días en el modal',
+        r.atajos === 0 && r.hayFn === 'undefined', r.atajos + ' botón(es), _neFechaMover=' + r.hayFn);
       check('El aviso dice de dónde a dónde se mueve',
         r.movida && r.msg.includes('viernes 14/08/2026') && r.msg.includes('06/08/2026'), r.msg);
-      check('"Hoy" es absoluto (no relativo a lo elegido)', r.hoy === r.today, r.hoy);
+      check('…y con la fecha original solo muestra el día',
+        !r.movidaIgual && r.msgIgual.includes('06/08/2026'), r.msgIgual);
       await page.close();
     }
 
@@ -94,7 +95,7 @@ const SEMBRAR = `
       const r = await page.evaluate(new Function(`
         ${SEMBRAR}
         calEditNote('n_test1');
-        _neFechaMover(2);
+        document.getElementById('agc-edit-fecha').value = '2026-08-08';
         calSaveNoteEdit();
         const n = getNotes()[0];
         return { total: getNotes().length, id: n.id, fecha: n.fecha, texto: n.texto,
