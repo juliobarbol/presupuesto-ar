@@ -15,7 +15,7 @@
 
 ## Estructura de archivos
 - `index.html` — **toda la app** (markup + `<style>` + `<script>`).
-- `sw.js` — Service Worker (offline + actualizaciones). **`CACHE_VERSION` actual: `presupuesto-v203`**.
+- `sw.js` — Service Worker (offline + actualizaciones). **`CACHE_VERSION` actual: `presupuesto-v204`**.
 - `manifest.webmanifest`, `*.png` — PWA (instalación, iconos).
 - `push-worker/` — Cloudflare Worker **opcional** para notificaciones push de seguimiento (avisos con la app cerrada). No es parte del PWA shell; se despliega aparte. Ver `docs/push-setup.md`. La app es inerte a esto hasta rellenar `PUSH_WORKER_URL` / `PUSH_VAPID_KEY` en `index.html`.
 
@@ -83,6 +83,7 @@ El CSS vive en el `<style>` (líneas ~16–1711). Hay dos bloques de estilos del
 - **`preloadGIS()` (no sacar):** los botones "Conectar" abren un **popup**, y el navegador solo lo permite mientras dura el gesto del usuario. Si al tocar el botón todavía hay que bajar `accounts.google.com/gsi/client`, el popup llega tarde y Chrome lo cierra → `popup_closed`, que **parece falta de permisos y no lo es**. Los dos caminos de init cortan antes de cargar GIS (`gdriveInitOnLoad` si ya hay datos locales, `gcalInitOnLoad` si Calendar no está conectado), así que la librería hay que precargarla aparte, diferida al idle. Solo baja el script y arma los token clients: **nunca pide token**. Si igual está fría al tocar, `gcalConnect` pide un segundo toque en vez de tirar un popup condenado. Ver `test/gis-preload.test.cjs`.
 - **`login_hint` puede envenenar la ventana (no sacar el 3er intento):** si la cuenta recordada ya no tiene el permiso vigente, mandar `login_hint` hace que el popup de Google **se cierre solo sin mostrar nada** — solo llega `popup_closed`, que parece falta de permisos y no lo es. Le pasó a Drive (backup parado 3 días diciendo "Conectado ✓") y a Calendar. Por eso el botón "Conectar" tiene una escalera de 3 intentos (`_gcalTokenParaConectar` / `_gdriveTokenParaConectar`): silencioso → con cuenta recordada → **sin ella** (`{ noHint: true }`, el camino de "primera vez"). Ese 3er paso es el que destraba, y es literalmente lo que hacía desconectar y volver a conectar (borra `LS.*_EMAIL`), pero sin perder la conexión. Ver `test/gcal-connect.test.cjs`.
 - **Conexión por redirección (sin popup):** el flujo de GIS abre una ventana emergente y hay dispositivos donde muere sin responder (`popup_closed`), **tanto en la app instalada como en una pestaña**. Cuando el fallo es de ventana, `gcalOfrecerRedireccion()` propone ir a Google en la misma pestaña (`gcalConnectRedirect`, flujo implícito `response_type=token`, sin `client_secret`) y `gcalHandleRedirectReturn()` recoge el token del fragmento al volver, valida el `state` (`sessionStorage`) y limpia la URL. Requiere registrar la URI de retorno en el Client ID: ver `docs/gcal-redirect.md` y `test/gcal-redirect.test.cjs`.
+- **Una sync parada no puede disfrazarse de "Conectado ✓"** (v204). `gcalInitOnLoad` se tragaba el fallo del token silencioso (`.catch(()=>{})`): si la sesión de Google dejaba de renovarse callada, `gcalAutoSync()` no corría NUNCA, `_fails` seguía en 0 y la sección mostraba "Conectado ✓ · Última sincronización: <fecha vieja>" con la agenda parada hace días — eventos viejos arriba, los nuevos no. Ahora ese fallo llama a `_syncFail(GCAL, e)` + repinta (al 2º: rojo + "Reconectar"). Además: `gcalSyncNow()` pide el token con la escalera **interactiva** (`_gcalTokenParaConectar`) porque es un gesto del usuario — antes el botón de reparar no podía reparar el fallo más común, ya que `gcalSync()` pide el token en silencio; y el estado avisa si la última sync tiene **más de 24 h** aunque no haya error registrado. Ver `test/gcal-agenda.test.cjs`.
 - **Diagnóstico de errores:** `_gcalErrMsg()` = mensaje accionable + el código crudo de Google (`_gcalErrCode()`: el de GIS y el `reason` del JSON de la API). Todas las llamadas HTTP tiran vía `_gcalHttpErr()` para conservar `status` y cuerpo — sin eso no se distingue "API sin habilitar" de "falta el permiso". El último error queda escrito en la sección (`GCAL._lastErr`), no solo en un toast.
 
 ## Flujo de despliegue (SEGUIR SIEMPRE)
@@ -93,7 +94,7 @@ El CSS vive en el `<style>` (líneas ~16–1711). Hay dos bloques de estilos del
 > versión nueva la próxima vez que abran la app con conexión.
 
 1. Desarrollar en la rama de trabajo (`claude/...`), no en `main`.
-2. **Subir `CACHE_VERSION` en `sw.js`** en cada cambio que se despliegue (si no, los dispositivos siguen con la versión vieja en caché). Formato: `presupuesto-vNN`. **Versión actual: v203**.
+2. **Subir `CACHE_VERSION` en `sw.js`** en cada cambio que se despliegue (si no, los dispositivos siguen con la versión vieja en caché). Formato: `presupuesto-vNN`. **Versión actual: v204**.
 3. Si agregás un archivo nuevo (ej. otro `.js` o `.css`), **agregarlo a `APP_SHELL` en `sw.js`** o se rompe el offline.
 4. **Mergear a `main`** → Cloudflare despliega solo.
 

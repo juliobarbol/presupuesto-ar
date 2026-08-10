@@ -149,6 +149,20 @@ extra por evento:
   estado): sin ese número no hay manera de distinguir "no se mandaron" de "no se
   muestran".
 
+- **La sync parada que decía "Conectado ✓"** (v204). Segunda vuelta del reporte
+  anterior: los eventos viejos estaban en Google y los nuevos no. La causa es
+  que `gcalInitOnLoad` se tragaba en silencio el fallo del token
+  (`.catch(() => {})`): si la sesión de Google deja de renovarse callada,
+  `gcalAutoSync()` no corre nunca, el contador de fallos queda en 0 y la sección
+  sigue diciendo "Conectado ✓" con la fecha de la última vez que anduvo. La
+  agenda puede estar parada días sin que nada lo diga — el mismo escenario que
+  ya nos había pasado con Drive. Tres arreglos: (1) ese fallo ahora cuenta como
+  fallo de sincronización (al 2º, rojo + "Reconectar"); (2) **"Sincronizar
+  ahora" pide el token con la escalera interactiva**, así el botón de reparar
+  puede efectivamente reparar una sesión vencida (antes repetía el mismo error,
+  porque `gcalSync()` pide el token en modo silencioso); (3) si la última sync
+  tiene más de 24 h, el estado lo avisa aunque no haya error registrado.
+
 ## Ideas futuras (no comprometidas)
 - Botón "Hoy" también en la vista Agenda (scroll al grupo Hoy).
 - Umbral de "seguimiento reciente" configurable (hoy fijo en 30 días en `renderCalList`).
