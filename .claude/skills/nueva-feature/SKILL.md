@@ -5,17 +5,21 @@ description: Guía para agregar o modificar funcionalidad en Presupuestos AR res
 
 # Agregar una feature a Presupuestos AR
 
-App PWA en un **único `index.html`** (~8.000 líneas): markup + `<style>` + un solo
-`<script>` global. Sin build, sin frameworks, sin módulos ES. Las funciones se llaman
-entre sí y desde `onclick="..."`. Esta skill encapsula las reglas que NO se pueden
-romper al sumar código.
+App PWA en un **único `index.html`**: markup + `<style>` + un solo `<script>` global.
+Sin build, sin frameworks, sin módulos ES. Las funciones se llaman entre sí y desde
+`onclick="..."`. Esta skill encapsula las reglas que NO se pueden romper al sumar
+código.
 
 ## 1. Ubicar dónde va el cambio
 El JS está dividido por marcadores estables. Buscalos en vez de fiarte de líneas:
 
 ```bash
-grep -n "===== js/" index.html
+grep -na "===== js/" index.html
 ```
+
+**El `-a` es obligatorio.** `index.html` tiene un byte NUL suelto, así que sin `-a`
+grep lo trata como binario y avisa `binary file matches` en vez de mostrarte las
+líneas.
 
 | Sección | Para qué |
 |---|---|
