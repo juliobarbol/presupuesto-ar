@@ -272,25 +272,47 @@ const RESET = `
       await page.close();
     }
 
-    // ── 8: el orden de secciones del PDF conoce la nueva ──
+    // ── 8: va DEBAJO de las fotos de los árboles ──
+    // "Es información menos importante la mayoría de las veces": la foto del
+    // rincón donde va la leña no puede empujar hacia abajo el registro
+    // fotográfico de los árboles, que es lo que el cliente mira.
     {
       const page = await nuevaPagina(browser);
       const r = await page.evaluate(new Function(`return (async () => {
         ${RESET}
-        // Un usuario con el orden viejo guardado no pierde la sección nueva:
-        // sanitizeSectionOrder la ubica junto a su vecina canónica.
-        const viejo = ['duration','details','total','plan','criteria','observations','payment','validity','notes'];
-        const arreglado = sanitizeSectionOrder(viejo);
-        return {
-          enCanónica: DOC_SECTIONS.some(s => s.id === 'dispo'),
-          arreglado,
-          posición: arreglado.indexOf('dispo'),
-          trasObs: arreglado[arreglado.indexOf('observations') + 1] === 'dispo',
+        S.dispoNota = 'Contra el alambrado del fondo';
+        S.dispoPhotos = [await savePhoto('${PIX}')];
+        S.items = [{ id:1, type:'tree', species:'Olmo', price:'245000', qty:1,
+                     photos:[await savePhoto('${PIX}')] }];
+        S.estItems = [{ id:9, type:'work', desc:'Poda estimada', price:'180000',
+                        photos:[await savePhoto('${PIX}')] }];
+        const doc = document.getElementById('doc-a4');
+        // Posición de cada bloque dentro del documento ya armado
+        const pos = () => {
+          const h = doc.innerHTML;
+          return { registro: h.indexOf('Registro Fotográfico'),
+                   dispo: h.indexOf('class="pdispo"'),
+                   // El estimativo no lleva firmas: ahí el cierre es el saludo.
+                   cierre: Math.max(h.indexOf('class="psigs"'), h.indexOf('pest-greeting')) };
         };
+        setMode('normal');     buildDoc(); const normal = pos();
+        setMode('riesgo');     buildDoc(); const riesgo = pos();
+        setMode('estimativo'); buildDoc(); const est    = pos();
+        setMode('normal');
+        return { normal, riesgo, est,
+                 // Y ya no está entre las secciones reordenables del cuerpo:
+                 // todas ésas caen ARRIBA del registro fotográfico.
+                 fueraDelOrden: !DOC_SECTIONS.some(s => s.id === 'dispo'),
+                 ordenLimpio: sanitizeSectionOrder(['duration','dispo','details']).indexOf('dispo') };
       })()`));
-      check('La sección está en la lista canónica del documento', r.enCanónica);
-      check('Un orden guardado de antes la recupera junto a Observaciones',
-        r.posición >= 0 && r.trasObs, r.arreglado.join(' '));
+      const abajo = m => m.registro >= 0 && m.dispo > m.registro && m.dispo < m.cierre;
+      check('Normal: la disposición queda DEBAJO del registro fotográfico',
+        abajo(r.normal), JSON.stringify(r.normal));
+      check('…lo mismo en el informe de riesgo', abajo(r.riesgo), JSON.stringify(r.riesgo));
+      check('…y en el estimativo', abajo(r.est), JSON.stringify(r.est));
+      check('…y arriba de las firmas, no después', r.normal.dispo < r.normal.cierre);
+      check('No entra en las secciones reordenables del cuerpo',
+        r.fueraDelOrden && r.ordenLimpio === -1);
       await page.close();
     }
 

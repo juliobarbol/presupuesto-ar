@@ -5034,7 +5034,7 @@ const DEF = {
   // Empresa → Textos del PDF). El encabezado/cliente quedan arriba y las
   // fotos/firmas/pie quedan al final; solo estas secciones intermedias se
   // reordenan. Ver DOC_SECTIONS / sanitizeSectionOrder / buildDoc.
-  docSectionOrder: ['duration','details','total','plan','criteria','observations','dispo','payment','validity','notes'],
+  docSectionOrder: ['duration','details','total','plan','criteria','observations','payment','validity','notes'],
   // Vista del EDITOR (preferencia del usuario, no dato del presupuesto):
   //   'clasica' → la pantalla de siempre, todo desplegado en una lista.
   //   'fichas'  → secciones plegables con número, estado y barra de progreso.
@@ -5103,7 +5103,6 @@ const DOC_SECTIONS = [
   { id:'plan',         label:'Plan de trabajo (lo que incluye)' },
   { id:'criteria',     label:'Cómo trabajamos (criterios)' },
   { id:'observations', label:'Observaciones' },
-  { id:'dispo',        label:'Disposición de leña y residuos' },
   { id:'payment',      label:'Condiciones de pago' },
   { id:'pago',         label:'Cómo pagar (alias / CBU)' },
   { id:'validity',     label:'Vigencia' },
@@ -15223,6 +15222,14 @@ function _buildPagoHTML(color){
 // discusión del día de la ejecución. Devuelve '' si el usuario lo apagó o si
 // no hay ni texto ni fotos disponibles. `color` opcional pinta el título en
 // los modos estimativo y riesgo, que arman su HTML sin el mapa de secciones.
+//
+// UBICACIÓN: va DESPUÉS del Registro Fotográfico, casi al pie del documento
+// (antes de las firmas). Por eso no está en DOC_SECTIONS: las secciones
+// reordenables son las del cuerpo y todas caen ARRIBA de las fotos, y acá el
+// orden relativo a las fotos de los árboles es justamente el punto. La foto
+// del rincón donde va la leña es el dato menos importante de la hoja: no
+// puede meterse entre el precio y las condiciones, ni empujar para abajo las
+// fotos de los árboles, que son las que el cliente mira.
 function _buildDispoHTML(color){
   if (S.dispoEnDoc === false) return '';
   const nota = (S.dispoNota || '').trim();
@@ -15366,7 +15373,6 @@ function buildDoc() {
     plan:         _buildWorkPlanHTML(color),
     criteria:     critH,
     observations: obsH,
-    dispo:        _buildDispoHTML(),
     payment:      payH,
     pago:         _buildPagoHTML(),
     validity:     validH,
@@ -15412,6 +15418,8 @@ function buildDoc() {
     ${bodyOrderedH}
 
     ${fotosH}
+
+    ${_buildDispoHTML()}
 
     ${sigH}
 
@@ -15678,8 +15686,6 @@ function buildRiskDoc() {
       <div class="pcond-txt">${esc(S.paymentConditions).replace(/\n/g,'<br>')}</div>
     </div>` : ''}
 
-    ${_buildDispoHTML(color)}
-
     ${_buildPagoHTML(color)}
 
     ${S.showExpiry !== false ? `<div class="pvalid">
@@ -15693,6 +15699,8 @@ function buildRiskDoc() {
     </div>` : ''}
 
     ${fotosH}
+
+    ${_buildDispoHTML(color)}
 
     ${sigH}
 
@@ -15880,9 +15888,9 @@ function buildEstDoc() {
 
     ${fotosH}
 
-    ${_buildDispoHTML(color)}
-
     ${_buildPagoHTML(color)}
+
+    ${_buildDispoHTML(color)}
 
     <div class="pest-greeting">
       ${esc(S.docGreeting||'Saludos,')}
