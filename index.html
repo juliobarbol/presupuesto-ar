@@ -2488,11 +2488,16 @@ input[type=number]{-moz-appearance:textfield}
   .pdispo-t{font-size:var(--fs-h3);font-weight:700;text-transform:uppercase;letter-spacing:var(--ls-label);color:var(--c-muted);margin-bottom:7px}
   .pdispo-txt{font-size:var(--fs-small);color:var(--c-text-2);line-height:1.65;
     padding:12px 14px;background:var(--c-bg-soft);border-radius:var(--r-sm);border-left:2.5pt solid var(--c-divider)}
-  .pdispo-grid{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  /* MISMA grilla que el registro fotográfico (2 columnas), NO un flex con
+     max-width en %: en un contenedor flex el porcentaje se resuelve contra el
+     ítem ya estirado y la foto salía a ~38% del tamaño de las de los árboles
+     ("quedó diminuta"). Lo que la mantiene secundaria es el max-height más
+     chico (55mm vs 75mm), no un ancho relativo. */
+  .pdispo-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:8px}
   .pdispo-photo{margin:0}
   /* Igual que .pphoto: ancho y alto auto acotados por max-*, para que la caja
      conserve la proporción real y html2canvas no la dibuje estirada. */
-  .pdispo-photo img{width:auto;height:auto;max-width:48%;max-height:52mm;
+  .pdispo-photo img{width:auto;height:auto;max-width:100%;max-height:55mm;
     object-fit:contain;display:block;border:1px solid var(--c-divider);border-radius:var(--r-sm)}
 
   /* Divisor entre zona principal (ítems + total) y zona administrativa.

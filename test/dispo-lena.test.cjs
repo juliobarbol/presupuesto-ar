@@ -316,6 +316,61 @@ const RESET = `
       await page.close();
     }
 
+    // ── 9: la foto tiene que LEERSE (no una estampilla) ──
+    // Reporte: "la foto de la disposición quedó diminuta". Era un max-width en
+    // % dentro de un flex: el porcentaje se resolvía contra el ítem estirado y
+    // daba ~38% del tamaño de las de los árboles. Es una foto de un LUGAR: si
+    // no se ve, no sirve para nada. Debe ser algo menor que las del registro
+    // (es secundaria) pero del mismo orden de magnitud.
+    {
+      const page = await nuevaPagina(browser);
+      const r = await page.evaluate(new Function(`return (async () => {
+        ${RESET}
+        // Foto apaisada 4:3, que es lo que deja compressImage(…, 1000, 0.7)
+        const mk = (w, h) => { const c = document.createElement('canvas');
+          c.width = w; c.height = h; const x = c.getContext('2d');
+          x.fillStyle = '#6b8e5a'; x.fillRect(0, 0, w, h);
+          return c.toDataURL('image/jpeg', 0.7); };
+        const horiz = await savePhoto(mk(1000, 750));
+        const vert  = await savePhoto(mk(750, 1000));
+        S.items = [{ id:1, type:'tree', species:'Olmo', price:'1219000', qty:1, photos:[horiz] }];
+        S.dispoNota = 'Lugar donde se acomodarán las ramas y troncos';
+        S.dispoPhotos = [horiz];
+        buildDoc();
+        // Se mide en el host de la vista previa: #doc-a4 vive oculto
+        const host = document.getElementById('doc-preview-content');
+        host.innerHTML = document.getElementById('doc-a4').innerHTML;
+        const ov = document.getElementById('doc-preview-overlay');
+        ov.classList.add('open'); ov.style.display = 'block';
+        document.getElementById('doc-preview-paper').style.transform = 'none';
+        await new Promise(r => setTimeout(r, 400));
+        const caja = sel => { const b = host.querySelector(sel).getBoundingClientRect();
+                              return { w: Math.round(b.width), h: Math.round(b.height) }; };
+        const árbol = caja('.pphoto img');
+        const dispo = caja('.pdispo-photo img');
+        // Y una vertical no puede desbordar ni deformarse
+        S.dispoPhotos = [vert]; buildDoc();
+        host.innerHTML = document.getElementById('doc-a4').innerHTML;
+        await new Promise(r => setTimeout(r, 200));
+        const vertical = caja('.pdispo-photo img');
+        return { árbol, dispo, vertical, página: Math.round(host.getBoundingClientRect().width),
+                 // La proporción original (4:3 / 3:4) tiene que sobrevivir:
+                 // html2canvas ignora object-fit y dibuja la caja tal cual.
+                 ratio: +(dispo.w / dispo.h).toFixed(2),
+                 ratioVert: +(vertical.w / vertical.h).toFixed(2) };
+      })()`));
+      check('La foto del lugar se lee (no baja del 70% del ancho de las de los árboles)',
+        r.dispo.w >= r.árbol.w * 0.7,
+        'dispo ' + r.dispo.w + 'px vs árbol ' + r.árbol.w + 'px');
+      check('…pero sigue siendo secundaria (no más grande que las de los árboles)',
+        r.dispo.w <= r.árbol.w && r.dispo.h < r.árbol.h,
+        r.dispo.w + 'x' + r.dispo.h + ' vs ' + r.árbol.w + 'x' + r.árbol.h);
+      check('Conserva la proporción original (apaisada y vertical)',
+        r.ratio === 1.33 && r.ratioVert === 0.75, r.ratio + ' / ' + r.ratioVert);
+      check('Y no desborda el ancho de la hoja', r.dispo.w < r.página);
+      await page.close();
+    }
+
   } finally {
     await browser.close();
   }
