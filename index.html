@@ -2382,7 +2382,7 @@ input[type=number]{-moz-appearance:textfield}
      a lo largo de varias páginas — pero cada fila individual y el thead
      quedan intactos (ver reglas debajo). */
   .ptitle-bar,.ptotals,.pobs,.pcond,.pvalid,.pdur,
-  .pcrit,.pnotes,.psigs,.pfoot,
+  .pcrit,.pnotes,.psigs,.pfoot,.pdispo,
   .pest-header-bar,.pest-disclaimer,.pest-factors,.pest-greeting,
   .pest-item{
     break-inside:avoid;
@@ -2480,6 +2480,20 @@ input[type=number]{-moz-appearance:textfield}
   .ppago-alias .ppago-val{font-family:var(--font-mono);font-weight:600;color:var(--c-text);letter-spacing:.01em}
   .pnotes ul{padding-left:16px;margin:0}
   .pnotes li{font-size:var(--fs-small);color:var(--c-text-2);line-height:1.7}
+  /* DISPOSICIÓN DE LEÑA Y RESIDUOS — zona administrativa, mismo peso que
+     Observaciones. Las fotos van chicas (es una referencia del lugar, no el
+     registro fotográfico del trabajo) y en fila, para que la sección no se
+     coma media hoja. */
+  .pdispo{padding:0 var(--page-x) 12px}
+  .pdispo-t{font-size:var(--fs-h3);font-weight:700;text-transform:uppercase;letter-spacing:var(--ls-label);color:var(--c-muted);margin-bottom:7px}
+  .pdispo-txt{font-size:var(--fs-small);color:var(--c-text-2);line-height:1.65;
+    padding:12px 14px;background:var(--c-bg-soft);border-radius:var(--r-sm);border-left:2.5pt solid var(--c-divider)}
+  .pdispo-grid{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .pdispo-photo{margin:0}
+  /* Igual que .pphoto: ancho y alto auto acotados por max-*, para que la caja
+     conserve la proporción real y html2canvas no la dibuje estirada. */
+  .pdispo-photo img{width:auto;height:auto;max-width:48%;max-height:52mm;
+    object-fit:contain;display:block;border:1px solid var(--c-divider);border-radius:var(--r-sm)}
 
   /* Divisor entre zona principal (ítems + total) y zona administrativa.
      Es invisible pero crea una separación visual clara via margen. */
@@ -2550,7 +2564,7 @@ input[type=number]{-moz-appearance:textfield}
      ANTI-HUÉRFANOS: títulos de sección NO pueden quedar solos al
      final de una página. break-after:avoid los pega al contenido.
      ────────────────────────────────────────────────────────────── */
-  .psec-t,.pobs-t,.pcond-t,.pcrit-t,.pnotes-t,.ptitle{
+  .psec-t,.pobs-t,.pcond-t,.pcrit-t,.pnotes-t,.pdispo-t,.ptitle{
     break-after:avoid-page;
     page-break-after:avoid;
   }
@@ -3032,6 +3046,7 @@ input[type=number]{-moz-appearance:textfield}
 .pdoc.pdoc-theme-lateral .pobs,
 .pdoc.pdoc-theme-lateral .pcond,
 .pdoc.pdoc-theme-lateral .pnotes,
+.pdoc.pdoc-theme-lateral .pdispo,
 .pdoc.pdoc-theme-lateral .pcrit,
 .pdoc.pdoc-theme-lateral .pplan,
 .pdoc.pdoc-theme-lateral .psigs,
@@ -3724,6 +3739,34 @@ input[type=number]{-moz-appearance:textfield}
           </div>
         </div>
         </div><!-- /esec-conditions -->
+
+        <!-- ══ DISPOSICIÓN DE LEÑA Y RESIDUOS ══
+             Dónde se acordó dejar la leña, el chipeado y los restos. Se pacta
+             en el lugar, señalando con el dedo; el día del trabajo (semanas
+             después, a veces con otro del equipo) ese rincón exacto ya no se
+             recuerda. Por eso: texto + FOTOS del lugar. Se ve en los tres
+             modos, y el toggle decide si además sale en el documento. -->
+        <div class="esec" id="esec-dispo">
+          <button type="button" class="esec-head" onclick="editorToggleSection('dispo')" aria-expanded="false">
+            <span class="esec-num">05</span>
+            <span class="esec-title">Disposición de leña y residuos</span>
+            <span class="esec-status"></span>
+            <span class="esec-chev" aria-hidden="true">▾</span>
+          </button>
+        <div id="section-dispo">
+          <div class="st">Disposición de leña y residuos</div>
+          <div class="fg">
+            <label>Lugar acordado con el cliente <span style="color:var(--muted);font-weight:400">· opcional</span></label>
+            <textarea id="dispo-nota" rows="2" placeholder="Ej.: leña apilada contra el alambrado del fondo; ramas finas se retiran"></textarea>
+          </div>
+          <div class="arow" style="margin-bottom:6px">
+            <button type="button" class="btn btn-g btn-sm" onclick="pickDispoPhoto()" id="dispo-photo-btn"><svg class="ic"><use href="#i-camera"></use></svg> Foto del lugar</button>
+          </div>
+          <div id="dispo-gallery"></div>
+          <div class="trow"><span class="tlabel">Mostrar en el presupuesto <span style="font-weight:400;color:var(--muted)">(texto y fotos)</span></span><label class="tgl"><input type="checkbox" id="dispo-en-doc" checked><span class="tgl-sl"></span></label></div>
+          <div class="hint">Apagalo si la foto es solo un recordatorio tuyo y no querés que aparezca en el documento del cliente.</div>
+        </div>
+        </div><!-- /esec-dispo -->
 
         <!-- ══ AJUSTES DE PRECIO ══
              Recargo interno (arriba) + Descuento (abajo). Se ubican al final
@@ -4890,6 +4933,20 @@ const DEF = {
   // el backup como parte de S. A nivel ítem, cada objeto puede llevar su
   // propio `intNote` (ver renderItems).
   intNote:'',
+  // ── Disposición de la leña / residuos ──────────────────────────────
+  // Dónde se acordó con el cliente dejar la leña, el chipeado y los restos
+  // del trabajo. Se acuerda en el lugar, mirando el terreno, y para cuando
+  // se ejecuta el trabajo (a veces semanas después, a veces con otro del
+  // equipo) nadie se acuerda de cuál era el rincón exacto: por eso además
+  // del texto se pueden adjuntar FOTOS del lugar señalado.
+  // Es dato del PRESUPUESTO (cambia en cada trabajo) → NO va en
+  // CFG_GLOBAL_FIELDS. Las fotos son refs 'p_...' a IndexedDB, igual que
+  // las de los ítems (ver js/photos.js).
+  dispoNota:'', dispoPhotos:[],
+  // ¿Sale en el documento del cliente? Por defecto sí: lo acordado por
+  // escrito es lo que evita la discusión de después. Se puede apagar cuando
+  // la foto es solo un recordatorio para uno.
+  dispoEnDoc:true,
   // Scenarios A/B mode — permite presupuestar dos alternativas paralelas
   // sobre el mismo conjunto (ej: extraer todo vs podar todo). Cuando está
   // apagado, todo funciona normal con S.items. Cuando está prendido, B
@@ -4977,7 +5034,7 @@ const DEF = {
   // Empresa → Textos del PDF). El encabezado/cliente quedan arriba y las
   // fotos/firmas/pie quedan al final; solo estas secciones intermedias se
   // reordenan. Ver DOC_SECTIONS / sanitizeSectionOrder / buildDoc.
-  docSectionOrder: ['duration','details','total','plan','criteria','observations','payment','validity','notes'],
+  docSectionOrder: ['duration','details','total','plan','criteria','observations','dispo','payment','validity','notes'],
   // Vista del EDITOR (preferencia del usuario, no dato del presupuesto):
   //   'clasica' → la pantalla de siempre, todo desplegado en una lista.
   //   'fichas'  → secciones plegables con número, estado y barra de progreso.
@@ -5046,6 +5103,7 @@ const DOC_SECTIONS = [
   { id:'plan',         label:'Plan de trabajo (lo que incluye)' },
   { id:'criteria',     label:'Cómo trabajamos (criterios)' },
   { id:'observations', label:'Observaciones' },
+  { id:'dispo',        label:'Disposición de leña y residuos' },
   { id:'payment',      label:'Condiciones de pago' },
   { id:'pago',         label:'Cómo pagar (alias / CBU)' },
   { id:'validity',     label:'Vigencia' },
@@ -5527,6 +5585,12 @@ function migrateState(raw) {
   if (typeof next.scenariosEnabled !== 'boolean') next.scenariosEnabled = false;
   if (typeof next.scenarioLabelA   !== 'string')  next.scenarioLabelA = DEF.scenarioLabelA;
   if (typeof next.scenarioLabelB   !== 'string')  next.scenarioLabelB = DEF.scenarioLabelB;
+  // Disposición de la leña/residuos: sin esto, abrir un presupuesto anterior a
+  // la función se quedaba con el lugar acordado del presupuesto que estaba
+  // abierto — y la foto de otro patio terminaba en su PDF.
+  if (typeof next.dispoNota !== 'string')   next.dispoNota = '';
+  if (!Array.isArray(next.dispoPhotos))     next.dispoPhotos = [];
+  if (typeof next.dispoEnDoc !== 'boolean') next.dispoEnDoc = true;
   if (typeof next.isEstimative !== 'boolean') next.isEstimative = false;
   if (typeof next.isRisk       !== 'boolean') next.isRisk = false;
   if (!next.riskData || typeof next.riskData !== 'object') {
@@ -6636,7 +6700,22 @@ function sanitizeStateObj(raw) {
   s.coAliasTitular = sanStr(raw.coAliasTitular, 120);
   s.coCbu          = sanStr(raw.coCbu, 40);   // CBU/CVU: 22 dígitos, con aire por si lo pegan con espacios
   s.coBanco        = sanStr(raw.coBanco, 80);
+  // Disposición de leña/residuos: el texto se escapa al renderizar, pero las
+  // refs de foto terminan en un src y en atributos data-*, así que se filtran
+  // a lo que la app genera (id 'p_...' o dataURL de imagen legado).
+  s.dispoNota   = sanStr(raw.dispoNota, 1000);
+  s.dispoPhotos = sanPhotoRefs(raw.dispoPhotos);
+  s.dispoEnDoc  = (raw.dispoEnDoc === undefined) ? true : sanBool(raw.dispoEnDoc);
   return s;
+}
+
+// Lista de referencias de foto (ver js/photos.js): un id corto 'p_...' o un
+// dataURL de imagen embebido (formato legado / respaldo si IndexedDB falla).
+// Cualquier otra cosa se descarta: no hay forma de mostrarla y sí de que
+// rompa el atributo donde se interpola.
+function sanPhotoRefs(raw) {
+  return _sanToArray(raw).filter(r => typeof r === 'string' &&
+    (SAN_ID_RE.test(r) && r.indexOf('p_') === 0 || /^data:image\//i.test(r)));
 }
 
 // ─── NOTAS DE LA AGENDA ──────────────────────────────────────
@@ -6992,6 +7071,15 @@ function removeItemPhotoRef(item, pi){
   if ('photo' in item) delete item.photo;
 }
 
+// ─── FOTOS DEL LUGAR DE DISPOSICIÓN (leña / residuos) ─────────────
+// No cuelgan de un ítem sino del presupuesto entero (S.dispoPhotos): es UN
+// lugar acordado con el cliente, no una foto por árbol. Mismo formato de ref
+// y mismo almacén que las de los ítems.
+function dispoPhotoRefs(state){
+  const st = state || (typeof S !== 'undefined' ? S : null);
+  return (st && Array.isArray(st.dispoPhotos)) ? st.dispoPhotos.filter(Boolean) : [];
+}
+
 // ─── UI COMPARTIDA DE FOTOS (normal / estimativo / riesgo) ─────────
 // HTML del botón "📷 Foto/s ✓ (N)" para la barra de acciones de un ítem.
 function photoBtnHTML(refs){
@@ -7062,6 +7150,9 @@ function collectPhotoIds(obj, set){
     if (!Array.isArray(arr)) return;
     arr.forEach(it => { itemPhotoRefs(it).forEach(ref => { if (photoIsId(ref)) set.add(ref); }); });
   });
+  // Las del lugar de disposición no cuelgan de ningún ítem: si no se suman
+  // acá, el backup viaja sin ellas y en el equipo nuevo quedan rotas.
+  dispoPhotoRefs(obj).forEach(ref => { if (photoIsId(ref)) set.add(ref); });
 }
 
 // Construye el mapa {id: dataURL} de las fotos referenciadas por los estados
@@ -7103,6 +7194,19 @@ function migrateInlinePhotosToIDB(state){
       if (changed) { it.photos = mapped; if ('photo' in it) delete it.photo; }
     });
   });
+  // Las del lugar de disposición viven en el estado, no en un ítem: mismo
+  // tratamiento (una foto embebida ahí pesa igual en la cuota).
+  if (Array.isArray(state.dispoPhotos)) {
+    state.dispoPhotos = state.dispoPhotos.map(ref => {
+      if (typeof ref === 'string' && ref.indexOf('data:image/') === 0) {
+        const id = newPhotoId();
+        photoCache.set(id, ref);
+        toWrite.push([id, ref]);
+        return id;
+      }
+      return ref;
+    });
+  }
   if (toWrite.length) {
     openPhotoDB().then(db => {
       const tx = db.transaction(PHOTO_STORE, 'readwrite');
@@ -7122,6 +7226,10 @@ function migrateInlinePhotosToIDB(state){
             }
           });
         });
+        if (Array.isArray(state.dispoPhotos)) {
+          const di = state.dispoPhotos.indexOf(id);
+          if (di >= 0) state.dispoPhotos[di] = v;
+        }
       });
     });
   }
@@ -8908,6 +9016,15 @@ function _refreshEstQtyPreview(card, idx) {
 // destino y agregarle la foto. Al terminar, si agregó alguna, persiste y
 // re-renderiza vía after(). Lo comparten los 3 modos (normal/est/riesgo).
 function _pickItemPhotos(getItem, after) {
+  _pickPhotos(ref => { const it = getItem(); if (!it) return false; addItemPhotoRef(it, ref); return true; },
+              after, 'al ítem');
+}
+
+// Núcleo genérico: elegir varias imágenes, comprimirlas y guardarlas
+// (savePhoto → ref). `addRef(ref)` decide dónde va cada una y devuelve si la
+// pudo guardar; `after()` re-dibuja lo que corresponda. Lo usan las fotos de
+// ítem (los 3 modos) y las del lugar de disposición de la leña.
+function _pickPhotos(addRef, after, destino) {
   const input = document.createElement('input');
   input.type = 'file';
   input.accept = 'image/*';
@@ -8920,14 +9037,13 @@ function _pickItemPhotos(getItem, after) {
       try {
         const dataUrl = await compressImage(file, 1000, 0.7);
         const ref = await savePhoto(dataUrl);
-        const it = getItem();
-        if (it) { addItemPhotoRef(it, ref); added++; }
+        if (addRef(ref)) added++;
       } catch(err){ console.error('Error al procesar la foto:', err); }
     }
     if (added) {
       sched();
       after();
-      toast(`${added} foto${added>1?'s':''} agregada${added>1?'s':''} al ítem`, 'ok', 1800);
+      toast(`${added} foto${added>1?'s':''} agregada${added>1?'s':''} ${destino}`, 'ok', 1800);
     } else {
       toast('No se pudo procesar la foto', 'err');
     }
@@ -8943,6 +9059,40 @@ function pickItemPhoto(idx) {
 // Foto(s) para un ítem estimativo (S.estItems).
 function pickEstItemPhoto(idx) {
   _pickItemPhotos(() => S.estItems[idx], renderEstItems);
+}
+
+// ═══════════════════════════════════════════════════════════
+// LUGAR DE DISPOSICIÓN DE LA LEÑA / RESIDUOS
+// ═══════════════════════════════════════════════════════════
+// Las fotos van al presupuesto (S.dispoPhotos), no a un ítem: es UN lugar
+// acordado para todo el trabajo.
+function pickDispoPhoto() {
+  _pickPhotos(ref => {
+    if (!Array.isArray(S.dispoPhotos)) S.dispoPhotos = [];
+    S.dispoPhotos.push(ref);
+    return true;
+  }, renderDispo, 'al lugar de disposición');
+}
+
+function removeDispoPhoto(pi) {
+  if (!Array.isArray(S.dispoPhotos)) return;
+  if (pi < 0 || pi >= S.dispoPhotos.length) return;
+  S.dispoPhotos.splice(pi, 1);
+}
+
+// Dibuja la galería del lugar de disposición (misma UI que la de los ítems:
+// miniatura con ✕ y tap para ampliar) y refresca el contador del botón.
+function renderDispo() {
+  const cont = document.getElementById('dispo-gallery');
+  if (!cont) return;
+  const refs = dispoPhotoRefs();
+  cont.innerHTML = photoGalleryHTML(refs);
+  wireItemPhotoGallery(cont, removeDispoPhoto, renderDispo);
+  const btn = document.getElementById('dispo-photo-btn');
+  if (btn) btn.innerHTML = refs.length
+    ? `${icon('camera')} Fotos del lugar ✓ (${refs.length})`
+    : `${icon('camera')} Foto del lugar`;
+  if (typeof editorShellSync === 'function') editorShellSync();
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -9160,6 +9310,9 @@ function restoreUI() {
   sv('surcharge-pct', S.surcharge||0);
   sv('payment-conditions', S.paymentConditions);
   sv('observations', S.observations);
+  sv('dispo-nota', S.dispoNota);
+  sc('dispo-en-doc', S.dispoEnDoc !== false);
+  renderDispo();
   updateNotesButton();
   sc('show-work-plan', S.showWorkPlan !== false);
   sc('wp-override', !!S.workPlanOverride);
@@ -9269,6 +9422,8 @@ function syncFromUI() {
   S.discount          = parseFloat(gv('discount')) || 0;
   S.paymentConditions = gv('payment-conditions');
   S.observations      = gv('observations');
+  S.dispoNota         = gv('dispo-nota');
+  S.dispoEnDoc        = gc('dispo-en-doc');
   S.showWorkPlan      = gc('show-work-plan');
   S.workPlanOverride    = gc('wp-override');
   S.workPlanCustomTitle = gv('wp-custom-title');
@@ -9584,6 +9739,7 @@ const EDITOR_SECTIONS = [
   { key:'risk',       body:'section-risk-analysis' },
   { key:'est-items',  body:'section-est-items' },
   { key:'conditions', body:'section-conditions' },
+  { key:'dispo',      body:null },
   { key:'adjust',     body:'section-adjustments' },
   { key:'est-obs',    body:'section-est-observations' },
 ];
@@ -9601,7 +9757,7 @@ const EDITOR_ETAPAS = [
   { key:'datos',    label:'Datos',    secs:['ident','cliente'] },
   { key:'trabajos', label:'Trabajos', secs:['items','est-items'] },
   { key:'informe',  label:'Informe',  secs:['risk'] },
-  { key:'cierre',   label:'Cierre',   secs:['conditions','adjust','est-obs'] },
+  { key:'cierre',   label:'Cierre',   secs:['conditions','dispo','adjust','est-obs'] },
 ];
 
 // Sección abierta en la vista "fichas" y etapa activa en la vista "consola".
@@ -9666,6 +9822,13 @@ function _esecEstado(key) {
                               ? { txt:'Completo ✓', done:true } : { txt:'Pendiente', done:false };
     case 'est-obs':    return lleno(S.estObservations) ? { txt:'Completo ✓', done:true }
                                                       : { txt:'Pendiente', done:false };
+    // No acordar nada es válido (el cliente se queda con toda la leña y listo):
+    // como `adjust`, cuenta resuelta aunque esté vacía.
+    case 'dispo': {
+      const nf = dispoPhotoRefs().length;
+      if (nf) return { txt:(nf === 1 ? '1 foto' : nf + ' fotos'), done:true };
+      return { txt: lleno(S.dispoNota) ? 'Anotado ✓' : 'Sin definir', done:true };
+    }
     // Vacío es una respuesta válida: sin ajustes también está resuelta.
     case 'adjust': {
       const partes = [];
@@ -13061,6 +13224,8 @@ function resetToNewQuote() {
   S.numNext = calcNextNumFromHistory();
   S.items=[]; S.estItems=[]; S.itemsB=[]; S.clientName=''; S.clientContact=''; S.workAddress=''; S.workMapLink=''; S.workDuration='';
   S.discount=0; S.surcharge=0; S.paymentConditions=''; S.observations=''; S.estObservations=''; S.intNote='';
+  // El lugar de disposición se acuerda por trabajo: arranca en blanco.
+  S.dispoNota=''; S.dispoPhotos=[]; S.dispoEnDoc=true;
   // El plan de trabajo a medida es excepcional por presupuesto: se descarta al
   // crear uno nuevo para volver a usar el default global.
   S.workPlanOverride=false; S.workPlanCustom=''; S.workPlanCustomTitle='';
@@ -15052,6 +15217,30 @@ function _buildPagoHTML(color){
     </div>`;
 }
 
+// Bloque "Disposición de leña y residuos": lo acordado con el cliente sobre
+// dónde queda el material del trabajo, con las fotos del lugar señalado.
+// Puesto por escrito (y con foto) en el presupuesto, es lo que evita la
+// discusión del día de la ejecución. Devuelve '' si el usuario lo apagó o si
+// no hay ni texto ni fotos disponibles. `color` opcional pinta el título en
+// los modos estimativo y riesgo, que arman su HTML sin el mapa de secciones.
+function _buildDispoHTML(color){
+  if (S.dispoEnDoc === false) return '';
+  const nota = (S.dispoNota || '').trim();
+  // Las fotos que no estén en este dispositivo (ref de un equipo sin restaurar)
+  // se omiten: en el PDF del cliente una imagen rota queda peor que ninguna.
+  const fotos = dispoPhotoRefs().map(r => safeImgSrc(getPhotoData(r))).filter(Boolean);
+  if (!nota && !fotos.length) return '';
+  const style = color ? ` style="color:${color}"` : '';
+  return `
+    <div class="pdispo">
+      <div class="pdispo-t"${style}>Disposición de leña y residuos</div>
+      ${nota ? `<div class="pdispo-txt">${esc(nota).replace(/\n/g,'<br>')}</div>` : ''}
+      ${fotos.length ? `<div class="pdispo-grid">${fotos.map(src =>
+        `<figure class="pdispo-photo"><img src="${src}" alt="Lugar acordado para la leña y los residuos"></figure>`
+      ).join('')}</div>` : ''}
+    </div>`;
+}
+
 function _buildWorkPlanHTML(color){
   if (S.showWorkPlan === false) return '';
   const useCustom = !!S.workPlanOverride;
@@ -15177,6 +15366,7 @@ function buildDoc() {
     plan:         _buildWorkPlanHTML(color),
     criteria:     critH,
     observations: obsH,
+    dispo:        _buildDispoHTML(),
     payment:      payH,
     pago:         _buildPagoHTML(),
     validity:     validH,
@@ -15488,6 +15678,8 @@ function buildRiskDoc() {
       <div class="pcond-txt">${esc(S.paymentConditions).replace(/\n/g,'<br>')}</div>
     </div>` : ''}
 
+    ${_buildDispoHTML(color)}
+
     ${_buildPagoHTML(color)}
 
     ${S.showExpiry !== false ? `<div class="pvalid">
@@ -15687,6 +15879,8 @@ function buildEstDoc() {
     </div>`:''}
 
     ${fotosH}
+
+    ${_buildDispoHTML(color)}
 
     ${_buildPagoHTML(color)}
 

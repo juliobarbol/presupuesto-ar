@@ -121,7 +121,7 @@ const SEMBRAR = RESET + `
       check('…y los títulos .st de siempre siguen a la vista',
         r.stVisible !== 'none', r.stVisible);
       check('…con todas las secciones desplegadas',
-        r.shell.vis.length === 5 && r.shell.vis.every(s => s.abierta),
+        r.shell.vis.length === 6 && r.shell.vis.every(s => s.abierta),
         r.shell.vis.map(s => s.id + (s.abierta ? '' : '(plegada)')).join(', '));
       await page.close();
     }
@@ -140,24 +140,24 @@ const SEMBRAR = RESET + `
         `));
         const fmt = o => o.vis.map(s => s.num + ' ' + s.titulo).join(' · ');
 
-        check(`[${vista}] Normal: 5 secciones numeradas 01→05`,
-          r.normal.vis.length === 5 &&
-          r.normal.vis.map(s => s.num).join() === '01,02,03,04,05' &&
+        check(`[${vista}] Normal: 6 secciones numeradas 01→06`,
+          r.normal.vis.length === 6 &&
+          r.normal.vis.map(s => s.num).join() === '01,02,03,04,05,06' &&
           r.normal.vis.map(s => s.id).join() ===
-            'esec-ident,esec-cliente,esec-items,esec-conditions,esec-adjust',
+            'esec-ident,esec-cliente,esec-items,esec-conditions,esec-dispo,esec-adjust',
           fmt(r.normal));
-        check(`[${vista}] Estimativo: 4 secciones, sin Ajustes de precio`,
-          r.estimativo.vis.length === 4 &&
+        check(`[${vista}] Estimativo: 5 secciones, sin Ajustes de precio`,
+          r.estimativo.vis.length === 5 &&
           r.estimativo.vis.map(s => s.id).join() ===
-            'esec-ident,esec-cliente,esec-est-items,esec-est-obs',
+            'esec-ident,esec-cliente,esec-est-items,esec-dispo,esec-est-obs',
           fmt(r.estimativo));
-        check(`[${vista}] Riesgo: 6 secciones (el informe ISA cuenta como UNA)`,
-          r.riesgo.vis.length === 6 &&
+        check(`[${vista}] Riesgo: 7 secciones (el informe ISA cuenta como UNA)`,
+          r.riesgo.vis.length === 7 &&
           r.riesgo.vis.map(s => s.id).join() ===
-            'esec-ident,esec-cliente,esec-items,esec-risk,esec-conditions,esec-adjust',
+            'esec-ident,esec-cliente,esec-items,esec-risk,esec-conditions,esec-dispo,esec-adjust',
           fmt(r.riesgo));
         check(`[${vista}] La barra de progreso tiene un segmento por sección visible`,
-          r.normal.segmentos === 5 && r.estimativo.segmentos === 4 && r.riesgo.segmentos === 6,
+          r.normal.segmentos === 6 && r.estimativo.segmentos === 5 && r.riesgo.segmentos === 7,
           [r.normal.segmentos, r.estimativo.segmentos, r.riesgo.segmentos].join('/'));
         check(`[${vista}] La píldora del encabezado dice el modo activo`,
           r.normal.modo === 'Normal' && r.estimativo.modo === 'Estimativo' &&
@@ -198,7 +198,7 @@ const SEMBRAR = RESET + `
       check('…y los ajustes muestran recargo y descuento',
         est(r.lleno, 'esec-adjust') === '+12% · −5%', est(r.lleno, 'esec-adjust'));
       check('El progreso cuenta las secciones resueltas sobre las visibles',
-        r.vacio.progreso === '2 de 5 secciones' && r.lleno.progreso === '5 de 5 secciones',
+        r.vacio.progreso === '3 de 6 secciones' && r.lleno.progreso === '6 de 6 secciones',
         r.vacio.progreso + ' → ' + r.lleno.progreso);
       await page.close();
     }
@@ -501,7 +501,7 @@ const SEMBRAR = RESET + `
       check('Cada etapa muestra solo sus secciones',
         r.datos.enPantalla.join() === '01 ident,02 cliente' &&
         r.trabajos.enPantalla.join() === '03 items' &&
-        r.cierre.enPantalla.join() === '04 conditions,05 adjust',
+        r.cierre.enPantalla.join() === '04 conditions,05 dispo,06 adjust',
         JSON.stringify([r.datos.enPantalla, r.trabajos.enPantalla, r.cierre.enPantalla]));
       check('Riesgo: cuatro etapas — el informe ISA va en la suya',
         r.riesgo.tabs.map(t => t.replace(/[*!]/g,'')).join() === 'datos,trabajos,informe,cierre',
