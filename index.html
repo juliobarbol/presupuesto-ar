@@ -1485,6 +1485,17 @@ input[type=number]{-moz-appearance:textfield}
   border-radius:var(--radius-field);line-height:1;
 }
 .phrases-close:hover{background:var(--surface-3);color:var(--text)}
+/* Aviso de que [especie] se va a completar solo con la especie del ítem
+   (o de que falta cargarla). Solo aparece en la categoría "desc". */
+.phrases-hint{
+  flex-shrink:0;margin:10px 14px -2px;padding:8px 10px;
+  border-radius:var(--radius-field);
+  font-size:12px;line-height:1.4;
+}
+.phrases-hint.is-on{background:var(--surface-2);color:var(--accent-fg);border:1px solid var(--border)}
+.phrases-hint.is-off{background:var(--surface-3);color:var(--muted);border:1px solid var(--border)}
+.phrases-hint b{font-weight:700}
+.phrases-hint code{font-family:var(--font-mono);font-size:11px}
 
 /* Lista scrolleable de frases */
 .phrases-list{
@@ -4787,6 +4798,7 @@ input[type=number]{-moz-appearance:textfield}
       <h4 id="phrases-modal-title"><svg class="ic"><use href="#i-pencil"></use></svg> Frases</h4>
       <button class="phrases-close" onclick="closePhrasesModal()" aria-label="Cerrar">✕</button>
     </div>
+    <div id="phrases-modal-hint" class="phrases-hint" hidden></div>
     <div id="phrases-modal-list" class="phrases-list"></div>
     <div class="phrases-footer">
       <div class="phrases-add-row">
@@ -8048,6 +8060,49 @@ const PHRASE_DEFAULTS = {
 // Flag para no resembrar si el usuario borró todo deliberadamente
 const PHRASE_SEEDED_KEY = 'pq_phrases_seeded';
 
+// ─── PLACEHOLDER [especie] ───────────────────
+// Las frases de trabajo vienen con "[especie]" adentro ("Extracción de
+// [especie] hasta lo más bajo que nos permita la motosierra…"). Cambiarlo
+// a mano en cada ítem era tipeo repetido y, sobre todo, se olvidaba: el
+// corchete terminaba impreso en el presupuesto del cliente.
+//
+// Se completa con la especie DE ESE ítem, no con una global — por eso
+// funciona con varios árboles distintos: cada tarjeta tiene su propio
+// campo "Especie/s" y su propia frase, y cada inserción mira la suya.
+// Si todavía no hay especie cargada, el corchete se deja intacto y se
+// rellena solo al salir del campo (ver _fillSpeciesInCard en items.js).
+
+// Regex nueva en cada llamada: con la flag /g, `lastIndex` es estado y un
+// .test() reusado alterna true/false entre llamadas.
+function _speciesPhRe() { return /\[\s*especies?\s*\]/gi; }
+
+function hasSpeciesPlaceholder(text) { return _speciesPhRe().test(String(text || '')); }
+
+// "Eucaliptus, Ciprés" → "Eucaliptus y Ciprés". El campo admite varias
+// especies separadas por coma; pegadas tal cual quedaba "Extracción de
+// Eucaliptus, Ciprés hasta lo más bajo…", que no se lee como una frase.
+function speciesForPhrase(raw) {
+  const parts = String(raw || '').split(/[,;]+/).map(s => s.trim()).filter(Boolean);
+  if (!parts.length) return '';
+  if (parts.length === 1) return parts[0];
+  return parts.slice(0, -1).join(', ') + ' y ' + parts[parts.length - 1];
+}
+
+// Reemplaza [especie] por la especie del ítem. Sin especie devuelve el
+// texto tal cual (el corchete es el recordatorio de que falta cargarla).
+function fillSpeciesPlaceholder(text, rawSpecies) {
+  const sp = speciesForPhrase(rawSpecies);
+  if (!sp) return String(text || '');
+  return String(text || '').replace(_speciesPhRe(), sp);
+}
+
+// La especie que le corresponde al textarea destino: la de SU tarjeta.
+function _speciesOfTargetEl(el) {
+  const card = el && el.closest ? el.closest('.icard') : null;
+  const sf = card ? card.querySelector('.sp-f') : null;
+  return sf ? sf.value : '';
+}
+
 // ─── API ─────────────────────────────────────
 
 function getPhrasesDB(cat) {
@@ -8132,8 +8187,27 @@ function openPhrasesModal(cat, targetId) {
 function closePhrasesModal() {
   const ov = document.getElementById('phrases-overlay');
   if (ov) ov.classList.remove('open');
+  const hint = document.getElementById('phrases-modal-hint');
+  if (hint) hint.hidden = true;
   _phraseTargetId = null;
   _phraseCat = null;
+}
+
+// Aviso arriba de la lista: con qué se va a completar [especie] en este
+// ítem, o que todavía falta cargar la especie. Solo aplica a las frases
+// de descripción, que son las únicas que viven dentro de una tarjeta.
+function _phrasesHintRender() {
+  const hint = document.getElementById('phrases-modal-hint');
+  if (!hint) return;
+  const el = _phraseTargetId ? document.getElementById(_phraseTargetId) : null;
+  const card = el && el.closest ? el.closest('.icard') : null;
+  if (_phraseCat !== 'desc' || !card) { hint.hidden = true; return; }
+  const sp = speciesForPhrase(_speciesOfTargetEl(el));
+  hint.hidden = false;
+  hint.className = 'phrases-hint ' + (sp ? 'is-on' : 'is-off');
+  hint.innerHTML = sp
+    ? `<code>[especie]</code> se reemplaza por <b>${esc(sp)}</b>`
+    : `<code>[especie]</code> se completa solo, en cuanto cargues <b>Especie/s</b> en este ítem`;
 }
 
 function renderPhrasesModal(cat) {
@@ -8142,6 +8216,7 @@ function renderPhrasesModal(cat) {
   const titleEl = document.getElementById('phrases-modal-title');
   const listEl  = document.getElementById('phrases-modal-list');
   if (titleEl) titleEl.innerHTML = icon('pencil') + ' ' + esc(PHRASE_LABELS[cat]);
+  _phrasesHintRender();
   if (!listEl) return;
   const db = getPhrasesDB(cat);
   if (!db.length) {
@@ -8217,6 +8292,15 @@ function insertPhraseIntoTarget(text) {
   if (!_phraseTargetId) { closePhrasesModal(); return; }
   const el = document.getElementById(_phraseTargetId);
   if (!el) { closePhrasesModal(); return; }
+
+  // [especie] → la especie de ESTE ítem (ver PLACEHOLDER arriba)
+  let msg = 'Frase insertada';
+  if (hasSpeciesPlaceholder(text)) {
+    const sp = speciesForPhrase(_speciesOfTargetEl(el));
+    if (sp) { text = fillSpeciesPlaceholder(text, sp); msg = 'Frase insertada con "' + sp + '"'; }
+    else    { msg = 'Frase insertada · cargá la especie y se completa sola'; }
+  }
+
   const current = el.value || '';
   el.value = current.trim()
     ? current.replace(/\s+$/,'') + '\n' + text
@@ -8225,7 +8309,7 @@ function insertPhraseIntoTarget(text) {
   el.dispatchEvent(new Event('input', {bubbles:true}));
   el.focus();
   closePhrasesModal();
-  toast('Frase insertada', 'ok', 1200);
+  toast(msg, 'ok', 1800);
 }
 
 // Guarda lo que esté ACTUALMENTE en el textarea destino como nueva frase
@@ -8388,6 +8472,20 @@ function dupItem(idx) {
 
 function setItemField(idx, f, v) { const arr=activeItemsArr(); if(arr[idx]) arr[idx][f]=v; sched(); }
 
+// Completa el placeholder [especie] del "Trabajo a realizar" de UNA tarjeta
+// con la especie de esa misma tarjeta. Escribe en el textarea y dispara
+// 'input' para que el estado se sincronice por el camino de siempre.
+function _fillSpeciesInCard(card, rawSpecies) {
+  if (!card) return;
+  const ta = card.querySelector('.ds-f');
+  if (!ta || !hasSpeciesPlaceholder(ta.value)) return;
+  const filled = fillSpeciesPlaceholder(ta.value, rawSpecies);
+  if (filled === ta.value) return;   // sin especie cargada todavía
+  ta.value = filled;
+  ta.dispatchEvent(new Event('input', {bubbles:true}));
+  toast('Especie completada en el trabajo a realizar', 'ok', 1600);
+}
+
 function renderItems() {
   const list = document.getElementById('items-list'); if(!list) return;
   const arr  = activeItemsArr();
@@ -8523,6 +8621,12 @@ function renderItems() {
     const sf = card.querySelector('.sp-f');
     if(sf){
       sf.addEventListener('input', ()=>setItemField(idx,'species',sf.value));
+      // Al salir del campo se completa cualquier [especie] que haya
+      // quedado en la descripción de ESTA tarjeta (frase insertada antes
+      // de cargar la especie, o tarjeta duplicada). En 'blur' y no en
+      // 'input': tipeando "Euc" el reemplazo se comería el corchete a
+      // medio escribir y no habría vuelta atrás.
+      sf.addEventListener('blur', ()=>_fillSpeciesInCard(card, sf.value));
       attachSpeciesAutocomplete(sf, idx);
     }
 
