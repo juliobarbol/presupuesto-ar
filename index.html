@@ -275,7 +275,8 @@ body.modal-open #main{overflow:hidden}
 #confirm-overlay.open{display:flex}
 #confirm-box{background:var(--card);border-radius:var(--radius-box);padding:24px;width:360px;max-width:92vw;box-shadow:0 20px 60px rgba(0,0,0,.25)}
 #confirm-box h4{font-family:var(--font-display);font-size:17px;margin-bottom:10px;color:var(--text)}
-#confirm-box p{font-size:13px;color:var(--muted);margin-bottom:20px;line-height:1.5}
+/* pre-line: el aviso de huecos sin completar lista un renglón por lugar */
+#confirm-box p{font-size:13px;color:var(--muted);margin-bottom:20px;line-height:1.5;white-space:pre-line}
 #confirm-box .cbtns{display:flex;gap:8px;justify-content:flex-end}
 
 /* Diálogo de agenda (fecha del trabajo de un presupuesto aceptado).
@@ -8103,6 +8104,54 @@ function _speciesOfTargetEl(el) {
   return sf ? sf.value : '';
 }
 
+// ─── HUECOS SIN COMPLETAR ────────────────────
+// Red de seguridad para el error caro de las frases con plantilla: el
+// corchete que se escapa al documento del cliente ("hasta la altura de
+// [X] m"). Antes de imprimir o de mandar el presupuesto se avisa QUÉ
+// quedó sin completar y DÓNDE; nunca se bloquea: manda el usuario.
+const PLACEHOLDER_RE_1 = /\[[^\]\n]{1,40}\]/;   // el primero
+const PLACEHOLDER_RE_G = /\[[^\]\n]{1,40}\]/g;  // todos
+
+function _huecosDeTexto(txt) {
+  const m = String(txt || '').match(PLACEHOLDER_RE_G);
+  return m ? [...new Set(m)] : [];
+}
+
+// Recorre SOLO lo que sale en la hoja del cliente del modo activo: el
+// estimativo no imprime observaciones ni condiciones de pago, así que
+// avisar por ellas sería un falso positivo.
+function huecosPendientes() {
+  const out = [];
+  const add = (donde, txt) => { const ph = _huecosDeTexto(txt); if (ph.length) out.push({ donde, ph }); };
+  const addItems = (arr, pref) => (arr || []).forEach((it, i) => add(pref + ' ' + (i + 1), it.desc));
+
+  if (S.isEstimative) {
+    addItems(S.estItems, 'Trabajo');
+  } else {
+    const conB = !!S.scenariosEnabled;
+    addItems(S.items, conB ? (S.scenarioLabelA || 'Opción A') + ' · ítem' : 'Ítem');
+    if (conB) addItems(S.itemsB, (S.scenarioLabelB || 'Opción B') + ' · ítem');
+    add('Observaciones', S.observations);
+    add('Condiciones de pago', S.paymentConditions);
+  }
+  if (S.dispoEnDoc) add('Disposición de leña', S.dispoNota);
+  return out;
+}
+
+// Diálogo común a los caminos de salida (imprimir / WhatsApp). Resuelve
+// true si no hay nada pendiente o si el usuario decide seguir igual.
+function confirmarHuecos(accion) {
+  const pend = huecosPendientes();
+  if (!pend.length) return Promise.resolve(true);
+  const detalle = pend.map(p => '• ' + p.donde + ': ' + p.ph.join(' ')).join('\n');
+  return confirmDlg(
+    'Quedó texto sin completar',
+    'Estos corchetes de las frases todavía están sin reemplazar y salen así en el documento del cliente:\n\n'
+      + detalle + '\n\n¿Seguimos igual?',
+    accion, 'btn-p'
+  );
+}
+
 // ─── API ─────────────────────────────────────
 
 function getPhrasesDB(cat) {
@@ -8302,13 +8351,23 @@ function insertPhraseIntoTarget(text) {
   }
 
   const current = el.value || '';
-  el.value = current.trim()
-    ? current.replace(/\s+$/,'') + '\n' + text
-    : text;
+  const prefijo = current.trim() ? current.replace(/\s+$/,'') + '\n' : '';
+  el.value = prefijo + text;
   // Disparar input event para que se sincronice el estado de la app
   el.dispatchEvent(new Event('input', {bubbles:true}));
-  el.focus();
   closePhrasesModal();
+
+  // Si quedó un corchete sin completar ([X] de altura, [localidad]…), se
+  // deja SELECCIONADO: en el celular, cazarlo con el dedo entre tres
+  // renglones es justo lo que hace que se olvide y termine impreso.
+  // Seleccionado, se reemplaza tipeando encima.
+  const hueco = text.match(PLACEHOLDER_RE_1);
+  el.focus();
+  if (hueco && typeof el.setSelectionRange === 'function') {
+    const ini = prefijo.length + hueco.index;
+    try { el.setSelectionRange(ini, ini + hueco[0].length); } catch(_) {}
+    if (!hasSpeciesPlaceholder(hueco[0])) msg = 'Frase insertada · completá ' + hueco[0];
+  }
   toast(msg, 'ok', 1800);
 }
 
@@ -12137,6 +12196,14 @@ function onLineListKey(e, hostId, i) {
 // adjunta a mano, por eso el recordatorio en el toast.
 function sendCurrentWhatsapp() {
   syncFromUI();
+  // Mismo control que al imprimir. El window.open va DESPUÉS del "Enviar
+  // igual", que es otro toque del usuario: la ventana sigue permitida.
+  const pend = huecosPendientes();
+  if (pend.length) { confirmarHuecos('Enviar igual').then(ok => { if (ok) _sendCurrentWhatsappGo(); }); return; }
+  _sendCurrentWhatsappGo();
+}
+
+function _sendCurrentWhatsappGo() {
   const phone = normalizeArgPhone(S.clientContact || '');
   // El texto sale de la plantilla editable (Empresa → Mi negocio), con las
   // variables reemplazadas por los datos del presupuesto actual.
@@ -15016,6 +15083,15 @@ const PDF_ICONS = {
 function pdfIcon(name) { return PDF_ICONS[name] || ''; }
 
 function printDoc() {
+  syncFromUI();
+  // Último control antes de que el presupuesto salga del teléfono: si
+  // quedó un [X] sin completar, avisar. No bloquea — solo pregunta.
+  const pend = huecosPendientes();
+  if (pend.length) { confirmarHuecos('Imprimir igual').then(ok => { if (ok) _printDocGo(); }); return; }
+  _printDocGo();
+}
+
+function _printDocGo() {
   toast('Generando presupuesto…', 'info', 1500);
   syncFromUI();
   autoSaveToHistory();
