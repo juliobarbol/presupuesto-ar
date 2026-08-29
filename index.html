@@ -2078,7 +2078,9 @@ input[type=number]{-moz-appearance:textfield}
 .cw-refresh:active{background:var(--surface-2)}
 .cw-refresh.is-busy{color:var(--muted);cursor:default}
 .cw-refresh-sp{width:12px;height:12px;flex:none;border:2px solid var(--border);border-top-color:var(--accent-fg);border-radius:50%;animation:spin .7s linear infinite}
-.cw-btns{display:flex;gap:8px;justify-content:flex-end;flex:1}
+/* flex-wrap: con "Compartir" + "Reprogramar" + "Listo" los tres botones no
+   entran en una línea de teléfono angosto; sin esto se desbordaban del panel. */
+.cw-btns{display:flex;gap:8px;justify-content:flex-end;flex:1;flex-wrap:wrap}
 /* ── Centro de notificaciones (campanita) ──
    Badge rojo sobre la campanita del topbar + panel con Pendientes y Recientes.
    Reusa la caja/overlay del panel de clima (#clima-box). */
@@ -17188,6 +17190,14 @@ function _climaCache() {
 // escala y así casi siempre alcanza con una sola llamada a la API.
 function _climaKey(ll) { return ll[0].toFixed(2) + ',' + ll[1].toFixed(2); }
 
+// Zona cacheada ({ at, v, days, hours }) de unas coordenadas, o null. Es el
+// paso común de climaDe/climaDeNota y de todo lo que necesite las HORAS
+// además del día (el resumen para compartir, por ejemplo).
+function _climaZona(ll) {
+  if (!ll) return null;
+  return _climaCache()[_climaKey(ll)] || null;
+}
+
 // Coordenadas para el clima de un trabajo: las del trabajo si las tiene,
 // si no el centroide de la zona (todos los trabajos de un podador caen en
 // la misma zona). null si no hay forma de ubicar nada todavía.
@@ -17242,9 +17252,7 @@ function _climaLatLngNota(n) {
 
 // Pronóstico cacheado para una visita en una fecha, o null si no hay.
 function climaDeNota(n, iso) {
-  const ll = _climaLatLngNota(n);
-  if (!ll) return null;
-  const z = _climaCache()[_climaKey(ll)];
+  const z = _climaZona(_climaLatLngNota(n));
   return (z && z.days && z.days[iso]) || null;
 }
 
@@ -17421,9 +17429,7 @@ async function climaEnsureZona(e, cb) {
 
 // Pronóstico cacheado para un trabajo en una fecha, o null si no hay.
 function climaDe(e, iso) {
-  const ll = _climaLatLngDe(e);
-  if (!ll) return null;
-  const z = _climaCache()[_climaKey(ll)];
+  const z = _climaZona(_climaLatLngDe(e));
   return (z && z.days && z.days[iso]) || null;
 }
 
@@ -17542,6 +17548,106 @@ function climaRecomendaciones(d) {
   if (d.tmax != null && d.tmax >= 32)     out.push('🥵 Va a hacer calor — llevá agua e hidratate seguido');
   else if (d.tmax != null && d.tmax <= 7) out.push('🥶 Va a hacer frío — abrigate bien');
   return out;
+}
+
+// ─── COMPARTIR EL PRONÓSTICO ─────────────────────────────────
+// El pronóstico del día agendado no le sirve solo al que lo mira: el que sube
+// al árbol, el que maneja abajo y el colega al que se le pidió una mano tienen
+// que saber con qué se van a encontrar. Estas funciones arman el MISMO
+// pronóstico que muestra el panel, pero en texto plano para pegarlo en un chat.
+//
+// Todo sale del cache: compartir anda sin señal, que es justo cuando hace falta
+// coordinar. Sin dato cacheado devuelven '' y el botón no se dibuja — mandar
+// "no sé cómo va a estar" no es compartir el clima.
+
+// Rangos de horas laborables (6–21) feas del día — lluvia probable o ráfaga con
+// peligro en altura, el mismo criterio que tiñe de ámbar la tira "hora por
+// hora" del panel — resumidos en texto ("de 11 a 16 h", "a las 9 y de 14 a 17 h").
+// El pronóstico horario solo llega a ~72 h; más allá devuelve ''.
+function _climaFranjasTxt(zona, iso) {
+  const horas = ((zona && zona.hours && zona.hours[iso]) || [])
+    .filter(x => (x.pp != null && x.pp >= 40) || (x.mm != null && x.mm >= 0.5)
+              || (x.gust != null && x.gust >= CLIMA.WIND_WARN))
+    .map(x => parseInt(x.h, 10))
+    .filter(h => Number.isFinite(h) && h >= 6 && h <= 21);
+  if (!horas.length) return '';
+  // Agrupar las horas consecutivas en rangos: "11, 12, 13" se lee mal.
+  const rangos = [];
+  let ini = horas[0], prev = horas[0];
+  for (let i = 1; i < horas.length; i++) {
+    if (horas[i] === prev + 1) { prev = horas[i]; continue; }
+    rangos.push([ini, prev]); ini = prev = horas[i];
+  }
+  rangos.push([ini, prev]);
+  return rangos.map(([a, b]) => (a === b ? `a las ${a}` : `de ${a} a ${b}`)).join(' y ') + ' h';
+}
+
+// Líneas de texto plano con el pronóstico de un día: descripción + térmica,
+// lluvia, viento y UV. Devuelve [] si no hay dato.
+// `zona`+`iso` son opcionales: con ellos se agrega la franja horaria fea (solo
+// la tiene el panel, que es de donde sale el mensaje largo).
+// El viento y el UV se muestran con el mismo umbral que el chip (WIND_CHIP /
+// UV_CHIP): una brisa de 12 km/h y un UV 2 no son noticia para nadie, y una
+// línea por dato convierte el mensaje en ruido que el compañero deja de leer.
+function climaResumenLineas(d, zona, iso) {
+  if (!d) return [];
+  const out = [];
+  const [em, desc] = _climaEmojiDesc(d.code);
+  const t = [
+    d.tmax != null ? `máx ${Math.round(d.tmax)}°` : '',
+    d.tmin != null ? `mín ${Math.round(d.tmin)}°` : '',
+  ].filter(Boolean).join(' / ');
+  out.push(`${em} ${desc}${t ? ` · ${t}` : ''}`);
+
+  const lluvia = climaEsLluvia(d);
+  if (lluvia || (d.pp != null && d.pp >= 20)) {
+    const mm = d.mm ? ` (${Math.round(d.mm * 10) / 10} mm)` : '';
+    out.push(`🌧️ Lluvia ${d.pp != null ? Math.round(d.pp) + '%' : 'probable'}${mm}`);
+  }
+  const g = _climaRafaga(d);
+  if (g != null && g >= CLIMA.WIND_CHIP) {
+    out.push(`💨 Ráfagas ${Math.round(g)} km/h${climaEsViento(d) ? ' — peligro en altura' : ''}`);
+  }
+  if (d.uv != null && d.uv >= CLIMA.UV_CHIP) {
+    out.push(`☀️ UV ${Math.round(d.uv)} (${_climaUvLabel(d.uv)})`);
+  }
+  if (!lluvia && !climaEsViento(d) && out.length === 1) out.push('✅ Día tranquilo para trabajar');
+
+  const franjas = iso ? _climaFranjasTxt(zona, iso) : '';
+  if (franjas) out.push(`⏰ Se complica ${franjas}`);
+  return out;
+}
+
+// Texto completo del panel abierto, para el botón "Compartir": quién y qué día
+// arriba (el compañero recibe el mensaje suelto, sin el contexto de la app),
+// el pronóstico, y las recomendaciones — que son la parte accionable, la que
+// dice si hay que llevar agua o dejar el trabajo en altura para otro día.
+function climaShareTexto() {
+  const tgt = _climaDlgTarget();
+  if (!tgt || !_climaDlg) return '';
+  const iso = _climaDlg.iso;
+  const zona = _climaZona(tgt.ll);
+  const d = (zona && zona.days && zona.days[iso]) || null;
+  if (!d) return '';
+
+  const anio = String(iso).split('-')[0] || '';
+  const fecha = (typeof _calLongDate === 'function' ? _calLongDate(iso) : iso) + (anio ? ` de ${anio}` : '');
+  const qué = tgt.e ? 'Poda' : 'Visita';
+  const lines = [`${tgt.e ? '🌳' : '📋'} ${qué}: ${tgt.titulo} · ${fecha}`];
+  lines.push(...climaResumenLineas(d, zona, iso));
+
+  const recs = climaRecomendaciones(d);
+  if (recs.length) lines.push('', ...recs.map(r => `• ${r}`));
+  lines.push('', 'Pronóstico de Open-Meteo');
+  return lines.join('\n');
+}
+
+// Botón "Compartir" del pie del panel: manda el pronóstico por la bandeja
+// nativa (WhatsApp al compañero, al colega que da una mano, al grupo).
+function climaCompartir() {
+  const txt = climaShareTexto();
+  if (!txt) { toast('Todavía no hay pronóstico de este día para compartir', 'info', 3000); return; }
+  shareText(txt, 'Pronóstico del día');
 }
 
 // Chip de clima para una tarjeta del Historial (idea 5): solo para trabajos
@@ -17765,12 +17871,20 @@ function _climaDetailRender() {
   const repro = (tgt.e && motivo.txt && tieneTel && tgt.fechas.includes(iso))
     ? `<button type="button" class="btn btn-g btn-sm" onclick="climaReprogramarWhatsApp(${tgt.e.id}, '${esc(motivo.txt)}')">${icon('message')} Reprogramar</button>`
     : '';
+  // "Compartir": pasarle el día a los compañeros de trabajo. A diferencia de
+  // "Reprogramar" (que es para el cliente y solo si el día pintó feo), este
+  // sale en CUALQUIER día con pronóstico —incluidos los buenos: "el jueves
+  // está lindo, dale que vamos" es tan útil como el aviso de lluvia— y también
+  // navegando la tira, porque comparar días con el equipo es media coordinación.
+  const compartir = d
+    ? `<button type="button" class="btn btn-g btn-sm" onclick="climaCompartir()" title="Mandarle el pronóstico de este día a un compañero">${icon('share')} Compartir</button>`
+    : '';
   // "Actualizar": el único camino que ignora el TTL de 3 h. Va pegado a la
   // edad del dato porque es justo ahí donde uno se pregunta "¿y si cambió?".
   const foot = `<div class="cw-foot">
     <span class="cw-src">Open-Meteo${zona && zona.at ? ` · ${esc(_climaHaceTxt(zona.at))}` : ''}</span>
     <button type="button" class="cw-refresh" id="cw-refresh" onclick="climaRefrescarAhora(this)" title="Volver a pedir el pronóstico ahora mismo">${icon('refresh')} Actualizar</button>
-    <div class="cw-btns">${repro}<button type="button" class="btn btn-p btn-sm" onclick="closeClimaDetail()">Listo</button></div>
+    <div class="cw-btns">${compartir}${repro}<button type="button" class="btn btn-p btn-sm" onclick="closeClimaDetail()">Listo</button></div>
   </div>`;
 
   body.innerHTML = `
@@ -18883,6 +18997,13 @@ function _calShareText(ev) {
   // Ubicación: el 📍 y la tarjeta de vista previa de WhatsApp ya indican que es
   // una ubicación, así que va el link a secas (sin la palabra "Ubicación:").
   if (ev.mapUrl) lines.push(`📍 ${ev.mapUrl}`);
+  // Pronóstico del día, si la tarjeta lo tiene (ev.clima es el mismo dato que
+  // pinta el chip). Cuando se le pasa un trabajo a un compañero, "cómo va a
+  // estar" es parte del recordatorio: define si lleva agua, si va la altura o
+  // si conviene salir temprano. Sin dato cacheado no se agrega nada.
+  if (ev.clima && typeof climaResumenLineas === 'function') {
+    lines.push(...climaResumenLineas(ev.clima));
+  }
   return lines.join('\n');
 }
 // Comparte el texto guardado en el data-share del botón (se arma en el render).
