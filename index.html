@@ -1690,12 +1690,23 @@ input[type=number]{-moz-appearance:textfield}
 .fub-item-acts{display:flex;align-items:center;gap:6px;flex-shrink:0}
 .fub-wa{font-size:12.5px;font-weight:700;color:#fff;background:#25d366;border:none;border-radius:var(--radius-field);padding:8px 12px;text-decoration:none;white-space:nowrap}
 .fub-wa:active{background:#1da851}
+/* "Nueva versión" en el banner de vencidos: la salida real de un presupuesto
+   que se venció, al lado del WhatsApp para avisar. */
+.fub-nv{display:inline-flex;align-items:center;gap:5px;font-family:var(--font-text);font-size:12.5px;font-weight:700;color:var(--c-visita-fg);background:var(--c-visita-bg);border:1px solid transparent;border-radius:var(--radius-field);padding:8px 12px;cursor:pointer;white-space:nowrap}
+.fub-nv .ic{width:15px;height:15px}
+.fub-nv:active{filter:brightness(.95)}
 .fub-done{font-size:14px;font-weight:700;color:#16a34a;background:#dcfce7;border:1px solid #86efac;border-radius:var(--radius-field);width:36px;height:36px;cursor:pointer;flex-shrink:0}
 .fub-done:active{background:#bbf7d0}
 .fub-more{font-size:12px;color:#a16207;text-align:center;padding:4px;font-style:italic}
 
 /* Badge ⌛ de presupuesto vencido en la tarjeta del historial */
 .hbadge-expired{display:inline-block;font-size:10px;font-weight:700;padding:1px 8px;border-radius:var(--radius-box);margin-left:6px;vertical-align:middle;background:var(--c-vence-bg);color:var(--c-vence-fg)}
+/* Versiones de un presupuesto: "v2" en la tarjeta de la versión nueva y
+   "reemplazado" (apagado) en la que quedó atrás. Dos badges distintos porque
+   dicen cosas opuestas: uno es el vigente y el otro ya no cuenta. */
+.hbadge-version{display:inline-block;font-size:10px;font-weight:700;padding:1px 8px;border-radius:var(--radius-box);margin-left:6px;vertical-align:middle;background:var(--c-visita-bg);color:var(--c-visita-fg)}
+.hbadge-reemplazado{display:inline-block;font-size:10px;font-weight:700;padding:1px 8px;border-radius:var(--radius-box);margin-left:6px;vertical-align:middle;background:var(--surface-2);color:var(--muted)}
+.hitem.is-reemplazado .hnum,.hitem.is-reemplazado .hclient,.hitem.is-reemplazado .hmeta{opacity:.6}
 /* Banner de presupuestos vencidos (reusa la estructura .fub-*, en rojo) */
 /* Banner de recontactos (celeste): clientes que aceptaron y hay que volver
    a llamar para coordinar la fecha del trabajo. Reusa las clases fub-*. */
@@ -2198,6 +2209,29 @@ input[type=number]{-moz-appearance:textfield}
 .ne-seg-btn .ic{width:16px;height:16px}
 .ne-seg-btn[data-tipo=""].is-active{border-color:var(--c-nota);background:var(--c-nota-bg);color:var(--c-nota-fg)}
 .ne-seg-btn[data-tipo="visita"].is-active{border-color:var(--c-visita);background:var(--c-visita-bg);color:var(--c-visita-fg)}
+/* ── Modal "Nueva versión" (presupuesto vencido que se vuelve a pasar) ──
+   Reusa la caja del modal de nota. Lo propio es el bloque de precios: el
+   porcentaje con atajos y la cuenta hecha (total viejo → total nuevo), que es
+   lo único que el usuario mira antes de decidir. */
+#nv-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2000;align-items:center;justify-content:center}
+#nv-overlay.open{display:flex}
+#nv-box{background:var(--card);border-radius:var(--radius-box);padding:22px;width:420px;max-width:92vw;max-height:92vh;overflow-y:auto;overscroll-behavior:contain;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+#nv-box h4{font-family:var(--font-display);font-size:17px;margin-bottom:4px;color:var(--text)}
+.nv-sub{font-size:12.5px;color:var(--muted);line-height:1.5;margin-bottom:16px}
+.nv-pct-row{display:flex;gap:8px;align-items:center}
+.nv-pct-row>input{flex:0 0 96px;width:96px}
+.nv-pct-sign{font-size:14px;font-weight:700;color:var(--muted)}
+.nv-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.nv-chip{padding:6px 12px;font-family:var(--font-text);font-size:12.5px;font-weight:600;color:var(--text-2);background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-field);cursor:pointer}
+.nv-chip.is-active{border-color:var(--accent-fg);background:var(--accent-light);color:var(--accent-fg)}
+.nv-prev{margin-top:14px;padding:12px 14px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-field)}
+.nv-prev-lbl{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.nv-prev-nums{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;font-family:var(--font-mono)}
+.nv-prev-old{font-size:14px;color:var(--muted);text-decoration:line-through}
+.nv-prev-arrow{font-size:13px;color:var(--muted)}
+.nv-prev-new{font-size:19px;font-weight:600;color:var(--accent-fg)}
+.nv-prev-note{margin-top:6px;font-size:11.5px;color:var(--muted);line-height:1.45}
+#nv-box .cbtns{display:flex;gap:8px;justify-content:flex-end;margin-top:18px}
 /* Segmentado Mes / Semana / 3 días / Agenda */
 .agc-viewtoggle{display:flex;max-width:100%;overflow-x:auto;background:var(--surface-2);border-radius:var(--radius-field);padding:3px;gap:3px;margin-bottom:12px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
 .agc-viewtoggle::-webkit-scrollbar{display:none}
@@ -3999,6 +4033,18 @@ input[type=number]{-moz-appearance:textfield}
             </div>
           </div>
 
+          <!-- ── MENSAJE DE PRESUPUESTO ACTUALIZADO (segunda versión) ── -->
+          <div class="fu-config">
+            <div class="fu-config-head">
+              <span class="st" style="margin:0;border:none;padding:0"><svg class="ic ic-c-green"><use href="#i-refresh"></use></svg> Mensaje de presupuesto actualizado</span>
+            </div>
+            <p class="fu-help">Reemplaza al mensaje de envío cuando lo que mandás es una <strong>nueva versión</strong> de un presupuesto que se venció (el botón “Nueva versión” del historial). El cliente ya conoce el trabajo: lo que cambió es el precio.</p>
+            <div class="fg">
+              <textarea id="wa-actualizacion-template" rows="6" onchange="saveActualizacionTemplate()" oninput="saveActualizacionTemplate()"></textarea>
+              <span class="fu-vars">Variables: <code>{cliente}</code> <code>{numero}</code> <code>{importe}</code> <code>{empresa}</code> <code>{alias}</code> <code>{titular}</code></span>
+            </div>
+          </div>
+
           <!-- ── MENSAJE DE RECONTACTO (coordinar fecha) ── -->
           <div class="fu-config">
             <div class="fu-config-head">
@@ -4569,6 +4615,46 @@ input[type=number]{-moz-appearance:textfield}
   </div>
 </div>
 
+<!-- ═══════════════ NUEVA VERSIÓN DE UN PRESUPUESTO ═══════════════════════
+     El cliente vuelve semanas después de que el presupuesto venció: quiere
+     hacer el trabajo, o tantear cuánto salió ahora. Este diálogo arma la
+     segunda versión — copia el presupuesto, actualiza los precios el % que se
+     le diga y deja el original marcado como reemplazado. -->
+<div id="nv-overlay" role="presentation" onclick="if(event.target===this)nvClose()">
+  <div id="nv-box" role="dialog" aria-modal="true" aria-labelledby="nv-title">
+    <h4 id="nv-title">Nueva versión</h4>
+    <p class="nv-sub" id="nv-sub"></p>
+    <div class="ne-field">
+      <label for="nv-pct">Actualizar los precios</label>
+      <div class="nv-pct-row">
+        <span class="nv-pct-sign">+</span>
+        <input type="number" id="nv-pct" min="-90" max="500" step="1" inputmode="decimal" value="0" oninput="nvSync()">
+        <span class="nv-pct-sign">%</span>
+      </div>
+      <div class="nv-chips" id="nv-chips"></div>
+    </div>
+    <div class="nv-prev">
+      <div class="nv-prev-lbl">Total del presupuesto</div>
+      <div class="nv-prev-nums">
+        <span class="nv-prev-old" id="nv-prev-old"></span>
+        <span class="nv-prev-arrow">→</span>
+        <span class="nv-prev-new" id="nv-prev-new"></span>
+      </div>
+      <div class="nv-prev-note" id="nv-prev-note"></div>
+    </div>
+    <div class="ne-field" style="margin-top:14px;margin-bottom:0">
+      <label class="fu-chk" style="font-weight:600">
+        <input type="checkbox" id="nv-endoc" checked>
+        Aclarar en el PDF que actualiza al presupuesto anterior
+      </label>
+    </div>
+    <div class="cbtns">
+      <button class="btn btn-s" onclick="nvClose()">Cancelar</button>
+      <button class="btn btn-p" id="nv-ok" onclick="nvConfirm()">Crear versión</button>
+    </div>
+  </div>
+</div>
+
 <!-- ════════════════════ CONFIRM MODAL ════════════════════ -->
 <div id="confirm-overlay" role="presentation">
   <div id="confirm-box" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
@@ -4933,6 +5019,7 @@ const LS = {
   CLIMA_WARN:     'pq_clima_warn',
   NOTIF_LOG:      'pq_notif_log',
   NOTIF_SEEN:     'pq_notif_seen',
+  VER_PCT:        'pq_ver_pct',     // último % de actualización usado al armar una versión (preferencia del dispositivo, no va al backup)
 };
 
 // Notificaciones push (avisos de seguimiento con la app cerrada). Ambos se
@@ -4967,6 +5054,18 @@ const DEF = {
   // escrito es lo que evita la discusión de después. Se puede apagar cuando
   // la foto es solo un recordatorio para uno.
   dispoEnDoc:true,
+  // ── Versión de un presupuesto anterior ─────────────────────────────
+  // Cuando un presupuesto vence y el cliente vuelve, se arma una SEGUNDA
+  // VERSIÓN con los precios al día (ver nuevaVersionQuote). Estos campos
+  // dejan constancia de a cuál actualiza. Son del PRESUPUESTO, no config
+  // global → NO van en CFG_GLOBAL_FIELDS, y se resetean en resetToNewQuote /
+  // migrateState (si no, el próximo presupuesto en blanco heredaría la
+  // referencia y el PDF diría que actualiza a uno que no tiene nada que ver).
+  //   versionN = 0 ó 1 → es un presupuesto original, no una versión.
+  versionN:0, versionDeNum:'', versionDeFecha:'',
+  // ¿Sale en el PDF la línea "Actualiza el presupuesto N° X del DD/MM"? Por
+  // defecto sí: le ahorra al cliente la duda de si son dos trabajos distintos.
+  versionEnDoc:true,
   // Scenarios A/B mode — permite presupuestar dos alternativas paralelas
   // sobre el mismo conjunto (ej: extraer todo vs podar todo). Cuando está
   // apagado, todo funciona normal con S.items. Cuando está prendido, B
@@ -5610,6 +5709,13 @@ function migrateState(raw) {
   if (typeof next.dispoNota !== 'string')   next.dispoNota = '';
   if (!Array.isArray(next.dispoPhotos))     next.dispoPhotos = [];
   if (typeof next.dispoEnDoc !== 'boolean') next.dispoEnDoc = true;
+  // Referencia a la versión anterior: mismo motivo que la disposición. Un
+  // snapshot de antes de la función no puede quedarse con la referencia del
+  // presupuesto que estaba abierto — su PDF diría que actualiza a otro.
+  if (typeof next.versionN       !== 'number')  next.versionN = 0;
+  if (typeof next.versionDeNum   !== 'string')  next.versionDeNum = '';
+  if (typeof next.versionDeFecha !== 'string')  next.versionDeFecha = '';
+  if (typeof next.versionEnDoc   !== 'boolean') next.versionEnDoc = true;
   if (typeof next.isEstimative !== 'boolean') next.isEstimative = false;
   if (typeof next.isRisk       !== 'boolean') next.isRisk = false;
   if (!next.riskData || typeof next.riskData !== 'object') {
@@ -5967,6 +6073,12 @@ const FOLLOWUP_DEF = {
   // tiene con qué verificarlo. {datos_pago} arma ese bloque con lo que esté
   // cargado, y las líneas cuya variable quede vacía se caen solas.
   waCobroTemplate: 'Hola {cliente}, ya terminamos el trabajo. Te paso los datos para la transferencia:\n\n{datos_pago}\n\nImporte: {importe}\nPresupuesto: {numero}\n\nCuando la hagas avisame así te confirmo la recepción. ¡Gracias!\n{empresa}',
+  // Plantilla del mensaje de PRESUPUESTO ACTUALIZADO: el presupuesto venció,
+  // el cliente volvió a escribir y se le pasa la segunda versión con los
+  // precios de hoy (ver nuevaVersionQuote). Es el reemplazo de la plantilla de
+  // envío cuando lo que sale es una versión, no un presupuesto nuevo: el
+  // cliente ya conoce el trabajo, lo que cambió es el precio.
+  waActualizacionTemplate: 'Hola {cliente}, ¿cómo andás? Te paso el presupuesto actualizado con los valores al día de hoy para que lo puedas revisar.\n\nCualquier duda quedo a disposición.\n\nSaludos,\n{empresa}',
 };
 
 function getFollowupCfg() {
@@ -6008,6 +6120,10 @@ function getPendingFollowups() {
     const est = e.estado || 'borrador';
     if (!cfg.estados.includes(est)) continue;
     if (!e.enviadoEn) continue; // viejos sin fecha de envío: nunca recuerdan
+    // Reemplazado por una versión nueva: el seguimiento es de la v2, que se
+    // acaba de mandar. Seguir reclamando por el viejo es reclamar dos veces
+    // por el mismo cliente.
+    if (e.reemplazadoPor) continue;
     const d = daysSince(e.enviadoEn);
     if (d === null || d < cfg.days) continue;
     // Si ya se hizo seguimiento DESPUÉS del envío, no recordar de nuevo
@@ -6072,6 +6188,9 @@ function getExpiredQuotes() {
     const d = daysSinceDate(exp);
     if (d === null || d < 1) continue; // vence "hoy" todavía es válido
     if (e.vencimientoVistoEn) continue;
+    // Ya se armó una versión nueva de este: el pendiente pasó a la v2 y
+    // seguir avisando por el viejo es avisar dos veces por el mismo trabajo.
+    if (e.reemplazadoPor) continue;
     out.push({ entry: e, dias: d });
   }
   // Más vencidos primero (más urgentes)
@@ -6233,6 +6352,7 @@ function _buildPushFollowups(cfg) {
     const est = e.estado || 'borrador';
     if (!cfg.estados.includes(est)) continue;
     if (!e.enviadoEn) continue;
+    if (e.reemplazadoPor) continue;   // el pendiente pasó a la versión nueva
     if (e.seguimientoHechoEn && new Date(e.seguimientoHechoEn) >= new Date(e.enviadoEn)) continue;
     const dueMs = new Date(e.enviadoEn).getTime() + cfg.days * 86400000;
     let dueDate;
@@ -6262,6 +6382,7 @@ function _buildPushExpiries(cfg) {
     if (!cfg.estados.includes(est)) continue;
     if (!e.enviadoEn) continue;
     if (e.vencimientoVistoEn) continue;
+    if (e.reemplazadoPor) continue;   // ya tiene versión nueva
     const exp = e.snapshot && e.snapshot.dateExpiry;
     if (!exp) continue;
     out.push({
@@ -6688,6 +6809,18 @@ function sanitizeHistory(raw) {
     if (Array.isArray(e.fechasTrabajo)) {
       s.fechasTrabajo = e.fechasTrabajo.map(sanISODate).filter(Boolean);
     } else { delete s.fechasTrabajo; }
+    // Cadena de versiones: ids de OTRAS entradas del historial. Se interpolan
+    // en onclick igual que `id`, así que tienen que ser números; pero acá no
+    // sirve el sanNumId de siempre —inventar un id nuevo apuntaría a una
+    // entrada inexistente—, así que lo que no parsea se descarta y el
+    // presupuesto vuelve a ser original / no reemplazado.
+    ['versionDe','reemplazadoPor'].forEach(k => {
+      const v = e[k];
+      if (typeof v === 'number' && Number.isFinite(v)) s[k] = v;
+      else if (typeof v === 'string' && /^\d{1,20}$/.test(v)) s[k] = parseInt(v, 10);
+      else delete s[k];
+    });
+    if (e.versionN != null) s.versionN = Math.max(0, Math.round(sanNum(e.versionN)) || 0);
     if (e.recontactoNota != null) s.recontactoNota = sanStr(e.recontactoNota, 500);
     if (e.diasEstimados != null)  s.diasEstimados  = Math.max(1, Math.round(sanNum(e.diasEstimados)) || 1);
     out.push(s);
@@ -6725,6 +6858,12 @@ function sanitizeStateObj(raw) {
   s.dispoNota   = sanStr(raw.dispoNota, 1000);
   s.dispoPhotos = sanPhotoRefs(raw.dispoPhotos);
   s.dispoEnDoc  = (raw.dispoEnDoc === undefined) ? true : sanBool(raw.dispoEnDoc);
+  // Referencia a la versión anterior: el número se imprime en el documento del
+  // cliente (escapado, pero acotado igual) y la fecha alimenta fmtD.
+  s.versionN       = Math.max(0, Math.round(sanNum(raw.versionN)) || 0);
+  s.versionDeNum   = sanStr(raw.versionDeNum, 60);
+  s.versionDeFecha = sanISODate(raw.versionDeFecha);
+  s.versionEnDoc   = (raw.versionEnDoc === undefined) ? true : sanBool(raw.versionEnDoc);
   return s;
 }
 
@@ -6856,7 +6995,8 @@ function sanitizeFollowup(raw) {
     // seguimiento mudo sin que el usuario sepa por qué.
     out.estados = est.length ? est : FOLLOWUP_DEF.estados.slice();
   }
-  ['waTemplate','waSendTemplate','waRecontactoTemplate'].forEach(k => {
+  ['waTemplate','waSendTemplate','waRecontactoTemplate','waCobroTemplate',
+   'waActualizacionTemplate'].forEach(k => {
     if (raw[k] != null) out[k] = sanStr(raw[k], 1500);
   });
   return Object.keys(out).length ? out : null;
@@ -10997,8 +11137,10 @@ function calcNextNumFromHistory() {
     const qn = e.quoteNumber || '';
     // Solo presupuestos con el mismo prefijo
     if (prefix && !qn.startsWith(prefix)) return;
-    // Extrae el número final (ej: "2026-0035" → 35)
-    const m = qn.match(/(\d+)\s*$/);
+    // Extrae el número final (ej: "2026-0035" → 35). El sufijo de versión se
+    // saca ANTES: en "2026-0035-v2" el número correlativo es el 35, no el 2
+    // (una segunda versión no consume número nuevo, ver nuevaVersionQuote).
+    const m = numBaseSinVersion(qn).match(/(\d+)\s*$/);
     if (m) {
       const n = parseInt(m[1], 10);
       if (!isNaN(n) && n > maxNum) maxNum = n;
@@ -11045,6 +11187,267 @@ function loadFromHistory(id) {
   toast(prevNum
     ? `Presupuesto cargado · el ${prevNum} quedó guardado en el historial`
     : 'Presupuesto cargado', 'ok');
+}
+
+// ═══════════════════════════════════════════════════════════
+// SEGUNDA VERSIÓN DE UN PRESUPUESTO (el vencido que vuelve)
+// ═══════════════════════════════════════════════════════════
+// El caso: se pasó un presupuesto, venció, y semanas después el cliente
+// escribe — porque quiere hacer el trabajo, o para tantear cuánto sale ahora.
+// Volver a cargar el viejo y editarle los precios a mano pierde el original
+// (que es la referencia de lo que se le había dicho) y encima obliga a
+// recalcular árbol por árbol.
+//
+// El modelo es el de las revisiones de obra (Rev. A / Rev. B) y el de las
+// versiones de cotización de cualquier CRM: la versión nueva es OTRO
+// presupuesto, ligado al anterior, y el anterior queda marcado como
+// reemplazado. Concretamente:
+//   · número     → el mismo con sufijo ("2026-0035-v2"). El cliente escribe
+//                  POR ese número; darle uno nuevo rompe el hilo. Y no
+//                  consume correlativo (ver calcNextNumFromHistory).
+//   · precios    → se actualizan de una con un %, redondeado a cifras de
+//                  oficio. Es lo único que cambia en la mayoría de los casos.
+//   · el viejo   → reemplazadoPor + vencimientoVistoEn: deja de aparecer en
+//                  el banner de vencidos y no suma dos veces al acumulado.
+//   · el mensaje → al enviarla por WhatsApp sale la plantilla de
+//                  actualización, no la de envío (ver _sendCurrentWhatsappGo).
+// Los vínculos (versionDe / reemplazadoPor / versionN) son metadata del ENTRY,
+// como el estado: se leen en el listado sin cargar el presupuesto. La
+// referencia que se imprime en el PDF (versionDeNum / versionDeFecha) sí va en
+// el snapshot, porque es parte del documento.
+
+// Número sin el sufijo de versión: "2026-0035-v3" → "2026-0035".
+function numBaseSinVersion(num) { return String(num || '').replace(/-v\d+$/i, ''); }
+
+// ¿Este entry ya fue reemplazado por una versión posterior?
+function esReemplazado(e) { return !!(e && e.reemplazadoPor); }
+
+// Redondea un importe (en centavos) a una cifra que un podador diría en voz
+// alta. Un +18% sobre $470.000 da $554.600; lo que se pasa es $555.000. Sin
+// esto, la actualización deja precios de supermercado en un presupuesto donde
+// todos los números son redondos.
+function redondeoPrecioCents(cents) {
+  if (!(cents > 0)) return 0;
+  // $10.000 o más → al millar; por debajo, a la centena (un flete de $8.000
+  // no se redondea a $8.000 ± $1.000).
+  const paso = cents >= 1000000 ? 100000 : 10000;
+  return Math.max(paso, Math.round(cents / paso) * paso);
+}
+
+// Aplica un % a TODOS los precios de un snapshot (escenarios A/B y estimativo
+// incluidos). Muta el objeto que recibe — se lo llama sobre una copia o sobre
+// S ya cargado. Devuelve cuántos precios tocó.
+//
+// `_basePrice` (el precio previo al recargo por viáticos, ver applySurcharge)
+// se ajusta con el mismo factor: si no, quitar el recargo después de
+// actualizar devolvería los precios del año pasado.
+function ajustarPreciosEn(snap, pct) {
+  const f = 1 + (Number(pct) || 0) / 100;
+  if (!snap || f === 1) return 0;
+  let n = 0;
+  const bump = (arr) => {
+    if (!Array.isArray(arr)) return;
+    arr.forEach(it => {
+      if (!it || (it.type !== 'tree' && it.type !== 'service' && it.type !== 'work')) return;
+      const c = moneyToCents(it.price);
+      if (!(c > 0)) return;
+      it.price = centsToMoney(redondeoPrecioCents(Math.round(c * f)));
+      const b = moneyToCents(it._basePrice);
+      if (b > 0) it._basePrice = centsToMoney(redondeoPrecioCents(Math.round(b * f)));
+      n++;
+    });
+  };
+  bump(snap.items); bump(snap.itemsB); bump(snap.estItems);
+  return n;
+}
+
+// Total de un snapshot cualquiera, sin tocar el estado abierto (calcTotals y
+// calcEstTotals trabajan sobre S / el escenario activo). Se usa para la cuenta
+// del diálogo: "$470.000 → $555.000".
+function totalDeSnapshot(snap) {
+  if (!snap) return 0;
+  if (snap.isEstimative) return calcEstTotals(snap.estItems || []).total;
+  let sub = 0;
+  (snap.items || []).forEach(i => {
+    if (i && (i.type === 'tree' || i.type === 'service')) sub += itemTotalCents(i);
+  });
+  const d = Math.min(100, Math.max(0, parseFloat(snap.discount) || 0));
+  return centsToMoney(sub - Math.round(sub * d / 100));
+}
+
+// Primer número de versión libre para una base dada. Normalmente es
+// "<base>-v<n>", pero si ese número ya existe (una versión borrada y rehecha,
+// un import) sigue subiendo hasta encontrar uno libre.
+function numeroDeVersionLibre(baseNum, n) {
+  const usados = new Set(getH().map(e => e.quoteNumber || ''));
+  let k = Math.max(2, Math.round(n) || 2);
+  while (usados.has(`${baseNum}-v${k}`)) k++;
+  return { num: `${baseNum}-v${k}`, n: k };
+}
+
+// ─── Diálogo ─────────────────────────────────
+let _nvEntry = null;   // entry del historial que se está versionando
+
+const NV_CHIPS = [0, 10, 15, 20, 30, 50];
+
+function _nvPctGuardado() {
+  const v = parseFloat(localStorage.getItem(LS.VER_PCT));
+  return Number.isFinite(v) ? v : 0;
+}
+
+function nuevaVersionQuote(id) {
+  const e = getH().find(x => x.id === id);
+  if (!e) return;
+  _nvEntry = e;
+  const ov = document.getElementById('nv-overlay');
+  if (!ov) return;
+  const base = numBaseSinVersion(e.quoteNumber || '');
+  const emit = (e.snapshot && e.snapshot.dateIssue) || (e.savedAt || '').slice(0, 10);
+  const exp  = e.snapshot && e.snapshot.dateExpiry;
+  const dv   = exp ? daysSinceDate(exp) : null;
+  const sub  = document.getElementById('nv-sub');
+  if (sub) {
+    sub.textContent = `${e.quoteNumber || '—'} · ${(e.clientName || '').trim() || '(sin nombre)'}`
+      + (emit ? ` · emitido el ${fmtD(emit)}` : '')
+      + ((dv !== null && dv >= 1) ? ` · venció hace ${dv} día${dv > 1 ? 's' : ''}` : '');
+  }
+  const tit = document.getElementById('nv-title');
+  if (tit) tit.textContent = `Nueva versión de ${base}`;
+  const pctEl = document.getElementById('nv-pct');
+  if (pctEl) pctEl.value = _nvPctGuardado();
+  const endoc = document.getElementById('nv-endoc');
+  if (endoc) endoc.checked = true;
+  nvSync();
+  ov.classList.add('open');
+}
+
+function nvClose() {
+  const ov = document.getElementById('nv-overlay');
+  if (ov) ov.classList.remove('open');
+  _nvEntry = null;
+}
+
+// Escape cierra el diálogo (escritorio). En el celular se cierra tocando fuera
+// o con Cancelar.
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  const ov = document.getElementById('nv-overlay');
+  if (ov && ov.classList.contains('open')) nvClose();
+});
+
+// Fija el % desde un atajo y refresca la cuenta.
+function nvSetPct(p) {
+  const el = document.getElementById('nv-pct');
+  if (el) el.value = p;
+  nvSync();
+}
+
+// Repinta los atajos y la cuenta (total viejo → total nuevo) con el % actual.
+function nvSync() {
+  if (!_nvEntry) return;
+  const pct = parseFloat(gv('nv-pct')) || 0;
+  const snap = _nvEntry.snapshot || {};
+  const cur  = _nvEntry.currency || snap.currency || 'ARS';
+  const viejo = totalDeSnapshot(snap);
+  // La copia es para no tocar el snapshot guardado mientras se mira la cuenta.
+  const clone = JSON.parse(JSON.stringify(snap));
+  const n = ajustarPreciosEn(clone, pct);
+  const nuevo = totalDeSnapshot(clone);
+
+  const chips = document.getElementById('nv-chips');
+  if (chips) {
+    chips.innerHTML = NV_CHIPS.map(p =>
+      `<button type="button" class="nv-chip${p === pct ? ' is-active' : ''}" onclick="nvSetPct(${p})">${p === 0 ? 'Sin cambios' : '+' + p + '%'}</button>`
+    ).join('');
+  }
+  const oldEl = document.getElementById('nv-prev-old');
+  const newEl = document.getElementById('nv-prev-new');
+  const noteEl = document.getElementById('nv-prev-note');
+  if (oldEl) oldEl.textContent = fmtM(viejo, cur);
+  if (newEl) newEl.textContent = fmtM(nuevo, cur);
+  if (noteEl) {
+    noteEl.textContent = pct === 0
+      ? 'Mismos precios, vigencia nueva desde hoy.'
+      : `${n} precio${n === 1 ? '' : 's'} actualizado${n === 1 ? '' : 's'} y redondeado${n === 1 ? '' : 's'}. Podés retocarlos uno por uno en el editor.`;
+  }
+}
+
+function nvConfirm() {
+  if (!_nvEntry) { nvClose(); return; }
+  const pct = parseFloat(gv('nv-pct')) || 0;
+  const enDoc = gc('nv-endoc');
+  const entry = _nvEntry;
+  nvClose();
+  try { localStorage.setItem(LS.VER_PCT, String(pct)); } catch (_) {}
+  crearNuevaVersion(entry, pct, enDoc);
+}
+
+// ─── Creación ────────────────────────────────
+// Deja la versión nueva abierta en el editor y asentada en el historial, con
+// los dos entries ligados. No envía nada: el usuario revisa, retoca lo que
+// haga falta y recién ahí imprime o manda el WhatsApp.
+function crearNuevaVersion(entry, pct, enDoc) {
+  if (!entry || !entry.snapshot) return;
+  // Lo que estaba abierto en el editor no se pierde (mismo criterio que
+  // loadFromHistory): se autoguarda salvo que sea el presupuesto de origen.
+  let prevNum = '';
+  if (S.quoteNumber && S.quoteNumber !== entry.quoteNumber && autoSaveToHistory()) {
+    prevNum = S.quoteNumber;
+  }
+
+  const snap = migrateState(JSON.parse(JSON.stringify(entry.snapshot)));
+  assignSnapshot(S, snap);
+  if (!S.estItems)        S.estItems = [];
+  if (!S.estObservations) S.estObservations = '';
+  if (S.surcharge === undefined) S.surcharge = 0;
+  if (!Array.isArray(S.itemsB)) S.itemsB = [];
+  normalizeRiskData();
+  // Las fotos son las mismas (mismo trabajo, mismos árboles): la versión
+  // referencia los mismos ids de IndexedDB, no se duplican los binarios.
+  migrateInlinePhotosToIDB(S);
+  activeScenario = 'A';
+
+  const tocados = ajustarPreciosEn(S, pct);
+
+  // Referencia al presupuesto que actualiza (esto SÍ es parte del documento).
+  const nEsperado = (parseInt(entry.versionN, 10) || 1) + 1;
+  const { num, n } = numeroDeVersionLibre(numBaseSinVersion(entry.quoteNumber || mkQN()), nEsperado);
+  S.versionN       = n;
+  S.versionDeNum   = entry.quoteNumber || '';
+  S.versionDeFecha = (entry.snapshot.dateIssue || (entry.savedAt || '').slice(0, 10)) || '';
+  S.versionEnDoc   = enDoc !== false;
+  S.quoteNumber    = num;
+  // Emitida hoy, con la vigencia contada desde hoy: si algo justifica una
+  // versión nueva es justamente que la anterior se venció.
+  S.dateIssue = today();
+  calcExpiry();
+
+  noSync = true; restoreUI(); noSync = false;
+  renderItems(); renderEstItems(); renderRiskDefects();
+  applyMode(currentMode());
+  updateTotalsBar(); updateSurchargeUI();
+
+  // Asentar la versión en el historial y ligar las dos entradas.
+  autoSaveToHistory();
+  const h = getH();
+  const nuevo = h.find(x => x.quoteNumber === num);
+  const orig  = h.find(x => x.id === entry.id);
+  if (nuevo) { nuevo.versionDe = entry.id; nuevo.versionN = n; }
+  if (orig && nuevo) {
+    orig.reemplazadoPor = nuevo.id;
+    // Ya tiene reemplazo: no hace falta que el banner de vencidos siga
+    // reclamando por él.
+    if (!orig.vencimientoVistoEn) orig.vencimientoVistoEn = new Date().toISOString();
+  }
+  setH(h);
+  renderHistory();
+  if (typeof renderFollowupBanner === 'function') renderFollowupBanner();
+  switchTab('editor');
+
+  const detalle = pct === 0
+    ? 'con los mismos precios'
+    : `con ${tocados} precio${tocados === 1 ? '' : 's'} al ${pct > 0 ? '+' : ''}${pct}%`;
+  toast(`✓ ${num} creado ${detalle}` + (prevNum ? ` · el ${prevNum} quedó guardado` : ''), 'ok', 5000);
 }
 
 // ─── DELETE ──────────────────────────────────
@@ -12210,7 +12613,12 @@ function _sendCurrentWhatsappGo() {
   // El texto sale de la plantilla editable (Empresa → Mi negocio), con las
   // variables reemplazadas por los datos del presupuesto actual.
   const cfg = (typeof getFollowupCfg === 'function') ? getFollowupCfg() : FOLLOWUP_DEF;
-  const tpl = (cfg.waSendTemplate && cfg.waSendTemplate.trim()) ? cfg.waSendTemplate : FOLLOWUP_DEF.waSendTemplate;
+  // Si lo que sale es una VERSIÓN de un presupuesto anterior, el mensaje es
+  // otro: el cliente ya conoce el trabajo y lo que cambió es el precio. Cada
+  // plantilla se edita por separado en Empresa (ver saveActualizacionTemplate).
+  const esVersion = (parseInt(S.versionN, 10) || 0) > 1;
+  const tplKey = esVersion ? 'waActualizacionTemplate' : 'waSendTemplate';
+  const tpl = (cfg[tplKey] && cfg[tplKey].trim()) ? cfg[tplKey] : FOLLOWUP_DEF[tplKey];
   const t = S.isEstimative ? calcEstTotals(S.estItems).total : calcTotals().total;
   const msg = fillWaTemplate(tpl, {
     cliente: (S.clientName || '').trim(),
@@ -12300,6 +12708,7 @@ function renderExpiryBanner() {
             <span class="fub-item-days">venció hace ${p.dias} día${p.dias>1?'s':''}</span>
           </div>
           <div class="fub-item-acts">
+            <button class="fub-nv" onclick="nuevaVersionQuote(${e.id})" title="Armar la segunda versión con los precios al día">${icon('refresh')} Nueva versión</button>
             <a class="fub-wa" href="${wa}" target="_blank" rel="noopener">${icon('message')} WhatsApp</a>
             <button class="fub-done" onclick="marcarVencimientoVisto(${e.id})" title="No avisarme más de este">✓</button>
           </div>
@@ -12832,6 +13241,7 @@ function followupBadgeFor(e) {
   const est = e.estado || 'borrador';
   if (!cfg.estados.includes(est)) return '';
   if (!e.enviadoEn) return '';
+  if (esReemplazado(e)) return '';   // el seguimiento es de la versión nueva
   const d = daysSince(e.enviadoEn);
   if (d === null || d < cfg.days) return '';
   if (e.seguimientoHechoEn && new Date(e.seguimientoHechoEn) >= new Date(e.enviadoEn)) return '';
@@ -12854,6 +13264,37 @@ function expiryBadgeFor(e) {
   return `<span class="hbadge-expired" title="Presupuesto vencido">${icon('hourglass')} vencido</span>`;
 }
 
+// ─── VERSIONES: estado en cada tarjeta ───────
+// Indicador de dónde está este presupuesto en la cadena de versiones: "v2" si
+// actualiza a uno anterior, "reemplazado" si ya lo actualizó otro. Nunca los
+// dos: una v2 que a su vez fue reemplazada muestra que está fuera de juego,
+// que es el dato que importa al mirar la lista.
+function versionBadgeFor(e) {
+  if (esReemplazado(e)) {
+    return `<span class="hbadge-reemplazado" title="Se armó una versión más nueva de este presupuesto">reemplazado</span>`;
+  }
+  const n = parseInt(e && e.versionN, 10) || 0;
+  if (n > 1) {
+    return `<span class="hbadge-version" title="${esc('Versión ' + n + ((e.snapshot && e.snapshot.versionDeNum) ? ' · actualiza al ' + e.snapshot.versionDeNum : ''))}">v${n}</span>`;
+  }
+  return '';
+}
+
+// ¿Ofrecer "Nueva versión" en esta tarjeta? Solo donde tiene sentido: el
+// presupuesto ya venció o se dio por perdido, y todavía nadie lo reemplazó.
+// Un borrador se edita y listo, y un trabajo ya realizado no se re-presupuesta:
+// poner el botón ahí sería un botón más peleando con "Cargar" en cada tarjeta.
+function ofreceNuevaVersion(e) {
+  if (!e || esReemplazado(e)) return false;
+  const est = e.estado || 'borrador';
+  if (est === 'borrador' || est === 'por_ver' || est === 'realizado') return false;
+  if (est === 'perdido') return true;
+  const exp = e.snapshot && e.snapshot.dateExpiry;
+  if (!exp) return false;
+  const d = daysSinceDate(exp);
+  return d !== null && d >= 1;
+}
+
 // ─── SEGUIMIENTO: configuración (UI) ─────────
 // Carga la config guardada en los campos del panel (pestaña Empresa).
 function loadFollowupUI() {
@@ -12873,6 +13314,8 @@ function loadFollowupUI() {
   if (recTpl) recTpl.value = cfg.waRecontactoTemplate || FOLLOWUP_DEF.waRecontactoTemplate;
   const cobroTpl = document.getElementById('wa-cobro-template');
   if (cobroTpl) cobroTpl.value = cfg.waCobroTemplate || FOLLOWUP_DEF.waCobroTemplate;
+  const actTpl = document.getElementById('wa-actualizacion-template');
+  if (actTpl) actTpl.value = cfg.waActualizacionTemplate || FOLLOWUP_DEF.waActualizacionTemplate;
   document.querySelectorAll('.fu-estados input[type=checkbox]').forEach(chk => {
     chk.checked = cfg.estados.includes(chk.value);
   });
@@ -12893,17 +13336,17 @@ function saveFollowupFromUI() {
   if (days < 1) days = 1;
   if (days > 365) days = 365;
   const exp = document.getElementById('fu-expiry-enabled');
-  const cfg = setFollowupCfg({
+  // Partir de lo GUARDADO y escribir encima solo lo de este panel. Enumerar a
+  // mano las otras plantillas no alcanzaba: setFollowupCfg mergea contra
+  // FOLLOWUP_DEF, así que toda clave ausente volvía al texto de fábrica —
+  // tocar los días del seguimiento borraba el mensaje de cobro personalizado.
+  const cfg = setFollowupCfg(Object.assign({}, getFollowupCfg(), {
     enabled: en ? !!en.checked : true,
     days,
     expiryEnabled: exp ? !!exp.checked : true,
     estados: estados.length ? estados : ['enviado'],
     waTemplate: (tpl && tpl.value.trim()) ? tpl.value : FOLLOWUP_DEF.waTemplate,
-    // Preservar las plantillas de envío y recontacto (cada una se edita
-    // en su propio campo).
-    waSendTemplate: getFollowupCfg().waSendTemplate,
-    waRecontactoTemplate: getFollowupCfg().waRecontactoTemplate,
-  });
+  }));
   // Atenuar opciones si está apagado
   const opts = document.getElementById('fu-options');
   if (opts) {
@@ -12938,6 +13381,16 @@ function saveCobroTemplate() {
   const t = document.getElementById('wa-cobro-template');
   const cfg = getFollowupCfg();
   cfg.waCobroTemplate = (t && t.value.trim()) ? t.value : FOLLOWUP_DEF.waCobroTemplate;
+  setFollowupCfg(cfg);
+}
+
+// Guarda la plantilla del mensaje de PRESUPUESTO ACTUALIZADO (campo propio).
+// El texto que trae de fábrica es el que se usa en la práctica, pero cada
+// colega escribe distinto: vaciar el campo vuelve al default, no lo deja mudo.
+function saveActualizacionTemplate() {
+  const t = document.getElementById('wa-actualizacion-template');
+  const cfg = getFollowupCfg();
+  cfg.waActualizacionTemplate = (t && t.value.trim()) ? t.value : FOLLOWUP_DEF.waActualizacionTemplate;
   setFollowupCfg(cfg);
 }
 
@@ -13231,7 +13684,10 @@ function renderHistory() {
   // Summary when filtered by client (acumulado total de ese cliente)
   let summaryHtml = '';
   if (groupedByClient) {
-    const totalPresupuestado = h.reduce((sum,e)=>sum+(e.total||0), 0);
+    // Los presupuestos reemplazados por una versión posterior NO suman: son el
+    // mismo trabajo cotizado dos veces y contarlos infla el acumulado del
+    // cliente (y con él la idea de cuánto se le presupuestó de verdad).
+    const totalPresupuestado = h.reduce((sum,e)=>sum+(esReemplazado(e)?0:(e.total||0)), 0);
     const cur = h[0].currency||'ARS';
     summaryHtml = `<div style="background:var(--accent-light);border:1px solid #a7f3d0;border-radius:8px;padding:10px 14px;margin-bottom:10px;display:flex;gap:20px;align-items:center;flex-wrap:wrap">
       <div><div style="font-size:10px;font-weight:700;color:var(--accent-fg);text-transform:uppercase;letter-spacing:.5px">Cliente</div>
@@ -13255,10 +13711,10 @@ function renderHistory() {
     const tieneDir = !!((e.snapshot && (e.snapshot.workMapLink || e.snapshot.workAddress) || '').trim());
     const tieneTel = !!histClientPhone(e);
     return `
-    <div class="hitem" data-id="${e.id}">
+    <div class="hitem${esReemplazado(e)?' is-reemplazado':''}" data-id="${e.id}">
       <div class="htop">
         <div class="hinfo">
-          <div class="hnum">${esc(e.quoteNumber||'—')}${e.isEstimative?'<span class="hbadge-est">Estimativo</span>':''}${followupBadgeFor(e)}${expiryBadgeFor(e)}${e.facturado?'<span class="hbadge-estado" style="color:#065f46;background:#d1fae5">✓ Facturado</span>':''}</div>
+          <div class="hnum">${esc(e.quoteNumber||'—')}${e.isEstimative?'<span class="hbadge-est">Estimativo</span>':''}${versionBadgeFor(e)}${followupBadgeFor(e)}${expiryBadgeFor(e)}${e.facturado?'<span class="hbadge-estado" style="color:#065f46;background:#d1fae5">✓ Facturado</span>':''}</div>
           ${!groupedByClient?`<div class="hclient ${!e.clientName?'is-draft':''}">${esc(e.clientName||'(borrador sin nombre de cliente)')}</div>`:''}
         </div>
         <button class="btn btn-p btn-sm hcargar" onclick="loadFromHistory(${e.id})" title="Cargar este presupuesto en el editor">${icon('folder')} Cargar</button>
@@ -13269,6 +13725,7 @@ function renderHistory() {
         ${agendaChipFor(e)}
         ${typeof climaChipForEntry === 'function' ? climaChipForEntry(e) : ''}
         <button class="btn btn-g btn-sm" onclick="previewFromHistory(${e.id})">${icon('eye')} Ver</button>
+        ${ofreceNuevaVersion(e) ? `<button class="btn btn-g btn-sm" onclick="nuevaVersionQuote(${e.id})" title="Armar una segunda versión de este presupuesto con los precios al día">${icon('refresh')} Nueva versión</button>` : ''}
         <button class="btn btn-g btn-sm" onclick="sharePngFromHistory(${e.id}, this)" title="Generar una imagen del presupuesto y compartirla (WhatsApp, etc.)">${icon('image')} Compartir</button>
         ${tieneTel ? `<button class="btn btn-g btn-sm" onclick="chatWhatsappHistory(${e.id})" title="Abrir el chat de WhatsApp con el cliente" aria-label="Chat de WhatsApp con el cliente">${icon('message')} Chat</button>` : ''}
         ${tieneDir ? `<button class="btn btn-g btn-sm" onclick="comoLlegar(${e.id})" title="Cómo llegar a la dirección del trabajo" aria-label="Cómo llegar">${icon('pin')} Llegar</button>` : ''}
@@ -13321,7 +13778,9 @@ function renderHistory() {
   let html = summaryHtml;
   groups.forEach((entries, key) => {
     const isOpen = _expandedMonths.has(key);
-    const monthTotal = entries.reduce((s,e)=>s+(e.total||0), 0);
+    // Igual que el acumulado por cliente: el presupuesto reemplazado por una
+    // versión posterior no suma (es el mismo trabajo cotizado dos veces).
+    const monthTotal = entries.reduce((s,e)=>s+(esReemplazado(e)?0:(e.total||0)), 0);
     const cur = entries[0].currency || 'ARS';
     html += `
       <div class="hmonth ${isOpen?'is-open':''}" data-month="${key}">
@@ -13403,6 +13862,8 @@ function resetToNewQuote() {
   S.discount=0; S.surcharge=0; S.paymentConditions=''; S.observations=''; S.estObservations=''; S.intNote='';
   // El lugar de disposición se acuerda por trabajo: arranca en blanco.
   S.dispoNota=''; S.dispoPhotos=[]; S.dispoEnDoc=true;
+  // Un presupuesto nuevo es original, no la versión de nada.
+  S.versionN=0; S.versionDeNum=''; S.versionDeFecha=''; S.versionEnDoc=true;
   // El plan de trabajo a medida es excepcional por presupuesto: se descarta al
   // crear uno nuevo para volver a usar el default global.
   S.workPlanOverride=false; S.workPlanCustom=''; S.workPlanCustomTitle='';
@@ -15435,6 +15896,20 @@ function _buildDispoHTML(color){
     </div>`;
 }
 
+// Línea "Actualiza el presupuesto N° X del DD/MM/AAAA", debajo de la fecha de
+// emisión. Es la convención de las revisiones de obra (Rev. B "reemplaza a la
+// anterior") y resuelve una duda concreta del cliente que recibe el segundo
+// PDF: si son dos trabajos distintos o el mismo con otro precio. Se puede
+// apagar por presupuesto (S.versionEnDoc) cuando conviene que no se note.
+// Va en los 3 modos, junto a la fecha de emisión.
+function _buildVersionNotaHTML(){
+  if (S.versionEnDoc === false) return '';
+  const num = (S.versionDeNum || '').trim();
+  if (!num) return '';
+  const f = S.versionDeFecha ? ` del ${fmtD(S.versionDeFecha)}` : '';
+  return `<div class="pgrid-sub">Actualiza el presupuesto N° ${esc(num)}${f}</div>`;
+}
+
 function _buildWorkPlanHTML(color){
   if (S.showWorkPlan === false) return '';
   const useCustom = !!S.workPlanOverride;
@@ -15598,6 +16073,7 @@ function buildDoc() {
           <div class="pgrid-lbl">Lugar del trabajo</div>
           <div class="pgrid-val">${esc(S.workAddress||'—')}</div>
           <div class="pgrid-sub">Fecha de emisión: ${fmtD(S.dateIssue)}</div>
+          ${_buildVersionNotaHTML()}
         </div>
       </div>
     </div>
@@ -15756,6 +16232,7 @@ function buildRiskDoc() {
           <div class="pgrid-lbl">Lugar del trabajo</div>
           <div class="pgrid-val">${esc(S.workAddress||'—')}</div>
           <div class="pgrid-sub">Fecha de emisión: ${fmtD(S.dateIssue)}</div>
+          ${_buildVersionNotaHTML()}
         </div>
       </div>
     </div>
@@ -16021,6 +16498,7 @@ function buildEstDoc() {
           <div class="pgrid-lbl">Lugar del trabajo</div>
           <div class="pgrid-val">${esc(S.workAddress||'—')}</div>
           <div class="pgrid-sub">Fecha de emisión: ${fmtD(S.dateIssue)}</div>
+          ${_buildVersionNotaHTML()}
         </div>
       </div>
     </div>
@@ -16809,6 +17287,9 @@ function mapaRefresh() {
   getH().forEach(e => {
     const est = e.estado || 'borrador';
     if (!filt.has(est)) return;
+    // El reemplazado no va al mapa: su versión nueva está en el mismo punto y
+    // dos marcas para el mismo trabajo hacen dudar de cuál abrir.
+    if (esReemplazado(e)) return;
     const d = _mapaDateOf(e);
     if (desde && d && d < desde) return;
     if (hasta && d && d > hasta) return;
@@ -18239,7 +18720,9 @@ function calBuildIndex() {
     const estOk = cfg && cfg.enabled && Array.isArray(cfg.estados) && cfg.estados.includes(est);
     if (estOk) {
       const exp = e.snapshot && e.snapshot.dateExpiry;
-      if (cfg.expiryEnabled && exp) {
+      // El reemplazado no vence más: su versión nueva trae su propia fecha y
+      // dos vencimientos del mismo trabajo en la Agenda no dicen nada.
+      if (cfg.expiryEnabled && exp && !esReemplazado(e)) {
         push(exp, { tipo: 'vencimiento', title: `Vence ${quien}`, sub: num, entryId: e.id, tel, mapUrl });
       }
       if (e.enviadoEn) {
@@ -19847,7 +20330,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     const ids = ['confirm-overlay','agenda-overlay','day-alert-overlay',
       'share-overlay','moverlay','notes-overlay','phrases-overlay',
       'photo-viewer-overlay','note-edit-overlay','doc-preview-overlay',
-      'clima-overlay','notif-overlay'];
+      'clima-overlay','notif-overlay','nv-overlay'];
     const els = ids.map(id => document.getElementById(id)).filter(Boolean);
     if (!els.length) return;
     const sync = () => document.body.classList.toggle(
