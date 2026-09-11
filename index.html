@@ -3297,6 +3297,11 @@ input[type=number]{-moz-appearance:textfield}
 .mapa-neti{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;line-height:1.4;color:#92400e;background:#fef3c7;border:1px solid #fcd34d;border-radius:var(--radius-field);padding:8px 11px;margin-bottom:8px}
 :root[data-theme="dark"] .mapa-neti{color:#fde68a;background:rgba(251,191,36,.12);border-color:rgba(251,191,36,.4)}
 .mapa-neti .btn{flex:none}
+/* El display:flex de arriba le gana a la regla [hidden] del navegador, así que
+   sin esto `aviso.hidden = true` no apaga nada: el cartel de "fondo sin cargar"
+   quedaba clavado aun después de tocar "Cargar el fondo igual" (y con el mapa
+   ya cargado atrás). Mismo caso que .notes-count[hidden]. */
+.mapa-neti[hidden]{display:none!important}
 .mapa-error { display:flex; align-items:center; justify-content:center; height:100%; padding:20px; text-align:center; color:var(--muted); font-size:14px; }
 :root[data-theme="dark"] .leaflet-popup-content-wrapper,
 :root[data-theme="dark"] .leaflet-popup-tip { background:var(--card); color:var(--fg,#e5e7eb); }
@@ -6674,6 +6679,17 @@ function netReintentar() {
 // Guardado y conexión no compiten — guardar es local y siempre funciona.
 function netRenderEstado() {
   try { if (typeof _renderSaveStatus === 'function') _renderSaveStatus(); } catch (_) {}
+  // Si la red se recuperó mientras el usuario mira el mapa, el fondo entra solo
+  // y el aviso se apaga: sin esto, quedarse en la pestaña Mapa dejaba el cartel
+  // de "fondo sin cargar" para siempre (solo se reevaluaba al volver a entrar).
+  try {
+    if (typeof _mapaAddTiles === 'function' && typeof _mapa !== 'undefined' &&
+        _mapa && !_mapaTiles && netPuedeAuto() && window.L &&
+        document.getElementById('panel-mapa') &&
+        document.getElementById('panel-mapa').classList.contains('active')) {
+      _mapaAddTiles(window.L);
+    }
+  } catch (_) {}
 }
 
 // Explica el estado y ofrece reintentar. Se abre tocando el cartelito.
@@ -17193,7 +17209,11 @@ let _mapaTiles = null;
 
 function _mapaAddTiles(L) {
   const aviso = document.getElementById('mapa-neti');
-  if (!_mapa || _mapaTiles) return;
+  if (!_mapa) return;
+  // Con el fondo ya puesto el aviso no tiene nada que decir. Se apaga acá por
+  // si quedó colgado de una entrada anterior con la red mala: el cartel decía
+  // "fondo sin cargar" con el mapa cargado atrás.
+  if (_mapaTiles) { if (aviso) aviso.hidden = true; return; }
   if (typeof netPuedeAuto === 'function' && !netPuedeAuto()) {
     if (aviso) {
       const est = (typeof netEtiqueta === 'function') ? netEtiqueta().toLowerCase() : 'conexión lenta';
