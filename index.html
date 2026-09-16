@@ -19940,7 +19940,25 @@ function logNotif(rec){
 //   · key    → identidad estable (para el badge "visto / nuevo")
 //   · bucket → 'hoy' (arriba de todo) o 'atrasado' (más abajo)
 //   · ord    → prioridad dentro del bucket
+//   · fecha  → día del aviso (YYYY-MM-DD), para ordenar lo atrasado
+//   · dias   → antigüedad en días (0 = hoy)
 const NOTIF_ORD = { trabajo: 1, visita: 2, clima: 3, recontacto: 4, seguimiento: 5, vencimiento: 6 };
+
+// Antigüedad en texto corto ("hace 3 días", "hace 2 semanas", "hace 5 meses").
+// El panel mostraba solo "atrasado": con 25 avisos encimados, uno de ayer y
+// otro de hace medio año se leían igual.
+function notifHaceTxt(dias){
+  const d = Math.max(0, dias | 0);
+  if (d === 0) return 'hoy';
+  if (d === 1) return 'ayer';
+  if (d < 14) return `hace ${d} días`;
+  if (d < 60) { const s = Math.round(d / 7); return `hace ${s} semanas`; }
+  const m = Math.round(d / 30);
+  if (m < 12) return `hace ${m} meses`;
+  const a = Math.floor(m / 12);
+  return `hace más de ${a} año${a > 1 ? 's' : ''}`;
+}
+
 function notifBuildPendientes(){
   const out = [];
   const hoy = today();
@@ -19949,9 +19967,10 @@ function notifBuildPendientes(){
   if (typeof getRecontactosPendientes === 'function') {
     getRecontactosPendientes().forEach(p => {
       const e = p.entry;
-      const cuando = p.dias === 0 ? 'hoy' : `hace ${p.dias} día${p.dias > 1 ? 's' : ''}`;
+      const cuando = notifHaceTxt(p.dias);
       out.push({ icon: '📞', kind: 'recontacto', key: `recontacto|${e.id}`,
         bucket: p.dias === 0 ? 'hoy' : 'atrasado', ord: NOTIF_ORD.recontacto,
+        fecha: e.recontactoEn || hoy, dias: p.dias,
         text: `Recontactar a ${(e.clientName || '').trim() || '(sin nombre)'}`,
         sub: `Coordinar la fecha del trabajo · ${cuando}`,
         action: { type: 'entry', id: e.id } });
@@ -19962,7 +19981,7 @@ function notifBuildPendientes(){
   if (typeof getTrabajosDeHoy === 'function') {
     getTrabajosDeHoy().forEach(e => {
       out.push({ icon: '🪚', kind: 'trabajo', key: `trabajo|${e.id}`,
-        bucket: 'hoy', ord: NOTIF_ORD.trabajo,
+        bucket: 'hoy', ord: NOTIF_ORD.trabajo, fecha: hoy, dias: 0,
         text: `Trabajo de hoy: ${(e.clientName || '').trim() || '(sin nombre)'}`,
         sub: e.quoteNumber ? `N° ${e.quoteNumber}` : '',
         action: { type: 'entry', id: e.id } });
@@ -19976,7 +19995,7 @@ function notifBuildPendientes(){
       const t = (n.texto || '').trim() || cli || 'Visita';
       const cuando = n.hora ? `${n.hora} hs` : '';
       out.push({ icon: '📍', kind: 'visita', key: `visita|${n.id}`,
-        bucket: 'hoy', ord: NOTIF_ORD.visita,
+        bucket: 'hoy', ord: NOTIF_ORD.visita, fecha: hoy, dias: 0,
         text: `Visita de hoy: ${t}`,
         sub: [cuando, (cli && t !== cli) ? cli : ''].filter(Boolean).join(' · '),
         action: { type: 'tab', tab: 'agenda' } });
@@ -19985,17 +20004,30 @@ function notifBuildPendientes(){
 
   // 4. Seguimientos y vencimientos que YA tocan (hoy o atrasados). Respetan la
   //    config de seguimiento porque salen de calBuildIndex.
+  //    El vencimiento que el usuario YA descartó con el ✓ del banner
+  //    (vencimientoVistoEn) no vuelve acá: en la Agenda sigue siendo el día en
+  //    que venció, pero como pendiente ya lo cerró. Sin este filtro la
+  //    campanita acumulaba para siempre todo lo que él había dado por visto.
   if (typeof calBuildIndex === 'function') {
     let idx = {};
     try { idx = calBuildIndex() || {}; } catch(_){ idx = {}; }
+    const vistos = new Set();
+    try {
+      ((typeof getH === 'function') ? getH() : []).forEach(e => {
+        if (e && e.vencimientoVistoEn) vistos.add(e.id);
+      });
+    } catch(_){}
     Object.keys(idx).filter(iso => iso <= hoy).sort().forEach(iso => {
       idx[iso].forEach(ev => {
         if (ev.tipo !== 'seguimiento' && ev.tipo !== 'vencimiento') return;
+        if (ev.tipo === 'vencimiento' && vistos.has(ev.entryId)) return;
         const atras = iso < hoy;
+        const dias = atras ? (daysSinceDate(iso) || 0) : 0;
         out.push({ icon: ev.tipo === 'vencimiento' ? '⏳' : '📨', kind: ev.tipo,
           key: `${ev.tipo}|${ev.entryId}`, bucket: atras ? 'atrasado' : 'hoy', ord: NOTIF_ORD[ev.tipo],
+          fecha: iso, dias,
           text: ev.title,
-          sub: (ev.sub ? ev.sub + ' · ' : '') + (atras ? 'atrasado' : 'hoy'),
+          sub: (ev.sub ? ev.sub + ' · ' : '') + notifHaceTxt(dias),
           action: { type: 'entry', id: ev.entryId } });
       });
     });
@@ -20025,7 +20057,7 @@ function notifClimaPendientes(){
         const emoji = motivo.viento && !motivo.lluvia ? '💨' : '⛈️';
         const cap = (typeof _cap === 'function') ? _cap(motivo.txt) : motivo.txt;
         out.push({ icon: emoji, kind: 'clima', key: `clima|${t.e.id}|${f}`,
-          bucket: 'hoy', ord: NOTIF_ORD.clima,
+          bucket: 'hoy', ord: NOTIF_ORD.clima, fecha: f, dias: 0,
           text: `${cap} ${cuando}: ${(t.e.clientName || '').trim() || '(sin nombre)'}`,
           sub: 'Considerá reprogramar el trabajo',
           action: { type: 'clima', id: t.e.id, f } });
@@ -20091,6 +20123,11 @@ function notifUndo(recId){
 // por render y el markup solo lleva su índice; un listener delegado las
 // resuelve. Al DOM no viaja ningún dato del usuario.
 let _notifActions = [];
+// Cuántos atrasados se muestran antes de plegar el resto (se despliega con el
+// botón y vuelve a plegarse al cerrar y reabrir el panel).
+const NOTIF_ATRAS_TOPE = 8;
+let _notifVerAtrasado = false;
+function notifVerAtrasado(){ _notifVerAtrasado = true; notifRender(); }
 function _notifActionAttr(action){
   if (!action) return '';
   const i = _notifActions.push(action) - 1;
@@ -20163,9 +20200,18 @@ function notifRender(){
 
   // Lo de HOY arriba de todo; lo atrasado, después (así no hay que scrollear
   // entre la pila de vencimientos para encontrar el trabajo/aviso de hoy).
+  // Dentro de HOY manda la prioridad del tipo (todos son del mismo día).
+  // Dentro de ATRASADO manda la FECHA, lo más reciente primero: ordenar solo
+  // por tipo dejaba arriba el vencimiento más viejo del historial (el panel
+  // abría en un aviso de hacía medio año y lo de esta semana quedaba al fondo).
   const byOrd = (a, b) => (a.ord || 9) - (b.ord || 9);
+  const byReciente = (a, b) => {
+    const fa = a.fecha || '', fb = b.fecha || '';
+    if (fa !== fb) return fa < fb ? 1 : -1;
+    return byOrd(a, b);
+  };
   const hoy = pend.filter(p => p.bucket === 'hoy').sort(byOrd);
-  const atras = pend.filter(p => p.bucket !== 'hoy').sort(byOrd);
+  const atras = pend.filter(p => p.bucket !== 'hoy').sort(byReciente);
 
   let h = '';
   if (!pend.length) {
@@ -20176,8 +20222,13 @@ function notifRender(){
       h += `<div class="nt-list">${hoy.map(notifItemHTML).join('')}</div>`;
     }
     if (atras.length) {
+      // La cola vieja se pliega: lo accionable son los últimos, no la pila
+      // entera. El resto sigue a un toque de distancia.
+      const corte = _notifVerAtrasado ? atras.length : Math.min(atras.length, NOTIF_ATRAS_TOPE);
+      const resto = atras.length - corte;
       h += `<div class="nt-sec">Atrasado · ${atras.length}</div>`;
-      h += `<div class="nt-list">${atras.map(notifItemHTML).join('')}</div>`;
+      h += `<div class="nt-list">${atras.slice(0, corte).map(notifItemHTML).join('')}</div>`;
+      if (resto > 0) h += `<button type="button" class="nt-clear" onclick="notifVerAtrasado()">Ver los ${resto} más viejos</button>`;
     }
   }
 
@@ -20193,6 +20244,7 @@ function notifRender(){
 }
 
 function notifOpen(){
+  _notifVerAtrasado = false;
   notifRender();
   const ov = document.getElementById('notif-overlay');
   if (ov) ov.classList.add('open');
