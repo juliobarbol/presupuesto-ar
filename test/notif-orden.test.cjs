@@ -13,12 +13,18 @@
 //      (vencimientoVistoEn) volvía igual a la campanita — el banner y el push
 //      sí lo respetan. Por eso se acumulaban 25.
 //
+// Sobre eso, el switch "Ordenar por Fecha / Tipo": las dos lecturas del panel
+// son legítimas (buscar el último aviso vs. trabajar el día por prioridad) y
+// ninguna sirve para las dos cosas, así que la elige el usuario.
+//
 // Lo que se protege acá:
-//   1. En "Atrasado" manda la fecha: lo más reciente arriba.
-//   2. Lo de HOY sigue arriba de todo y ordenado por prioridad de tipo.
-//   3. Un vencimiento descartado no vuelve como pendiente (ni suma al badge).
-//   4. La antigüedad se lee en el subtítulo ("hace 3 días", "hace 5 meses").
-//   5. La cola vieja se pliega y el botón la despliega entera.
+//   1. Por FECHA (el default) lo más reciente va arriba, en los dos grupos.
+//   2. Por TIPO manda la prioridad del aviso, con la fecha de desempate.
+//   3. El switch se guarda y se relee (y un valor manipulado no pasa).
+//   4. Lo de HOY sigue arriba de todo, con cualquiera de los dos criterios.
+//   5. Un vencimiento descartado no vuelve como pendiente (ni suma al badge).
+//   6. La antigüedad se lee en el subtítulo ("hace 3 días", "hace 5 meses").
+//   7. La cola vieja se pliega y el botón la despliega entera.
 //
 // Uso:  node test/notif-orden.test.cjs
 
@@ -93,27 +99,23 @@ const RESET = `
   });
   try {
 
-    // ── 1: en "Atrasado" lo más reciente va arriba ──
+    // ── 1: por fecha (el default) lo más reciente va arriba ──
     {
       const page = await nuevaPagina(browser);
       const r = await page.evaluate(new Function(`return (() => {
         ${RESET}
         mkVencidos([190, 60, 12, 3, 1]);
         const pend = notifBuildPendientes();
-        // Mismo orden que aplica notifRender al bucket 'atrasado'.
-        const byOrd = (a, b) => (a.ord || 9) - (b.ord || 9);
-        const atras = pend.filter(p => p.bucket !== 'hoy').sort((a, b) => {
-          const fa = a.fecha || '', fb = b.fecha || '';
-          if (fa !== fb) return fa < fb ? 1 : -1;
-          return byOrd(a, b);
-        });
+        const atras = pend.filter(p => p.bucket !== 'hoy').sort(_notifCmp(notifGetOrden()));
         return {
+          orden: notifGetOrden(),
           n: atras.length,
           dias: atras.map(p => p.dias),
           entrada: pend.filter(p => p.bucket !== 'hoy').map(p => p.dias),
           subs: atras.map(p => p.sub),
         };
       })()`));
+      check('Sin preferencia guardada ordena por fecha', r.orden === 'fecha', r.orden);
       check('Los 5 vencidos entran como atrasados', r.n === 5, String(r.n));
       check('El más reciente queda arriba y el más viejo al fondo',
         JSON.stringify(r.dias) === JSON.stringify([1, 3, 12, 60, 190]), JSON.stringify(r.dias));
@@ -123,7 +125,74 @@ const RESET = `
       await page.close();
     }
 
-    // ── 2: lo de HOY manda, y ordenado por prioridad de tipo ──
+    // ── 1b: el switch cambia el criterio (fecha ↔ tipo) ──
+    {
+      const page = await nuevaPagina(browser);
+      const r = await page.evaluate(new Function(`return (() => {
+        ${RESET}
+        // Tres avisos atrasados de tipo distinto, para que los dos criterios
+        // den órdenes distintos: vencimiento hace 100, seguimiento hace 3,
+        // recontacto hace 20.
+        const h = mkVencidos([100]);
+        const cfg = getFollowupCfg();
+        h.push({
+          id: 2001, quoteNumber: '2026-0090', clientName: 'Seguimiento',
+          estado: 'enviado',
+          enviadoEn: new Date(Date.now() - (3 + (cfg.days || 0)) * 86400000).toISOString(),
+          total: 1, savedAt: new Date().toISOString(),
+          snapshot: Object.assign(JSON.parse(JSON.stringify(DEF)), {
+            quoteNumber: '2026-0090', dateIssue: today(),
+            dateExpiry: toLocalISODate(new Date(Date.now() + 30 * 86400000)),
+            items: [], itemsB: [], estItems: [],
+          }),
+        });
+        h.push({
+          id: 2002, quoteNumber: '2026-0091', clientName: 'Recontacto',
+          estado: 'aceptado',
+          recontactoEn: toLocalISODate(new Date(Date.now() - 20 * 86400000)),
+          total: 1, savedAt: new Date().toISOString(),
+          snapshot: Object.assign(JSON.parse(JSON.stringify(DEF)), {
+            quoteNumber: '2026-0091', dateIssue: today(),
+            dateExpiry: toLocalISODate(new Date(Date.now() + 30 * 86400000)),
+            items: [], itemsB: [], estItems: [],
+          }),
+        });
+        setH(h);
+        const atrasCon = (o) => notifBuildPendientes()
+          .filter(p => p.bucket !== 'hoy').sort(_notifCmp(o));
+        const porFecha = atrasCon('fecha');
+        const porTipo  = atrasCon('tipo');
+        // El switch persiste y se relee.
+        notifSetOrden('tipo');
+        const guardado = notifGetOrden();
+        notifSetOrden('fecha');
+        const vuelta = notifGetOrden();
+        // Un valor manipulado en localStorage no pasa.
+        localStorage.setItem(LS.NOTIF_ORDEN, 'alert(1)');
+        const sucio = notifGetOrden();
+        return {
+          fechaDias: porFecha.map(p => p.dias),
+          fechaKinds: porFecha.map(p => p.kind),
+          tipoKinds: porTipo.map(p => p.kind),
+          tipoDias: porTipo.map(p => p.dias),
+          guardado, vuelta, sucio,
+        };
+      })()`));
+      check('Por fecha: el más reciente primero, sin mirar el tipo',
+        JSON.stringify(r.fechaDias) === JSON.stringify([3, 20, 100]),
+        JSON.stringify(r.fechaDias) + ' ' + JSON.stringify(r.fechaKinds));
+      check('Por tipo: recontacto → seguimiento → vencimiento',
+        JSON.stringify(r.tipoKinds) === JSON.stringify(['recontacto', 'seguimiento', 'vencimiento']),
+        JSON.stringify(r.tipoKinds));
+      check('…y los mismos avisos, solo reordenados',
+        JSON.stringify(r.tipoDias) === JSON.stringify([20, 3, 100]), JSON.stringify(r.tipoDias));
+      check('El switch se guarda y se relee', r.guardado === 'tipo' && r.vuelta === 'fecha',
+        `${r.guardado} → ${r.vuelta}`);
+      check('Un valor manipulado cae en el default', r.sucio === 'fecha', r.sucio);
+      await page.close();
+    }
+
+    // ── 2: lo de HOY manda, con cualquiera de los dos criterios ──
     {
       const page = await nuevaPagina(browser);
       const r = await page.evaluate(new Function(`return (() => {
@@ -135,16 +204,19 @@ const RESET = `
         setH(h);
         setNotes([{ id:'n1', fecha: today(), texto:'Ver el fresno', tipo:'visita' }]);
         const pend = notifBuildPendientes();
-        const byOrd = (a, b) => (a.ord || 9) - (b.ord || 9);
-        const hoyP = pend.filter(p => p.bucket === 'hoy').sort(byOrd);
+        const hoyCon = (o) => pend.filter(p => p.bucket === 'hoy').sort(_notifCmp(o));
         return {
-          kinds: hoyP.map(p => p.kind),
-          todosHoy: hoyP.every(p => p.dias === 0),
+          kindsTipo: hoyCon('tipo').map(p => p.kind),
+          kindsFecha: hoyCon('fecha').map(p => p.kind),
+          todosHoy: pend.filter(p => p.bucket === 'hoy').every(p => p.dias === 0),
           atras: pend.filter(p => p.bucket !== 'hoy').length,
         };
       })()`));
       check('El trabajo de hoy va antes que la visita de hoy',
-        r.kinds.indexOf('trabajo') === 0 && r.kinds.indexOf('visita') === 1, JSON.stringify(r.kinds));
+        r.kindsTipo.indexOf('trabajo') === 0 && r.kindsTipo.indexOf('visita') === 1,
+        JSON.stringify(r.kindsTipo));
+      check('Siendo todos del mismo día, por fecha quedan igual',
+        JSON.stringify(r.kindsFecha) === JSON.stringify(r.kindsTipo), JSON.stringify(r.kindsFecha));
       check('Todo lo del bucket "hoy" tiene 0 días de atraso', r.todosHoy);
       await page.close();
     }
@@ -209,6 +281,52 @@ const RESET = `
       check('Al reabrir el panel vuelve a plegarse', r.rePlegado === 8, String(r.rePlegado));
       check('El primero de la lista es el vencido hace 7 días',
         /hace 7 días/.test(r.primero), r.primero);
+      await page.close();
+    }
+
+    // ── 4b: el switch se dibuja en el panel y el toque lo cambia ──
+    {
+      const page = await nuevaPagina(browser);
+      const r = await page.evaluate(new Function(`return (() => {
+        ${RESET}
+        // Vencimiento hace 5 días (lo más RECIENTE) + recontacto hace 20 (el
+        // de MÁS prioridad): cada criterio pone uno distinto arriba, así el
+        // toque del switch se ve de verdad.
+        const h = mkVencidos([5]);
+        h.push({
+          id: 2002, quoteNumber: '2026-0091', clientName: 'Recontacto',
+          estado: 'aceptado',
+          recontactoEn: toLocalISODate(new Date(Date.now() - 20 * 86400000)),
+          total: 1, savedAt: new Date().toISOString(),
+          snapshot: Object.assign(JSON.parse(JSON.stringify(DEF)), {
+            quoteNumber: '2026-0091', dateIssue: today(),
+            dateExpiry: toLocalISODate(new Date(Date.now() + 30 * 86400000)),
+            items: [], itemsB: [], estItems: [],
+          }),
+        });
+        setH(h);
+        notifOpen();
+        const body = () => document.getElementById('notif-dlg-body');
+        const activo = () => { const b = body().querySelector('.nt-ord-b.active'); return b ? b.textContent : ''; };
+        const primero = () => { const t = body().querySelector('.nt-item .nt-txt'); return t ? t.textContent : ''; };
+        const haySwitch = !!body().querySelector('.nt-ord');
+        const act1 = activo(), p1 = primero();
+        // Toque real sobre el botón "Tipo".
+        Array.from(body().querySelectorAll('.nt-ord-b'))
+          .find(b => b.textContent === 'Tipo').click();
+        const act2 = activo(), p2 = primero();
+        // Cerrar y reabrir: la elección se mantiene (es preferencia, no estado
+        // de sesión como el plegado).
+        notifClose(); notifOpen();
+        return { haySwitch, act1, p1, act2, p2, act3: activo(), p3: primero() };
+      })()`));
+      check('El panel dibuja el switch de orden', r.haySwitch);
+      check('Arranca en Fecha y muestra primero el vencimiento (hace 5 días)',
+        r.act1 === 'Fecha' && /^Vence/.test(r.p1), `${r.act1} · ${r.p1}`);
+      check('Tocar "Tipo" sube el recontacto, que tiene más prioridad',
+        r.act2 === 'Tipo' && /Recontactar/.test(r.p2), `${r.act2} · ${r.p2}`);
+      check('La elección sobrevive al cierre del panel',
+        r.act3 === 'Tipo', r.act3);
       await page.close();
     }
 
