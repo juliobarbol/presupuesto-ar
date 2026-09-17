@@ -2122,6 +2122,13 @@ input[type=number]{-moz-appearance:textfield}
 #notif-overlay.open{display:flex}
 #notif-box{position:relative;background:var(--card);border-radius:var(--radius-box);padding:20px;width:460px;max-width:94vw;max-height:88vh;overflow:auto;overscroll-behavior:contain;box-shadow:0 20px 60px rgba(0,0,0,.25)}
 .nt-sec{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);margin:16px 0 8px}
+/* Switch de orden del panel (Fecha / Tipo). Mismo segmentado que la Agenda,
+   más chico: acá es un ajuste de lectura, no la navegación de la pantalla. */
+.nt-ord{display:flex;align-items:center;gap:4px;background:var(--surface-2);border-radius:var(--radius-field);padding:3px;margin-top:4px}
+.nt-ord-lbl{flex:1 1 auto;min-width:0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);padding-left:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nt-ord-b{flex:0 0 auto;padding:6px 14px;font-family:var(--font-text);font-size:13px;font-weight:600;color:var(--muted);background:transparent;border:none;border-radius:6px;cursor:pointer}
+.nt-ord-b.active{background:var(--card);color:var(--accent-fg);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.nt-ord-b:hover:not(.active){color:var(--text)}
 .nt-list{display:flex;flex-direction:column;gap:8px}
 .nt-item{display:flex;gap:10px;align-items:flex-start;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-field);padding:10px 11px}
 .nt-item.nt-tap{cursor:pointer}
@@ -5045,6 +5052,7 @@ const LS = {
   CLIMA_WARN:     'pq_clima_warn',
   NOTIF_LOG:      'pq_notif_log',
   NOTIF_SEEN:     'pq_notif_seen',
+  NOTIF_ORDEN:    'pq_notif_orden', // criterio de orden del panel (preferencia del dispositivo, no va al backup)
   VER_PCT:        'pq_ver_pct',     // último % de actualización usado al armar una versión (preferencia del dispositivo, no va al backup)
 };
 
@@ -20128,6 +20136,42 @@ let _notifActions = [];
 const NOTIF_ATRAS_TOPE = 8;
 let _notifVerAtrasado = false;
 function notifVerAtrasado(){ _notifVerAtrasado = true; notifRender(); }
+
+// ─── CRITERIO DE ORDEN (elegible) ────────────────────────────
+// Las dos formas de leer el panel son legítimas y ninguna sirve para las dos
+// cosas: por FECHA se busca "qué pasó último" (lo más reciente arriba, sin que
+// el tipo de aviso importe); por TIPO se trabaja el día (primero el trabajo,
+// después la visita, el clima, el recontacto…). Por eso es un interruptor y no
+// una decisión tomada de antemano. La preferencia es del dispositivo: se
+// guarda directo en localStorage y NO va al backup, como LS.CAL_VIEW.
+const NOTIF_ORDENES = ['fecha', 'tipo'];
+function notifGetOrden(){
+  try { const v = localStorage.getItem(LS.NOTIF_ORDEN); if (NOTIF_ORDENES.includes(v)) return v; } catch(_){}
+  return 'fecha';
+}
+function notifSetOrden(v){
+  const val = NOTIF_ORDENES.includes(v) ? v : 'fecha';
+  try { localStorage.setItem(LS.NOTIF_ORDEN, val); } catch(_){}
+  notifRender();
+}
+// Comparadores. Cada uno usa al otro de desempate: dos avisos del mismo día se
+// ordenan por tipo, y dos del mismo tipo por fecha.
+function _notifCmp(orden){
+  const porTipo  = (a, b) => (a.ord || 9) - (b.ord || 9);
+  const porFecha = (a, b) => {
+    const fa = a.fecha || '', fb = b.fecha || '';
+    return fa === fb ? 0 : (fa < fb ? 1 : -1);   // lo más reciente arriba
+  };
+  return orden === 'tipo'
+    ? (a, b) => porTipo(a, b) || porFecha(a, b)
+    : (a, b) => porFecha(a, b) || porTipo(a, b);
+}
+function _notifOrdenHTML(orden){
+  const b = (v, txt) => `<button type="button" class="nt-ord-b${orden === v ? ' active' : ''}" onclick="notifSetOrden('${v}')">${txt}</button>`;
+  return `<div class="nt-ord" role="group" aria-label="Orden de los avisos">
+    <span class="nt-ord-lbl">Ordenar por</span>${b('fecha', 'Fecha')}${b('tipo', 'Tipo')}
+  </div>`;
+}
 function _notifActionAttr(action){
   if (!action) return '';
   const i = _notifActions.push(action) - 1;
@@ -20199,24 +20243,19 @@ function notifRender(){
   _notifActions = [];   // se rellena al armar el markup (ver _notifActionAttr)
 
   // Lo de HOY arriba de todo; lo atrasado, después (así no hay que scrollear
-  // entre la pila de vencimientos para encontrar el trabajo/aviso de hoy).
-  // Dentro de HOY manda la prioridad del tipo (todos son del mismo día).
-  // Dentro de ATRASADO manda la FECHA, lo más reciente primero: ordenar solo
-  // por tipo dejaba arriba el vencimiento más viejo del historial (el panel
-  // abría en un aviso de hacía medio año y lo de esta semana quedaba al fondo).
-  const byOrd = (a, b) => (a.ord || 9) - (b.ord || 9);
-  const byReciente = (a, b) => {
-    const fa = a.fecha || '', fb = b.fecha || '';
-    if (fa !== fb) return fa < fb ? 1 : -1;
-    return byOrd(a, b);
-  };
-  const hoy = pend.filter(p => p.bucket === 'hoy').sort(byOrd);
-  const atras = pend.filter(p => p.bucket !== 'hoy').sort(byReciente);
+  // entre la pila de vencimientos para encontrar el trabajo/aviso de hoy). El
+  // criterio DENTRO de cada grupo lo elige el usuario con el switch: por fecha
+  // (lo más reciente arriba) o por tipo de aviso. Los grupos no cambian: en
+  // "Hoy" todo es de hoy, así que la separación no pelea con ningún orden.
+  const cmp = _notifCmp(notifGetOrden());
+  const hoy = pend.filter(p => p.bucket === 'hoy').sort(cmp);
+  const atras = pend.filter(p => p.bucket !== 'hoy').sort(cmp);
 
   let h = '';
   if (!pend.length) {
     h += `<div class="nt-sec">Pendientes</div><div class="nt-empty">Nada pendiente. Todo al día 👌</div>`;
   } else {
+    h += _notifOrdenHTML(notifGetOrden());
     if (hoy.length) {
       h += `<div class="nt-sec">Hoy · ${hoy.length}</div>`;
       h += `<div class="nt-list">${hoy.map(notifItemHTML).join('')}</div>`;
