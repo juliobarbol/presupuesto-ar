@@ -20166,6 +20166,33 @@ function _notifCmp(orden){
     ? (a, b) => porTipo(a, b) || porFecha(a, b)
     : (a, b) => porFecha(a, b) || porTipo(a, b);
 }
+// Nombre de cada concepto como encabezado de grupo (modo "tipo").
+const NOTIF_GRUPO = {
+  trabajo: 'Trabajos', visita: 'Visitas', clima: 'Clima',
+  recontacto: 'Recontactos', seguimiento: 'Seguimientos', vencimiento: 'Vencimientos',
+};
+// Los grupos que dibuja el panel, según el criterio elegido. El switch no
+// puede ser solo un reordenamiento: con la lista real del usuario —donde casi
+// todo son vencimientos— los dos criterios daban EXACTAMENTE la misma pantalla
+// y el control se sentía roto. Así que cada criterio arma su propia vista:
+//   · fecha → Hoy / Atrasado, lo más reciente arriba (buscar el último aviso).
+//   · tipo  → un grupo por concepto, en orden de prioridad, y adentro por
+//             fecha (trabajar el día: todos los recontactos juntos, etc.).
+// `plegable` marca los grupos a los que se les corta la cola vieja: "Hoy"
+// nunca, porque es justamente lo que hay que ver entero.
+function _notifGrupos(pend, orden){
+  if (orden === 'tipo') {
+    const porFecha = _notifCmp('fecha');
+    return Object.keys(NOTIF_GRUPO)
+      .map(k => ({ titulo: NOTIF_GRUPO[k], items: pend.filter(p => p.kind === k).sort(porFecha), plegable: true }))
+      .filter(g => g.items.length);
+  }
+  const cmp = _notifCmp('fecha');
+  return [
+    { titulo: 'Hoy',      items: pend.filter(p => p.bucket === 'hoy').sort(cmp), plegable: false },
+    { titulo: 'Atrasado', items: pend.filter(p => p.bucket !== 'hoy').sort(cmp), plegable: true },
+  ].filter(g => g.items.length);
+}
 function _notifOrdenHTML(orden){
   const b = (v, txt) => `<button type="button" class="nt-ord-b${orden === v ? ' active' : ''}" onclick="notifSetOrden('${v}')">${txt}</button>`;
   return `<div class="nt-ord" role="group" aria-label="Orden de los avisos">
@@ -20242,33 +20269,22 @@ function notifRender(){
   const log = getNotifLog();
   _notifActions = [];   // se rellena al armar el markup (ver _notifActionAttr)
 
-  // Lo de HOY arriba de todo; lo atrasado, después (así no hay que scrollear
-  // entre la pila de vencimientos para encontrar el trabajo/aviso de hoy). El
-  // criterio DENTRO de cada grupo lo elige el usuario con el switch: por fecha
-  // (lo más reciente arriba) o por tipo de aviso. Los grupos no cambian: en
-  // "Hoy" todo es de hoy, así que la separación no pelea con ningún orden.
-  const cmp = _notifCmp(notifGetOrden());
-  const hoy = pend.filter(p => p.bucket === 'hoy').sort(cmp);
-  const atras = pend.filter(p => p.bucket !== 'hoy').sort(cmp);
+  const orden = notifGetOrden();
 
   let h = '';
   if (!pend.length) {
     h += `<div class="nt-sec">Pendientes</div><div class="nt-empty">Nada pendiente. Todo al día 👌</div>`;
   } else {
-    h += _notifOrdenHTML(notifGetOrden());
-    if (hoy.length) {
-      h += `<div class="nt-sec">Hoy · ${hoy.length}</div>`;
-      h += `<div class="nt-list">${hoy.map(notifItemHTML).join('')}</div>`;
-    }
-    if (atras.length) {
+    h += _notifOrdenHTML(orden);
+    _notifGrupos(pend, orden).forEach(g => {
       // La cola vieja se pliega: lo accionable son los últimos, no la pila
       // entera. El resto sigue a un toque de distancia.
-      const corte = _notifVerAtrasado ? atras.length : Math.min(atras.length, NOTIF_ATRAS_TOPE);
-      const resto = atras.length - corte;
-      h += `<div class="nt-sec">Atrasado · ${atras.length}</div>`;
-      h += `<div class="nt-list">${atras.slice(0, corte).map(notifItemHTML).join('')}</div>`;
+      const tope = (g.plegable && !_notifVerAtrasado) ? Math.min(g.items.length, NOTIF_ATRAS_TOPE) : g.items.length;
+      const resto = g.items.length - tope;
+      h += `<div class="nt-sec">${esc(g.titulo)} · ${g.items.length}</div>`;
+      h += `<div class="nt-list">${g.items.slice(0, tope).map(notifItemHTML).join('')}</div>`;
       if (resto > 0) h += `<button type="button" class="nt-clear" onclick="notifVerAtrasado()">Ver los ${resto} más viejos</button>`;
-    }
+    });
   }
 
   h += `<div class="nt-sec">Recientes</div>`;

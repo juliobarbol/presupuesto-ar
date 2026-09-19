@@ -309,24 +309,54 @@ const RESET = `
         const body = () => document.getElementById('notif-dlg-body');
         const activo = () => { const b = body().querySelector('.nt-ord-b.active'); return b ? b.textContent : ''; };
         const primero = () => { const t = body().querySelector('.nt-item .nt-txt'); return t ? t.textContent : ''; };
+        const secs = () => Array.from(body().querySelectorAll('.nt-sec')).map(e => e.textContent);
         const haySwitch = !!body().querySelector('.nt-ord');
-        const act1 = activo(), p1 = primero();
+        const act1 = activo(), p1 = primero(), secs1 = secs();
         // Toque real sobre el botón "Tipo".
         Array.from(body().querySelectorAll('.nt-ord-b'))
           .find(b => b.textContent === 'Tipo').click();
-        const act2 = activo(), p2 = primero();
+        const act2 = activo(), p2 = primero(), secs2 = secs();
         // Cerrar y reabrir: la elección se mantiene (es preferencia, no estado
         // de sesión como el plegado).
         notifClose(); notifOpen();
-        return { haySwitch, act1, p1, act2, p2, act3: activo(), p3: primero() };
+        return { haySwitch, act1, p1, secs1, act2, p2, secs2, act3: activo(), p3: primero() };
       })()`));
       check('El panel dibuja el switch de orden', r.haySwitch);
+      check('Los grupos cambian con el criterio',
+        r.secs1.join('|') === 'Atrasado · 2|Recientes' &&
+        r.secs2.join('|') === 'Recontactos · 1|Vencimientos · 1|Recientes',
+        JSON.stringify(r.secs1) + ' → ' + JSON.stringify(r.secs2));
       check('Arranca en Fecha y muestra primero el vencimiento (hace 5 días)',
         r.act1 === 'Fecha' && /^Vence/.test(r.p1), `${r.act1} · ${r.p1}`);
       check('Tocar "Tipo" sube el recontacto, que tiene más prioridad',
         r.act2 === 'Tipo' && /Recontactar/.test(r.p2), `${r.act2} · ${r.p2}`);
       check('La elección sobrevive al cierre del panel',
         r.act3 === 'Tipo', r.act3);
+      await page.close();
+    }
+
+    // ── 4c: con TODOS los avisos del mismo tipo, el switch igual se nota ──
+    // El reporte que lo pidió: los 4 pendientes eran vencimientos, así que los
+    // dos criterios daban la misma lista y el control parecía roto. El modo
+    // "tipo" no solo reordena: agrupa, y el encabezado lo dice.
+    {
+      const page = await nuevaPagina(browser);
+      const r = await page.evaluate(new Function(`return (() => {
+        ${RESET}
+        mkVencidos([56, 62, 95, 125]);
+        notifOpen();
+        const secs = () => Array.from(document.querySelectorAll('#notif-dlg-body .nt-sec')).map(e => e.textContent);
+        const txts = () => Array.from(document.querySelectorAll('#notif-dlg-body .nt-item .nt-txt')).map(e => e.textContent);
+        const fecha = { secs: secs(), txts: txts() };
+        Array.from(document.querySelectorAll('.nt-ord-b')).find(b => b.textContent === 'Tipo').click();
+        return { fecha, tipo: { secs: secs(), txts: txts() } };
+      })()`));
+      check('Por fecha el grupo es "Atrasado · 4"',
+        r.fecha.secs[0] === 'Atrasado · 4', JSON.stringify(r.fecha.secs));
+      check('Por tipo pasa a ser "Vencimientos · 4" — la pantalla cambia',
+        r.tipo.secs[0] === 'Vencimientos · 4', JSON.stringify(r.tipo.secs));
+      check('…y siendo todos del mismo tipo, el orden interno no se toca',
+        JSON.stringify(r.tipo.txts) === JSON.stringify(r.fecha.txts), JSON.stringify(r.tipo.txts));
       await page.close();
     }
 
