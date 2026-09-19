@@ -360,6 +360,51 @@ const RESET = `
       await page.close();
     }
 
+    // ── 4d: un vencimiento SIN enviadoEn se ve y se puede cerrar ──
+    // El caso del backup real: 4 presupuestos en estado "enviado" pero sin el
+    // sello `enviadoEn` (son anteriores a que ese sello existiera). La
+    // campanita los mostraba y el banner no, así que no tenían ✓ por ningún
+    // lado: quedaban arriba del panel para siempre. Ahora el criterio es el
+    // mismo en los dos, y el ✓ está también en el aviso.
+    {
+      const page = await nuevaPagina(browser);
+      const r = await page.evaluate(new Function(`return (() => {
+        ${RESET}
+        const h = mkVencidos([56, 101]);
+        delete h[0].enviadoEn;   // el legacy: estado "enviado", sin el sello
+        delete h[1].enviadoEn;
+        setH(h);
+        const banner = getExpiredQuotes().map(v => v.entry.quoteNumber);
+        const pend = notifBuildPendientes().map(p => p.text);
+        notifOpen();
+        const body = () => document.getElementById('notif-dlg-body');
+        const btns = body().querySelectorAll('[data-nt-venc]').length;
+        const antes = body().querySelectorAll('.nt-item').length;
+        body().querySelector('[data-nt-venc]').click();
+        const log = getNotifLog()[0];
+        const despues = notifBuildPendientes().length;
+        // Y el "Deshacer" lo revive.
+        notifUndo(log.id);
+        return {
+          banner, pend, btns, antes, despues,
+          logTxt: log.text, undoTipo: log.undo && log.undo.type,
+          trasUndo: notifBuildPendientes().length,
+          bannerFinal: getExpiredQuotes().length,
+        };
+      })()`));
+      check('Sin enviadoEn, el banner de vencidos igual los muestra',
+        r.banner.length === 2, JSON.stringify(r.banner));
+      check('…y la campanita muestra los mismos',
+        r.pend.length === 2, JSON.stringify(r.pend));
+      check('Cada vencimiento trae su ✓ en el panel', r.btns === 2, String(r.btns));
+      check('El ✓ lo descarta y queda en Recientes',
+        r.despues === 1 && /no te aviso más/.test(r.logTxt), `${r.despues} · ${r.logTxt}`);
+      check('El descarte se puede deshacer',
+        r.undoTipo === 'vencVisto' && r.trasUndo === 2 && r.bannerFinal === 2,
+        `${r.trasUndo} pendientes · ${r.bannerFinal} en el banner`);
+      await page.close();
+    }
+
     // ── 5: el badge no cuenta lo descartado ──
     {
       const page = await nuevaPagina(browser);
