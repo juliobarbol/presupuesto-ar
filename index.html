@@ -2272,9 +2272,15 @@ input[type=number]{-moz-appearance:textfield}
    Los botones van un poco más altos que un .btn normal para que el dedo no
    toque uno queriendo el otro, y el grupo baja entero de línea si no entra al
    lado del título (con 58 presupuestos el contador lo hace largo). */
-.hist-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
-.hist-headacts{display:flex;gap:8px;align-items:center;margin-left:auto}
-.hist-headbtn{padding:11px 14px;font-size:13px}
+.hist-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.hist-headacts{display:flex;gap:7px;align-items:center;margin-left:auto}
+/* El padding horizontal está medido: con 14px el par de botones no entraba al
+   lado del título en un celular de 360 y el grupo caía a la línea de abajo.
+   El alto (11px) es lo que hace falta para el dedo y no se toca. */
+.hist-headbtn{padding:11px 12px;font-size:13px}
+/* Menos aire entre letras que el resto de los títulos de sección: acá compite
+   por el ancho con los dos botones. */
+.hist-head .st{letter-spacing:.4px}
 #colab-box .ne-field>input{width:100%}
 .colab-tarifas{display:flex;flex-wrap:wrap;gap:6px}
 .colab-tarifas-empty{font-size:11.5px;color:var(--muted);line-height:1.45}
@@ -4504,7 +4510,11 @@ input[type=number]{-moz-appearance:textfield}
         <div id="followup-banner" class="followup-banner" style="display:none"></div>
         <div id="expiry-banner" class="expiry-banner" style="display:none"></div>
         <div class="hist-head">
-          <div class="st" style="margin:0;border:none;padding:0">Presupuestos guardados <span id="hist-count" class="nbadge" style="margin-left:6px">0</span></div>
+          <!-- "Guardados" a secas: con el título largo los dos botones no
+               entraban al lado y el grupo caía siempre a la línea de abajo.
+               La pestaña ya se llama Historial, así que la palabra
+               "Presupuestos" no agregaba nada. -->
+          <div class="st" style="margin:0;border:none;padding:0">Guardados <span id="hist-count" class="nbadge" style="margin-left:6px">0</span></div>
           <!-- Las dos acciones de la pestaña, juntas y con alto de dedo: se
                tocan por separado sin errarle. Si no entran al lado del título,
                el grupo entero baja a la línea de abajo (nunca se parte). -->
