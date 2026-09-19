@@ -2268,6 +2268,13 @@ input[type=number]{-moz-appearance:textfield}
 #colab-box{background:var(--card);border-radius:var(--radius-box);padding:22px;width:440px;max-width:92vw;max-height:92vh;overflow-y:auto;overscroll-behavior:contain;box-shadow:0 20px 60px rgba(0,0,0,.25)}
 #colab-box h4{font-family:var(--font-display);font-size:17px;margin-bottom:4px;color:var(--text)}
 #colab-box .cbtns{display:flex;gap:8px;justify-content:flex-end;margin-top:18px}
+/* Encabezado del Historial: título + las dos acciones (Agenda y Colaboración).
+   Los botones van un poco más altos que un .btn normal para que el dedo no
+   toque uno queriendo el otro, y el grupo baja entero de línea si no entra al
+   lado del título (con 58 presupuestos el contador lo hace largo). */
+.hist-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.hist-headacts{display:flex;gap:8px;align-items:center;margin-left:auto}
+.hist-headbtn{padding:11px 14px;font-size:13px}
 #colab-box .ne-field>input{width:100%}
 .colab-tarifas{display:flex;flex-wrap:wrap;gap:6px}
 .colab-tarifas-empty{font-size:11.5px;color:var(--muted);line-height:1.45}
@@ -4496,12 +4503,21 @@ input[type=number]{-moz-appearance:textfield}
         <div id="recontacto-banner" class="recontacto-banner" style="display:none"></div>
         <div id="followup-banner" class="followup-banner" style="display:none"></div>
         <div id="expiry-banner" class="expiry-banner" style="display:none"></div>
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div class="hist-head">
           <div class="st" style="margin:0;border:none;padding:0">Presupuestos guardados <span id="hist-count" class="nbadge" style="margin-left:6px">0</span></div>
-          <!-- Agenda: alterna el filtro "aceptado" (el listado filtrado por
-               aceptado ES la agenda: ordenado por fecha de trabajo). El
-               contenido (contador / "Ver todos") lo pinta renderHistory(). -->
-          <button class="btn btn-p btn-sm" id="hist-agenda-btn" onclick="toggleAgendaView()" title="Ver los trabajos agendados: presupuestos aceptados ordenados por fecha de trabajo"><svg class="ic"><use href="#i-calendar"></use></svg> Agenda</button>
+          <!-- Las dos acciones de la pestaña, juntas y con alto de dedo: se
+               tocan por separado sin errarle. Si no entran al lado del título,
+               el grupo entero baja a la línea de abajo (nunca se parte). -->
+          <div class="hist-headacts">
+            <!-- Agenda: alterna el filtro "aceptado" (el listado filtrado por
+                 aceptado ES la agenda: ordenado por fecha de trabajo). El
+                 contenido (contador / "Ver todos") lo pinta renderHistory(). -->
+            <button class="btn btn-p hist-headbtn" id="hist-agenda-btn" onclick="toggleAgendaView()" title="Ver los trabajos agendados: presupuestos aceptados ordenados por fecha de trabajo"><svg class="ic"><use href="#i-calendar"></use></svg> Agenda</button>
+            <!-- "Colab" y no "Colaboración": al lado de Agenda, la palabra
+                 entera empujaba el grupo a su propia línea en un celular
+                 angosto. El nombre completo queda en el title. -->
+            <button class="btn btn-s hist-headbtn" id="hist-colab-btn" onclick="abrirColaboracion()" title="Registrar una colaboración: una jornada que trabajaste para un colega"><svg class="ic"><use href="#i-users"></use></svg> Colab</button>
+          </div>
         </div>
         <div class="r2" style="margin-bottom:4px">
           <span class="hsearch-wrap">
@@ -4522,9 +4538,6 @@ input[type=number]{-moz-appearance:textfield}
             <option value="presup">Solo presupuestos</option>
             <option value="colab">Solo colaboraciones</option>
           </select>
-          <button class="btn btn-s" id="hist-colab-btn" onclick="abrirColaboracion()" title="Registrar un trabajo propio: una jornada que trabajaste para un colega"><svg class="ic"><use href="#i-users"></use></svg> Colaboración</button>
-        </div>
-        <div style="margin-bottom:4px">
           <select class="hsearch" id="hist-estado-filter" onchange="renderHistory()" style="margin-bottom:0">
             <option value="">Todos los estados</option>
             <option value="por_ver">Ir a ver</option>
