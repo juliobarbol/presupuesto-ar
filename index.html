@@ -2260,6 +2260,48 @@ input[type=number]{-moz-appearance:textfield}
 .nv-prev-new{font-size:19px;font-weight:600;color:var(--accent-fg)}
 .nv-prev-note{margin-top:6px;font-size:11.5px;color:var(--muted);line-height:1.45}
 #nv-box .cbtns{display:flex;gap:8px;justify-content:flex-end;margin-top:18px}
+/* ─── Colaboraciones (trabajo propio para un colega) ─────────────────────
+   El diálogo reusa la caja y la vista previa de "Nueva versión": mismo peso
+   visual, y lo que cambia es solo el formulario. */
+#colab-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2000;align-items:center;justify-content:center}
+#colab-overlay.open{display:flex}
+#colab-box{background:var(--card);border-radius:var(--radius-box);padding:22px;width:440px;max-width:92vw;max-height:92vh;overflow-y:auto;overscroll-behavior:contain;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+#colab-box h4{font-family:var(--font-display);font-size:17px;margin-bottom:4px;color:var(--text)}
+#colab-box .cbtns{display:flex;gap:8px;justify-content:flex-end;margin-top:18px}
+#colab-box .ne-field>input{width:100%}
+.colab-tarifas{display:flex;flex-wrap:wrap;gap:6px}
+.colab-tarifas-empty{font-size:11.5px;color:var(--muted);line-height:1.45}
+.colab-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;font-family:var(--font-text);font-size:12.5px;font-weight:600;color:var(--text-2);background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-field);cursor:pointer;text-align:left}
+.colab-chip.is-active{border-color:var(--accent-fg);background:var(--accent-light);color:var(--accent-fg)}
+.colab-chip-precio{font-family:var(--font-mono);font-size:11.5px;opacity:.8}
+.colab-precio-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.colab-precio-row>input{flex:1 1 90px;min-width:0}
+.colab-precio-row>select{flex:1 1 120px;min-width:0}
+.colab-x{font-size:14px;font-weight:700;color:var(--muted)}
+/* Badge de la tarjeta y del popup del mapa */
+.hbadge-colab{display:inline-block;margin-left:6px;padding:1px 7px;font-size:10px;font-weight:700;color:#115e59;background:#ccfbf1;border-radius:20px;vertical-align:middle}
+.hitem.is-colab{border-left:3px solid #0d9488}
+/* Renglón del mes: las colaboraciones se ven sin desplegar, y sin tocar el
+   número de presupuestos del encabezado. */
+.hmonth-colab{display:flex;align-items:center;gap:6px;padding:5px 12px;font-size:11.5px;font-weight:600;color:#115e59;background:#f0fdfa;border-top:1px solid var(--border)}
+.hmonth-colab .ic{width:13px;height:13px}
+.hmonth-colab-tot{margin-left:auto;font-family:var(--font-mono);font-size:12px}
+/* Subtotal propio al filtrar por colaboraciones */
+.hcolab-resumen{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#f0fdfa;border:1px solid #99f6e4;border-radius:8px;padding:10px 14px;margin-bottom:10px}
+.hcolab-resumen-n{font-size:13px;font-weight:700;color:#115e59}
+.hcolab-resumen-tot{font-family:var(--font-mono);font-size:15px;font-weight:600;color:#115e59}
+.hcolab-resumen-nota{flex:1 1 100%;font-size:11px;color:var(--muted)}
+/* Panel aparte en las estadísticas de zona del mapa */
+.mapa-zona-colab{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px dashed var(--border);font-size:12px;color:#115e59}
+.mapa-zona-colab .ic{width:13px;height:13px}
+/* Tarifas propias en Empresa */
+.missvc-form{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+.missvc-form-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.missvc-form-row>input{flex:1 1 90px;min-width:0}
+.missvc-form-row>select{flex:1 1 110px;min-width:0}
+.missvc-row .svc-name{display:flex;flex-direction:column;gap:2px}
+.missvc-unidad{font-size:11px;color:var(--muted);font-weight:500}
+.missvc-precio{flex:0 0 108px;width:108px;font-family:var(--font-mono);font-size:13px;margin:0}
 /* Segmentado Mes / Semana / 3 días / Agenda */
 .agc-viewtoggle{display:flex;max-width:100%;overflow-x:auto;background:var(--surface-2);border-radius:var(--radius-field);padding:3px;gap:3px;margin-bottom:12px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
 .agc-viewtoggle::-webkit-scrollbar{display:none}
@@ -4417,6 +4459,34 @@ input[type=number]{-moz-appearance:textfield}
               <button class="btn btn-g btn-sm" style="margin-top:8px" onclick="renderServicesManager()"><svg class="ic" aria-hidden="true"><use href="#i-refresh"></use></svg> Actualizar lista</button>
             </div>
           </div>
+
+          <!-- MIS SERVICIOS: las tarifas propias, lo que el usuario COBRA
+               cuando el trabajo es suyo y el cliente es un colega. Distinto de
+               "Servicios guardados", que son costos de terceros dentro de un
+               presupuesto (camión, volquete). -->
+          <div class="collapsible-section" id="cs-missvc">
+            <button type="button" class="collapsible-header" onclick="toggleCollapsibleSection('cs-missvc')">
+              <span><svg class="ic"><use href="#i-users"></use></svg> Mis servicios (colaboraciones)</span>
+              <span class="ch-count" id="cs-missvc-count">0</span>
+              <span class="ch-chevron">▾</span>
+            </button>
+            <div class="collapsible-body">
+              <p class="hint" style="margin-bottom:10px">Lo que cobrás cuando un colega te llama a trabajar con él (una jornada de trepador, una hora de motosierra). Se registran desde Historial → <strong>Colaboración</strong>, y no suman a las estadísticas de presupuestos.</p>
+              <div class="missvc-form">
+                <input type="text" id="missvc-nombre" maxlength="120" placeholder="Ej: Día de trabajo como trepador" aria-label="Nombre del servicio">
+                <div class="missvc-form-row">
+                  <input type="number" id="missvc-precio" min="0" step="1000" inputmode="decimal" placeholder="Precio" aria-label="Precio">
+                  <select id="missvc-unidad" aria-label="Unidad">
+                    <option value="jornada">por jornada</option>
+                    <option value="hora">por hora</option>
+                    <option value="trabajo">por trabajo</option>
+                  </select>
+                  <button class="btn btn-p btn-sm" onclick="addMiServicioFromUI()"><svg class="ic"><use href="#i-plus"></use></svg> Agregar</button>
+                </div>
+              </div>
+              <div id="missvc-manager-list"></div>
+            </div>
+          </div>
         </div>
       </div><!-- /panel-empresa -->
 
@@ -4442,6 +4512,17 @@ input[type=number]{-moz-appearance:textfield}
           <select class="hsearch" id="hist-client-filter" onchange="renderHistory()" style="margin-bottom:0">
             <option value="">Todos los clientes</option>
           </select>
+        </div>
+        <div class="r2" style="margin-bottom:4px">
+          <!-- Tipo: separar los trabajos propios (colaboraciones) de los
+               presupuestos. Mezclados por defecto; aislarlos es la vista de
+               "qué trabajé para colegas", con su propio subtotal. -->
+          <select class="hsearch" id="hist-tipo-filter" onchange="renderHistory()" style="margin-bottom:0">
+            <option value="">Presupuestos y colaboraciones</option>
+            <option value="presup">Solo presupuestos</option>
+            <option value="colab">Solo colaboraciones</option>
+          </select>
+          <button class="btn btn-s" id="hist-colab-btn" onclick="abrirColaboracion()" title="Registrar un trabajo propio: una jornada que trabajaste para un colega"><svg class="ic"><use href="#i-users"></use></svg> Colaboración</button>
         </div>
         <div style="margin-bottom:4px">
           <select class="hsearch" id="hist-estado-filter" onchange="renderHistory()" style="margin-bottom:0">
@@ -4684,6 +4765,81 @@ input[type=number]{-moz-appearance:textfield}
     <div class="cbtns">
       <button class="btn btn-s" onclick="nvClose()">Cancelar</button>
       <button class="btn btn-p" id="nv-ok" onclick="nvConfirm()">Crear versión</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ COLABORACIÓN (trabajo propio para un colega) ═══════════════
+     Alta rápida de una jornada trabajada para un colega. La FECHA decide qué
+     pasa: futura se agenda (estado aceptado, entra en la Agenda), hoy o pasada
+     queda realizada y ofrece registrar la factura. -->
+<div id="colab-overlay" role="presentation" onclick="if(event.target===this)colabClose()">
+  <div id="colab-box" role="dialog" aria-modal="true" aria-labelledby="colab-title">
+    <h4 id="colab-title">Registrar colaboración</h4>
+    <p class="nv-sub">Un trabajo tuyo para un colega. No es un presupuesto: no suma a las estadísticas.</p>
+
+    <div class="ne-field">
+      <label>Tarifa</label>
+      <div class="colab-tarifas" id="colab-tarifas"></div>
+    </div>
+
+    <div class="ne-field">
+      <label for="colab-nombre">Trabajo</label>
+      <input type="text" id="colab-nombre" maxlength="120" placeholder="Ej: Día de trabajo como trepador" oninput="colabSync()">
+    </div>
+
+    <div class="ne-field">
+      <label>Precio y cantidad</label>
+      <div class="colab-precio-row">
+        <input type="number" id="colab-precio" min="0" step="1000" inputmode="decimal" placeholder="Precio" aria-label="Precio unitario" oninput="colabSync()">
+        <span class="colab-x">×</span>
+        <input type="number" id="colab-cant" min="0.5" step="0.5" inputmode="decimal" value="1" aria-label="Cantidad" oninput="colabSync()">
+        <select id="colab-unidad" aria-label="Unidad" onchange="colabSync()">
+          <option value="jornada">jornada(s)</option>
+          <option value="hora">hora(s)</option>
+          <option value="trabajo">trabajo(s)</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="ne-field">
+      <label for="colab-fecha">Día del trabajo</label>
+      <input type="date" id="colab-fecha" aria-label="Día del trabajo" oninput="colabSync()">
+    </div>
+
+    <div class="ne-field">
+      <label for="colab-colega">Colega</label>
+      <input type="text" id="colab-colega" maxlength="200" list="colab-colegas-dl" placeholder="¿Quién te llamó?" autocomplete="off">
+      <datalist id="colab-colegas-dl"></datalist>
+    </div>
+
+    <div class="ne-field">
+      <label for="colab-tel">Teléfono</label>
+      <input type="tel" id="colab-tel" maxlength="40" placeholder="Para el chat de WhatsApp" autocomplete="off">
+    </div>
+
+    <div class="ne-field">
+      <label for="colab-lugar">Lugar</label>
+      <input type="text" id="colab-lugar" maxlength="300" placeholder="Dirección, coordenadas o link de Maps" autocomplete="off">
+    </div>
+
+    <div class="ne-field">
+      <label for="colab-nota">Nota</label>
+      <input type="text" id="colab-nota" maxlength="500" placeholder="Qué se hizo (opcional)">
+    </div>
+
+    <div class="nv-prev">
+      <div class="nv-prev-lbl">Total</div>
+      <div class="nv-prev-nums">
+        <span class="nv-prev-new" id="colab-total">$ 0</span>
+      </div>
+      <div class="nv-prev-note" id="colab-cuenta"></div>
+      <div class="nv-prev-note" id="colab-quepasa"></div>
+    </div>
+
+    <div class="cbtns">
+      <button class="btn btn-s" onclick="colabClose()">Cancelar</button>
+      <button class="btn btn-p" id="colab-ok" onclick="colabGuardar()">Registrar</button>
     </div>
   </div>
 </div>
@@ -6817,6 +6973,10 @@ const PDF_FONTS  = ['auto','dm','plex','lora-inter','inter'];
 // (#panel-editor[data-vista]), así que no puede entrar sin lista blanca.
 const EDITOR_VIEWS = ['clasica','fichas','consola'];
 const NOTE_TIPOS = ['visita'];   // sin tipo = nota común
+// Unidades de las tarifas propias (ver "Mis servicios" en js/clients.js). La
+// unidad decide el texto de la cantidad en el diálogo y en la factura, así que
+// no puede entrar cualquier cosa desde un backup ajeno.
+const MISSVC_UNIDADES = ['jornada','hora','trabajo'];
 // Los `kind` que guarda la bitácora. Estaban solo los cuatro tonos genéricos,
 // así que sanEnum convertía en 'info' los conceptos reales que escribe
 // logNotif (estado, recontacto, visita, clima, vencimiento, seguimiento) —
@@ -6904,6 +7064,19 @@ function sanitizeHistory(raw) {
       else delete s[k];
     });
     if (e.versionN != null) s.versionN = Math.max(0, Math.round(sanNum(e.versionN)) || 0);
+    // Colaboración (trabajo propio para un colega). La bandera decide si la
+    // entrada suma o no a las estadísticas de presupuestos, así que no puede
+    // quedar como un string cualquiera; y `colab` guarda lo que hace falta
+    // para reabrir el diálogo y para describir la factura.
+    if (e.esTrabajoPropio) s.esTrabajoPropio = true; else delete s.esTrabajoPropio;
+    if (e.colab && typeof e.colab === 'object' && !Array.isArray(e.colab)) {
+      s.colab = {
+        nombre:   sanStr(e.colab.nombre, 120),
+        precio:   Math.max(0, sanNum(e.colab.precio)),
+        cantidad: Math.max(0, sanNum(e.colab.cantidad)) || 1,
+        unidad:   sanEnum(e.colab.unidad, MISSVC_UNIDADES, 'jornada'),
+      };
+    } else { delete s.colab; }
     if (e.recontactoNota != null) s.recontactoNota = sanStr(e.recontactoNota, 500);
     if (e.diasEstimados != null)  s.diasEstimados  = Math.max(1, Math.round(sanNum(e.diasEstimados)) || 1);
     out.push(s);
@@ -7072,6 +7245,26 @@ function sanitizeFacturas(raw) {
   return out;
 }
 
+// ─── MIS SERVICIOS (tarifas propias) ─────────────────────────
+// Las tarifas que el usuario cobra cuando trabaja PARA otro (una jornada de
+// trepador para un colega). El id se usa en data-* y la unidad decide el
+// texto de la cantidad, así que ambos van acotados; el precio es plata
+// registrada y no puede quedar negativo.
+function sanitizeMisServicios(raw) {
+  const out = [];
+  _sanToArray(raw).forEach(t => {
+    if (!t || typeof t !== 'object' || Array.isArray(t)) return;
+    const s = Object.assign({}, t);
+    s.id     = sanTextId(t.id, 'ms_');
+    s.nombre = sanStr(t.nombre, 120);
+    s.precio = Math.max(0, sanNum(t.precio));
+    s.unidad = sanEnum(t.unidad, MISSVC_UNIDADES, 'jornada');
+    if (!s.nombre) return;   // sin nombre no hay nada que mostrar ni elegir
+    out.push(s);
+  });
+  return out;
+}
+
 // ─── CONFIG DE SEGUIMIENTO ───────────────────────────────────
 // Las plantillas son texto que después se mete en una URL de WhatsApp con
 // encodeURIComponent (no es HTML), pero se acotan igual: un backup ajeno no
@@ -7150,6 +7343,9 @@ function migrateSanitizeStored() {
   if (typeof FACT_KEY !== 'undefined') {
     pasada(FACT_KEY,   sanitizeFacturas, v => { try { localStorage.setItem(FACT_KEY, v); } catch(_){} });
   }
+  if (typeof MISSVC_KEY !== 'undefined') {
+    pasada(MISSVC_KEY, sanitizeMisServicios, v => { try { localStorage.setItem(MISSVC_KEY, v); } catch(_){} });
+  }
   // El estado activo: acotar tema/fuente/color, que son los que se interpolan
   // en el documento. S ya está cargado en memoria (loadLS corrió antes).
   const tema = sanEnum(S.pdfTheme, PDF_THEMES, 'clasico');
@@ -7180,6 +7376,7 @@ function sanitizeBackup(d) {
   if (d.species !== undefined) b.species = sanitizeStrList(d.species, 120);
   if (d.services !== undefined)       b.services       = sanitizeStrList(d.services, 120);
   if (d.servicesPinned !== undefined) b.servicesPinned = sanitizeStrList(d.servicesPinned, 120);
+  if (d.misServicios !== undefined)   b.misServicios   = sanitizeMisServicios(d.misServicios);
   if (d.phrases && typeof d.phrases === 'object' && !Array.isArray(d.phrases)) {
     b.phrases = {};
     ['desc','obs','pay'].forEach(k => {
@@ -7869,6 +8066,126 @@ function renderServicesManager() {
       }
     });
     el._serviceListener = true;
+  }
+}
+
+// ─── MIS SERVICIOS (tarifas propias) ──────────────────────────────────
+// Lo que el usuario COBRA cuando el trabajo es suyo y el cliente es un colega:
+// una jornada de trepador, una hora de motosierra, un trabajo puntual. No es
+// la DB de servicios de arriba —esa son los costos de terceros que se cargan
+// DENTRO de un presupuesto (un camión, un volquete)— sino su propia tarifa.
+//
+// Guarda el precio porque el alta tiene que ser de un toque: el precio se
+// pre-carga y se corrige en el diálogo si ese día se cobró distinto. La tarifa
+// guardada NO se pisa sola al corregirla (ver colabGuardar): que un trabajo
+// puntual cambie la tarifa base es un efecto que el usuario no pidió.
+const MISSVC_KEY = 'pq_mis_servicios';
+const MISSVC_UNIDAD_LABEL = { jornada:'jornada', hora:'hora', trabajo:'trabajo' };
+const MISSVC_UNIDAD_PLURAL = { jornada:'jornadas', hora:'horas', trabajo:'trabajos' };
+
+// "2 jornadas" / "1 jornada". El singular importa: el texto va a la factura.
+function misSvcCantTxt(cant, unidad) {
+  const n = Number(cant) || 1;
+  const u = MISSVC_UNIDADES.indexOf(unidad) >= 0 ? unidad : 'jornada';
+  const label = n === 1 ? MISSVC_UNIDAD_LABEL[u] : MISSVC_UNIDAD_PLURAL[u];
+  return `${n.toLocaleString('es-AR', { maximumFractionDigits: 2 })} ${label}`;
+}
+
+function getMisServicios() {
+  try { return sanitizeMisServicios(JSON.parse(localStorage.getItem(MISSVC_KEY) || '[]')); }
+  catch (e) { return []; }
+}
+
+function setMisServicios(arr) {
+  safeSetLS(MISSVC_KEY, JSON.stringify(sanitizeMisServicios(arr)));
+}
+
+// Alta/edición de una tarifa. Sin id crea una nueva; con id pisa la existente.
+function saveMiServicio({ id, nombre, precio, unidad }) {
+  nombre = (nombre || '').trim();
+  if (nombre.length < 2) return null;
+  const db = getMisServicios();
+  const t = {
+    id: id || ('ms_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6)),
+    nombre,
+    precio: Math.max(0, roundMoney(precio)),
+    unidad: MISSVC_UNIDADES.indexOf(unidad) >= 0 ? unidad : 'jornada',
+  };
+  const idx = db.findIndex(x => x.id === t.id);
+  if (idx >= 0) db.splice(idx, 1, t); else db.push(t);
+  setMisServicios(db);
+  return t;
+}
+
+function deleteMiServicio(id) {
+  setMisServicios(getMisServicios().filter(t => t.id !== id));
+}
+
+async function confirmDeleteMiServicio(id) {
+  const t = getMisServicios().find(x => x.id === id);
+  if (!t) return;
+  const ok = await confirmDlg(
+    'Eliminar tarifa',
+    `¿Eliminar "${t.nombre}" de tus servicios? Las colaboraciones ya registradas no se tocan.`,
+    'Eliminar', 'btn-d'
+  );
+  if (!ok) return;
+  deleteMiServicio(id);
+  renderMisServiciosManager();
+  if (typeof updateCollapsibleCounts === 'function') updateCollapsibleCounts();
+  toast('Tarifa eliminada', 'info');
+}
+
+// Alta desde la sección de Empresa. Los tres campos viven en el markup;
+// el precio puede quedar en 0 (tarifa a definir en cada trabajo).
+function addMiServicioFromUI() {
+  const nEl = document.getElementById('missvc-nombre');
+  const pEl = document.getElementById('missvc-precio');
+  const uEl = document.getElementById('missvc-unidad');
+  const nombre = (nEl?.value || '').trim();
+  if (nombre.length < 2) { toast('Escribí el nombre del servicio', 'err'); return; }
+  saveMiServicio({ nombre, precio: pEl?.value, unidad: uEl?.value });
+  if (nEl) nEl.value = '';
+  if (pEl) pEl.value = '';
+  renderMisServiciosManager();
+  if (typeof updateCollapsibleCounts === 'function') updateCollapsibleCounts();
+  toast(`Tarifa "${nombre}" guardada`, 'ok');
+}
+
+// Edición en línea del precio: es el campo que se mueve con la inflación y
+// el único que se corrige seguido. Se guarda al salir del campo.
+function setMiServicioPrecio(id, valor) {
+  const t = getMisServicios().find(x => x.id === id);
+  if (!t) return;
+  const nuevo = Math.max(0, roundMoney(valor));
+  if (nuevo === t.precio) return;
+  saveMiServicio({ id: t.id, nombre: t.nombre, precio: nuevo, unidad: t.unidad });
+  renderMisServiciosManager();
+  toast('Tarifa actualizada', 'ok', 1500);
+}
+
+function renderMisServiciosManager() {
+  const el = document.getElementById('missvc-manager-list');
+  if (!el) return;
+  const db = getMisServicios();
+  el.innerHTML = !db.length
+    ? '<div class="empty-h" style="padding:16px">Todavía no cargaste ninguna tarifa propia.</div>'
+    : '<div class="svc-list">' + db.map(t => `
+        <div class="svc-row missvc-row">
+          <span class="svc-name">${esc(t.nombre)}<span class="missvc-unidad">por ${esc(MISSVC_UNIDAD_LABEL[t.unidad] || t.unidad)}</span></span>
+          <input class="missvc-precio" type="number" min="0" step="1000" inputmode="decimal"
+                 value="${t.precio || ''}" placeholder="0" aria-label="Precio de ${esc(t.nombre)}"
+                 data-id="${esc(t.id)}" onchange="setMiServicioPrecio(this.dataset.id, this.value)">
+          <button class="btn-icon-del missvc-del" data-id="${esc(t.id)}" title="Eliminar tarifa" aria-label="Eliminar">${icon('trash')}</button>
+        </div>`).join('') + '</div>';
+  // Listener delegado, como el resto de los managers: el id va en data-id y
+  // nunca dentro de un onclick interpolado.
+  if (!el._missvcListener) {
+    el.addEventListener('click', (ev) => {
+      const del = ev.target.closest('.missvc-del');
+      if (del && del.dataset.id) confirmDeleteMiServicio(del.dataset.id);
+    });
+    el._missvcListener = true;
   }
 }
 
@@ -9938,6 +10255,7 @@ function updateCollapsibleCounts() {
   if (typeof getClientDB === 'function')   setCnt('cs-clients-count',  getClientDB().length);
   if (typeof getSpeciesDB === 'function')  setCnt('cs-species-count',  getSpeciesDB().length);
   if (typeof getServicesDB === 'function') setCnt('cs-services-count', getServicesDB().length);
+  if (typeof getMisServicios === 'function') setCnt('cs-missvc-count', getMisServicios().length);
 }
 
 // Abre/cierra una sección colapsable. Lazy: solo renderiza la lista
@@ -9952,6 +10270,7 @@ function toggleCollapsibleSection(id) {
     if (id === 'cs-clients'  && typeof renderClientManager   === 'function') renderClientManager();
     if (id === 'cs-species'  && typeof renderSpeciesManager  === 'function') renderSpeciesManager();
     if (id === 'cs-services' && typeof renderServicesManager === 'function') renderServicesManager();
+    if (id === 'cs-missvc'   && typeof renderMisServiciosManager === 'function') renderMisServiciosManager();
   }
 }
 
@@ -11233,6 +11552,10 @@ function calcNextNumFromHistory() {
   let maxNum = 0;
   h.forEach(e => {
     const qn = e.quoteNumber || '';
+    // Las colaboraciones tienen numeración propia ('T-2026-0001') y no
+    // consumen correlativo. Sin prefijo configurado, el 0001 de una
+    // colaboración pasaría por número de presupuesto.
+    if (typeof esTrabajoPropio === 'function' && esTrabajoPropio(e)) return;
     // Solo presupuestos con el mismo prefijo
     if (prefix && !qn.startsWith(prefix)) return;
     // Extrae el número final (ej: "2026-0035" → 35). El sufijo de versión se
@@ -11431,6 +11754,8 @@ document.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;
   const ov = document.getElementById('nv-overlay');
   if (ov && ov.classList.contains('open')) nvClose();
+  const cv = document.getElementById('colab-overlay');
+  if (cv && cv.classList.contains('open')) colabClose();
 });
 
 // Fija el % desde un atajo y refresca la cuenta.
@@ -11563,6 +11888,297 @@ async function clearHistory() {
   setH([]);
   renderHistory();
   toast('Historial eliminado', 'err');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// COLABORACIONES — trabajo propio para un colega
+// ═══════════════════════════════════════════════════════════════════════════
+// El caso que lo pidió: "un día de trabajo como trepador, que es el servicio
+// que presto cuando un colega me llama a trabajar con él. Esos trabajos los
+// debo facturar y me gustaría apretar un botón y que quede registrado".
+//
+// Una colaboración NO es un presupuesto: nadie la aceptó ni la rechazó, no se
+// envía, no vence y no se sigue. Pero comparte TODO el ciclo de vida que ya
+// existe —se agenda, se ve en la Agenda con su clima, se marca realizada y
+// desemboca en la factura—, así que vive como una entrada más del historial
+// con la bandera `esTrabajoPropio`.
+//
+// De ahí sale la regla que la hace correcta: la bandera la saca de TODOS los
+// números de presupuestos (conversión de zona, presupuestado, total del mes,
+// acumulado por cliente y el contador). Una colaboración nace 'aceptado' o
+// 'realizado' y nunca 'perdido': contarla haría subir sola la conversión y
+// diría que se aceptaron más trabajos de los que de verdad se aceptaron. Suma
+// donde tiene que sumar, que es en Facturación.
+//
+// Ver test/trabajo-propio.test.cjs, que falla si alguna de esas cuentas la
+// vuelve a incluir.
+function esTrabajoPropio(e) { return !!(e && e.esTrabajoPropio); }
+
+// "1 colaboración" / "3 colaboraciones". El plural pierde la tilde.
+function colabCantTxt(n) { return n === 1 ? '1 colaboración' : n + ' colaboraciones'; }
+
+// Numeración propia 'T-2026-0001'. No consume correlativo de presupuestos: el
+// prefijo no coincide con `numPrefix` y además calcNextNumFromHistory saltea
+// las colaboraciones. El año es el de hoy (el de la emisión), aunque el
+// trabajo se agende para más adelante.
+function _nextColabNum() {
+  const pre = 'T-' + today().slice(0, 4) + '-';
+  let max = 0;
+  getH().forEach(e => {
+    const qn = e.quoteNumber || '';
+    if (qn.indexOf(pre) !== 0) return;
+    const m = qn.slice(pre.length).match(/^(\d+)/);
+    if (!m) return;
+    const n = parseInt(m[1], 10);
+    if (!isNaN(n) && n > max) max = n;
+  });
+  return pre + String(max + 1).padStart(4, '0');
+}
+
+// Lo que parece una ubicación de mapa (coordenadas, Plus Code o link) va a
+// workMapLink, que es de donde salen el pin, "Llegar" y el clima. Una
+// dirección escrita va a workAddress. Es la misma distinción que hace el
+// editor, resuelta acá para que el diálogo tenga un solo campo "Lugar".
+function _colabEsUbicacion(v) {
+  const s = (v || '').trim();
+  if (!s) return false;
+  if (/^https?:\/\//i.test(s)) return true;
+  if (/^\s*-?\d{1,3}(\.\d+)?\s*,\s*-?\d{1,3}(\.\d+)?\s*$/.test(s)) return true;
+  return /^[23456789CFGHJMPQRVWX]{4,8}\+[23456789CFGHJMPQRVWX]{2,3}/i.test(s);
+}
+
+// ─── Diálogo ─────────────────────────────────
+let _colabEditId = null;    // id de la colaboración en edición (null = alta)
+let _colabTarifaId = '';    // tarifa elegida (solo para pintar el chip activo)
+
+function abrirColaboracion(id) {
+  const ov = document.getElementById('colab-overlay');
+  if (!ov) return;
+  const e = (id != null) ? getH().find(x => x.id === id) : null;
+  _colabEditId  = e ? e.id : null;
+  _colabTarifaId = '';
+
+  const tit = document.getElementById('colab-title');
+  if (tit) tit.textContent = e ? 'Editar colaboración' : 'Registrar colaboración';
+  const okb = document.getElementById('colab-ok');
+  if (okb) okb.textContent = e ? 'Guardar cambios' : 'Registrar';
+
+  const sv = (k, v) => { const el = document.getElementById(k); if (el) el.value = v; };
+  if (e) {
+    const c = e.colab || {};
+    const snap = e.snapshot || {};
+    sv('colab-nombre', c.nombre || '');
+    sv('colab-precio', c.precio || '');
+    sv('colab-cant',   c.cantidad || 1);
+    sv('colab-unidad', c.unidad || 'jornada');
+    sv('colab-colega', e.clientName || '');
+    sv('colab-tel',    snap.clientContact || '');
+    sv('colab-lugar',  (snap.workMapLink || '').trim() || (snap.workAddress || ''));
+    sv('colab-nota',   snap.observations || '');
+    sv('colab-fecha',  agFechas(e)[0] || today());
+  } else {
+    // Alta: arranca con la primera tarifa cargada, hoy y una unidad.
+    const tarifas = (typeof getMisServicios === 'function') ? getMisServicios() : [];
+    const t = tarifas[0];
+    sv('colab-nombre', t ? t.nombre : '');
+    sv('colab-precio', t && t.precio ? t.precio : '');
+    sv('colab-cant',   1);
+    sv('colab-unidad', t ? t.unidad : 'jornada');
+    sv('colab-colega', '');
+    sv('colab-tel',    '');
+    sv('colab-lugar',  '');
+    sv('colab-nota',   '');
+    sv('colab-fecha',  today());
+    if (t) _colabTarifaId = t.id;
+  }
+  _colabRenderTarifas();
+  _colabClientesDatalist();
+  colabSync();
+  ov.classList.add('open');
+  // El campo fecha usa el datepicker propio de la app, que se engancha acá
+  // porque el diálogo recién ahora está visible.
+  if (typeof refreshCustomDates === 'function') refreshCustomDates();
+  if (typeof enhanceSelects === 'function') enhanceSelects(ov);
+  if (typeof refreshCustomSelects === 'function') refreshCustomSelects();
+}
+
+function colabClose() {
+  const ov = document.getElementById('colab-overlay');
+  if (ov) ov.classList.remove('open');
+  _colabEditId = null;
+}
+
+// Chips de tarifas guardadas. Sin ninguna cargada, el diálogo sigue sirviendo
+// (nombre y precio a mano) y se ofrece el camino para guardarla.
+function _colabRenderTarifas() {
+  const box = document.getElementById('colab-tarifas');
+  if (!box) return;
+  const tarifas = (typeof getMisServicios === 'function') ? getMisServicios() : [];
+  if (!tarifas.length) {
+    box.innerHTML = '<span class="colab-tarifas-empty">Sin tarifas guardadas. Cargalas en Empresa → Mis servicios para que aparezcan acá.</span>';
+    return;
+  }
+  // El id va en data-id y lo lee un listener delegado: nunca interpolado en
+  // un onclick (ver la regla de ids en js/sanitize.js).
+  box.innerHTML = tarifas.map(t => `
+    <button type="button" class="colab-chip${t.id === _colabTarifaId ? ' is-active' : ''}" data-id="${esc(t.id)}">
+      ${esc(t.nombre)}${t.precio ? `<span class="colab-chip-precio">${fmtM(t.precio, S.currency || 'ARS')}</span>` : ''}
+    </button>`).join('');
+  if (!box._colabListener) {
+    box.addEventListener('click', (ev) => {
+      const chip = ev.target.closest('.colab-chip');
+      if (chip && chip.dataset.id) colabPickTarifa(chip.dataset.id);
+    });
+    box._colabListener = true;
+  }
+}
+
+// Autocompletar del colega con la misma base de clientes: el que te llama a
+// trabajar suele ser el mismo de siempre.
+function _colabClientesDatalist() {
+  const dl = document.getElementById('colab-colegas-dl');
+  if (!dl) return;
+  const db = (typeof getClientDB === 'function') ? getClientDB() : [];
+  dl.innerHTML = db.map(c => `<option value="${esc(c.name || '')}">`).join('');
+}
+
+function colabPickTarifa(id) {
+  const t = (typeof getMisServicios === 'function') ? getMisServicios().find(x => x.id === id) : null;
+  if (!t) return;
+  _colabTarifaId = t.id;
+  const sv = (k, v) => { const el = document.getElementById(k); if (el) el.value = v; };
+  sv('colab-nombre', t.nombre);
+  if (t.precio) sv('colab-precio', t.precio);
+  sv('colab-unidad', t.unidad);
+  _colabRenderTarifas();
+  if (typeof refreshCustomSelects === 'function') refreshCustomSelects();
+  colabSync();
+}
+
+// Total en centavos del diálogo. La cantidad admite medias jornadas, así que
+// el producto se redondea a centavos enteros acá y ese número es el que se
+// guarda: el ítem del snapshot va con el total ya hecho (ver colabGuardar).
+function _colabTotalCents() {
+  const precio = Math.max(0, moneyToCents(gv('colab-precio')));
+  const cant   = Math.max(0, parseFloat(gv('colab-cant')) || 0) || 1;
+  return Math.round(precio * cant);
+}
+
+// Repinta la cuenta y, sobre todo, qué va a pasar al guardar. El estado sale
+// de la fecha, y eso hay que decirlo ANTES de tocar el botón.
+function colabSync() {
+  const cur   = S.currency || 'ARS';
+  const fecha = (gv('colab-fecha') || '').trim() || today();
+  const futura = fecha > today();
+  const cant   = Math.max(0, parseFloat(gv('colab-cant')) || 0) || 1;
+  const unidad = gv('colab-unidad') || 'jornada';
+
+  const totEl = document.getElementById('colab-total');
+  if (totEl) totEl.textContent = fmtM(centsToMoney(_colabTotalCents()), cur);
+  const cuentaEl = document.getElementById('colab-cuenta');
+  if (cuentaEl) {
+    const precio = roundMoney(gv('colab-precio'));
+    cuentaEl.textContent = precio > 0
+      ? `${misSvcCantTxt(cant, unidad)} × ${fmtM(precio, cur)}`
+      : 'Cargá el precio de la tarifa';
+  }
+  const qEl = document.getElementById('colab-quepasa');
+  if (qEl) {
+    qEl.textContent = futura
+      ? `Se agenda para el ${fmtDiaCorto(fecha)}. Va a aparecer en la Agenda y en el aviso de ese día.`
+      : `Queda registrada como realizada el ${fmtDiaCorto(fecha)}. Después vas a poder registrar la factura.`;
+  }
+}
+
+// ─── Guardado ────────────────────────────────
+// Deja la colaboración asentada en el historial. No abre el editor: una
+// colaboración no se edita como presupuesto (no tiene ítems que retocar ni
+// documento que mandar), se corrige desde su propio diálogo.
+function colabGuardar() {
+  const nombre = (gv('colab-nombre') || '').trim();
+  if (nombre.length < 2) { toast('Escribí qué trabajo hiciste', 'err'); return; }
+  const totalCents = _colabTotalCents();
+  const fecha  = sanISODate(gv('colab-fecha')) || today();
+  const cant   = Math.max(0, parseFloat(gv('colab-cant')) || 0) || 1;
+  const unidad = MISSVC_UNIDADES.indexOf(gv('colab-unidad')) >= 0 ? gv('colab-unidad') : 'jornada';
+  const colega = (gv('colab-colega') || '').trim();
+  const tel    = (gv('colab-tel') || '').trim();
+  const lugar  = (gv('colab-lugar') || '').trim();
+  const nota   = (gv('colab-nota') || '').trim();
+  const futura = fecha > today();
+
+  const h = getH();
+  const prev = (_colabEditId != null) ? h.find(x => x.id === _colabEditId) : null;
+
+  // El snapshot arranca de DEF para que no le falte ningún campo que el resto
+  // de la app da por sentado, y se le sacan las dos fechas del ciclo comercial:
+  // una colaboración no vence, y su "emisión" es el día en que se trabaja (es
+  // lo que la pone en el mes correcto del historial y del mapa).
+  const snap = JSON.parse(JSON.stringify(DEF));
+  delete snap.logo;
+  snap.quoteNumber = prev ? prev.quoteNumber : _nextColabNum();
+  snap.dateIssue   = fecha;
+  snap.dateExpiry  = '';
+  snap.clientName    = colega;
+  snap.clientContact = tel;
+  snap.workAddress = _colabEsUbicacion(lugar) ? '' : lugar;
+  snap.workMapLink = _colabEsUbicacion(lugar) ? lugar : '';
+  snap.observations = nota;
+  snap.currency = S.currency || 'ARS';
+  // Un solo ítem, con el total YA hecho y cantidad 1: media jornada no entra
+  // en el qty del editor (itemTotalCents lo fuerza a entero ≥ 1) y el total
+  // guardado tiene que coincidir exacto con el del ítem.
+  snap.items = [{
+    id: Date.now(), type: 'service', species: '',
+    desc: `${nombre} — ${misSvcCantTxt(cant, unidad)}`,
+    price: centsToMoney(totalCents), qty: 1, showQty: false,
+  }];
+  snap.itemsB = []; snap.estItems = [];
+
+  const entry = {
+    _type: 'presupuesto_individual',
+    id: prev ? prev.id : Date.now(),
+    savedAt: prev ? (prev.savedAt || new Date().toISOString()) : new Date().toISOString(),
+    quoteNumber: snap.quoteNumber,
+    clientName: colega,
+    currency: snap.currency,
+    total: centsToMoney(totalCents),
+    itemCount: 1,
+    isEstimative: false,
+    esTrabajoPropio: true,
+    colab: { nombre, precio: roundMoney(gv('colab-precio')), cantidad: cant, unidad },
+    snapshot: snap,
+  };
+  // El estado es del ciclo de vida, no del contenido: al editar no se pisa
+  // (mismo criterio que autoSaveToHistory con los presupuestos). Solo el alta
+  // lo deriva de la fecha.
+  entry.estado = prev ? (prev.estado || 'aceptado') : (futura ? 'aceptado' : 'realizado');
+  if (prev && prev.facturado) entry.facturado = true;
+
+  // Días del trabajo: si ya estaba agendada a varios días con el diálogo de
+  // agenda y el primero no cambió, se respetan todos. Cambiar la fecha en este
+  // diálogo sí reemplaza la programación.
+  const prevFechas = prev ? agFechas(prev) : [];
+  const conservar = prevFechas.length > 1 && prevFechas[0] === fecha;
+  entry.fechasTrabajo = conservar ? prevFechas : [fecha];
+  entry.fechaTrabajo  = entry.fechasTrabajo[0];
+  if (prev && prev.diasEstimados) entry.diasEstimados = prev.diasEstimados;
+
+  if (prev) h.splice(h.indexOf(prev), 1, entry); else h.unshift(entry);
+  setH(h);
+  if (colega && typeof saveClientToDB === 'function') saveClientToDB(colega, tel, snap.workAddress, snap.workMapLink);
+  colabClose();
+  renderHistory();
+  if (typeof renderMorningBanner === 'function') renderMorningBanner();
+  if (typeof mapaRefresh === 'function') mapaRefresh();
+
+  if (prev) { toast('Colaboración actualizada', 'ok'); return; }
+  toast(futura
+    ? `Colaboración agendada para el ${fmtDiaCorto(fecha)}`
+    : `Colaboración registrada · ${fmtM(entry.total, entry.currency)}`, 'ok', 3500);
+  // Recién hecha: el cierre del trabajo es el mismo de siempre (datos de pago
+  // + registrar factura), que es a lo que apunta todo esto.
+  if (!futura) _ofrecerCierreTrabajo(entry);
 }
 
 // ─── ESTADO COMERCIAL ────────────────────────
@@ -12127,7 +12743,12 @@ function irARegistrarFactura(id) {
   const setVal = (elId, v) => { const el = document.getElementById(elId); if (el) el.value = v; };
   setVal('fact-monto',   e.total || '');
   setVal('fact-cliente', e.clientName || '');
-  setVal('fact-desc',    'Presupuesto ' + (e.quoteNumber || ''));
+  // El concepto de una colaboración es el trabajo que se prestó ("Día de
+  // trabajo como trepador — 2 jornadas"), no un número de presupuesto: es lo
+  // que después se lee en la lista de facturas y en el recibo.
+  setVal('fact-desc',    esTrabajoPropio(e) && e.colab
+    ? `${e.colab.nombre} — ${misSvcCantTxt(e.colab.cantidad, e.colab.unidad)}`
+    : 'Presupuesto ' + (e.quoteNumber || ''));
   _pendingFacturaQuote = { id: e.id, quoteNumber: e.quoteNumber || '' };
   const form = document.querySelector('#panel-facturacion .fact-form');
   if (form && form.scrollIntoView) form.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -13697,7 +14318,9 @@ function renderHistory() {
   // Banner de seguimientos pendientes (arriba del listado)
   if (typeof renderFollowupBanner === 'function') renderFollowupBanner();
 
-  if (countEl) countEl.textContent = h.length;
+  // El contador dice PRESUPUESTOS. Las colaboraciones no son presupuestos y
+  // sumarlas acá haría creer que se cotizó más de lo que se cotizó.
+  if (countEl) countEl.textContent = h.filter(e => !esTrabajoPropio(e)).length;
 
   // Botón Agenda del encabezado: contador de trabajos aceptados y estado
   // del toggle (activo = filtro "aceptado" puesto → muestra "Ver todos").
@@ -13748,6 +14371,13 @@ function renderHistory() {
   const estadoFilt = (estadoEl?.value || '').trim();
   if (estadoFilt) h = h.filter(e => (e.estado || 'borrador') === estadoFilt);
 
+  // Filtro por tipo: presupuestos, colaboraciones o todo mezclado (default).
+  // Aislar las colaboraciones es la vista de "qué trabajé para colegas".
+  const tipoEl   = document.getElementById('hist-tipo-filter');
+  const tipoFilt = (tipoEl?.value || '').trim();
+  if (tipoFilt === 'colab')        h = h.filter(e =>  esTrabajoPropio(e));
+  else if (tipoFilt === 'presup')  h = h.filter(e => !esTrabajoPropio(e));
+
   // Agenda: al filtrar por "aceptado" el listado se ordena cronológicamente
   // por la fecha más próxima entre trabajo agendado y recontacto (los sin
   // nada al final) — así el filtro funciona como agenda de pendientes,
@@ -13769,7 +14399,7 @@ function renderHistory() {
     });
   }
 
-  const hasFilters = !!(q || clientFilt || estadoFilt);
+  const hasFilters = !!(q || clientFilt || estadoFilt || tipoFilt);
   const groupedByClient = clientFilt && h.length > 0;
 
   if (!h.length) {
@@ -13779,26 +14409,91 @@ function renderHistory() {
 
   // Summary when filtered by client (acumulado total de ese cliente)
   let summaryHtml = '';
+
+  // Subtotal propio de las colaboraciones: el único lugar del historial donde
+  // se las suma, y solo cuando el usuario pidió verlas aparte. Nunca se mezcla
+  // con el acumulado de presupuestos.
+  if (tipoFilt === 'colab') {
+    const totColab = h.reduce((s, e) => s + (e.total || 0), 0);
+    const curC = h[0].currency || 'ARS';
+    summaryHtml += `<div class="hcolab-resumen">
+      <span class="hcolab-resumen-n">${colabCantTxt(h.length)}</span>
+      <span class="hcolab-resumen-tot">${fmtM(totColab, curC)}</span>
+      <span class="hcolab-resumen-nota">Trabajos propios. No entran en las estadísticas de presupuestos.</span>
+    </div>`;
+  }
   if (groupedByClient) {
     // Los presupuestos reemplazados por una versión posterior NO suman: son el
     // mismo trabajo cotizado dos veces y contarlos infla el acumulado del
     // cliente (y con él la idea de cuánto se le presupuestó de verdad).
-    const totalPresupuestado = h.reduce((sum,e)=>sum+(esReemplazado(e)?0:(e.total||0)), 0);
+    // Las colaboraciones tampoco: no se le presupuestaron a ese cliente, se
+    // trabajaron para él. Su plata se ve en Facturación y en el subtotal
+    // propio del filtro de colaboraciones.
+    const totalPresupuestado = h.reduce((sum,e)=>sum+((esReemplazado(e)||esTrabajoPropio(e))?0:(e.total||0)), 0);
     const cur = h[0].currency||'ARS';
+    // El conteo también dice PRESUPUESTOS: con un colega que solo dio
+    // colaboraciones, "Presupuestos 2 · Total $0" era una contradicción.
+    const nPresup = h.filter(e => !esTrabajoPropio(e)).length;
+    const nColab  = h.length - nPresup;
+    const colabDelCliente = nColab ? `
+      <div style="width:1px;height:32px;background:#a7f3d0"></div>
+      <div><div style="font-size:10px;font-weight:700;color:var(--accent-fg);text-transform:uppercase;letter-spacing:.5px">Colaboraciones</div>
+        <div style="font-size:14px;font-weight:700;color:#115e59">${nColab} · ${fmtM(h.reduce((s,e)=>s+(esTrabajoPropio(e)?(e.total||0):0),0), cur)}</div></div>` : '';
     summaryHtml = `<div style="background:var(--accent-light);border:1px solid #a7f3d0;border-radius:8px;padding:10px 14px;margin-bottom:10px;display:flex;gap:20px;align-items:center;flex-wrap:wrap">
       <div><div style="font-size:10px;font-weight:700;color:var(--accent-fg);text-transform:uppercase;letter-spacing:.5px">Cliente</div>
         <div style="font-size:14px;font-weight:700;color:var(--text)">${esc(h[0].clientName||'—')}</div></div>
       <div style="width:1px;height:32px;background:#a7f3d0"></div>
       <div><div style="font-size:10px;font-weight:700;color:var(--accent-fg);text-transform:uppercase;letter-spacing:.5px">Presupuestos</div>
-        <div style="font-size:14px;font-weight:700;color:var(--text)">${h.length}</div></div>
+        <div style="font-size:14px;font-weight:700;color:var(--text)">${nPresup}</div></div>
       <div style="width:1px;height:32px;background:#a7f3d0"></div>
       <div><div style="font-size:10px;font-weight:700;color:var(--accent-fg);text-transform:uppercase;letter-spacing:.5px">Total acumulado</div>
         <div style="font-size:14px;font-weight:700;color:var(--accent-fg)">${fmtM(totalPresupuestado,cur)}</div></div>
+      ${colabDelCliente}
     </div>`;
   }
 
+  // Helper: HTML para una COLABORACIÓN (trabajo propio para un colega).
+  // Tarjeta aparte y no una variante de la de presupuesto: acá no hay nada
+  // que cargar en el editor, ni versión, ni PDF que compartir. Lo que sí
+  // comparte es el ciclo de trabajo — estado, día agendado, clima y el camino
+  // a la factura.
+  const renderColab = (e) => {
+    const est = e.estado || 'realizado';
+    const [txtCol, bgCol] = ESTADO_COLORS[est] || ESTADO_COLORS.realizado;
+    const estadoOpts = ESTADOS.map(s =>
+      `<option value="${s}"${s===est?' selected':''}>${estadoLabel(s)}</option>`
+    ).join('');
+    const c = e.colab || {};
+    const tieneDir = !!((e.snapshot && (e.snapshot.workMapLink || e.snapshot.workAddress) || '').trim());
+    const tieneTel = !!histClientPhone(e);
+    const detalle = c.nombre
+      ? `${esc(c.nombre)} · ${esc(misSvcCantTxt(c.cantidad, c.unidad))}`
+      : 'Trabajo propio';
+    return `
+    <div class="hitem is-colab" data-id="${e.id}">
+      <div class="htop">
+        <div class="hinfo">
+          <div class="hnum">${esc(e.quoteNumber||'—')}<span class="hbadge-colab">Colaboración</span>${e.facturado?'<span class="hbadge-estado" style="color:#065f46;background:#d1fae5">✓ Facturado</span>':''}</div>
+          ${!groupedByClient?`<div class="hclient ${!e.clientName?'is-draft':''}">${esc(e.clientName||'(sin colega)')}</div>`:''}
+        </div>
+        <button class="btn btn-p btn-sm hcargar" onclick="abrirColaboracion(${e.id})" title="Editar esta colaboración">${icon('pencil')} Editar</button>
+      </div>
+      <div class="hmeta">${esc(e.currency||'')} ${fmtM(e.total||0,e.currency||'ARS')} · ${detalle} · ${fmtD(((e.snapshot&&e.snapshot.dateIssue)||e.savedAt||'').slice(0,10))}</div>
+      <div class="hacts">
+        <select class="hestado-sel" style="color:${txtCol};background-color:${bgCol};border-color:${bgCol}" onchange="setEstadoHistory(${e.id}, this.value)" title="Cambiar estado" aria-label="Estado de la colaboración">${estadoOpts}</select>
+        ${agendaChipFor(e)}
+        ${typeof climaChipForEntry === 'function' ? climaChipForEntry(e) : ''}
+        ${tieneTel ? `<button class="btn btn-g btn-sm" onclick="chatWhatsappHistory(${e.id})" title="Abrir el chat de WhatsApp con el colega" aria-label="Chat de WhatsApp">${icon('message')} Chat</button>` : ''}
+        ${tieneDir ? `<button class="btn btn-g btn-sm" onclick="comoLlegar(${e.id})" title="Cómo llegar al lugar del trabajo" aria-label="Cómo llegar">${icon('pin')} Llegar</button>` : ''}
+        ${!e.facturado && (e.total||0) > 0 ? `<button class="btn btn-g btn-sm" onclick="irARegistrarFactura(${e.id})" title="Registrar la factura de esta colaboración">${icon('file')} Facturar</button>` : ''}
+        <button class="btn-icon-del" onclick="delFromHistory(${e.id})" title="Eliminar colaboración" aria-label="Eliminar colaboración">${icon('trash')}</button>
+      </div>
+    </div>`;
+  };
+
   // Helper: HTML para un entry individual del historial
   const renderEntry = (e) => {
+    if (esTrabajoPropio(e)) return renderColab(e);
     const est = e.estado || 'borrador';
     const [txtCol, bgCol] = ESTADO_COLORS[est] || ESTADO_COLORS.borrador;
     const estadoOpts = ESTADOS.map(s =>
@@ -13875,17 +14570,27 @@ function renderHistory() {
   groups.forEach((entries, key) => {
     const isOpen = _expandedMonths.has(key);
     // Igual que el acumulado por cliente: el presupuesto reemplazado por una
-    // versión posterior no suma (es el mismo trabajo cotizado dos veces).
-    const monthTotal = entries.reduce((s,e)=>s+(esReemplazado(e)?0:(e.total||0)), 0);
+    // versión posterior no suma (es el mismo trabajo cotizado dos veces), y
+    // las colaboraciones tampoco — el total del mes es lo PRESUPUESTADO.
+    const presup = entries.filter(e => !esTrabajoPropio(e));
+    const colabs = entries.filter(esTrabajoPropio);
+    const monthTotal = presup.reduce((s,e)=>s+(esReemplazado(e)?0:(e.total||0)), 0);
+    const colabTotal = colabs.reduce((s,e)=>s+(e.total||0), 0);
     const cur = entries[0].currency || 'ARS';
+    // Renglón aparte, fuera del encabezado: las colaboraciones del mes se ven
+    // sin tener que desplegar nada, y sin tocar el número de presupuestos.
+    const colabLinea = colabs.length ? `
+        <div class="hmonth-colab">${icon('users')} ${colabCantTxt(colabs.length)}
+          <span class="hmonth-colab-tot">${fmtM(colabTotal, cur)}</span></div>` : '';
     html += `
       <div class="hmonth ${isOpen?'is-open':''}" data-month="${key}">
         <button type="button" class="hmonth-header" onclick="toggleHistoryMonth('${key}')">
           <span class="hmonth-title">${icon('calendar')} ${_monthLabel(key)}</span>
-          <span class="hmonth-count">${entries.length}</span>
+          <span class="hmonth-count">${presup.length}</span>
           <span class="hmonth-total">${fmtM(monthTotal, cur)}</span>
           <span class="hmonth-chevron">▾</span>
         </button>
+        ${colabLinea}
         <div class="hmonth-body">
           ${isOpen ? entries.map(renderEntry).join('') : ''}
         </div>
@@ -13909,9 +14614,11 @@ function goToHistoryEntry(id) {
   const searchEl = document.getElementById('hist-search');
   const clientEl = document.getElementById('hist-client-filter');
   const estadoEl = document.getElementById('hist-estado-filter');
+  const tipoEl   = document.getElementById('hist-tipo-filter');
   if (searchEl) searchEl.value = '';
   if (clientEl) clientEl.value = '';
   if (estadoEl) estadoEl.value = '';
+  if (tipoEl)   tipoEl.value = '';
   // Asegurar que el mes que contiene el presupuesto quede desplegado.
   _userTouchedMonths = true;
   _expandedMonths.add(_monthKey(e));
@@ -14060,6 +14767,10 @@ function buildBackupObject() {
     species: getSpeciesDB(),
     services: (typeof getServicesDB === 'function') ? getServicesDB() : [],
     servicesPinned: (typeof getPinnedServices === 'function') ? getPinnedServices() : [],
+    // Tarifas propias (lo que el usuario cobra cuando trabaja para un colega).
+    // Las escribió él y sin ellas el alta rápida de colaboraciones arranca
+    // vacía en el teléfono nuevo: va al backup.
+    misServicios: (typeof getMisServicios === 'function') ? getMisServicios() : [],
     phrases: phrases,
     facturas: facturas,
     tope: tope,
@@ -14091,7 +14802,7 @@ function buildBackupObject() {
 //
 // VA AL BACKUP (datos y configuración del usuario):
 //   pq_s (estado) · pq_h (historial) · pq_clients · pq_species · pq_services
-//   pq_services_pinned · pq_frases_* (+ pq_phrases_seeded) · pq_facturas
+//   pq_services_pinned · pq_mis_servicios · pq_frases_* (+ pq_phrases_seeded) · pq_facturas
 //   pq_tope_anual · pq_recibo_seq · pq_agenda_notes · pq_notif_log
 //   pq_followup · pq_gcal_id · fotos (IndexedDB, vía buildPhotoMap)
 //
@@ -14340,6 +15051,7 @@ function _restoreTouchedKeys() {
    typeof SPECIES_KEY !== 'undefined' && SPECIES_KEY,
    typeof SERVICES_KEY !== 'undefined' && SERVICES_KEY,
    typeof SERVICES_PINNED_KEY !== 'undefined' && SERVICES_PINNED_KEY,
+   typeof MISSVC_KEY !== 'undefined' && MISSVC_KEY,
    typeof PHRASE_SEEDED_KEY !== 'undefined' && PHRASE_SEEDED_KEY,
    typeof FACT_KEY !== 'undefined' && FACT_KEY,
    typeof TOPE_KEY !== 'undefined' && TOPE_KEY,
@@ -14387,6 +15099,10 @@ function applyBackupObject(raw) {
     }
     if(d.servicesPinned && typeof SERVICES_PINNED_KEY !== 'undefined') {
       safeSetLS(SERVICES_PINNED_KEY, JSON.stringify(d.servicesPinned));
+    }
+    // Tarifas propias (backups viejos no las traen → se deja lo que haya acá).
+    if(Array.isArray(d.misServicios) && typeof MISSVC_KEY !== 'undefined') {
+      safeSetLS(MISSVC_KEY, JSON.stringify(d.misServicios));
     }
     if(d.phrases && typeof PHRASE_KEYS !== 'undefined') {
       // Marcar como "sembrado" para que no se vuelvan a sembrar los defaults
@@ -17141,6 +17857,12 @@ let _mapaCercaList = [];     // pendientes cercanos (para armar la ruta)
 let _mapaUserLatLng = null;  // [lat,lng] de la última "cerca mío"
 let _mapaHighlight = new Set(); // ids resaltados (cerca mío)
 let _mapaGeoRef = null;      // [lat,lng] de referencia para reconstruir Plus Codes cortos
+// Las colaboraciones (trabajo propio para un colega) arrancan OCULTAS. El mapa
+// es la foto de dónde se presupuestó; los trabajos propios son otra cosa y se
+// prenden cuando el usuario los quiere ver. Aun prendidas nunca entran en los
+// números de la zona (ver mapaUpdateZonaStats).
+let _mapaVerColab = false;
+const MAPA_COLAB_COLOR = '#0d9488';
 
 // Distancia en km entre dos coordenadas (haversine).
 function _haversineKm(lat1, lng1, lat2, lng2) {
@@ -17360,11 +18082,21 @@ function mapaBuildFilters() {
     return `<label class="mapa-filter${on ? ' is-on' : ''}">
       <input type="checkbox" ${on ? 'checked' : ''} onchange="mapaToggleFilter('${s}', this.checked)">
       <span class="mapa-filter-dot" style="background:${txt}"></span>${estadoLabel(s)}</label>`;
-  }).join('');
+  }).join('')
+  // Interruptor de colaboraciones: separado de los estados porque no es un
+  // estado sino OTRO tipo de trabajo, y apagado por defecto.
+  + `<label class="mapa-filter mapa-filter-colab${_mapaVerColab ? ' is-on' : ''}" title="Trabajos propios para colegas. Nunca suman a los números de la zona.">
+      <input type="checkbox" ${_mapaVerColab ? 'checked' : ''} onchange="mapaToggleColab(this.checked)">
+      <span class="mapa-filter-dot" style="background:${MAPA_COLAB_COLOR}"></span>Colaboraciones</label>`;
 }
 function mapaToggleFilter(s, on) {
   if (!_mapaFilterSet) _mapaFilterSet = new Set(ESTADOS);
   if (on) _mapaFilterSet.add(s); else _mapaFilterSet.delete(s);
+  mapaBuildFilters();
+  mapaRefresh();
+}
+function mapaToggleColab(on) {
+  _mapaVerColab = !!on;
   mapaBuildFilters();
   mapaRefresh();
 }
@@ -17386,7 +18118,10 @@ function mapaRefresh() {
   const groups = new Map();
   getH().forEach(e => {
     const est = e.estado || 'borrador';
-    if (!filt.has(est)) return;
+    // Colaboraciones: solo si el usuario prendió su interruptor, y NUNCA
+    // filtradas por estado (su estado es del trabajo propio, no comercial).
+    if (esTrabajoPropio(e)) { if (!_mapaVerColab) return; }
+    else if (!filt.has(est)) return;
     // El reemplazado no va al mapa: su versión nueva está en el mismo punto y
     // dos marcas para el mismo trabajo hacen dudar de cuál abrir.
     if (esReemplazado(e)) return;
@@ -17418,10 +18153,14 @@ function mapaRefresh() {
 }
 
 function mapaMarker(L, e, est, ll) {
-  const [txt] = ESTADO_COLORS[est] || ESTADO_COLORS.borrador;
+  // La colaboración lleva color propio (teal): no comparte la paleta de los
+  // estados comerciales porque no es una etapa de venta.
+  const [txt] = esTrabajoPropio(e)
+    ? [MAPA_COLAB_COLOR]
+    : (ESTADO_COLORS[est] || ESTADO_COLORS.borrador);
   const hl = _mapaHighlight.has(e.id);
   const icon = L.divIcon({
-    className: 'mapa-pin' + (hl ? ' is-hl' : ''),
+    className: 'mapa-pin' + (hl ? ' is-hl' : '') + (esTrabajoPropio(e) ? ' is-colab' : ''),
     html: `<span style="background:${txt}"></span>`,
     iconSize: [20, 20], iconAnchor: [10, 10], popupAnchor: [0, -10],
   });
@@ -17442,12 +18181,17 @@ function mapaClusterMarker(L, g) {
   const items = g.items;
   const hl = items.some(x => _mapaHighlight.has(x.e.id));
   // Segmentos del anillo por estado, en el orden canónico de ESTADOS.
+  // Las colaboraciones son su propio segmento (teal): en el mismo punto puede
+  // haber un presupuesto del cliente y una jornada trabajada para un colega.
   const byEst = {};
-  items.forEach(x => { byEst[x.est] = (byEst[x.est] || 0) + 1; });
+  items.forEach(x => {
+    const k = esTrabajoPropio(x.e) ? 'colab' : x.est;
+    byEst[k] = (byEst[k] || 0) + 1;
+  });
   const n = items.length;
   let acc = 0;
-  const segs = ESTADOS.filter(s => byEst[s]).map(s => {
-    const [txt] = ESTADO_COLORS[s] || ESTADO_COLORS.borrador;
+  const segs = ESTADOS.concat(['colab']).filter(s => byEst[s]).map(s => {
+    const [txt] = (s === 'colab') ? [MAPA_COLAB_COLOR] : (ESTADO_COLORS[s] || ESTADO_COLORS.borrador);
     const from = acc / n * 360, to = (acc + byEst[s]) / n * 360;
     acc += byEst[s];
     return `${txt} ${from}deg ${to}deg`;
@@ -17505,6 +18249,22 @@ function mapaPopupHtml(e, est) {
   const num = esc(e.quoteNumber || '—');
   const cur = e.currency || 'ARS';
   const opts = ESTADOS.map(s => `<option value="${s}"${s === est ? ' selected' : ''}>${estadoLabel(s)}</option>`).join('');
+  // Colaboración: no hay documento que ver ni presupuesto que cargar en el
+  // editor. Se edita en su propio diálogo.
+  if (esTrabajoPropio(e)) {
+    const c = e.colab || {};
+    const [txtC, bgC] = ESTADO_COLORS[est] || ESTADO_COLORS.realizado;
+    return `<div class="mapa-popup">
+      <div class="mapa-popup-cli">${cli}<span class="hbadge-colab">Colaboración</span></div>
+      <div class="mapa-popup-meta">${num} · ${fmtM(e.total || 0, cur)} · ${fmtD(_mapaDateOf(e))}</div>
+      ${c.nombre ? `<div class="mapa-popup-meta">${esc(c.nombre)} · ${esc(misSvcCantTxt(c.cantidad, c.unidad))}</div>` : ''}
+      <select class="mapa-popup-estado" style="color:${txtC};background:${bgC}" onchange="mapaSetEstado(${e.id}, this.value)" aria-label="Estado">${opts}</select>
+      <div class="mapa-popup-acts">
+        <button class="btn btn-p btn-sm" onclick="comoLlegar(${e.id})">${icon('pin')} Llegar</button>
+      </div>
+      <button class="mapa-popup-edit" onclick="abrirColaboracion(${e.id})" title="Editar esta colaboración">${icon('pencil')} Editar…</button>
+    </div>`;
+  }
   const [txt, bg] = ESTADO_COLORS[est] || ESTADO_COLORS.borrador;
   return `<div class="mapa-popup">
     <div class="mapa-popup-cli">${cli}</div>
@@ -17599,19 +18359,34 @@ function mapaUpdateZonaStats() {
   const b = _mapa.getBounds();
   const counts = {};
   let total = 0, cur = '', totalMarks = 0;
+  // Las colaboraciones se cuentan APARTE. Nunca entran en counts ni en total:
+  // una colaboración nace aceptada o realizada y jamás perdida, así que
+  // sumarla subiría sola la conversión y diría que se aceptaron más trabajos
+  // de los que de verdad se aceptaron. Ver test/trabajo-propio.test.cjs.
+  let colabN = 0, colabTotal = 0;
   _mapaLayer.eachLayer(m => {
     if (!m.getLatLng || !b.contains(m.getLatLng())) return;
     // Cada marca puede representar varios presupuestos (grupo apilado): se
     // cuentan todos sus entries (m._entries), no la marca.
     (m._entries || []).forEach(e => {
+      if (!cur && e.currency) cur = e.currency;
+      if (esTrabajoPropio(e)) { colabN++; colabTotal += e.total || 0; return; }
       const est = e.estado || 'borrador';
       counts[est] = (counts[est] || 0) + 1;
       total += e.total || 0;
       totalMarks++;
-      if (!cur && e.currency) cur = e.currency;
     });
   });
-  if (!totalMarks) { box.innerHTML = '<div class="mapa-hint">Acercá o paneá el mapa a una zona con presupuestos para ver sus números.</div>'; return; }
+  // Panel propio de las colaboraciones visibles en la zona.
+  const colabBox = colabN ? `
+    <div class="mapa-zona-colab">${icon('users')} ${colabCantTxt(colabN)} en esta zona
+      <b>${fmtM(colabTotal, cur || 'ARS')}</b>
+      <span class="mapa-hint-inline">aparte de los números de arriba</span></div>` : '';
+  if (!totalMarks) {
+    box.innerHTML = colabBox
+      || '<div class="mapa-hint">Acercá o paneá el mapa a una zona con presupuestos para ver sus números.</div>';
+    return;
+  }
   const c = k => counts[k] || 0;
   const ganados = c('aceptado') + c('realizado');
   const decididos = c('enviado') + c('aceptado') + c('realizado') + c('perdido');
@@ -17623,7 +18398,8 @@ function mapaUpdateZonaStats() {
   box.innerHTML = `
     <div class="mapa-zona-title">En esta zona: ${totalMarks} presupuesto(s)</div>
     <div class="mapa-zona-chips">${chips}</div>
-    <div class="mapa-zona-conv">${conv != null ? `Conversión: <b>${conv}%</b> <span class="mapa-hint-inline">(aceptado+realizado / decididos)</span>` : 'Conversión: —'}${total ? ` · Presupuestado: <b>${fmtM(total, cur || 'ARS')}</b>` : ''}</div>`;
+    <div class="mapa-zona-conv">${conv != null ? `Conversión: <b>${conv}%</b> <span class="mapa-hint-inline">(aceptado+realizado / decididos)</span>` : 'Conversión: —'}${total ? ` · Presupuestado: <b>${fmtM(total, cur || 'ARS')}</b>` : ''}</div>
+    ${colabBox}`;
 }
 
 // "Cerca mío": ubica al usuario y resalta pendientes de campo en 15 km.
@@ -17645,7 +18421,11 @@ function mapaCercaMio(btn) {
       const RADIO = 15; // km
       const near = [];
       getH().forEach(e => {
-        if (!PENDIENTES_CAMPO.includes(e.estado || 'borrador')) return;
+        // Una colaboración agendada también es trabajo por hacer, pero solo
+        // entra si el usuario prendió su interruptor: si no, quedaría
+        // resaltada en la lista sin pin que la respalde en el mapa.
+        if (esTrabajoPropio(e)) { if (!_mapaVerColab || (e.estado || '') !== 'aceptado') return; }
+        else if (!PENDIENTES_CAMPO.includes(e.estado || 'borrador')) return;
         const ll = entryLatLng(e);
         if (!ll) return;
         const dist = _haversineKm(ulat, ulng, ll[0], ll[1]);
@@ -18799,11 +19579,18 @@ function calBuildIndex() {
       // se adjuntan al evento de trabajo para verlas en la Agenda (in-app).
       // NO se envían a Google Calendar ni al .ics (esos salen de la app).
       const notas = (typeof snapshotIntNotes === 'function') ? snapshotIntNotes(e.snapshot) : [];
+      // Una colaboración se ve como cualquier otro día de trabajo (mismo
+      // concepto, mismo clima, misma ruta), pero el subtítulo dice qué es y
+      // para qué tarifa: en la Agenda, "Martín" solo no distingue una poda
+      // propia de una jornada trabajada para un colega.
+      const colabSub = esTrabajoPropio(e)
+        ? 'Colaboración' + ((e.colab && e.colab.nombre) ? ' · ' + e.colab.nombre : '')
+        : '';
       fechas.forEach((f, i) => {
         const dnum = total > 1 ? ` · día ${i + 1} de ${total}` : '';
         // Pronóstico del día del trabajo (cache local; null si no hay dato).
         const clima = (typeof climaDe === 'function') ? climaDe(e, f) : null;
-        push(f, { tipo: 'trabajo', title: quien, sub: (num ? num : '') + dnum, entryId: e.id, tel, mapUrl, notes: notas, clima });
+        push(f, { tipo: 'trabajo', title: quien, sub: (colabSub || (num ? num : '')) + dnum, entryId: e.id, tel, mapUrl, notes: notas, clima });
       });
     }
 
@@ -20571,7 +21358,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     const ids = ['confirm-overlay','agenda-overlay','day-alert-overlay',
       'share-overlay','moverlay','notes-overlay','phrases-overlay',
       'photo-viewer-overlay','note-edit-overlay','doc-preview-overlay',
-      'clima-overlay','notif-overlay','nv-overlay'];
+      'clima-overlay','notif-overlay','nv-overlay','colab-overlay'];
     const els = ids.map(id => document.getElementById(id)).filter(Boolean);
     if (!els.length) return;
     const sync = () => document.body.classList.toggle(
