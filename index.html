@@ -6178,13 +6178,23 @@ function marcarSeguimientoHecho(id) {
   const h = getH();
   const e = h.find(x => x.id === id);
   if (!e) return;
+  const prev = e.seguimientoHechoEn;
   e.seguimientoHechoEn = new Date().toISOString();
   setH(h);
   renderHistory();
   if (typeof renderFollowupBanner === 'function') renderFollowupBanner();
   toast('✓ Seguimiento registrado', 'ok');
+  // Bitácora + Deshacer, igual que el ✓ del vencimiento: es el mismo gesto
+  // (apagar un aviso que te recuerda un cliente sin respuesta).
+  if (!prev && typeof logNotif === 'function') logNotif({
+    icon: '📨', kind: 'seguimiento',
+    text: `Seguimiento registrado: ${(e.clientName || '').trim() || '(sin nombre)'}${e.quoteNumber ? ` (N° ${e.quoteNumber})` : ''}`,
+    action: { type: 'entry', id: e.id },
+    undo: { type: 'segHecho', id: e.id },
+  });
   // Ya no hay que recordar este: actualizar la lista en el Worker de push.
   if (S.pushEnabled && typeof syncPushFollowups === 'function') syncPushFollowups().catch(() => {});
+  if (typeof updateNotifBadge === 'function') updateNotifBadge();
 }
 
 // Días transcurridos entre una fecha de CALENDARIO (YYYY-MM-DD) y hoy, en
@@ -6241,17 +6251,29 @@ function getExpiredQuotes() {
 }
 
 // Marca que ya se vio el vencimiento de un presupuesto (deja de avisar).
+// Único camino para descartar un vencimiento: lo usan el ✓ del banner y el de
+// la campanita. Antes el del banner no dejaba rastro, así que el MISMO toque
+// era reversible o no según desde dónde se diera.
 function marcarVencimientoVisto(id) {
   const h = getH();
   const e = h.find(x => x.id === id);
-  if (!e) return;
+  if (!e || e.vencimientoVistoEn) return;
   e.vencimientoVistoEn = new Date().toISOString();
   setH(h);
   renderHistory();
   if (typeof renderExpiryBanner === 'function') renderExpiryBanner();
   toast('✓ Listo, no te aviso más de este', 'ok');
+  // Bitácora + Deshacer: apagar el aviso de un presupuesto no es poca cosa —
+  // es el que te recuerda que ese cliente quedó sin respuesta.
+  if (typeof logNotif === 'function') logNotif({
+    icon: '⏳', kind: 'vencimiento',
+    text: `Listo, no te aviso más del vencimiento: ${(e.clientName || '').trim() || '(sin nombre)'}${e.quoteNumber ? ` (N° ${e.quoteNumber})` : ''}`,
+    action: { type: 'entry', id: e.id },
+    undo: { type: 'vencVisto', id: e.id },
+  });
   // Ya no hay que avisar de este: actualizar la lista en el Worker de push.
   if (S.pushEnabled && typeof syncPushFollowups === 'function') syncPushFollowups().catch(() => {});
+  if (typeof updateNotifBadge === 'function') updateNotifBadge();
 }
 
 // Reemplaza las variables de una plantilla de WhatsApp. Único lugar donde se
@@ -6795,7 +6817,15 @@ const PDF_FONTS  = ['auto','dm','plex','lora-inter','inter'];
 // (#panel-editor[data-vista]), así que no puede entrar sin lista blanca.
 const EDITOR_VIEWS = ['clasica','fichas','consola'];
 const NOTE_TIPOS = ['visita'];   // sin tipo = nota común
-const NOTIF_KINDS = ['info','ok','warn','err'];
+// Los `kind` que guarda la bitácora. Estaban solo los cuatro tonos genéricos,
+// así que sanEnum convertía en 'info' los conceptos reales que escribe
+// logNotif (estado, recontacto, visita, clima, vencimiento, seguimiento) —
+// callado, y para siempre, porque migrateSanitizeStored corre al arrancar.
+// Hoy el panel no pinta por kind, pero es el dato que dice de qué era el
+// aviso: perderlo en el backup es perder la bitácora que la campanita existe
+// para conservar.
+const NOTIF_KINDS = ['info','ok','warn','err',
+  'estado','recontacto','visita','clima','vencimiento','seguimiento','nota','trabajo'];
 
 function sanStr(v, max) { return typeof v === 'string' ? v.slice(0, max || 2000) : ''; }
 function sanBool(v) { return !!v; }
@@ -6972,11 +7002,26 @@ function sanitizeNotifAction(a) {
 }
 function sanitizeNotifUndo(u) {
   if (!u || typeof u !== 'object' || Array.isArray(u)) return null;
-  const type = sanEnum(u.type, ['estado','recontacto','note'], '');
+  // La lista tiene que incluir TODO tipo de deshacer que escriba logNotif: lo
+  // que no esté acá se descarta al sanitizar (y migrateSanitizeStored sanea al
+  // arrancar), así que el botón "Deshacer" desaparecería de la bitácora sin
+  // aviso. Al agregar un undo nuevo, agregarlo también acá.
+  const type = sanEnum(u.type, ['estado','recontacto','note','vencVisto','segHecho'], '');
   if (!type) return null;
   const out = { type: type };
   if (type === 'note') out.id = sanTextId(u.id, 'n_');
-  else                 out.id = sanNumId(u.id);
+  else {
+    // El id apunta a OTRA entrada del historial, como versionDe/reemplazadoPor:
+    // acá no sirve el sanNumId de siempre, que ante un valor inválido inventa
+    // un id nuevo — el "Deshacer" quedaría apuntando a un presupuesto que no
+    // es, y revivir el vencimiento ajeno es peor que perder el botón. Lo que
+    // no parsea tira el deshacer entero; la entrada de la bitácora queda, sin
+    // botón.
+    const v = u.id;
+    if (typeof v === 'number' && Number.isFinite(v)) out.id = v;
+    else if (typeof v === 'string' && /^\d{1,20}$/.test(v)) out.id = parseInt(v, 10);
+    else return null;
+  }
   if (type === 'estado')     out.prev = sanEnum(u.prev, ESTADOS, 'borrador');
   if (type === 'recontacto') {
     const f = sanISODate(u.recontactoEn); if (f) out.recontactoEn = f;
@@ -12940,22 +12985,11 @@ function getVisitasDeHoy() {
 
 // Cierra una visita desde el banner: la marca hecha (calToggleNote persiste y
 // re-renderiza la Agenda) y actualiza el banner (baja a N-1 o desaparece).
+// La bitácora + "Deshacer" los pone calToggleNote, que es el camino común con
+// la Agenda: duplicarlo acá dejaba dos entradas por un solo toque.
 function marcarVisitaHecha(id) {
-  const nota = (typeof getNotes === 'function') ? getNotes().find(n => n && n.id === id) : null;
   if (typeof calToggleNote === 'function') calToggleNote(id);
   renderMorningBanner();
-  // Bitácora + Deshacer: cerrar una visita desde el banner también se toca sin
-  // querer. Solo si quedó marcada hecha (calToggleNote alterna).
-  if (nota && typeof logNotif === 'function') {
-    const cli = (nota.cliente || '').trim();
-    const t = (nota.texto || '').trim() || cli || 'Visita';
-    logNotif({
-      icon: '📍', kind: 'visita',
-      text: `Visita marcada hecha: ${t}`,
-      action: { type: 'tab', tab: 'agenda' },
-      undo: { type: 'note', id: id },
-    });
-  }
 }
 
 // Para un trabajo multi-día, qué número de día es HOY y cuántos hay en total
@@ -19508,6 +19542,9 @@ function calSaveNoteEdit() {
     ? `${eraVisita ? 'Visita movida' : 'Nota movida'} del ${fmtD(antes)} al ${fmtD(fecha)}`
     : 'Nota actualizada', 'ok', movida ? 3200 : undefined);
 }
+// Marcar/desmarcar hecha una nota o visita. El registro en la bitácora vive
+// ACÁ y no en quien llama: el mismo toque se da desde la Agenda y desde el
+// banner del día, y antes solo el del banner dejaba "Deshacer".
 function calToggleNote(id) {
   const notes = getNotes();
   const n = notes.find(x => x.id === id);
@@ -19515,6 +19552,18 @@ function calToggleNote(id) {
   n.hecho = !n.hecho;
   setNotes(notes);
   renderCal();
+  if (n.hecho && typeof logNotif === 'function') {
+    const esVisita = n.tipo === 'visita';
+    const cli = (n.cliente || '').trim();
+    const t = (n.texto || '').trim() || cli || (esVisita ? 'Visita' : 'Nota');
+    logNotif({
+      icon: esVisita ? '📍' : '🗒️', kind: esVisita ? 'visita' : 'nota',
+      text: `${esVisita ? 'Visita' : 'Nota'} marcada hecha: ${t}`,
+      action: { type: 'tab', tab: 'agenda' },
+      undo: { type: 'note', id: n.id },
+    });
+  }
+  if (typeof updateNotifBadge === 'function') updateNotifBadge();
 }
 function calDeleteNote(id) {
   const notes = getNotes().filter(x => x.id !== id);
@@ -20117,6 +20166,9 @@ function notifUndo(recId){
     } else if (u.type === 'vencVisto') {
       const h = getH(); const e = h.find(x => x.id === u.id);
       if (e) { delete e.vencimientoVistoEn; setH(h); ok = true; }
+    } else if (u.type === 'segHecho') {
+      const h = getH(); const e = h.find(x => x.id === u.id);
+      if (e) { delete e.seguimientoHechoEn; setH(h); ok = true; }
     } else if (u.type === 'note') {
       const notes = (typeof getNotes === 'function') ? getNotes() : [];
       const n = notes.find(x => x && x.id === u.id);
@@ -20236,26 +20288,13 @@ function notifItemHTML(p){
   </div>`;
 }
 
-// Descartar un vencimiento desde el panel. Deja el aviso en Recientes con
-// "Deshacer": es exactamente el tipo de toque que se da sin querer.
+// Descartar un vencimiento desde el panel. El trabajo (y la bitácora con
+// "Deshacer") lo hace marcarVencimientoVisto, que es el mismo camino del ✓ del
+// banner; acá solo se valida el id que vino del DOM y se repinta el panel.
 function notifDescartarVenc(id){
   const nid = (typeof sanNumId === 'function') ? sanNumId(id) : Number(id);
   if (!nid) return;
-  const h = getH();
-  const e = h.find(x => x.id === nid);
-  if (!e || e.vencimientoVistoEn) return;
-  e.vencimientoVistoEn = new Date().toISOString();
-  setH(h);
-  if (typeof logNotif === 'function') logNotif({
-    icon: '⏳', kind: 'vencimiento',
-    text: `Listo, no te aviso más del vencimiento: ${(e.clientName || '').trim() || '(sin nombre)'}${e.quoteNumber ? ` (N° ${e.quoteNumber})` : ''}`,
-    action: { type: 'entry', id: e.id },
-    undo: { type: 'vencVisto', id: e.id },
-  });
-  if (typeof renderHistory === 'function') renderHistory();
-  if (typeof renderExpiryBanner === 'function') renderExpiryBanner();
-  if (S.pushEnabled && typeof syncPushFollowups === 'function') syncPushFollowups().catch(() => {});
-  updateNotifBadge();
+  marcarVencimientoVisto(nid);
   notifRender();
 }
 
