@@ -6205,9 +6205,18 @@ function daysSinceDate(iso) {
 // Un presupuesto entra si:
 //   - el aviso de vencimiento está habilitado (cfg.expiryEnabled)
 //   - su estado está en la lista que dispara seguimiento (cfg.estados)
-//   - tiene fecha de envío (enviadoEn) → fue enviado al cliente
 //   - su snapshot tiene fecha de vencimiento (dateExpiry) ya pasada (< hoy)
 //   - no se marcó como visto el vencimiento (vencimientoVistoEn)
+//
+// NO exige `enviadoEn`. El vencimiento se calcula desde `dateExpiry`, no desde
+// cuándo se envió: quien dice que el presupuesto salió es el ESTADO, que lo
+// puso el usuario. `enviadoEn` es un sello que solo tienen los marcados
+// enviados después de que se agregó (y los que salieron por el botón de
+// WhatsApp), así que exigirlo dejaba presupuestos vencidos FUERA del banner
+// —sin su ✓ para cerrarlos— mientras la campanita y la Agenda sí los
+// mostraban: avisos viejos clavados arriba que el usuario no podía descartar
+// por ningún lado. El seguimiento sí lo necesita (cuenta días DESDE el envío)
+// y por eso lo sigue pidiendo; el vencimiento no.
 function getExpiredQuotes() {
   const cfg = getFollowupCfg();
   if (!cfg.enabled || !cfg.expiryEnabled) return [];
@@ -6216,7 +6225,6 @@ function getExpiredQuotes() {
   for (const e of h) {
     const est = e.estado || 'borrador';
     if (!cfg.estados.includes(est)) continue;
-    if (!e.enviadoEn) continue;
     const exp = e.snapshot && e.snapshot.dateExpiry;
     if (!exp) continue;
     const d = daysSinceDate(exp);
@@ -6407,14 +6415,14 @@ function _buildPushFollowups(cfg) {
 
 // Arma la lista de vencimientos que el Worker necesita: por cada presupuesto
 // enviado y aún sin marcar como visto, la FECHA en que vence. El Worker
-// compara contra "hoy" en su cron y dispara el push cuando ya pasó.
+// compara contra "hoy" en su cron y dispara el push cuando ya pasó. Mismo
+// criterio que getExpiredQuotes: sin `enviadoEn` (ver el comentario de allá).
 function _buildPushExpiries(cfg) {
   const h = (typeof getH === 'function') ? getH() : [];
   const out = [];
   for (const e of h) {
     const est = e.estado || 'borrador';
     if (!cfg.estados.includes(est)) continue;
-    if (!e.enviadoEn) continue;
     if (e.vencimientoVistoEn) continue;
     if (e.reemplazadoPor) continue;   // ya tiene versión nueva
     const exp = e.snapshot && e.snapshot.dateExpiry;
@@ -20033,7 +20041,7 @@ function notifBuildPendientes(){
         const dias = atras ? (daysSinceDate(iso) || 0) : 0;
         out.push({ icon: ev.tipo === 'vencimiento' ? '⏳' : '📨', kind: ev.tipo,
           key: `${ev.tipo}|${ev.entryId}`, bucket: atras ? 'atrasado' : 'hoy', ord: NOTIF_ORD[ev.tipo],
-          fecha: iso, dias,
+          fecha: iso, dias, entryId: ev.entryId,
           text: ev.title,
           sub: (ev.sub ? ev.sub + ' · ' : '') + notifHaceTxt(dias),
           action: { type: 'entry', id: ev.entryId } });
@@ -20106,6 +20114,9 @@ function notifUndo(recId){
         if (u.recontactoNota != null && u.recontactoNota !== '') e.recontactoNota = u.recontactoNota;
         setH(h); ok = true;
       }
+    } else if (u.type === 'vencVisto') {
+      const h = getH(); const e = h.find(x => x.id === u.id);
+      if (e) { delete e.vencimientoVistoEn; setH(h); ok = true; }
     } else if (u.type === 'note') {
       const notes = (typeof getNotes === 'function') ? getNotes() : [];
       const n = notes.find(x => x && x.id === u.id);
@@ -20207,13 +20218,45 @@ function _notifActionAttr(action){
 
 function notifItemHTML(p){
   const tap = p.action ? ' nt-tap' : '';
+  // ✓ "no avisarme más", en el aviso mismo. Antes solo estaba en el banner de
+  // vencidos, y un aviso que no se puede cerrar donde se lee es un aviso que
+  // se queda arriba para siempre. El id va por data-* (lo resuelve el listener
+  // delegado): interpolarlo en un onclick es lo que se prohíbe con datos que
+  // pueden venir de un backup ajeno.
+  const ok = (p.kind === 'vencimiento' && p.entryId != null)
+    ? `<button type="button" class="nt-undo" data-nt-venc="${esc(String(p.entryId))}" title="No avisarme más de este">✓</button>`
+    : '';
   return `<div class="nt-item${tap}"${_notifActionAttr(p.action)}>
     <span class="nt-ico">${esc(p.icon || '🔔')}</span>
     <div class="nt-body">
       <div class="nt-txt">${esc(p.text)}</div>
       ${p.sub ? `<div class="nt-sub">${esc(p.sub)}</div>` : ''}
     </div>
+    ${ok}
   </div>`;
+}
+
+// Descartar un vencimiento desde el panel. Deja el aviso en Recientes con
+// "Deshacer": es exactamente el tipo de toque que se da sin querer.
+function notifDescartarVenc(id){
+  const nid = (typeof sanNumId === 'function') ? sanNumId(id) : Number(id);
+  if (!nid) return;
+  const h = getH();
+  const e = h.find(x => x.id === nid);
+  if (!e || e.vencimientoVistoEn) return;
+  e.vencimientoVistoEn = new Date().toISOString();
+  setH(h);
+  if (typeof logNotif === 'function') logNotif({
+    icon: '⏳', kind: 'vencimiento',
+    text: `Listo, no te aviso más del vencimiento: ${(e.clientName || '').trim() || '(sin nombre)'}${e.quoteNumber ? ` (N° ${e.quoteNumber})` : ''}`,
+    action: { type: 'entry', id: e.id },
+    undo: { type: 'vencVisto', id: e.id },
+  });
+  if (typeof renderHistory === 'function') renderHistory();
+  if (typeof renderExpiryBanner === 'function') renderExpiryBanner();
+  if (S.pushEnabled && typeof syncPushFollowups === 'function') syncPushFollowups().catch(() => {});
+  updateNotifBadge();
+  notifRender();
 }
 
 function notifLogItemHTML(r){
@@ -20238,6 +20281,8 @@ function _wireNotifPanel(body){
   body.addEventListener('click', (ev) => {
     const undo = ev.target.closest('[data-nt-undo]');
     if (undo) { ev.stopPropagation(); notifUndo(undo.getAttribute('data-nt-undo')); return; }
+    const venc = ev.target.closest('[data-nt-venc]');
+    if (venc) { ev.stopPropagation(); notifDescartarVenc(venc.getAttribute('data-nt-venc')); return; }
     const item = ev.target.closest('[data-nt-act]');
     if (!item) return;
     const a = _notifActions[parseInt(item.getAttribute('data-nt-act'), 10)];
