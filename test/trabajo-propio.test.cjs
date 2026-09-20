@@ -30,6 +30,8 @@
 //   7. Tarifas y trabajos sobreviven al backup, y un archivo ajeno no puede
 //      meter basura en la bandera, el tipo ni la tarifa.
 //   8. El cliente ya conocido completa solo su teléfono y su lugar.
+//   9. El documento: cada tipo dice lo que es, ninguno inventa vigencia y el
+//      presupuesto de verdad sale igual que antes.
 //
 // Uso:  node test/trabajo-propio.test.cjs
 
@@ -461,6 +463,63 @@ const RESET = `
         r.tarifaN === 1 && /^[\w-]+$/.test(r.tarifaId || '') && r.tarifaPrecio === 0
         && r.tarifaUnidad === 'jornada',
         `${r.tarifaN} · ${r.tarifaId} · ${r.tarifaUnidad}`);
+      await page.close();
+    }
+
+    // ── 9: el documento del trabajo ──
+    // "que se pueda generar automáticamente una especie de presupuesto como
+    // los que generamos cuando hacemos presupuestos reales". Sale por la misma
+    // maquinaria (buildDoc), con un override que vive SOLO lo que dura la
+    // construcción. Lo que se blinda: que cada tipo diga lo que es, que NINGUNO
+    // invente una vigencia (el snapshot va sin dateExpiry: diría "Vence el —")
+    // y que el presupuesto de verdad salga igual que antes.
+    {
+      const page = await nuevaPagina(browser);
+      const r = await page.evaluate(new Function(`return (() => {
+        ${RESET}
+        const _texto = (e) => {
+          const html = _buildDocHTMLForEntry(e);
+          if (!html) return 'SIN HTML';
+          const el = document.createElement('div');
+          el.innerHTML = html;
+          return el.innerText.replace(/\\s+/g, ' ').trim();
+        };
+        const presupuesto = _texto(getH().find(e => !esTrabajoPropio(e)));
+        _altaDirecto(today(), 1);
+        const directo = _texto(getH().find(esTrabajoDirecto));
+        _alta(today(), 2);
+        const colab = _texto(getH().find(esColaboracion));
+        // El override no puede sobrevivir a la construcción: si queda puesto,
+        // el próximo presupuesto de verdad saldría con el título del trabajo.
+        const overrideLimpio = _docTrabajo === null;
+        const presupuestoDespues = _texto(getH().find(e => !esTrabajoPropio(e)));
+        // Y la tarjeta ofrece las dos salidas.
+        renderHistory();
+        const tarjeta = document.querySelector('.hitem.is-colab');
+        const acciones = tarjeta ? tarjeta.querySelector('.hacts').textContent : '';
+        return { presupuesto, directo, colab, overrideLimpio,
+                 igualDespues: presupuesto === presupuestoDespues, acciones };
+      })()`));
+      check('El trabajo directo sale como presupuesto para el cliente',
+        /Presupuesto N° D-\d{4}-0001/.test(r.directo) && /Cliente/.test(r.directo)
+        && /Poda de dos siempre verdes/.test(r.directo),
+        r.directo.slice(0, 80));
+      check('La colaboración sale como detalle para el colega',
+        /Detalle N° T-\d{4}-0001/.test(r.colab) && /Detalle de jornadas trabajadas/.test(r.colab)
+        && /Colega/.test(r.colab) && /2 jornadas/.test(r.colab),
+        r.colab.slice(0, 90));
+      check('Ningún trabajo inventa una vigencia',
+        !/VIGENCIA/.test(r.directo) && !/VIGENCIA/.test(r.colab) && !/Vence el/.test(r.colab));
+      check('El detalle del colega no lleva el argumentario de venta',
+        !/Cómo Trabajamos/.test(r.colab) && !/Plan de Trabajo/.test(r.colab),
+        r.colab.slice(0, 60));
+      check('El presupuesto de verdad conserva su vigencia y su título',
+        /VIGENCIA/.test(r.presupuesto) && /Presupuesto N°/.test(r.presupuesto));
+      check('El override no sobrevive a la construcción',
+        r.overrideLimpio === true && r.igualDespues === true,
+        `limpio:${r.overrideLimpio} · igual:${r.igualDespues}`);
+      check('La tarjeta del trabajo ofrece Ver y Compartir',
+        /Ver/.test(r.acciones) && /Compartir/.test(r.acciones), r.acciones.trim().slice(0, 70));
       await page.close();
     }
 

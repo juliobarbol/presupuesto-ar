@@ -11996,12 +11996,28 @@ const TRABAJO_CFG = {
     prefijo: 'T-', badge: 'Colaboración',
     quienLabel: 'Colega', quienPlaceholder: '¿Quién te llamó?',
     subtitulo: 'Un trabajo tuyo para un colega. La plata la paga él: no suma a las ventas ni a las estadísticas.',
+    // El colega no te pide un presupuesto: te paga jornadas ya trabajadas. El
+    // papel que le pasás es el DETALLE de lo que hiciste y cuánto es, sin el
+    // argumentario de venta (plan de trabajo, cómo trabajamos) ni condiciones
+    // de pago de un presupuesto, que a un colega no le dicen nada.
+    doc: {
+      corto: 'Detalle', badge: 'Detalle N°', quien: 'Colega',
+      titulo: 'Detalle de jornadas trabajadas',
+      secciones: ['details', 'total', 'observations', 'pago'],
+    },
   },
   directo: {
     nombre: 'Trabajo', plural: 'trabajos directos', fem: false,
     prefijo: 'D-', badge: 'Trabajo directo',
     quienLabel: 'Cliente', quienPlaceholder: 'Nombre del cliente',
     subtitulo: 'Un trabajo para un cliente tuyo, sin presupuesto de por medio. Suma a tus ventas, no a la conversión.',
+    // Para el cliente el papel ES un presupuesto: mismo título, mismo
+    // encabezado y las secciones que él eligió en Empresa → Textos del PDF
+    // (`secciones: null` = el orden guardado, sin recortar).
+    doc: {
+      corto: 'Presupuesto', badge: 'Presupuesto N°', quien: 'Cliente',
+      titulo: '', secciones: null,
+    },
   },
 };
 function trabajoCfg(t) { return TRABAJO_CFG[t] || TRABAJO_CFG.colab; }
@@ -12957,6 +12973,30 @@ function marcarComoEnviado(quoteNumber) {
 //   5. Restaurar S y #doc-a4 a como estaban. El usuario no nota nada.
 let _previewBackup = null;
 
+// ─── DOCUMENTO DE UN TRABAJO SIN PRESUPUESTO ─────────────────
+// Un trabajo directo o una colaboración también tienen su papel: el snapshot
+// que guardan ya es un presupuesto completo (cliente, lugar, renglón, total).
+// Para dibujarlo NO se duplica buildDoc —el recibo ya probó que la maquinaria
+// se reusa—, sino que se le pasa un override que vive SOLO lo que dura la
+// construcción: cambia la etiqueta del número, el título, cómo se llama el
+// destinatario y qué secciones entran. Fuera de esa ventana vale null y el
+// presupuesto de siempre sale idéntico, byte por byte.
+//
+// Lo que ningún tipo lleva es la VIGENCIA: el snapshot va sin `dateExpiry`
+// porque el trabajo no vence, así que la franja saldría "Vence el —".
+let _docTrabajo = null;
+
+function _docTrabajoDe(e) {
+  return esTrabajoPropio(e) ? trabajoCfg(tipoTrabajo(e)).doc : null;
+}
+
+// Nombre del papel en los textos de compartir: "Presupuesto D-2026-0001" o
+// "Detalle T-2026-0001".
+function _entryDocCorto(e) {
+  const d = _docTrabajoDe(e);
+  return (d && d.corto) || 'Presupuesto';
+}
+
 function previewFromHistory(id) {
   const e = getH().find(x => x.id === id);
   if (!e || !e.snapshot) { toast('No se pudo abrir la vista previa', 'err'); return; }
@@ -12984,6 +13024,7 @@ function previewFromHistory(id) {
   if (!S.estItems) S.estItems = [];
   normalizeRiskData();
   activeScenario = 'A';
+  _docTrabajo = _docTrabajoDe(e);
 
   // 3. Construir el documento (escribe en #doc-a4)
   try {
@@ -13012,6 +13053,7 @@ function previewFromHistory(id) {
 }
 
 function _restorePreviewState() {
+  _docTrabajo = null;
   if (!_previewBackup) return;
   Object.assign(S, _previewBackup.S);
   activeScenario = _previewBackup.activeScenario;
@@ -13121,12 +13163,14 @@ function _buildDocHTMLForEntry(e) {
     if (!S.estItems) S.estItems = [];
     normalizeRiskData();
     activeScenario = 'A';
+    _docTrabajo = _docTrabajoDe(e);
     buildDoc();
     return docEl.innerHTML;
   } catch (err) {
     console.error('Error al construir el documento para compartir', err);
     return null;
   } finally {
+    _docTrabajo = null;
     Object.assign(S, backup.S);
     activeScenario = backup.activeScenario;
     docEl.innerHTML = backup.docHTML;
@@ -13191,7 +13235,8 @@ function _downloadAndWhatsApp(file, e) {
   const phone = (typeof normalizeArgPhone === 'function')
     ? normalizeArgPhone((e.snapshot && e.snapshot.clientContact) || '') : '';
   const base = phone ? `https://wa.me/${phone}` : 'https://wa.me/';
-  window.open(`${base}?text=${encodeURIComponent('Te paso el presupuesto ' + (e.quoteNumber || ''))}`, '_blank', 'noopener');
+  const quePaso = _entryDocCorto(e).toLowerCase() + ' ' + (e.quoteNumber || '');
+  window.open(`${base}?text=${encodeURIComponent('Te paso el ' + quePaso.trim())}`, '_blank', 'noopener');
   toast('Imagen descargada. Adjuntala en WhatsApp.', 'info', 6000);
 }
 
@@ -13204,7 +13249,7 @@ function _downloadAndWhatsApp(file, e) {
 async function _shareFileOrFallback(file, e) {
   if (navigator.canShare && navigator.share && navigator.canShare({ files: [file] })) {
     const empresa = ((e.snapshot && e.snapshot.coName) || S.coName || '').trim();
-    const txt = `Presupuesto ${e.quoteNumber || ''}${empresa ? ' — ' + empresa : ''}`.trim();
+    const txt = `${_entryDocCorto(e)} ${e.quoteNumber || ''}${empresa ? ' — ' + empresa : ''}`.trim();
     try {
       await navigator.share({ files: [file], title: file.name, text: txt });
       return;
@@ -14637,9 +14682,11 @@ function renderHistory() {
 
   // Helper: HTML para un trabajo registrado a mano (colaboración o trabajo
   // directo). Tarjeta aparte y no una variante de la de presupuesto: acá no
-  // hay nada que cargar en el editor, ni versión, ni PDF que compartir. Lo
-  // que sí comparte es el ciclo de trabajo — estado, día agendado, clima y el
-  // camino a la factura.
+  // hay nada que cargar en el editor ni versión que armar. Lo que sí comparte
+  // es el ciclo de trabajo —estado, día agendado, clima y el camino a la
+  // factura— y el DOCUMENTO: el snapshot ya tiene forma de presupuesto, así
+  // que "Ver" y "Compartir" usan la misma maquinaria de siempre (el título y
+  // las secciones los ajusta `doc` de TRABAJO_CFG, ver _docTrabajo).
   const renderColab = (e) => {
     const est = e.estado || 'realizado';
     const [txtCol, bgCol] = ESTADO_COLORS[est] || ESTADO_COLORS.realizado;
@@ -14668,6 +14715,8 @@ function renderHistory() {
         <select class="hestado-sel" style="color:${txtCol};background-color:${bgCol};border-color:${bgCol}" onchange="setEstadoHistory(${e.id}, this.value)" title="Cambiar estado" aria-label="Estado del trabajo">${estadoOpts}</select>
         ${agendaChipFor(e)}
         ${typeof climaChipForEntry === 'function' ? climaChipForEntry(e) : ''}
+        <button class="btn btn-g btn-sm" onclick="previewFromHistory(${e.id})" title="Ver el documento de este trabajo">${icon('eye')} Ver</button>
+        <button class="btn btn-g btn-sm" onclick="sharePngFromHistory(${e.id}, this)" title="Generar una imagen del documento y compartirla (WhatsApp, etc.)">${icon('image')} Compartir</button>
         ${tieneTel ? `<button class="btn btn-g btn-sm" onclick="chatWhatsappHistory(${e.id})" title="Abrir el chat de WhatsApp" aria-label="Chat de WhatsApp">${icon('message')} Chat</button>` : ''}
         ${tieneDir ? `<button class="btn btn-g btn-sm" onclick="comoLlegar(${e.id})" title="Cómo llegar al lugar del trabajo" aria-label="Cómo llegar">${icon('pin')} Llegar</button>` : ''}
         ${!e.facturado && (e.total||0) > 0 ? `<button class="btn btn-g btn-sm" onclick="irARegistrarFactura(${e.id})" title="Registrar la factura de este trabajo">${icon('file')} Facturar</button>` : ''}
@@ -17038,7 +17087,15 @@ function buildDoc() {
     validity:     validH,
     notes:        notesH,
   };
-  const bodyOrderedH = sanitizeSectionOrder(S.docSectionOrder).map(id => _sectionMap[id] || '').join('\n\n');
+  // El documento de un trabajo sin presupuesto recorta este orden: nunca lleva
+  // vigencia (no vence) y la colaboración además se queda solo con su detalle
+  // (ver `doc.secciones` en TRABAJO_CFG). Sin override, sale el orden completo.
+  let _orden = sanitizeSectionOrder(S.docSectionOrder);
+  if (_docTrabajo) {
+    _orden = _orden.filter(id => id !== 'validity'
+      && (!_docTrabajo.secciones || _docTrabajo.secciones.includes(id)));
+  }
+  const bodyOrderedH = _orden.map(id => _sectionMap[id] || '').join('\n\n');
 
   const theme = S.pdfTheme || 'clasico';
   const doc = document.getElementById('doc-a4'); if(!doc) return;
@@ -17053,17 +17110,17 @@ function buildDoc() {
     <table class="pdoc pdoc-theme-${theme}${S.pdfCompact ? ' pdoc-compact' : ''}${S.pdfFont && S.pdfFont!=='auto' ? ' pdoc-font-'+S.pdfFont : ''}" style="--pdoc-accent:${color}">
       <thead>
         <tr><td>
-          ${_buildDocHeader(theme, S, color, contacts, 'Presupuesto N°', null, false)}
+          ${_buildDocHeader(theme, S, color, contacts, (_docTrabajo && _docTrabajo.badge) || 'Presupuesto N°', null, false)}
         </td></tr>
       </thead>
       <tbody>
         <tr><td>
 
     <div class="ptitle-bar">
-      <div class="ptitle" style="color:${color};border-color:${color}">${esc(S.docTitle||'Presupuesto de Servicio de Poda en Altura y Extracción de Árboles')}</div>
+      <div class="ptitle" style="color:${color};border-color:${color}">${esc((_docTrabajo && _docTrabajo.titulo) || S.docTitle || 'Presupuesto de Servicio de Poda en Altura y Extracción de Árboles')}</div>
       <div class="pgrid">
         <div>
-          <div class="pgrid-lbl">Cliente</div>
+          <div class="pgrid-lbl">${esc((_docTrabajo && _docTrabajo.quien) || 'Cliente')}</div>
           <div class="pgrid-val">${esc(S.clientName||'—')}</div>
           ${S.clientContact?`<div class="pgrid-sub">${esc(S.clientContact)}</div>`:''}
         </div>
