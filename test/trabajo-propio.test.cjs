@@ -1,30 +1,35 @@
-// test/trabajo-propio.test.cjs — Colaboraciones (trabajo propio para un colega).
+// test/trabajo-propio.test.cjs — Trabajos sin presupuesto: colaboraciones
+// (para un colega) y trabajos directos (para un cliente propio).
 //
-// Pedido: "necesito poder crear algunos servicios específicos a los cuales
-// presto, como por ejemplo un día de trabajo como trepador, que es el servicio
-// que presto cuando un colega me llama a trabajar con él… esos son trabajos
-// los cuales debo facturar y me gustaría apretar un botón y que quede
-// registrado que hice ese trabajo en el historial". Y después: "no quiero que
-// en el mapa esto cambie las estadísticas sobre mis propios trabajos… para que
-// no se confunda de que fueron aceptados más trabajos de los que de verdad
-// fueron".
+// Pedido 1: "un día de trabajo como trepador, que es el servicio que presto
+// cuando un colega me llama a trabajar con él… esos son trabajos los cuales
+// debo facturar y me gustaría apretar un botón y que quede registrado que hice
+// ese trabajo en el historial".
+// Pedido 2: "no quiero que en el mapa esto cambie las estadísticas sobre mis
+// propios trabajos… para que no se confunda de que fueron aceptados más
+// trabajos de los que de verdad fueron".
+// Pedido 3: "también voy a usar esta misma función para agendar pequeños
+// trabajos a clientes que ya existen".
 //
-// Ese segundo pedido es el que este test blinda. Una colaboración nace
-// 'aceptado' o 'realizado' y NUNCA 'perdido': si entrara en las cuentas de
-// presupuestos, la conversión de zona subiría sola y el historial diría que se
-// cotizó más de lo que se cotizó. Lo que se protege acá:
+// El pedido 3 es el que parte la regla en DOS, y es lo que más se blinda acá:
 //
-//   1. Alta de un toque: fecha pasada/hoy → realizada; fecha futura → agendada
-//      (y visible en la Agenda ese día).
-//   2. Numeración propia 'T-AAAA-0001' que NO consume correlativo.
-//   3. Las cuentas de las que tiene que quedar afuera: conversión de zona,
-//      presupuestado de zona, total del mes, acumulado por cliente y el
-//      contador de presupuestos. Y el pin del mapa, apagado por defecto.
-//   4. Sus propios números existen, pero aparte.
-//   5. Sí llega a Facturación, con el concepto del trabajo (no "Presupuesto N°").
-//   6. No inventa vencimientos ni seguimientos.
-//   7. Tarifas propias y colaboraciones sobreviven al backup, y un archivo
-//      ajeno no puede meter basura en la bandera ni en la tarifa.
+//   · Ninguno de los dos entra en la CONVERSIÓN: nacen 'aceptado' o
+//     'realizado' y nunca 'perdido'. Contarlos la subiría sola.
+//   · El trabajo directo SÍ es VENTA (total del mes, acumulado del cliente):
+//     se lo cobró a un cliente suyo. La colaboración no: la paga un colega.
+//
+// Lo que se protege:
+//
+//   1. Alta de un toque: fecha pasada/hoy → realizado; futura → agendado (y
+//      visible en la Agenda ese día).
+//   2. Numeración propia por tipo ('T-' y 'D-') que NO consume correlativo.
+//   3. Las cuentas: qué suma cada tipo y qué no, en el historial y en el mapa.
+//   4. El pin: la colaboración arranca oculta, el trabajo directo se ve.
+//   5. Los dos llegan a Facturación con el concepto del trabajo.
+//   6. No inventan vencimientos ni seguimientos.
+//   7. Tarifas y trabajos sobreviven al backup, y un archivo ajeno no puede
+//      meter basura en la bandera, el tipo ni la tarifa.
+//   8. El cliente ya conocido completa solo su teléfono y su lugar.
 //
 // Uso:  node test/trabajo-propio.test.cjs
 
@@ -76,20 +81,23 @@ const RESET = `
   setMisServicios([]);
   saveMiServicio({ nombre:'Día de trabajo como trepador', precio:180000, unidad:'jornada' });
 
-  // Alta por el mismo camino que el usuario: el diálogo.
-  const _alta = (fecha, cant, colega) => {
-    abrirColaboracion();
-    document.getElementById('colab-nombre').value = 'Día de trabajo como trepador';
-    document.getElementById('colab-precio').value = '180000';
+  // Alta por el mismo camino que el usuario: el diálogo, con su segmentado.
+  const _alta = (fecha, cant, quien, tipo, nombre, precio) => {
+    abrirColaboracion(null, tipo || 'colab');
+    document.getElementById('colab-nombre').value = nombre || 'Día de trabajo como trepador';
+    document.getElementById('colab-precio').value = String(precio || 180000);
     document.getElementById('colab-cant').value   = String(cant || 1);
     document.getElementById('colab-unidad').value = 'jornada';
     document.getElementById('colab-fecha').value  = fecha;
-    document.getElementById('colab-colega').value = colega || 'Martín (colega)';
+    document.getElementById('colab-colega').value = quien || 'Martín (colega)';
     document.getElementById('colab-tel').value    = '3543 68-0871';
     document.getElementById('colab-lugar').value  = '-31.417,-64.184';
     colabSync();
     colabGuardar();
   };
+  // Atajo del caso nuevo: trabajo chico para un cliente propio.
+  const _altaDirecto = (fecha, cant, cliente) =>
+    _alta(fecha, cant, cliente || 'Consorcio Rivadavia 2210', 'directo', 'Poda de dos siempre verdes', 80000);
   const _enDias = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return toLocalISODate(d); };
 
   // Marcas falsas para las stats de zona: mapaUpdateZonaStats solo necesita
@@ -97,8 +105,9 @@ const RESET = `
   // la cuenta real sin depender de Leaflet ni de los tiles (que no hay red).
   const _statsDeZona = () => {
     const box = document.getElementById('mapa-zonastats');
-    // Solo las que el filtro deja ver, igual que mapaRefresh.
-    const entries = getH().filter(e => !esTrabajoPropio(e) || _mapaVerColab);
+    // Solo lo que el filtro deja ver, igual que mapaRefresh: la colaboración
+    // depende del interruptor, el trabajo directo se dibuja siempre.
+    const entries = getH().filter(e => !esColaboracion(e) || _mapaVerColab);
     const prevMapa = _mapa, prevLayer = _mapaLayer;
     _mapa = { getBounds: () => ({ contains: () => true }) };
     _mapaLayer = { eachLayer: (cb) => entries.forEach(e => cb({
@@ -143,7 +152,7 @@ const RESET = `
           desc: hecha.snapshot.items[0].desc,
         };
       })()`));
-      check('Se registra con numeración propia T-AAAA-0001',
+      check('La colaboración se registra con numeración propia T-AAAA-0001',
         /^T-\d{4}-0001$/.test(r.num) && /^T-\d{4}-0002$/.test(r.num2), `${r.num} · ${r.num2}`);
       check('Dos jornadas × $180.000 = $360.000, y el snapshot dice lo mismo',
         r.total === 360000 && r.totalSnap === 360000, `${r.total} / ${r.totalSnap}`);
@@ -310,7 +319,106 @@ const RESET = `
       await page.close();
     }
 
-    // ── 6: backup y datos ajenos ──
+    // ── 6: TRABAJO DIRECTO — es venta, pero no pasó por el embudo ──
+    {
+      const page = await nuevaPagina(browser);
+      const r = await page.evaluate(new Function(`return (() => {
+        ${RESET}
+        switchTab('historial'); renderHistory();
+        const mesAntes  = document.querySelector('.hmonth-total').textContent;
+        const zonaAntes = _statsDeZona();
+        // Dos trabajos chicos al MISMO cliente que ya tiene el presupuesto.
+        _altaDirecto(today(), 1);
+        _altaDirecto(_enDias(2), 1);
+        renderHistory();
+        // El primero de la lista es el último registrado (el agendado): acá
+        // interesa el de HOY, que es el que tiene que haber quedado realizado.
+        const e = getH().filter(esTrabajoDirecto).find(x => x.fechaTrabajo === today());
+        const mesDespues = document.querySelector('.hmonth-total').textContent;
+        const cantMes    = document.querySelector('.hmonth-count').textContent;
+        const zonaDespues = _statsDeZona();
+        // El pin se dibuja SIN prender el filtro de colaboraciones.
+        const visibleSinFiltro = !_mapaVerColab && !esColaboracion(e);
+        document.getElementById('hist-client-filter').value = 'Consorcio Rivadavia 2210';
+        renderHistory();
+        const acum = document.getElementById('history-list').textContent.replace(/\\s+/g, ' ');
+        document.getElementById('hist-client-filter').value = '';
+        renderHistory();
+        return {
+          num: e.quoteNumber, estado: e.estado, total: e.total,
+          mesAntes, mesDespues, cantMes, zonaAntes, zonaDespues, acum,
+          visibleSinFiltro,
+          badge: (document.querySelector('.hbadge-colab.is-directo') || {}).textContent || '',
+          // El tipo queda guardado en la entrada.
+          tipo: e.tipoTrabajo,
+        };
+      })()`));
+      check('El trabajo directo lleva numeración propia D-AAAA-0001',
+        /^D-\d{4}-0001$/.test(r.num) && r.tipo === 'directo', `${r.num} · ${r.tipo}`);
+      check('Hecho hoy queda realizado, con su total',
+        r.estado === 'realizado' && r.total === 80000, `${r.estado} · ${r.total}`);
+      check('SÍ suma al total del mes (es venta tuya)',
+        r.mesAntes === '$ 400.000' && r.mesDespues === '$ 560.000',
+        `${r.mesAntes} → ${r.mesDespues}`);
+      check('…y a la cantidad del mes', r.cantMes === '3', r.cantMes);
+      check('…y al acumulado del cliente',
+        /Total acumulado \$ 560\.000/.test(r.acum), r.acum.slice(0, 150));
+      check('…marcado aparte como "Sin presupuesto"',
+        /Sin presupuesto 2 · \$ 160\.000/.test(r.acum) && /Presupuestos 1 /.test(r.acum),
+        r.acum.slice(0, 180));
+      check('NO entra en la conversión de la zona',
+        /Conversión: 100%/.test(r.zonaAntes) && /Conversión: 100%/.test(r.zonaDespues)
+        && /En esta zona: 1 presupuesto/.test(r.zonaDespues), r.zonaDespues);
+      check('…ni en el presupuestado de la zona, que lo cuenta aparte',
+        /Presupuestado: \$ 400\.000/.test(r.zonaDespues)
+        && /2 trabajos directos en esta zona/.test(r.zonaDespues)
+        && /no cuentan en la conversión/.test(r.zonaDespues), r.zonaDespues);
+      check('El pin se ve sin prender el filtro de colaboraciones', r.visibleSinFiltro);
+      check('La tarjeta lo distingue con su propio badge',
+        r.badge === 'Trabajo directo', r.badge);
+      await page.close();
+    }
+
+    // ── 7: el cliente conocido se completa solo ──
+    {
+      const page = await nuevaPagina(browser);
+      const r = await page.evaluate(new Function(`return (() => {
+        ${RESET}
+        // El cliente del presupuesto quedó en la base con su teléfono/lugar.
+        saveClientToDB('Consorcio Rivadavia 2210', '3543 11-2233', 'Rivadavia 2210', '-31.416,-64.183');
+        abrirColaboracion(null, 'directo');
+        document.getElementById('colab-colega').value = 'Consorcio Rivadavia 2210';
+        colabAutoCliente();
+        const tel   = document.getElementById('colab-tel').value;
+        const lugar = document.getElementById('colab-lugar').value;
+        // Lo tipeado a mano NO se pisa.
+        document.getElementById('colab-tel').value = '9999';
+        colabAutoCliente();
+        const telManual = document.getElementById('colab-tel').value;
+        // Y el segmentado dice de quién es el trabajo.
+        const lbl = document.getElementById('colab-colega-lbl').textContent;
+        colabSetTipo('colab');
+        const lblColab = document.getElementById('colab-colega-lbl').textContent;
+        const activo = (document.querySelector('.colab-tseg.is-active') || {}).textContent;
+        colabClose();
+        // Al EDITAR, el segmentado se esconde: el tipo no se cambia.
+        _altaDirecto(today(), 1);
+        abrirColaboracion(getH().find(esTrabajoDirecto).id);
+        const segOculto = document.getElementById('colab-tipo-seg').hidden;
+        colabClose();
+        return { tel, lugar, telManual, lbl, lblColab, activo, segOculto };
+      })()`));
+      check('El cliente conocido completa solo su teléfono y su lugar',
+        r.tel === '3543 11-2233' && r.lugar === '-31.416,-64.183', `${r.tel} · ${r.lugar}`);
+      check('…y no pisa lo que el usuario escribió a mano', r.telManual === '9999', r.telManual);
+      check('La etiqueta cambia con el tipo (Cliente / Colega)',
+        r.lbl === 'Cliente' && r.lblColab === 'Colega' && r.activo === 'Colaboración',
+        `${r.lbl} → ${r.lblColab} · activo:${r.activo}`);
+      check('Al editar, el tipo no se puede cambiar', r.segOculto === true);
+      await page.close();
+    }
+
+    // ── 8: backup y datos ajenos ──
     {
       const page = await nuevaPagina(browser);
       const r = await page.evaluate(new Function(`return (() => {

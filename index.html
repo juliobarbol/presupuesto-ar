@@ -2277,11 +2277,20 @@ input[type=number]{-moz-appearance:textfield}
 /* El padding horizontal está medido: con 14px el par de botones no entraba al
    lado del título en un celular de 360 y el grupo caía a la línea de abajo.
    El alto (11px) es lo que hace falta para el dedo y no se toca. */
-.hist-headbtn{padding:11px 12px;font-size:13px}
+.hist-headbtn{padding:11px 10px;font-size:13px}
+/* El "+" en vez de un ícono SVG: dice lo mismo, ocupa la mitad, y esos px son
+   los que deciden si los dos botones entran al lado del título. */
+.hist-headbtn-plus{font-size:15px;font-weight:700;line-height:1}
 /* Menos aire entre letras que el resto de los títulos de sección: acá compite
    por el ancho con los dos botones. */
 .hist-head .st{letter-spacing:.4px}
 #colab-box .ne-field>input{width:100%}
+/* Segmentado Trabajo / Colaboración, arriba del diálogo. Mismo patrón que el
+   de vistas de la Agenda: un select acá abriría por detrás del overlay. */
+.colab-tseg-wrap{display:flex;gap:3px;padding:3px;margin-bottom:12px;background:var(--surface-2);border-radius:var(--radius-field)}
+.colab-tseg-wrap[hidden]{display:none}
+.colab-tseg{flex:1;padding:8px 10px;font-family:var(--font-text);font-size:13px;font-weight:600;color:var(--muted);background:transparent;border:none;border-radius:6px;cursor:pointer}
+.colab-tseg.is-active{background:var(--card);color:var(--accent-fg);box-shadow:0 1px 3px rgba(0,0,0,.08)}
 .colab-tarifas{display:flex;flex-wrap:wrap;gap:6px}
 .colab-tarifas-empty{font-size:11.5px;color:var(--muted);line-height:1.45}
 .colab-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;font-family:var(--font-text);font-size:12.5px;font-weight:600;color:var(--text-2);background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-field);cursor:pointer;text-align:left}
@@ -2294,6 +2303,11 @@ input[type=number]{-moz-appearance:textfield}
 /* Badge de la tarjeta y del popup del mapa */
 .hbadge-colab{display:inline-block;margin-left:6px;padding:1px 7px;font-size:10px;font-weight:700;color:#115e59;background:#ccfbf1;border-radius:20px;vertical-align:middle}
 .hitem.is-colab{border-left:3px solid #0d9488}
+/* Trabajo directo: es venta del negocio, así que lleva el verde de la app y
+   no el teal de las colaboraciones (que las paga un colega). */
+.hbadge-colab.is-directo{color:var(--accent-fg);background:var(--accent-light)}
+.hitem.is-colab.is-directo{border-left-color:var(--accent)}
+.mapa-zona-colab.is-directo{color:var(--accent-fg)}
 /* Renglón del mes: las colaboraciones se ven sin desplegar, y sin tocar el
    número de presupuestos del encabezado. */
 .hmonth-colab{display:flex;align-items:center;gap:6px;padding:5px 12px;font-size:11.5px;font-weight:600;color:#115e59;background:#f0fdfa;border-top:1px solid var(--border)}
@@ -4479,12 +4493,12 @@ input[type=number]{-moz-appearance:textfield}
                presupuesto (camión, volquete). -->
           <div class="collapsible-section" id="cs-missvc">
             <button type="button" class="collapsible-header" onclick="toggleCollapsibleSection('cs-missvc')">
-              <span><svg class="ic"><use href="#i-users"></use></svg> Mis servicios (colaboraciones)</span>
+              <span><svg class="ic"><use href="#i-users"></use></svg> Mis servicios (tarifas)</span>
               <span class="ch-count" id="cs-missvc-count">0</span>
               <span class="ch-chevron">▾</span>
             </button>
             <div class="collapsible-body">
-              <p class="hint" style="margin-bottom:10px">Lo que cobrás cuando un colega te llama a trabajar con él (una jornada de trepador, una hora de motosierra). Se registran desde Historial → <strong>Colaboración</strong>, y no suman a las estadísticas de presupuestos.</p>
+              <p class="hint" style="margin-bottom:10px">Tus tarifas para los trabajos que no pasan por un presupuesto: una jornada de trepador para un colega, una hora de motosierra, un trabajo chico para un cliente. Se usan desde Historial → <strong>Trabajo</strong>.</p>
               <div class="missvc-form">
                 <input type="text" id="missvc-nombre" maxlength="120" placeholder="Ej: Día de trabajo como trepador" aria-label="Nombre del servicio">
                 <div class="missvc-form-row">
@@ -4523,10 +4537,11 @@ input[type=number]{-moz-appearance:textfield}
                  aceptado ES la agenda: ordenado por fecha de trabajo). El
                  contenido (contador / "Ver todos") lo pinta renderHistory(). -->
             <button class="btn btn-p hist-headbtn" id="hist-agenda-btn" onclick="toggleAgendaView()" title="Ver los trabajos agendados: presupuestos aceptados ordenados por fecha de trabajo"><svg class="ic"><use href="#i-calendar"></use></svg> Agenda</button>
-            <!-- "Colab" y no "Colaboración": al lado de Agenda, la palabra
-                 entera empujaba el grupo a su propia línea en un celular
-                 angosto. El nombre completo queda en el title. -->
-            <button class="btn btn-s hist-headbtn" id="hist-colab-btn" onclick="abrirColaboracion()" title="Registrar una colaboración: una jornada que trabajaste para un colega"><svg class="ic"><use href="#i-users"></use></svg> Colab</button>
+            <!-- Un solo botón para los dos registros sin presupuesto: abre en
+                 "Trabajo" (el caso más frecuente) y el segmentado del diálogo
+                 pasa a "Colaboración". El texto es corto porque al lado de
+                 Agenda no entra uno largo en un celular angosto. -->
+            <button class="btn btn-s hist-headbtn" id="hist-colab-btn" onclick="abrirColaboracion()" title="Registrar un trabajo sin presupuesto: uno rápido para un cliente, o una jornada para un colega"><span class="hist-headbtn-plus">+</span> Trabajo</button>
           </div>
         </div>
         <div class="r2" style="margin-bottom:4px">
@@ -4544,8 +4559,9 @@ input[type=number]{-moz-appearance:textfield}
                presupuestos. Mezclados por defecto; aislarlos es la vista de
                "qué trabajé para colegas", con su propio subtotal. -->
           <select class="hsearch" id="hist-tipo-filter" onchange="renderHistory()" style="margin-bottom:0">
-            <option value="">Presupuestos y colaboraciones</option>
+            <option value="">Todo lo registrado</option>
             <option value="presup">Solo presupuestos</option>
+            <option value="directo">Solo trabajos directos</option>
             <option value="colab">Solo colaboraciones</option>
           </select>
           <select class="hsearch" id="hist-estado-filter" onchange="renderHistory()" style="margin-bottom:0">
@@ -4798,8 +4814,13 @@ input[type=number]{-moz-appearance:textfield}
      queda realizada y ofrece registrar la factura. -->
 <div id="colab-overlay" role="presentation" onclick="if(event.target===this)colabClose()">
   <div id="colab-box" role="dialog" aria-modal="true" aria-labelledby="colab-title">
-    <h4 id="colab-title">Registrar colaboración</h4>
-    <p class="nv-sub">Un trabajo tuyo para un colega. No es un presupuesto: no suma a las estadísticas.</p>
+    <!-- Tipo: un trabajo para un CLIENTE o una colaboración para un COLEGA.
+         Cambia las etiquetas, la numeración y si la plata suma a las ventas.
+         Se oculta al editar: mudar de tipo una entrada ya registrada le
+         cambiaría el número y movería su plata. -->
+    <div class="colab-tseg-wrap" id="colab-tipo-seg" role="group" aria-label="Tipo de registro"></div>
+    <h4 id="colab-title">Registrar trabajo</h4>
+    <p class="nv-sub" id="colab-sub"></p>
 
     <div class="ne-field">
       <label>Tarifa</label>
@@ -4831,8 +4852,10 @@ input[type=number]{-moz-appearance:textfield}
     </div>
 
     <div class="ne-field">
-      <label for="colab-colega">Colega</label>
-      <input type="text" id="colab-colega" maxlength="200" list="colab-colegas-dl" placeholder="¿Quién te llamó?" autocomplete="off">
+      <label for="colab-colega" id="colab-colega-lbl">Cliente</label>
+      <!-- Al salir del campo, si el nombre ya está en la base de clientes se
+           completan solos el teléfono y el lugar (ver colabAutoCliente). -->
+      <input type="text" id="colab-colega" maxlength="200" list="colab-colegas-dl" placeholder="Nombre del cliente" autocomplete="off" onchange="colabAutoCliente()" onblur="colabAutoCliente()">
       <datalist id="colab-colegas-dl"></datalist>
     </div>
 
@@ -7000,6 +7023,11 @@ const NOTE_TIPOS = ['visita'];   // sin tipo = nota común
 // unidad decide el texto de la cantidad en el diálogo y en la factura, así que
 // no puede entrar cualquier cosa desde un backup ajeno.
 const MISSVC_UNIDADES = ['jornada','hora','trabajo'];
+// Tipos de trabajo registrado a mano (ver js/history.js). Decide si la plata
+// de la entrada suma a las ventas del negocio, así que no puede entrar un
+// valor cualquiera desde un backup ajeno.
+// El orden es el del segmentado del diálogo: primero el más frecuente.
+const TRABAJO_TIPOS = ['directo','colab'];
 // Los `kind` que guarda la bitácora. Estaban solo los cuatro tonos genéricos,
 // así que sanEnum convertía en 'info' los conceptos reales que escribe
 // logNotif (estado, recontacto, visita, clima, vencimiento, seguimiento) —
@@ -7092,6 +7120,12 @@ function sanitizeHistory(raw) {
     // quedar como un string cualquiera; y `colab` guarda lo que hace falta
     // para reabrir el diálogo y para describir la factura.
     if (e.esTrabajoPropio) s.esTrabajoPropio = true; else delete s.esTrabajoPropio;
+    // El tipo decide si la plata de la entrada suma a las ventas: no puede
+    // entrar cualquier valor. Sin bandera no hay tipo que guardar, y lo que no
+    // esté en la lista cae a 'colab' (lo que eran todas antes del trabajo
+    // directo, y el criterio conservador: no suma de más).
+    if (s.esTrabajoPropio) s.tipoTrabajo = sanEnum(e.tipoTrabajo, TRABAJO_TIPOS, 'colab');
+    else delete s.tipoTrabajo;
     if (e.colab && typeof e.colab === 'object' && !Array.isArray(e.colab)) {
       s.colab = {
         nombre:   sanStr(e.colab.nombre, 120),
@@ -8149,7 +8183,7 @@ async function confirmDeleteMiServicio(id) {
   if (!t) return;
   const ok = await confirmDlg(
     'Eliminar tarifa',
-    `¿Eliminar "${t.nombre}" de tus servicios? Las colaboraciones ya registradas no se tocan.`,
+    `¿Eliminar "${t.nombre}" de tus servicios? Los trabajos ya registrados no se tocan.`,
     'Eliminar', 'btn-d'
   );
   if (!ok) return;
@@ -11914,38 +11948,86 @@ async function clearHistory() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// COLABORACIONES — trabajo propio para un colega
+// TRABAJOS SIN PRESUPUESTO — colaboraciones y trabajos directos
 // ═══════════════════════════════════════════════════════════════════════════
-// El caso que lo pidió: "un día de trabajo como trepador, que es el servicio
-// que presto cuando un colega me llama a trabajar con él. Esos trabajos los
-// debo facturar y me gustaría apretar un botón y que quede registrado".
+// Dos cosas distintas que se registran igual, de un toque, porque ninguna pasó
+// por un presupuesto:
 //
-// Una colaboración NO es un presupuesto: nadie la aceptó ni la rechazó, no se
-// envía, no vence y no se sigue. Pero comparte TODO el ciclo de vida que ya
-// existe —se agenda, se ve en la Agenda con su clima, se marca realizada y
-// desemboca en la factura—, así que vive como una entrada más del historial
-// con la bandera `esTrabajoPropio`.
+//   · COLABORACIÓN (`colab`) — "un día de trabajo como trepador, que es el
+//     servicio que presto cuando un colega me llama a trabajar con él". Paga
+//     un COLEGA. Su plata no es venta del negocio.
+//   · TRABAJO DIRECTO (`directo`) — "pequeños trabajos a clientes que ya
+//     existen": el cliente llama, se arregla en el momento y se hace. Paga un
+//     CLIENTE. Su plata SÍ es venta del negocio.
 //
-// De ahí sale la regla que la hace correcta: la bandera la saca de TODOS los
-// números de presupuestos (conversión de zona, presupuestado, total del mes,
-// acumulado por cliente y el contador). Una colaboración nace 'aceptado' o
-// 'realizado' y nunca 'perdido': contarla haría subir sola la conversión y
-// diría que se aceptaron más trabajos de los que de verdad se aceptaron. Suma
-// donde tiene que sumar, que es en Facturación.
+// Ninguno es un presupuesto: nadie los aceptó ni los rechazó, no se envían, no
+// vencen y no se siguen. Pero comparten todo el ciclo que ya existe —se
+// agendan, se ven en la Agenda con su clima, se marcan realizados y desembocan
+// en la factura—, así que viven como entradas del historial con la bandera
+// `esTrabajoPropio` y el tipo en `tipoTrabajo`.
 //
-// Ver test/trabajo-propio.test.cjs, que falla si alguna de esas cuentas la
-// vuelve a incluir.
+// LA BANDERA DECIDE DOS COSAS DISTINTAS, y por eso hay dos preguntas y no una:
+//
+//   1. `cuentaEnConversion(e)` — ¿entra en la conversión y en los chips de
+//      estado de la zona? NINGUNO de los dos. Nacen 'aceptado' o 'realizado' y
+//      nunca 'perdido': contarlos haría subir sola la conversión y diría que
+//      "fueron aceptados más trabajos de los que de verdad fueron".
+//   2. `sumaComoVenta(e)` — ¿su plata es venta del negocio (total del mes,
+//      acumulado del cliente)? El trabajo directo SÍ: se lo cobró a un cliente
+//      suyo. La colaboración NO: esa plata se la paga un colega.
+//
+// Ver test/trabajo-propio.test.cjs, que falla si alguna cuenta los mezcla.
 function esTrabajoPropio(e) { return !!(e && e.esTrabajoPropio); }
+// Compatibilidad: las colaboraciones registradas antes de que existiera el
+// trabajo directo no tienen `tipoTrabajo` y son colaboraciones.
+function tipoTrabajo(e) { return (e && e.tipoTrabajo === 'directo') ? 'directo' : 'colab'; }
+function esColaboracion(e)   { return esTrabajoPropio(e) && tipoTrabajo(e) === 'colab'; }
+function esTrabajoDirecto(e) { return esTrabajoPropio(e) && tipoTrabajo(e) === 'directo'; }
+// Las dos preguntas de arriba, como funciones que usan todas las cuentas.
+function cuentaEnConversion(e) { return !esTrabajoPropio(e); }
+function sumaComoVenta(e)      { return !esColaboracion(e); }
 
-// "1 colaboración" / "3 colaboraciones". El plural pierde la tilde.
-function colabCantTxt(n) { return n === 1 ? '1 colaboración' : n + ' colaboraciones'; }
+// (`TRABAJO_TIPOS`, la lista blanca, vive en js/sanitize.js con las demás.)
+// Todo lo que cambia entre los dos tipos, en un solo lugar: el resto del
+// código pregunta por acá en vez de repartir `if (directo)` por la app.
+const TRABAJO_CFG = {
+  colab: {
+    nombre: 'Colaboración', plural: 'colaboraciones', fem: true,
+    prefijo: 'T-', badge: 'Colaboración',
+    quienLabel: 'Colega', quienPlaceholder: '¿Quién te llamó?',
+    subtitulo: 'Un trabajo tuyo para un colega. La plata la paga él: no suma a las ventas ni a las estadísticas.',
+  },
+  directo: {
+    nombre: 'Trabajo', plural: 'trabajos directos', fem: false,
+    prefijo: 'D-', badge: 'Trabajo directo',
+    quienLabel: 'Cliente', quienPlaceholder: 'Nombre del cliente',
+    subtitulo: 'Un trabajo para un cliente tuyo, sin presupuesto de por medio. Suma a tus ventas, no a la conversión.',
+  },
+};
+function trabajoCfg(t) { return TRABAJO_CFG[t] || TRABAJO_CFG.colab; }
+// "Colaboración registrada" / "Trabajo registrado": el participio concuerda con
+// el nombre del tipo, que es femenino en uno y masculino en el otro.
+function trabajoFrase(tipo, participio) {
+  const c = trabajoCfg(tipo);
+  return `${c.nombre} ${participio}${c.fem ? 'a' : 'o'}`;
+}
 
-// Numeración propia 'T-2026-0001'. No consume correlativo de presupuestos: el
-// prefijo no coincide con `numPrefix` y además calcNextNumFromHistory saltea
-// las colaboraciones. El año es el de hoy (el de la emisión), aunque el
-// trabajo se agende para más adelante.
-function _nextColabNum() {
-  const pre = 'T-' + today().slice(0, 4) + '-';
+// "1 colaboración" / "3 colaboraciones" / "1 trabajo directo" / "2 trabajos
+// directos". El singular sale del badge (el nombre completo del concepto), no
+// de `nombre`, que es la etiqueta corta del segmentado; y el plural de
+// colaboración pierde la tilde.
+function colabCantTxt(n, tipo) {
+  const c = trabajoCfg(tipo || 'colab');
+  return n === 1 ? ('1 ' + c.badge.toLowerCase()) : (n + ' ' + c.plural);
+}
+
+// Numeración propia por tipo: 'T-2026-0001' las colaboraciones, 'D-2026-0001'
+// los trabajos directos. No consumen correlativo de presupuestos (el prefijo
+// no coincide con `numPrefix` y además calcNextNumFromHistory los saltea). El
+// año es el de hoy —el de la emisión—, aunque el trabajo se agende para más
+// adelante.
+function _nextColabNum(tipo) {
+  const pre = trabajoCfg(tipo).prefijo + today().slice(0, 4) + '-';
   let max = 0;
   getH().forEach(e => {
     const qn = e.quoteNumber || '';
@@ -11971,18 +12053,21 @@ function _colabEsUbicacion(v) {
 }
 
 // ─── Diálogo ─────────────────────────────────
-let _colabEditId = null;    // id de la colaboración en edición (null = alta)
+let _colabEditId = null;    // id del trabajo en edición (null = alta)
 let _colabTarifaId = '';    // tarifa elegida (solo para pintar el chip activo)
+let _colabTipo = 'colab';   // tipo elegido en el segmentado
 
-function abrirColaboracion(id) {
+// `tipo` solo se pasa en el alta ('colab' | 'directo'); al editar manda el
+// que tenga la entrada.
+function abrirColaboracion(id, tipo) {
   const ov = document.getElementById('colab-overlay');
   if (!ov) return;
   const e = (id != null) ? getH().find(x => x.id === id) : null;
   _colabEditId  = e ? e.id : null;
   _colabTarifaId = '';
+  _colabTipo = e ? tipoTrabajo(e)
+                 : (TRABAJO_TIPOS.indexOf(tipo) >= 0 ? tipo : 'directo');
 
-  const tit = document.getElementById('colab-title');
-  if (tit) tit.textContent = e ? 'Editar colaboración' : 'Registrar colaboración';
   const okb = document.getElementById('colab-ok');
   if (okb) okb.textContent = e ? 'Guardar cambios' : 'Registrar';
 
@@ -12014,6 +12099,7 @@ function abrirColaboracion(id) {
     sv('colab-fecha',  today());
     if (t) _colabTarifaId = t.id;
   }
+  _colabRenderTipo();
   _colabRenderTarifas();
   _colabClientesDatalist();
   colabSync();
@@ -12023,6 +12109,65 @@ function abrirColaboracion(id) {
   if (typeof refreshCustomDates === 'function') refreshCustomDates();
   if (typeof enhanceSelects === 'function') enhanceSelects(ov);
   if (typeof refreshCustomSelects === 'function') refreshCustomSelects();
+}
+
+// Pinta el segmentado y todo lo que cambia con el tipo: título, subtítulo y la
+// etiqueta de quién paga (Cliente o Colega). Al EDITAR el segmentado se
+// bloquea: cambiarle el tipo a una entrada ya registrada movería su plata de
+// las ventas y le dejaría un número de otra serie.
+function _colabRenderTipo() {
+  const cfg = trabajoCfg(_colabTipo);
+  const editando = _colabEditId != null;
+  const seg = document.getElementById('colab-tipo-seg');
+  if (seg) {
+    seg.hidden = editando;
+    seg.innerHTML = TRABAJO_TIPOS.map(t =>
+      `<button type="button" class="colab-tseg${t === _colabTipo ? ' is-active' : ''}" data-tipo="${t}">${esc(trabajoCfg(t).nombre)}</button>`
+    ).join('');
+    if (!seg._colabTipoListener) {
+      seg.addEventListener('click', (ev) => {
+        const b = ev.target.closest('.colab-tseg');
+        if (b && b.dataset.tipo) colabSetTipo(b.dataset.tipo);
+      });
+      seg._colabTipoListener = true;
+    }
+  }
+  const tit = document.getElementById('colab-title');
+  if (tit) tit.textContent = (editando ? 'Editar ' : 'Registrar ') + cfg.nombre.toLowerCase();
+  const sub = document.getElementById('colab-sub');
+  if (sub) sub.textContent = cfg.subtitulo;
+  const lbl = document.getElementById('colab-colega-lbl');
+  if (lbl) lbl.textContent = cfg.quienLabel;
+  const inp = document.getElementById('colab-colega');
+  if (inp) inp.placeholder = cfg.quienPlaceholder;
+}
+
+function colabSetTipo(t) {
+  if (TRABAJO_TIPOS.indexOf(t) < 0 || t === _colabTipo) return;
+  _colabTipo = t;
+  _colabRenderTipo();
+  colabSync();
+}
+
+// Cliente ya conocido: al terminar de escribir el nombre se completan solos su
+// teléfono y su lugar desde la base de clientes. Es la mitad de la carga de un
+// trabajo a alguien que ya está en la libreta. Nunca pisa lo que el usuario ya
+// escribió a mano.
+function colabAutoCliente() {
+  const nom = (gv('colab-colega') || '').trim().toLowerCase();
+  if (!nom || typeof getClientDB !== 'function') return;
+  const c = getClientDB().find(x => ((x.name || '') + '').trim().toLowerCase() === nom);
+  if (!c) return;
+  const tel = document.getElementById('colab-tel');
+  const lug = document.getElementById('colab-lugar');
+  let completo = false;
+  if (tel && !tel.value.trim() && (c.contact || '').trim()) { tel.value = c.contact; completo = true; }
+  if (lug && !lug.value.trim()) {
+    // La clave en la DB es `maplink` en minúscula (ver saveClientToDB).
+    const l = ((c.maplink || '').trim() || (c.address || '').trim());
+    if (l) { lug.value = l; completo = true; }
+  }
+  if (completo) toast('Datos del cliente completados', 'ok', 1800);
 }
 
 function colabClose() {
@@ -12107,19 +12252,23 @@ function colabSync() {
   }
   const qEl = document.getElementById('colab-quepasa');
   if (qEl) {
+    const qué = _colabTipo === 'directo' ? 'El trabajo' : 'La colaboración';
     qEl.textContent = futura
-      ? `Se agenda para el ${fmtDiaCorto(fecha)}. Va a aparecer en la Agenda y en el aviso de ese día.`
-      : `Queda registrada como realizada el ${fmtDiaCorto(fecha)}. Después vas a poder registrar la factura.`;
+      ? `${qué} se agenda para el ${fmtDiaCorto(fecha)}. Va a aparecer en la Agenda y en el aviso de ese día.`
+      : `${qué} queda registrado como realizado el ${fmtDiaCorto(fecha)}. Después vas a poder registrar la factura.`;
   }
 }
 
 // ─── Guardado ────────────────────────────────
-// Deja la colaboración asentada en el historial. No abre el editor: una
-// colaboración no se edita como presupuesto (no tiene ítems que retocar ni
-// documento que mandar), se corrige desde su propio diálogo.
+// Deja el trabajo asentado en el historial. No abre el editor: ni la
+// colaboración ni el trabajo directo se editan como presupuesto (no tienen
+// ítems que retocar ni documento que mandar), se corrigen desde su diálogo.
 function colabGuardar() {
   const nombre = (gv('colab-nombre') || '').trim();
   if (nombre.length < 2) { toast('Escribí qué trabajo hiciste', 'err'); return; }
+  // El tipo de una entrada ya registrada no se cambia (el segmentado está
+  // oculto al editar): mudarla de serie le cambiaría el número y movería su
+  // plata dentro o fuera de las ventas.
   const totalCents = _colabTotalCents();
   const fecha  = sanISODate(gv('colab-fecha')) || today();
   const cant   = Math.max(0, parseFloat(gv('colab-cant')) || 0) || 1;
@@ -12135,11 +12284,11 @@ function colabGuardar() {
 
   // El snapshot arranca de DEF para que no le falte ningún campo que el resto
   // de la app da por sentado, y se le sacan las dos fechas del ciclo comercial:
-  // una colaboración no vence, y su "emisión" es el día en que se trabaja (es
-  // lo que la pone en el mes correcto del historial y del mapa).
+  // ninguno de los dos vence, y su "emisión" es el día en que se trabaja (es
+  // lo que lo pone en el mes correcto del historial y del mapa).
   const snap = JSON.parse(JSON.stringify(DEF));
   delete snap.logo;
-  snap.quoteNumber = prev ? prev.quoteNumber : _nextColabNum();
+  snap.quoteNumber = prev ? prev.quoteNumber : _nextColabNum(_colabTipo);
   snap.dateIssue   = fecha;
   snap.dateExpiry  = '';
   snap.clientName    = colega;
@@ -12169,6 +12318,7 @@ function colabGuardar() {
     itemCount: 1,
     isEstimative: false,
     esTrabajoPropio: true,
+    tipoTrabajo: _colabTipo,
     colab: { nombre, precio: roundMoney(gv('colab-precio')), cantidad: cant, unidad },
     snapshot: snap,
   };
@@ -12195,10 +12345,10 @@ function colabGuardar() {
   if (typeof renderMorningBanner === 'function') renderMorningBanner();
   if (typeof mapaRefresh === 'function') mapaRefresh();
 
-  if (prev) { toast('Colaboración actualizada', 'ok'); return; }
+  if (prev) { toast(trabajoFrase(_colabTipo, 'actualizad'), 'ok'); return; }
   toast(futura
-    ? `Colaboración agendada para el ${fmtDiaCorto(fecha)}`
-    : `Colaboración registrada · ${fmtM(entry.total, entry.currency)}`, 'ok', 3500);
+    ? `${trabajoFrase(_colabTipo, 'agendad')} para el ${fmtDiaCorto(fecha)}`
+    : `${trabajoFrase(_colabTipo, 'registrad')} · ${fmtM(entry.total, entry.currency)}`, 'ok', 3500);
   // Recién hecha: el cierre del trabajo es el mismo de siempre (datos de pago
   // + registrar factura), que es a lo que apunta todo esto.
   if (!futura) _ofrecerCierreTrabajo(entry);
@@ -14398,8 +14548,9 @@ function renderHistory() {
   // Aislar las colaboraciones es la vista de "qué trabajé para colegas".
   const tipoEl   = document.getElementById('hist-tipo-filter');
   const tipoFilt = (tipoEl?.value || '').trim();
-  if (tipoFilt === 'colab')        h = h.filter(e =>  esTrabajoPropio(e));
-  else if (tipoFilt === 'presup')  h = h.filter(e => !esTrabajoPropio(e));
+  if (tipoFilt === 'colab')         h = h.filter(esColaboracion);
+  else if (tipoFilt === 'directo')  h = h.filter(esTrabajoDirecto);
+  else if (tipoFilt === 'presup')   h = h.filter(e => !esTrabajoPropio(e));
 
   // Agenda: al filtrar por "aceptado" el listado se ordena cronológicamente
   // por la fecha más próxima entre trabajo agendado y recontacto (los sin
@@ -14436,32 +14587,41 @@ function renderHistory() {
   // Subtotal propio de las colaboraciones: el único lugar del historial donde
   // se las suma, y solo cuando el usuario pidió verlas aparte. Nunca se mezcla
   // con el acumulado de presupuestos.
-  if (tipoFilt === 'colab') {
+  if (tipoFilt === 'colab' || tipoFilt === 'directo') {
     const totColab = h.reduce((s, e) => s + (e.total || 0), 0);
     const curC = h[0].currency || 'ARS';
     summaryHtml += `<div class="hcolab-resumen">
-      <span class="hcolab-resumen-n">${colabCantTxt(h.length)}</span>
+      <span class="hcolab-resumen-n">${colabCantTxt(h.length, tipoFilt)}</span>
       <span class="hcolab-resumen-tot">${fmtM(totColab, curC)}</span>
-      <span class="hcolab-resumen-nota">Trabajos propios. No entran en las estadísticas de presupuestos.</span>
+      <span class="hcolab-resumen-nota">${tipoFilt === 'directo'
+        ? 'Trabajos a clientes sin presupuesto de por medio. Suman a tus ventas, no a la conversión.'
+        : 'Trabajos para colegas. No entran en las estadísticas ni en tus ventas.'}</span>
     </div>`;
   }
   if (groupedByClient) {
     // Los presupuestos reemplazados por una versión posterior NO suman: son el
     // mismo trabajo cotizado dos veces y contarlos infla el acumulado del
     // cliente (y con él la idea de cuánto se le presupuestó de verdad).
-    // Las colaboraciones tampoco: no se le presupuestaron a ese cliente, se
-    // trabajaron para él. Su plata se ve en Facturación y en el subtotal
-    // propio del filtro de colaboraciones.
-    const totalPresupuestado = h.reduce((sum,e)=>sum+((esReemplazado(e)||esTrabajoPropio(e))?0:(e.total||0)), 0);
+    // Las colaboraciones tampoco: no son plata de este cliente, se la paga un
+    // colega. Los trabajos DIRECTOS sí suman: se los cobró a él, aunque no
+    // hayan pasado por un presupuesto.
+    const totalPresupuestado = h.reduce((sum,e)=>sum+((esReemplazado(e)||!sumaComoVenta(e))?0:(e.total||0)), 0);
     const cur = h[0].currency||'ARS';
-    // El conteo también dice PRESUPUESTOS: con un colega que solo dio
-    // colaboraciones, "Presupuestos 2 · Total $0" era una contradicción.
+    // El conteo dice PRESUPUESTOS: con un colega que solo dio colaboraciones,
+    // "Presupuestos 2 · Total $0" era una contradicción.
     const nPresup = h.filter(e => !esTrabajoPropio(e)).length;
-    const nColab  = h.length - nPresup;
-    const colabDelCliente = nColab ? `
+    const nColab  = h.filter(esColaboracion).length;
+    const nDir    = h.filter(esTrabajoDirecto).length;
+    const bloque = (titulo, txt, color) => `
       <div style="width:1px;height:32px;background:#a7f3d0"></div>
-      <div><div style="font-size:10px;font-weight:700;color:var(--accent-fg);text-transform:uppercase;letter-spacing:.5px">Colaboraciones</div>
-        <div style="font-size:14px;font-weight:700;color:#115e59">${nColab} · ${fmtM(h.reduce((s,e)=>s+(esTrabajoPropio(e)?(e.total||0):0),0), cur)}</div></div>` : '';
+      <div><div style="font-size:10px;font-weight:700;color:var(--accent-fg);text-transform:uppercase;letter-spacing:.5px">${titulo}</div>
+        <div style="font-size:14px;font-weight:700;color:${color}">${txt}</div></div>`;
+    const sumaDe = (fn) => fmtM(h.reduce((s,e)=>s+(fn(e)?(e.total||0):0),0), cur);
+    // El trabajo directo ya está DENTRO del total acumulado; su renglón dice
+    // cuánto de ese total vino sin presupuesto.
+    const colabDelCliente =
+      (nDir   ? bloque('Sin presupuesto', `${nDir} · ${sumaDe(esTrabajoDirecto)}`, 'var(--text)') : '') +
+      (nColab ? bloque('Colaboraciones',  `${nColab} · ${sumaDe(esColaboracion)}`, '#115e59') : '');
     summaryHtml = `<div style="background:var(--accent-light);border:1px solid #a7f3d0;border-radius:8px;padding:10px 14px;margin-bottom:10px;display:flex;gap:20px;align-items:center;flex-wrap:wrap">
       <div><div style="font-size:10px;font-weight:700;color:var(--accent-fg);text-transform:uppercase;letter-spacing:.5px">Cliente</div>
         <div style="font-size:14px;font-weight:700;color:var(--text)">${esc(h[0].clientName||'—')}</div></div>
@@ -14475,11 +14635,11 @@ function renderHistory() {
     </div>`;
   }
 
-  // Helper: HTML para una COLABORACIÓN (trabajo propio para un colega).
-  // Tarjeta aparte y no una variante de la de presupuesto: acá no hay nada
-  // que cargar en el editor, ni versión, ni PDF que compartir. Lo que sí
-  // comparte es el ciclo de trabajo — estado, día agendado, clima y el camino
-  // a la factura.
+  // Helper: HTML para un trabajo registrado a mano (colaboración o trabajo
+  // directo). Tarjeta aparte y no una variante de la de presupuesto: acá no
+  // hay nada que cargar en el editor, ni versión, ni PDF que compartir. Lo
+  // que sí comparte es el ciclo de trabajo — estado, día agendado, clima y el
+  // camino a la factura.
   const renderColab = (e) => {
     const est = e.estado || 'realizado';
     const [txtCol, bgCol] = ESTADO_COLORS[est] || ESTADO_COLORS.realizado;
@@ -14487,29 +14647,31 @@ function renderHistory() {
       `<option value="${s}"${s===est?' selected':''}>${estadoLabel(s)}</option>`
     ).join('');
     const c = e.colab || {};
+    const cfg = trabajoCfg(tipoTrabajo(e));
+    const dir = esTrabajoDirecto(e);
     const tieneDir = !!((e.snapshot && (e.snapshot.workMapLink || e.snapshot.workAddress) || '').trim());
     const tieneTel = !!histClientPhone(e);
     const detalle = c.nombre
       ? `${esc(c.nombre)} · ${esc(misSvcCantTxt(c.cantidad, c.unidad))}`
-      : 'Trabajo propio';
+      : cfg.nombre;
     return `
-    <div class="hitem is-colab" data-id="${e.id}">
+    <div class="hitem is-colab${dir ? ' is-directo' : ''}" data-id="${e.id}">
       <div class="htop">
         <div class="hinfo">
-          <div class="hnum">${esc(e.quoteNumber||'—')}<span class="hbadge-colab">Colaboración</span>${e.facturado?'<span class="hbadge-estado" style="color:#065f46;background:#d1fae5">✓ Facturado</span>':''}</div>
-          ${!groupedByClient?`<div class="hclient ${!e.clientName?'is-draft':''}">${esc(e.clientName||'(sin colega)')}</div>`:''}
+          <div class="hnum">${esc(e.quoteNumber||'—')}<span class="hbadge-colab${dir ? ' is-directo' : ''}">${esc(cfg.badge)}</span>${e.facturado?'<span class="hbadge-estado" style="color:#065f46;background:#d1fae5">✓ Facturado</span>':''}</div>
+          ${!groupedByClient?`<div class="hclient ${!e.clientName?'is-draft':''}">${esc(e.clientName|| (dir ? '(sin cliente)' : '(sin colega)'))}</div>`:''}
         </div>
-        <button class="btn btn-p btn-sm hcargar" onclick="abrirColaboracion(${e.id})" title="Editar esta colaboración">${icon('pencil')} Editar</button>
+        <button class="btn btn-p btn-sm hcargar" onclick="abrirColaboracion(${e.id})" title="Editar este trabajo">${icon('pencil')} Editar</button>
       </div>
       <div class="hmeta">${esc(e.currency||'')} ${fmtM(e.total||0,e.currency||'ARS')} · ${detalle} · ${fmtD(((e.snapshot&&e.snapshot.dateIssue)||e.savedAt||'').slice(0,10))}</div>
       <div class="hacts">
-        <select class="hestado-sel" style="color:${txtCol};background-color:${bgCol};border-color:${bgCol}" onchange="setEstadoHistory(${e.id}, this.value)" title="Cambiar estado" aria-label="Estado de la colaboración">${estadoOpts}</select>
+        <select class="hestado-sel" style="color:${txtCol};background-color:${bgCol};border-color:${bgCol}" onchange="setEstadoHistory(${e.id}, this.value)" title="Cambiar estado" aria-label="Estado del trabajo">${estadoOpts}</select>
         ${agendaChipFor(e)}
         ${typeof climaChipForEntry === 'function' ? climaChipForEntry(e) : ''}
-        ${tieneTel ? `<button class="btn btn-g btn-sm" onclick="chatWhatsappHistory(${e.id})" title="Abrir el chat de WhatsApp con el colega" aria-label="Chat de WhatsApp">${icon('message')} Chat</button>` : ''}
+        ${tieneTel ? `<button class="btn btn-g btn-sm" onclick="chatWhatsappHistory(${e.id})" title="Abrir el chat de WhatsApp" aria-label="Chat de WhatsApp">${icon('message')} Chat</button>` : ''}
         ${tieneDir ? `<button class="btn btn-g btn-sm" onclick="comoLlegar(${e.id})" title="Cómo llegar al lugar del trabajo" aria-label="Cómo llegar">${icon('pin')} Llegar</button>` : ''}
-        ${!e.facturado && (e.total||0) > 0 ? `<button class="btn btn-g btn-sm" onclick="irARegistrarFactura(${e.id})" title="Registrar la factura de esta colaboración">${icon('file')} Facturar</button>` : ''}
-        <button class="btn-icon-del" onclick="delFromHistory(${e.id})" title="Eliminar colaboración" aria-label="Eliminar colaboración">${icon('trash')}</button>
+        ${!e.facturado && (e.total||0) > 0 ? `<button class="btn btn-g btn-sm" onclick="irARegistrarFactura(${e.id})" title="Registrar la factura de este trabajo">${icon('file')} Facturar</button>` : ''}
+        <button class="btn-icon-del" onclick="delFromHistory(${e.id})" title="Eliminar" aria-label="Eliminar">${icon('trash')}</button>
       </div>
     </div>`;
   };
@@ -14592,24 +14754,25 @@ function renderHistory() {
   let html = summaryHtml;
   groups.forEach((entries, key) => {
     const isOpen = _expandedMonths.has(key);
-    // Igual que el acumulado por cliente: el presupuesto reemplazado por una
-    // versión posterior no suma (es el mismo trabajo cotizado dos veces), y
-    // las colaboraciones tampoco — el total del mes es lo PRESUPUESTADO.
-    const presup = entries.filter(e => !esTrabajoPropio(e));
-    const colabs = entries.filter(esTrabajoPropio);
-    const monthTotal = presup.reduce((s,e)=>s+(esReemplazado(e)?0:(e.total||0)), 0);
+    // El total del mes es la plata del NEGOCIO: presupuestos y trabajos
+    // directos (los dos se los cobra a un cliente). No suma el presupuesto
+    // reemplazado por una versión posterior —el mismo trabajo cotizado dos
+    // veces— ni las colaboraciones, que las paga un colega.
+    const ventas = entries.filter(sumaComoVenta);
+    const colabs = entries.filter(esColaboracion);
+    const monthTotal = ventas.reduce((s,e)=>s+(esReemplazado(e)?0:(e.total||0)), 0);
     const colabTotal = colabs.reduce((s,e)=>s+(e.total||0), 0);
     const cur = entries[0].currency || 'ARS';
     // Renglón aparte, fuera del encabezado: las colaboraciones del mes se ven
-    // sin tener que desplegar nada, y sin tocar el número de presupuestos.
+    // sin tener que desplegar nada, y sin tocar el número del negocio.
     const colabLinea = colabs.length ? `
-        <div class="hmonth-colab">${icon('users')} ${colabCantTxt(colabs.length)}
+        <div class="hmonth-colab">${icon('users')} ${colabCantTxt(colabs.length, 'colab')}
           <span class="hmonth-colab-tot">${fmtM(colabTotal, cur)}</span></div>` : '';
     html += `
       <div class="hmonth ${isOpen?'is-open':''}" data-month="${key}">
         <button type="button" class="hmonth-header" onclick="toggleHistoryMonth('${key}')">
           <span class="hmonth-title">${icon('calendar')} ${_monthLabel(key)}</span>
-          <span class="hmonth-count">${presup.length}</span>
+          <span class="hmonth-count">${ventas.length}</span>
           <span class="hmonth-total">${fmtM(monthTotal, cur)}</span>
           <span class="hmonth-chevron">▾</span>
         </button>
@@ -18143,7 +18306,9 @@ function mapaRefresh() {
     const est = e.estado || 'borrador';
     // Colaboraciones: solo si el usuario prendió su interruptor, y NUNCA
     // filtradas por estado (su estado es del trabajo propio, no comercial).
-    if (esTrabajoPropio(e)) { if (!_mapaVerColab) return; }
+    // Los trabajos DIRECTOS son trabajo en la casa de un cliente: se ven
+    // siempre, como cualquier otro, y se filtran por estado igual.
+    if (esColaboracion(e)) { if (!_mapaVerColab) return; }
     else if (!filt.has(est)) return;
     // El reemplazado no va al mapa: su versión nueva está en el mismo punto y
     // dos marcas para el mismo trabajo hacen dudar de cuál abrir.
@@ -18177,13 +18342,14 @@ function mapaRefresh() {
 
 function mapaMarker(L, e, est, ll) {
   // La colaboración lleva color propio (teal): no comparte la paleta de los
-  // estados comerciales porque no es una etapa de venta.
-  const [txt] = esTrabajoPropio(e)
+  // estados comerciales porque no es una etapa de venta. El trabajo directo
+  // sí usa el color de su estado: es trabajo para un cliente, como el resto.
+  const [txt] = esColaboracion(e)
     ? [MAPA_COLAB_COLOR]
     : (ESTADO_COLORS[est] || ESTADO_COLORS.borrador);
   const hl = _mapaHighlight.has(e.id);
   const icon = L.divIcon({
-    className: 'mapa-pin' + (hl ? ' is-hl' : '') + (esTrabajoPropio(e) ? ' is-colab' : ''),
+    className: 'mapa-pin' + (hl ? ' is-hl' : '') + (esColaboracion(e) ? ' is-colab' : ''),
     html: `<span style="background:${txt}"></span>`,
     iconSize: [20, 20], iconAnchor: [10, 10], popupAnchor: [0, -10],
   });
@@ -18208,7 +18374,7 @@ function mapaClusterMarker(L, g) {
   // haber un presupuesto del cliente y una jornada trabajada para un colega.
   const byEst = {};
   items.forEach(x => {
-    const k = esTrabajoPropio(x.e) ? 'colab' : x.est;
+    const k = esColaboracion(x.e) ? 'colab' : x.est;
     byEst[k] = (byEst[k] || 0) + 1;
   });
   const n = items.length;
@@ -18272,20 +18438,21 @@ function mapaPopupHtml(e, est) {
   const num = esc(e.quoteNumber || '—');
   const cur = e.currency || 'ARS';
   const opts = ESTADOS.map(s => `<option value="${s}"${s === est ? ' selected' : ''}>${estadoLabel(s)}</option>`).join('');
-  // Colaboración: no hay documento que ver ni presupuesto que cargar en el
-  // editor. Se edita en su propio diálogo.
+  // Trabajo sin presupuesto: no hay documento que ver ni presupuesto que
+  // cargar en el editor. Se edita en su propio diálogo.
   if (esTrabajoPropio(e)) {
     const c = e.colab || {};
+    const cfgT = trabajoCfg(tipoTrabajo(e));
     const [txtC, bgC] = ESTADO_COLORS[est] || ESTADO_COLORS.realizado;
     return `<div class="mapa-popup">
-      <div class="mapa-popup-cli">${cli}<span class="hbadge-colab">Colaboración</span></div>
+      <div class="mapa-popup-cli">${cli}<span class="hbadge-colab${esTrabajoDirecto(e) ? ' is-directo' : ''}">${esc(cfgT.badge)}</span></div>
       <div class="mapa-popup-meta">${num} · ${fmtM(e.total || 0, cur)} · ${fmtD(_mapaDateOf(e))}</div>
       ${c.nombre ? `<div class="mapa-popup-meta">${esc(c.nombre)} · ${esc(misSvcCantTxt(c.cantidad, c.unidad))}</div>` : ''}
       <select class="mapa-popup-estado" style="color:${txtC};background:${bgC}" onchange="mapaSetEstado(${e.id}, this.value)" aria-label="Estado">${opts}</select>
       <div class="mapa-popup-acts">
         <button class="btn btn-p btn-sm" onclick="comoLlegar(${e.id})">${icon('pin')} Llegar</button>
       </div>
-      <button class="mapa-popup-edit" onclick="abrirColaboracion(${e.id})" title="Editar esta colaboración">${icon('pencil')} Editar…</button>
+      <button class="mapa-popup-edit" onclick="abrirColaboracion(${e.id})" title="Editar este trabajo">${icon('pencil')} Editar…</button>
     </div>`;
   }
   const [txt, bg] = ESTADO_COLORS[est] || ESTADO_COLORS.borrador;
@@ -18382,29 +18549,37 @@ function mapaUpdateZonaStats() {
   const b = _mapa.getBounds();
   const counts = {};
   let total = 0, cur = '', totalMarks = 0;
-  // Las colaboraciones se cuentan APARTE. Nunca entran en counts ni en total:
-  // una colaboración nace aceptada o realizada y jamás perdida, así que
-  // sumarla subiría sola la conversión y diría que se aceptaron más trabajos
-  // de los que de verdad se aceptaron. Ver test/trabajo-propio.test.cjs.
-  let colabN = 0, colabTotal = 0;
+  // Los trabajos sin presupuesto se cuentan APARTE, los dos tipos. Nunca
+  // entran en counts ni en total: nacen aceptados o realizados y jamás
+  // perdidos, así que sumarlos subiría sola la conversión y diría que se
+  // aceptaron más trabajos de los que de verdad se aceptaron. Que el trabajo
+  // directo sí sume a las VENTAS del mes no lo mete acá: esto es el embudo,
+  // y por el embudo no pasó. Ver test/trabajo-propio.test.cjs.
+  let colabN = 0, colabTotal = 0, dirN = 0, dirTotal = 0;
   _mapaLayer.eachLayer(m => {
     if (!m.getLatLng || !b.contains(m.getLatLng())) return;
     // Cada marca puede representar varios presupuestos (grupo apilado): se
     // cuentan todos sus entries (m._entries), no la marca.
     (m._entries || []).forEach(e => {
       if (!cur && e.currency) cur = e.currency;
-      if (esTrabajoPropio(e)) { colabN++; colabTotal += e.total || 0; return; }
+      if (esColaboracion(e))   { colabN++; colabTotal += e.total || 0; return; }
+      if (esTrabajoDirecto(e)) { dirN++;   dirTotal   += e.total || 0; return; }
       const est = e.estado || 'borrador';
       counts[est] = (counts[est] || 0) + 1;
       total += e.total || 0;
       totalMarks++;
     });
   });
-  // Panel propio de las colaboraciones visibles en la zona.
-  const colabBox = colabN ? `
-    <div class="mapa-zona-colab">${icon('users')} ${colabCantTxt(colabN)} en esta zona
+  // Panel propio de lo que se ve en la zona pero no pasó por un presupuesto.
+  const colabBox =
+    (dirN ? `
+    <div class="mapa-zona-colab is-directo">${icon('wrench')} ${colabCantTxt(dirN, 'directo')} en esta zona
+      <b>${fmtM(dirTotal, cur || 'ARS')}</b>
+      <span class="mapa-hint-inline">sin presupuesto: no cuentan en la conversión</span></div>` : '') +
+    (colabN ? `
+    <div class="mapa-zona-colab">${icon('users')} ${colabCantTxt(colabN, 'colab')} en esta zona
       <b>${fmtM(colabTotal, cur || 'ARS')}</b>
-      <span class="mapa-hint-inline">aparte de los números de arriba</span></div>` : '';
+      <span class="mapa-hint-inline">aparte de los números de arriba</span></div>` : '');
   if (!totalMarks) {
     box.innerHTML = colabBox
       || '<div class="mapa-hint">Acercá o paneá el mapa a una zona con presupuestos para ver sus números.</div>';
@@ -18446,8 +18621,9 @@ function mapaCercaMio(btn) {
       getH().forEach(e => {
         // Una colaboración agendada también es trabajo por hacer, pero solo
         // entra si el usuario prendió su interruptor: si no, quedaría
-        // resaltada en la lista sin pin que la respalde en el mapa.
-        if (esTrabajoPropio(e)) { if (!_mapaVerColab || (e.estado || '') !== 'aceptado') return; }
+        // resaltada en la lista sin pin que la respalde en el mapa. El
+        // trabajo directo se dibuja siempre, así que entra como cualquiera.
+        if (esColaboracion(e)) { if (!_mapaVerColab || (e.estado || '') !== 'aceptado') return; }
         else if (!PENDIENTES_CAMPO.includes(e.estado || 'borrador')) return;
         const ll = entryLatLng(e);
         if (!ll) return;
@@ -19607,7 +19783,7 @@ function calBuildIndex() {
       // para qué tarifa: en la Agenda, "Martín" solo no distingue una poda
       // propia de una jornada trabajada para un colega.
       const colabSub = esTrabajoPropio(e)
-        ? 'Colaboración' + ((e.colab && e.colab.nombre) ? ' · ' + e.colab.nombre : '')
+        ? trabajoCfg(tipoTrabajo(e)).badge + ((e.colab && e.colab.nombre) ? ' · ' + e.colab.nombre : '')
         : '';
       fechas.forEach((f, i) => {
         const dnum = total > 1 ? ` · día ${i + 1} de ${total}` : '';
