@@ -156,8 +156,10 @@ const SEMBRAR = RESET + `
           r.riesgo.vis.map(s => s.id).join() ===
             'esec-ident,esec-cliente,esec-items,esec-risk,esec-conditions,esec-dispo,esec-adjust',
           fmt(r.riesgo));
-        check(`[${vista}] La barra de progreso tiene un segmento por sección visible`,
-          r.normal.segmentos === 6 && r.estimativo.segmentos === 5 && r.riesgo.segmentos === 7,
+        // Un segmento por sección visible que se CARGA: Identificación, Disposición
+        // y Ajustes se dan por resueltas solas y no cuentan (v226).
+        check(`[${vista}] La barra de progreso tiene un segmento por sección que se carga`,
+          r.normal.segmentos === 3 && r.estimativo.segmentos === 3 && r.riesgo.segmentos === 4,
           [r.normal.segmentos, r.estimativo.segmentos, r.riesgo.segmentos].join('/'));
         check(`[${vista}] La píldora del encabezado dice el modo activo`,
           r.normal.modo === 'Normal' && r.estimativo.modo === 'Estimativo' &&
@@ -197,8 +199,10 @@ const SEMBRAR = RESET + `
         est(r.lleno, 'esec-items') === '2 ítems', est(r.lleno, 'esec-items'));
       check('…y los ajustes muestran recargo y descuento',
         est(r.lleno, 'esec-adjust') === '+12% · −5%', est(r.lleno, 'esec-adjust'));
-      check('El progreso cuenta las secciones resueltas sobre las visibles',
-        r.vacio.progreso === '3 de 6 secciones' && r.lleno.progreso === '6 de 6 secciones',
+      // Antes decía "3 de 6 secciones" con el presupuesto vacío: contaba como
+      // hechas las que se resuelven solas. Ahora dice qué falta cargar.
+      check('El progreso dice qué falta cargar',
+        r.vacio.progreso === 'Falta: cliente, trabajos y condiciones' && r.lleno.progreso === 'Todo cargado ✓',
         r.vacio.progreso + ' → ' + r.lleno.progreso);
       await page.close();
     }
@@ -279,8 +283,9 @@ const SEMBRAR = RESET + `
         return { inicial, traAbrirAjustes, traCambiarModo };
       `));
       const abiertas = o => o.vis.filter(s => s.abierta).map(s => s.id);
-      check('En fichas arranca abierta la primera sección',
-        abiertas(r.inicial).join() === 'esec-ident', abiertas(r.inicial).join());
+      // Arranca en Cliente: Identificación se autocompleta y casi nunca se toca (v226).
+      check('En fichas arranca abierta la ficha de Cliente',
+        abiertas(r.inicial).join() === 'esec-cliente', abiertas(r.inicial).join());
       check('…y se abre una sola a la vez',
         abiertas(r.traAbrirAjustes).join() === 'esec-adjust',
         abiertas(r.traAbrirAjustes).join());
@@ -560,17 +565,15 @@ const SEMBRAR = RESET + `
         out.trasCambiarModo = leer();
         return out;
       `));
-      check('En clásica el selector de modo queda EXACTAMENTE como estaba',
-        r.clasica.titulo && r.clasica.sub && !r.clasica.corta,
-        JSON.stringify(r.clasica));
-      check('En fichas y etapas se compacta a una fila con etiqueta corta',
-        ['fichas','consola'].every(v => r[v].corta && !r[v].titulo && !r[v].sub &&
-                                        r[v].fila === 'row'),
-        JSON.stringify([r.fichas, r.consola]));
-      check('…y en el teléfono mide bastante menos que apilado',
-        r.clasica.fila === 'column' && r.fichas.alto < r.clasica.alto * 0.5,
-        'clasica=' + r.clasica.alto + 'px (' + r.clasica.fila + ')  fichas=' +
-        r.fichas.alto + 'px (' + r.fichas.fila + ')');
+      // Desde la v226 las TRES vistas usan el segmentado de una fila: en clásica
+      // los tres bloques apilados ocupaban ~180 px arriba de cada presupuesto.
+      check('En las tres vistas el selector es una fila con etiqueta corta',
+        ['clasica','fichas','consola'].every(v => r[v].corta && !r[v].titulo && !r[v].sub &&
+                                                  r[v].fila === 'row'),
+        JSON.stringify([r.clasica, r.fichas, r.consola]));
+      check('…y en el teléfono mide una sola fila (menos de 60 px)',
+        ['clasica','fichas','consola'].every(v => r[v].alto < 60),
+        'clasica=' + r.clasica.alto + 'px  fichas=' + r.fichas.alto + 'px');
       check('La etiqueta corta no se lleva el nombre accesible',
         r.aria === 'true' && /Presupuesto Normal/.test(r.tituloEnDOM),
         r.aria + ' / ' + r.tituloEnDOM);

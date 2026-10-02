@@ -143,6 +143,19 @@ No es una vista "degradada": es el estado actual, intacto.
 Consecuencia práctica: ante cualquier duda o error en runtime, el camino correcto
 es **caer a `clasica`**, nunca romper.
 
+> **Excepción decidida por el usuario (v226, "facilidad de uso, tanda 2").**
+> Tres cambios de `clasica` se hicieron a propósito, medidos en un celular de
+> 360 px con 36 presupuestos: (1) el selector de modo es el segmentado de una
+> fila en las tres vistas (los bloques apilados ocupaban ~180 px); (2)
+> Identificación se pliega en una línea (`identResSync`, ~250 px menos; en
+> `fichas` no, porque la ficha ya se pliega); (3) en `fichas` arranca abierta
+> la ficha de Cliente. "+ Árbol / Trabajo" pasó de 1.384 px a 1.098 px del tope.
+> El resto de I2 sigue: sin encabezados de sección ni barra de progreso en
+> `clasica`, y es el fallback ante errores. La barra de progreso de
+> `fichas`/`consola` ya no cuenta Identificación, Disposición ni Ajustes (se
+> resuelven solas: un presupuesto vacío arrancaba en "4 de 6") y dice qué falta
+> ("Falta: cliente y trabajos").
+
 ### I3 — Cambiar de vista es solo presentación
 
 Cambiar `vistaEditor` no puede:
