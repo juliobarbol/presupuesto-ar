@@ -600,6 +600,9 @@ details.scol[open]>summary .scol-chev{transform:rotate(180deg)}
   font-family:var(--font-mono);font-size:var(--fs-sm);font-weight:600;
   text-transform:uppercase;letter-spacing:.05em;color:var(--text-2);margin-bottom:var(--sp-2)}
 .esh-prog-note{color:var(--muted);text-align:right}
+/* En el teléfono el "Falta: …" necesita el renglón entero; el modo ya lo dice
+   la píldora de arriba (NORMAL / ESTIMATIVO / RIESGO). */
+@media (max-width:420px){ .esh-prog-note{display:none} }
 .esh-bar{display:flex;gap:4px}
 .esh-seg{flex:1;height:6px;border-radius:3px;background:var(--border)}
 .esh-seg.is-done{background:var(--accent)}
@@ -667,6 +670,18 @@ details.scol[open]>summary .scol-chev{transform:rotate(180deg)}
 #panel-editor[data-vista="fichas"] .esec .st.st-with-action::before,
 #panel-editor[data-vista="consola"] .esec .st.st-with-action::before{display:none}
 
+/* ── Identificación plegada (identResSync) ─────────────────────── */
+.ident-res{display:flex;align-items:center;flex-wrap:wrap;gap:4px 10px;width:100%;min-height:44px;margin:0 0 14px;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius-field);background:var(--card);color:var(--text);font:inherit;text-align:left;cursor:pointer}
+.ident-res-num{font-family:var(--font-mono);font-weight:600;font-size:15px;color:var(--accent-fg)}
+.ident-res-meta{flex:1;min-width:0;font-size:13px;color:var(--muted)}
+.ident-res-acc{flex:none;font-size:13px;font-weight:600;color:var(--accent-fg)}
+.ident-res-acc::after{content:' ▾'}
+.ident-res[aria-expanded="true"] .ident-res-acc::after{content:' ▴'}
+#ident-campos[hidden]{display:none}
+/* En fichas la ficha ya se pliega sola: adentro van los campos directo. */
+#panel-editor[data-vista="fichas"] .ident-res{display:none}
+#panel-editor[data-vista="fichas"] #ident-campos[hidden]{display:grid}
+
 /* ── Selector de modo en las vistas nuevas ───────────────────────
    En `clasica` el selector son tres bloques apilados con título y subtítulo
    (~370 px en el teléfono). Al lado de las fichas y del encabezado eso se lee
@@ -677,15 +692,15 @@ details.scol[open]>summary .scol-chev{transform:rotate(180deg)}
    No se pierde información: el subtítulo de cada modo lo dice el encabezado del
    editor (`.esh-prog-note`: PRECIOS CERRADOS / VALOR REFERENCIAL / INFORME ISA)
    para el modo activo, y la explicación larga sigue en el `title` de cada botón.
-   En `clasica` nada de esto aplica: el selector queda igual que siempre. */
-#panel-editor[data-vista="fichas"] .mode-switch,
-#panel-editor[data-vista="consola"] .mode-switch{
+   Desde la v226 vale también en `clasica`: los tres bloques apilados ocupaban
+   ~180 px arriba de cada presupuesto (medido a 360 px), y el modo se elige una
+   vez. En clásica el modo estimativo igual lo dice su banner. */
+#panel-editor .mode-switch{
   flex-direction:row;gap:0;padding:4px;
   background:var(--card);
   border-radius:var(--radius-field);margin-bottom:var(--sp-4);
 }
-#panel-editor[data-vista="fichas"] .mode-btn,
-#panel-editor[data-vista="consola"] .mode-btn{
+#panel-editor .mode-btn{
   flex:1;min-width:0;
   flex-direction:row;align-items:center;justify-content:center;
   gap:0;padding:8px 4px;min-height:44px;text-align:center;
@@ -695,27 +710,22 @@ details.scol[open]>summary .scol-chev{transform:rotate(180deg)}
    "elegido". Deja de haber un trato especial para estimativo —era el único con
    relleno— porque acá lo llevan los tres; en estas vistas el modo igual está
    dicho dos veces más, en la píldora del encabezado y en el banner. */
-#panel-editor[data-vista="fichas"] .mode-btn.active,
-#panel-editor[data-vista="consola"] .mode-btn.active{
+#panel-editor .mode-btn.active{
   background:var(--accent);color:var(--on-accent);
   box-shadow:0 1px 4px rgba(var(--accent-rgb),.22);
 }
-#panel-editor[data-vista="fichas"] .mode-btn-title,
-#panel-editor[data-vista="consola"] .mode-btn-title,
-#panel-editor[data-vista="fichas"] .mode-btn-sub,
-#panel-editor[data-vista="consola"] .mode-btn-sub{display:none}
+#panel-editor .mode-btn-title,
+#panel-editor .mode-btn-sub{display:none}
 /* Mono en versalita, igual que las tabs de etapa, el botón de Notas y las
    etiquetas de la barra de totales: en estas vistas los controles hablan todos
    el mismo idioma tipográfico. */
-#panel-editor[data-vista="fichas"] .mode-btn-short,
-#panel-editor[data-vista="consola"] .mode-btn-short{
+#panel-editor .mode-btn-short{
   display:inline-flex;align-items:center;gap:5px;
   font-family:var(--font-mono);font-size:var(--fs-xs);font-weight:600;
   text-transform:uppercase;letter-spacing:.06em;
   white-space:nowrap;
 }
-#panel-editor[data-vista="fichas"] .mode-btn-short .ic,
-#panel-editor[data-vista="consola"] .mode-btn-short .ic{width:15px;height:15px}
+#panel-editor .mode-btn-short .ic{width:15px;height:15px}
 /* El botón de Notas quedaba solo en su renglón, lejos de todo. Pegado al
    selector se lee como parte del mismo bloque de encabezado. */
 #panel-editor[data-vista="fichas"] .notes-bar,
@@ -2173,9 +2183,12 @@ input[type=number]{-moz-appearance:textfield}
 .nt-empty{font-size:13px;color:var(--muted);padding:10px 0;line-height:1.5}
 .nt-clear{margin-top:14px;width:100%;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-field);color:var(--muted);font-size:12px;font-weight:600;padding:8px;cursor:pointer}
 .nt-clear:active{background:var(--accent-light)}
-.agc-ev-acts{display:flex;flex-flow:row wrap;gap:7px;flex-shrink:0;justify-content:flex-end;align-content:flex-start}
-.agc-ev-btn{width:42px;height:42px;display:inline-flex;align-items:center;justify-content:center;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-field);cursor:pointer;color:var(--muted);padding:0}
-.agc-ev-btn .ic{width:19px;height:19px}
+/* Botones con TEXTO, en una fila debajo del evento. Solo-ícono, el libro
+   ("ver en el historial") no se entendía, y la columna de botones a la derecha
+   le comía el ancho al título ("Vence Lucía / Fernández" partido). */
+.agc-ev-acts{display:flex;flex-flow:row wrap;gap:7px;margin-top:8px}
+.agc-ev-btn{min-width:44px;height:40px;display:inline-flex;align-items:center;justify-content:center;gap:5px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-field);cursor:pointer;color:var(--muted);padding:0 10px;font-family:var(--font-text);font-size:13px;font-weight:600;white-space:nowrap}
+.agc-ev-btn .ic{width:17px;height:17px;flex:none}
 .agc-ev-btn:active{background:var(--accent-light)}
 .agc-day-empty{font-size:13px;color:var(--muted);padding:6px 2px;line-height:1.5}
 .agc-note-form{display:flex;gap:7px;align-items:stretch;margin-top:8px}
@@ -3471,6 +3484,7 @@ input[type=number]{-moz-appearance:textfield}
 <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /> <path d="M12 6v6l4 2" /></symbol>
 <symbol id="i-zap" viewBox="0 0 24 24"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z" /></symbol>
 <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14" /> <path d="M12 5v14" /></symbol>
+<symbol id="i-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2" ry="2" /> <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" /></symbol>
 <symbol id="i-arrow-up" viewBox="0 0 24 24"><path d="M12 19V5" /> <path d="m5 12 7-7 7 7" /></symbol>
 <symbol id="i-paperclip" viewBox="0 0 24 24"><path d="m16 6-8.414 8.586a2 2 0 0 0 2.829 2.829l8.414-8.586a4 4 0 1 0-5.657-5.657l-8.379 8.551a6 6 0 1 0 8.485 8.485l8.379-8.551" /></symbol>
 <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" /> <path d="M21 3v5h-5" /> <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" /> <path d="M8 16H3v5" /></symbol>
@@ -3533,11 +3547,10 @@ input[type=number]{-moz-appearance:textfield}
         <div id="morning-banner" class="morning-banner" style="display:none"></div>
 
         <div class="mode-switch" id="mode-switch">
-          <!-- `.mode-btn-short` es la etiqueta para las vistas fichas/etapas,
-               donde el selector se compacta a un segmentado de una línea. Va
-               con aria-hidden porque el nombre accesible ya lo da el título
-               largo de al lado; en la vista clásica está en display:none y no
-               cambia nada. Ver docs/rediseno-editor.md. -->
+          <!-- `.mode-btn-short` es la etiqueta del segmentado de una línea
+               (las tres vistas, desde la v226). Va con aria-hidden porque el
+               nombre accesible ya lo da el título largo de al lado, que queda
+               oculto por CSS. Ver docs/rediseno-editor.md. -->
           <button class="mode-btn active" id="mode-btn-normal" onclick="setMode('normal')" title="Lo más común: ya viste el árbol y pones un precio cerrado por cada trabajo.">
             <span class="mode-btn-title"><svg class="ic"><use href="#i-clipboard"></use></svg> Presupuesto Normal</span>
             <span class="mode-btn-sub">Precios cerrados por trabajo</span>
@@ -3618,7 +3631,17 @@ input[type=number]{-moz-appearance:textfield}
           </button>
           <div class="esec-body">
         <div class="st">Identificación</div>
-        <div class="r4">
+        <!-- Resumen de una línea (identResSync): número, fechas y moneda casi
+             nunca se cambian, y desplegados ocupaban ~250 px arriba de lo que
+             sí se carga en cada presupuesto (cliente y trabajos). Tocarlo
+             despliega los campos. En la vista fichas no se usa: ahí la ficha
+             misma ya se pliega. -->
+        <button type="button" class="ident-res" id="ident-res" onclick="identToggle()" aria-expanded="false" aria-controls="ident-campos">
+          <span class="ident-res-num" id="ident-res-num">—</span>
+          <span class="ident-res-meta" id="ident-res-meta"></span>
+          <span class="ident-res-acc" id="ident-res-acc">Cambiar</span>
+        </button>
+        <div class="r4" id="ident-campos" hidden>
           <div class="fg"><label>N° Presupuesto</label><input type="text" id="quote-number" readonly style="color:var(--accent-fg);font-weight:700"></div>
           <div class="fg"><label>Fecha de emisión</label><input type="date" id="date-issue" oninput="onDateChange()"></div>
           <div class="fg" id="expiry-fg">
@@ -6174,6 +6197,42 @@ function toastAccion(msg, acciones, dur = 8000, type = 'info') {
   requestAnimationFrame(() => { requestAnimationFrame(() => el.classList.add('show')); });
   setTimeout(close, dur);
   return el;
+}
+
+// ─── COLA DE AVISOS ──────────────────────────
+// Los avisos que la app dispara SOLA (no responden a un toque: recontactos y
+// backup al abrir, el del clima cuando llega el pronóstico) salen DE A UNO.
+// Antes se apilaban dos o tres al abrir la app, tapaban la barra de abajo y
+// encima del aviso del día ("Hoy tenés N podas"). `fn` arma el aviso y lo
+// devuelve (o nada, si al final no hay qué avisar); el próximo sale cuando ese
+// se cierra, y su tiempo corre recién desde que se ve. Lo que responde a un
+// toque del usuario (Deshacer, Datos de pago…) NO pasa por acá: sale ya.
+const _colaAvisos = [];
+let _avisoActivo = null;
+function colaAviso(fn) {
+  _colaAvisos.push(fn);
+  _colaSeguir();
+}
+function _colaSeguir() {
+  if (_avisoActivo && document.body.contains(_avisoActivo)) return;
+  _avisoActivo = null;
+  if (!_colaAvisos.length) return;
+  // Con el aviso del día o la bienvenida abiertos, esperar a que se cierren.
+  if (document.querySelector('#day-alert-overlay.open, #moverlay.open')) { setTimeout(_colaSeguir, 800); return; }
+  while (_colaAvisos.length && !_avisoActivo) {
+    let el = null;
+    try { el = _colaAvisos.shift()(); } catch (e) { console.error('colaAviso', e); }
+    if (el && el.nodeType === 1 && el.parentNode) _avisoActivo = el;
+  }
+  if (!_avisoActivo) return;
+  const el = _avisoActivo;
+  const mo = new MutationObserver(() => {
+    if (document.body.contains(el)) return;
+    mo.disconnect();
+    if (_avisoActivo === el) _avisoActivo = null;
+    setTimeout(_colaSeguir, 400);
+  });
+  mo.observe(el.parentNode, { childList: true });
 }
 
 // ─── CONFIRM DIALOG ──────────────────────────
@@ -10617,8 +10676,12 @@ const EDITOR_ETAPAS = [
 // Sección abierta en la vista "fichas" y etapa activa en la vista "consola".
 // Las dos son estado de pantalla, no del presupuesto: no se guardan ni viajan
 // en el backup (invariante I3).
-let _esecOpen = 'ident';
+// La ficha que arranca abierta es Cliente: Identificación se autocompleta
+// (número, fechas) y casi nunca se toca.
+let _esecOpen = 'cliente';
 let _esecEtapa = 'datos';
+// Identificación desplegada (vistas clásica y consola). Estado de pantalla.
+let _identAbierta = false;
 
 // La vista efectiva. Cualquier valor que no esté en la lista blanca cae a
 // 'clasica', que es la pantalla conocida-buena (invariante I2).
@@ -10630,9 +10693,32 @@ function currentVistaEditor() {
 // ahora se usa desde la consola y desde los tests.
 function setVistaEditor(v) {
   S.vistaEditor = (EDITOR_VIEWS.indexOf(v) >= 0) ? v : 'clasica';
-  if (!_esecOpen) _esecOpen = 'ident';
+  if (!_esecOpen) _esecOpen = 'cliente';
   editorShellSync();
   saveLS();
+}
+
+// Resumen de una línea de Identificación: "2026-0036 · emitido 02/10/2026 ·
+// vence 01/11/2026". Solo lee S y escribe texto/atributos (invariante I3).
+function identResSync() {
+  const res = document.getElementById('ident-res');
+  const campos = document.getElementById('ident-campos');
+  if (!res || !campos) return;
+  const set = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+  set('ident-res-num', S.quoteNumber || '—');
+  const partes = [];
+  if (S.dateIssue)  partes.push('emitido ' + fmtD(S.dateIssue));
+  if (S.dateExpiry) partes.push('vence ' + fmtD(S.dateExpiry));
+  if (S.currency && S.currency !== 'ARS') partes.push(S.currency);
+  set('ident-res-meta', partes.join(' · '));
+  set('ident-res-acc', _identAbierta ? 'Ocultar' : 'Cambiar');
+  res.setAttribute('aria-expanded', _identAbierta ? 'true' : 'false');
+  campos.hidden = !_identAbierta;
+}
+
+function identToggle() {
+  _identAbierta = !_identAbierta;
+  identResSync();
 }
 
 function editorToggleSection(key) {
@@ -10660,8 +10746,9 @@ function _esecEstado(key) {
   const items = n => n ? { txt:(n + (n === 1 ? ' ítem' : ' ítems')), done:true }
                        : { txt:'Pendiente', done:false };
   switch (key) {
-    // Se autocompleta: siempre está lista, y lo útil es ver el número.
-    case 'ident':      return { txt:S.quoteNumber || '—', done:true };
+    // Se autocompleta: siempre está lista, y lo útil es ver el número. No
+    // cuenta para el progreso (cuenta:false): no es algo que el usuario cargue.
+    case 'ident':      return { txt:S.quoteNumber || '—', done:true, cuenta:false };
     case 'cliente':    return lleno(S.clientName) ? { txt:'Completo ✓', done:true }
                                                   : { txt:'Pendiente', done:false };
     case 'items':      return items((activeItemsArr() || []).length);
@@ -10680,8 +10767,8 @@ function _esecEstado(key) {
     // como `adjust`, cuenta resuelta aunque esté vacía.
     case 'dispo': {
       const nf = dispoPhotoRefs().length;
-      if (nf) return { txt:(nf === 1 ? '1 foto' : nf + ' fotos'), done:true };
-      return { txt: lleno(S.dispoNota) ? 'Anotado ✓' : 'Sin definir', done:true };
+      if (nf) return { txt:(nf === 1 ? '1 foto' : nf + ' fotos'), done:true, cuenta:false };
+      return { txt: lleno(S.dispoNota) ? 'Anotado ✓' : 'Sin definir', done:true, cuenta:false };
     }
     // Vacío es una respuesta válida: sin ajustes también está resuelta.
     case 'adjust': {
@@ -10689,16 +10776,24 @@ function _esecEstado(key) {
       const sur = Number(S.surcharge) || 0, dsc = Number(S.discount) || 0;
       if (sur > 0) partes.push('+' + sur + '%');
       if (dsc > 0) partes.push('−' + dsc + '%');
-      return { txt: partes.length ? partes.join(' · ') : 'Sin ajustes', done:true };
+      return { txt: partes.length ? partes.join(' · ') : 'Sin ajustes', done:true, cuenta:false };
     }
   }
   return { txt:'', done:true };
 }
 
-// Encabezado del editor + barra de progreso. `flags` es un booleano por
-// sección visible (en orden): así el segmento pintado es el de la sección
-// resuelta, no los N primeros.
-function _eshRender(flags) {
+// Nombre de cada sección en el "Falta: …" del encabezado.
+const ESH_FALTA = { cliente:'cliente', items:'trabajos', 'est-items':'trabajos',
+  risk:'informe', conditions:'condiciones', 'est-obs':'observaciones' };
+
+// Encabezado del editor + barra de progreso. `secs` = las secciones visibles
+// que CUENTAN ({key, done}, en orden): así el segmento pintado es el de la
+// sección resuelta, no los N primeros. Antes contaban también Identificación,
+// Disposición y Ajustes, que se dan por resueltas solas: un presupuesto vacío
+// arrancaba en "4 de 6 secciones", como si ya estuviera a mitad de camino.
+// Ahora dice lo que falta cargar.
+function _eshRender(secs) {
+  const flags = secs.map(x => x.done);
   const set = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
   const modo = currentMode();
   set('esh-num', S.quoteNumber || '—');
@@ -10706,8 +10801,9 @@ function _eshRender(flags) {
   set('esh-mode', modo === 'estimativo' ? 'Estimativo' : modo === 'riesgo' ? 'Riesgo' : 'Normal');
   set('esh-note', modo === 'estimativo' ? 'Valor referencial'
                 : modo === 'riesgo'     ? 'Informe ISA' : 'Precios cerrados');
-  const hechas = flags.filter(Boolean).length;
-  set('esh-count', hechas + ' de ' + flags.length + ' secciones');
+  const faltan = secs.filter(x => !x.done).map(x => ESH_FALTA[x.key] || x.key);
+  const lista = faltan.length > 1 ? faltan.slice(0, -1).join(', ') + ' y ' + faltan[faltan.length - 1] : (faltan[0] || '');
+  set('esh-count', faltan.length ? 'Falta: ' + lista : 'Todo cargado ✓');
   const bar = document.getElementById('esh-bar');
   if (!bar) return;
   if (bar.children.length !== flags.length) {
@@ -10765,6 +10861,7 @@ function editorShellSync() {
     vis.forEach((v, i) => {
       const est = _esecEstado(v.sec.key);
       v.done = !!est.done;
+      v.cuenta = est.cuenta !== false;
       const nEl = v.wrap.querySelector('.esec-num');
       if (nEl) nEl.textContent = String(i + 1).padStart(2, '0');
       const sEl = v.wrap.querySelector('.esec-status'); if (sEl) sEl.textContent = est.txt;
@@ -10788,12 +10885,13 @@ function editorShellSync() {
       v.wrap.classList.toggle('esec-offstage', fuera);
     });
     _econRenderTabs(etapas, vis);
-    _eshRender(vis.map(v => v.done));
+    _eshRender(vis.filter(v => v.cuenta).map(v => ({ key: v.sec.key, done: v.done })));
   } catch (e) {
     // Invariante I2: ante cualquier error, la vista conocida-buena.
     console.warn('editorShellSync', e);
     panel.dataset.vista = 'clasica';
   }
+  try { identResSync(); } catch (e) { console.warn('identResSync', e); }
   // El segmentado de Empresa → Estilo. Se lee del atributo ya aplicado, así el
   // botón marcado es la vista que el usuario está viendo de verdad (incluso si
   // el fallback de arriba la bajó a 'clasica').
@@ -11492,10 +11590,10 @@ let _avisoBackupMostrado = false;
 function avisoBackup(msg) {
   if (_avisoBackupMostrado) return;
   _avisoBackupMostrado = true;
-  toastAccion(msg, [
+  colaAviso(() => toastAccion(msg, [
     { label: 'Exportar ahora', fn: () => openModal('export') },
     { label: 'Más opciones',   fn: () => irABackup() },
-  ], 12000);
+  ], 12000));
 }
 
 // Lleva a Configuración → Negocio → Copia de seguridad (archivo y Drive) y la
@@ -11752,7 +11850,23 @@ function loadFromHistory(id) {
   // Cargar un presupuesto viejo trae SUS datos, no la configuración de la
   // empresa de aquel momento (nombre, subtítulo, CUIT, textos del PDF, diseño,
   // numeración). Ver CFG_GLOBAL_FIELDS.
-  assignSnapshot(S, migrateState(e.snapshot));
+  _snapshotAlEditor(e.snapshot);
+  toast(prevNum
+    ? `Presupuesto abierto · el ${prevNum} quedó guardado en el historial`
+    : 'Presupuesto abierto', 'ok');
+}
+
+// Pone en el editor los datos de un snapshot del historial (nunca la config de
+// la empresa: assignSnapshot respeta CFG_GLOBAL_FIELDS). `antesDePintar`
+// permite retocar S antes de que se dibuje (lo usa duplicarQuote).
+//
+// El snapshot se COPIA: getH() devuelve el mismo array que tiene en cache (ver
+// getH), así que sin copia los ítems del editor eran los mismos objetos que
+// los de la entrada del historial. Editar el presupuesto abierto —o sacarle
+// las fotos a una copia en duplicarQuote— modificaba la entrada original en
+// memoria, y el próximo setH() la dejaba así en el disco.
+function _snapshotAlEditor(snap, antesDePintar) {
+  assignSnapshot(S, migrateState(JSON.parse(JSON.stringify(snap || {}))));
   if (!S.estItems)       S.estItems = [];
   if (!S.estObservations) S.estObservations = '';
   if (S.surcharge === undefined) S.surcharge = 0;
@@ -11761,15 +11875,48 @@ function loadFromHistory(id) {
   // Migrar a IndexedDB cualquier foto embebida del snapshot viejo, para no
   // re-inflar el estado activo (que se autoguarda en localStorage).
   migrateInlinePhotosToIDB(S);
+  if (typeof antesDePintar === 'function') antesDePintar();
   // Estado runtime de escenarios: siempre arrancar en A al cargar
   activeScenario = 'A';
   noSync=true; restoreUI(); noSync=false;
   calcExpiry(); renderItems(); renderEstItems(); renderRiskDefects();
   applyMode(currentMode());
   updateTotalsBar(); updateSurchargeUI(); switchTab('editor');
-  toast(prevNum
-    ? `Presupuesto abierto · el ${prevNum} quedó guardado en el historial`
-    : 'Presupuesto abierto', 'ok');
+}
+
+// "Duplicar" (tarjeta del historial): un presupuesto NUEVO con los datos y los
+// trabajos de otro — el cliente que repite la poda cada año, o un trabajo
+// parecido para otro cliente. Antes había que cargar todo de nuevo: "Nueva
+// versión" existe solo para los vencidos y queda LIGADA al original.
+// Lleva número nuevo, fecha de hoy y vigencia nueva; no hereda vínculos de
+// versión (el estado y el envío viven en la entrada, así que arranca borrador).
+// Las fotos NO se copian: son de aquel árbol y aquel día, y en un presupuesto
+// nuevo mostrarían algo que ya no es así.
+function duplicarQuote(id) {
+  const e = getH().find(x => x && x.id === id);
+  if (!e || !e.snapshot || (typeof esTrabajoPropio === 'function' && esTrabajoPropio(e))) return;
+  let prevNum = '';
+  if (S.quoteNumber && autoSaveToHistory()) prevNum = S.quoteNumber;
+  const origen = e.quoteNumber || '';
+  _snapshotAlEditor(e.snapshot, () => {
+    S.numNext = calcNextNumFromHistory();
+    S.dateIssue = today();
+    S.quoteNumber = mkQN();
+    S.versionN = 0; S.versionDeNum = ''; S.versionDeFecha = ''; S.versionEnDoc = true;
+    const sinFoto = arr => (Array.isArray(arr) ? arr : []).forEach(it => {
+      if (!it) return;
+      if ('photo' in it) delete it.photo;
+      if (Array.isArray(it.photos)) it.photos = [];
+    });
+    sinFoto(S.items); sinFoto(S.itemsB); sinFoto(S.estItems);
+    S.dispoPhotos = [];
+  });
+  const m = document.getElementById('main');
+  if (m) m.scrollTop = 0;
+  sched();
+  const msg = `Copia de ${origen} lista como ${S.quoteNumber}. Las fotos no se copian.`;
+  if (prevNum) toastAccion(msg, [{ label: 'Deshacer', fn: () => deshacerNuevo(prevNum) }], 8000);
+  else toast(msg, 'ok', 5000);
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -13941,18 +14088,21 @@ function toastRecontactosPendientes() {
     logNotif({ icon: '📞', kind: 'recontacto', text: txt, dedupeKey: 'recontactos',
       action: pend.length === 1 ? { type: 'entry', id: first.id } : { type: 'tab', tab: 'historial' } });
   }
-  const el = document.createElement('div');
-  el.className = 'toast toast-info toast-action';
-  el.innerHTML = `<span>📞 ${esc(txt)}</span><button type="button" class="toast-btn">Ver</button>`;
-  c.appendChild(el);
-  requestAnimationFrame(()=>{ requestAnimationFrame(()=>el.classList.add('show')); });
-  const close = () => { el.classList.remove('show'); setTimeout(()=>el.remove(),300); };
-  el.querySelector('.toast-btn').onclick = () => {
-    close();
-    if (pend.length === 1) goToHistoryEntry(first.id);
-    else switchTab('historial');
-  };
-  setTimeout(close, 12000);
+  colaAviso(() => {
+    const el = document.createElement('div');
+    el.className = 'toast toast-info toast-action';
+    el.innerHTML = `<span>📞 ${esc(txt)}</span><button type="button" class="toast-btn">Ver</button>`;
+    c.appendChild(el);
+    requestAnimationFrame(()=>{ requestAnimationFrame(()=>el.classList.add('show')); });
+    const close = () => { el.classList.remove('show'); setTimeout(()=>el.remove(),300); };
+    el.querySelector('.toast-btn').onclick = () => {
+      close();
+      if (pend.length === 1) goToHistoryEntry(first.id);
+      else switchTab('historial');
+    };
+    setTimeout(close, 12000);
+    return el;
+  });
 }
 
 // ─── BANNER "PODAS DE HOY" (resumen del día al abrir) ────────
@@ -14907,6 +15057,7 @@ function renderHistory() {
         <button class="btn btn-g btn-sm" onclick="previewFromHistory(${e.id})">${icon('eye')} Ver</button>
         ${ofreceNuevaVersion(e) ? `<button class="btn btn-g btn-sm" onclick="nuevaVersionQuote(${e.id})" title="Armar una segunda versión de este presupuesto con los precios al día">${icon('refresh')} Nueva versión</button>` : ''}
         <button class="btn btn-g btn-sm" onclick="sharePngFromHistory(${e.id}, this)" title="Generar una imagen del presupuesto y compartirla (WhatsApp, etc.)">${icon('image')} Compartir</button>
+        <button class="btn btn-g btn-sm" onclick="duplicarQuote(${e.id})" title="Armar un presupuesto nuevo con los mismos datos y trabajos">${icon('copy')} Duplicar</button>
         ${tieneTel ? `<button class="btn btn-g btn-sm" onclick="chatWhatsappHistory(${e.id})" title="Abrir el chat de WhatsApp con el cliente" aria-label="Chat de WhatsApp con el cliente">${icon('message')} Chat</button>` : ''}
         ${tieneDir ? `<button class="btn btn-g btn-sm" onclick="comoLlegar(${e.id})" title="Cómo llegar a la dirección del trabajo" aria-label="Cómo llegar">${icon('pin')} Llegar</button>` : ''}
         <button class="btn-icon-del" onclick="delFromHistory(${e.id})" title="Eliminar presupuesto" aria-label="Eliminar presupuesto">${icon('trash')}</button>
@@ -19709,8 +19860,12 @@ function climaReprogramarWhatsApp(id, motivo) {
 // presupuesto / la Agenda); `botones` son acciones extra ({label, on}) — p. ej.
 // "Reprogramar" por WhatsApp — que se muestran como botones propios.
 function _climaToast(msgHtml, onCardTap, botones) {
+  // Lo dispara la llegada del pronóstico, no un toque: va por la cola de avisos.
+  colaAviso(() => _climaToastYa(msgHtml, onCardTap, botones));
+}
+function _climaToastYa(msgHtml, onCardTap, botones) {
   const c = document.getElementById('toast-container');
-  if (!c) return;
+  if (!c) return null;
   const el = document.createElement('div');
   el.className = 'toast toast-err toast-action clima-toast';
   el.innerHTML = `<span>${msgHtml}</span>`
@@ -19723,6 +19878,7 @@ function _climaToast(msgHtml, onCardTap, botones) {
   });
   if (onCardTap) el.onclick = () => { try { onCardTap(); } finally { close(); } };
   setTimeout(close, 13000);
+  return el;
 }
 
 // Detalle corto (probabilidad · mm · ráfaga) de un pronóstico, para el aviso.
@@ -20305,26 +20461,26 @@ function _calEvHTML(ev, dateLabel) {
   // Botón de chat directo por WhatsApp cuando el evento tiene un teléfono
   // asociado (cliente del presupuesto, o el contacto vinculado a la nota).
   const chat = ev.tel
-    ? `<button class="agc-ev-btn agc-ev-wa" onclick="${ev.entryId != null ? `chatWhatsappHistory(${ev.entryId})` : `calChatNote('${ev.noteId}')`}" title="Abrir el chat de WhatsApp con el cliente" aria-label="Chat de WhatsApp con el cliente">${icon('message')}</button>`
+    ? `<button class="agc-ev-btn agc-ev-wa" onclick="${ev.entryId != null ? `chatWhatsappHistory(${ev.entryId})` : `calChatNote('${ev.noteId}')`}" title="Abrir el chat de WhatsApp con el cliente">${icon('message')}<span>Chat</span></button>`
     : '';
   // Compartir el recordatorio (nota / vencimiento / seguimiento / trabajo…) con un
   // compañero: abre el menú nativo (WhatsApp, etc.) con el texto ya armado.
-  const share = `<button class="agc-ev-btn agc-ev-share" onclick="calShareEvent(this)" data-share="${esc(_calShareText(ev))}" title="Compartir este recordatorio" aria-label="Compartir">${icon('share')}</button>`;
+  const share = `<button class="agc-ev-btn agc-ev-share" onclick="calShareEvent(this)" data-share="${esc(_calShareText(ev))}" title="Compartir este recordatorio">${icon('share')}<span>Compartir</span></button>`;
   if (ev.entryId != null) {
-    acts = chat + share + `<button class="agc-ev-btn" onclick="goToHistoryEntry(${ev.entryId})" title="Ver el presupuesto en el historial">${icon('book')}</button>`;
+    acts = chat + share + `<button class="agc-ev-btn" onclick="goToHistoryEntry(${ev.entryId})" title="Ver el presupuesto en el historial">${icon('book')}<span>Ver</span></button>`;
   } else if (ev.noteId != null) {
     // "Hecho" y "Eliminar" se accionan deslizando la tarjeta (ver abajo); en el
     // botonera quedan chat (si hay contacto), Maps (si hay ubicación),
     // compartir y editar, más grandes. Las visitas suman "Crear presupuesto":
     // al volver de la evaluación, pasa los datos de la visita al editor.
     const mapBtn = ev.mapUrl
-      ? `<button class="agc-ev-btn agc-ev-map" onclick="calOpenNoteMap('${ev.noteId}')" title="Abrir la ubicación en Maps" aria-label="Ver ubicación en Maps">${icon('pin')}</button>`
+      ? `<button class="agc-ev-btn agc-ev-map" onclick="calOpenNoteMap('${ev.noteId}')" title="Abrir la ubicación en Maps">${icon('pin')}<span>Mapa</span></button>`
       : '';
     const crearBtn = (ev.tipo === 'visita' && !ev.done)
-      ? `<button class="agc-ev-btn" onclick="calCrearPresupuestoDesdeVisita('${ev.noteId}')" title="Crear un presupuesto con los datos de esta visita" aria-label="Crear presupuesto desde la visita">${icon('file')}</button>`
+      ? `<button class="agc-ev-btn" onclick="calCrearPresupuestoDesdeVisita('${ev.noteId}')" title="Crear un presupuesto con los datos de esta visita">${icon('file')}<span>Presupuestar</span></button>`
       : '';
     acts = chat + mapBtn + crearBtn + share
-         + `<button class="agc-ev-btn" onclick="calEditNote('${ev.noteId}')" title="Editar la nota / ubicación / contacto">${icon('pencil')}</button>`;
+         + `<button class="agc-ev-btn" onclick="calEditNote('${ev.noteId}')" title="Editar la nota / ubicación / contacto">${icon('pencil')}<span>Editar</span></button>`;
   }
   // Anotaciones internas (solo en eventos de trabajo): memoria privada de
   // quien edita, se muestra en la Agenda pero no sale del dispositivo.
@@ -20347,8 +20503,8 @@ function _calEvHTML(ev, dateLabel) {
       ${sub}
       ${climaHtml}
       ${notesHtml}
+      <div class="agc-ev-acts">${acts}</div>
     </div>
-    <div class="agc-ev-acts">${acts}</div>
   </div>`;
   // Solo las notas manuales se deslizan (son las que se marcan hechas o se
   // borran). El resto de eventos (seguimiento, trabajo, vencimiento…) no.
