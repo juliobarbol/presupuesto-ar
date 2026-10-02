@@ -209,6 +209,11 @@ body{background-color:var(--bg)}
    pestaña. Antes el único botón vivía al pie del editor, 3,8 pantallas abajo. */
 .tbtn-nuevo{display:inline-flex;align-items:center;gap:4px;padding:5px 11px;font-size:13px;font-weight:700;background:#fff;color:var(--accent);border-color:#fff;white-space:nowrap}
 .tbtn-nuevo:hover{background:rgba(255,255,255,.88)}
+/* Sugerencia de precio en la tarjeta del árbol (precioSugSync). */
+.pr-sug{display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px;margin-top:6px;padding:6px 10px;border-radius:var(--radius-field);background:var(--accent-light);font-size:13px;color:var(--text)}
+.pr-sug[hidden]{display:none}
+.pr-sug-tx{flex:1;min-width:0}
+.pr-sug-btn{flex:none;min-height:36px;padding:0 14px;border:1px solid var(--accent-fg);border-radius:var(--radius-field);background:var(--card);color:var(--accent-fg);font:inherit;font-weight:600;cursor:pointer}
 .tbtn-nuevo .ic{width:15px;height:15px;color:inherit}
 /* En un celular el nombre no entra junto a "+ Nuevo" y quedaba "Presupues…":
    queda el ícono del árbol, y el lugar va para el estado y las acciones. */
@@ -3443,6 +3448,80 @@ input[type=number]{-moz-appearance:textfield}
 .mapa-error { display:flex; align-items:center; justify-content:center; height:100%; padding:20px; text-align:center; color:var(--muted); font-size:14px; }
 :root[data-theme="dark"] .leaflet-popup-content-wrapper,
 :root[data-theme="dark"] .leaflet-popup-tip { background:var(--card); color:var(--fg,#e5e7eb); }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   CELULAR: PESTAÑAS ABAJO + TOQUES Y LETRA PARA TRABAJAR AFUERA (v227)
+   ───────────────────────────────────────────────────────────────────────
+   Va al final del <style> a propósito: pisa por orden, con la misma
+   especificidad, las reglas de celular de más arriba. Solo pantalla de
+   hasta 600 px; en la compu nada cambia. El PDF no se toca (sus estilos
+   viven bajo .pdoc / @media print).
+
+   1. Pestañas abajo, en la zona del pulgar. Con el celular en una mano, la
+      barra de arriba no se alcanza. #tabs sigue en el flujo de #app (orden
+      flex), así que nunca tapa contenido. --tabbar-h es su alto sin la
+      safe-area; lo usan la barra de totales, el FAB de "subir" y los avisos
+      para apoyarse ENCIMA de las pestañas. Mientras se escribe
+      (body.is-typing, ver navTecladoInit) las pestañas se esconden: con el
+      teclado abierto cada píxel cuenta.
+   2. Áreas de toque de 44 px y letra de 12,5–13 px como piso en lo que se lee
+      con sol y guantes: medido a 360 px había botones de 38×26 y textos de
+      9–11 px. */
+@media screen and (max-width:600px){
+  :root{--tabbar-h:60px}
+  #tabs{order:3;border-bottom:none;border-top:1px solid var(--border);
+    padding-bottom:env(safe-area-inset-bottom);background:var(--card);
+    box-shadow:0 -2px 10px rgba(0,0,0,.05)}
+  #main{order:2}
+  .tab-btn{flex-direction:column;gap:3px;height:var(--tabbar-h);padding:6px 2px 5px;
+    font-size:12.5px;font-weight:600;border-bottom:none;border-top:3px solid transparent}
+  .tab-btn .ic{width:22px;height:22px}
+  .tab-btn.active{border-top-color:var(--accent-fg);border-bottom-color:transparent;background:var(--accent-light)}
+  .tab-dot{top:4px;right:calc(50% - 22px)}
+  body.is-typing #tabs{display:none}
+
+  /* Lo que flota abajo se apoya encima de las pestañas. */
+  .sticky-totals{bottom:calc(var(--tabbar-h) + 1px + env(safe-area-inset-bottom));padding-bottom:8px}
+  body.is-typing .sticky-totals{bottom:0;padding-bottom:max(8px,env(safe-area-inset-bottom))}
+  .scrolltop-fab{bottom:calc(var(--tabbar-h) + 16px + env(safe-area-inset-bottom))}
+  body.has-sticky-totals .scrolltop-fab{bottom:calc(var(--tabbar-h) + var(--sticky-h,110px) + 12px + env(safe-area-inset-bottom))}
+  #toast-container{bottom:calc(var(--tabbar-h) + 14px + env(safe-area-inset-bottom))}
+  body.has-sticky-totals #toast-container{bottom:calc(var(--tabbar-h) + var(--sticky-h,110px) + 10px + env(safe-area-inset-bottom))}
+
+  /* Barra superior: campanita, engranaje y "+ Nuevo" con alto de dedo. */
+  #topbar{padding-top:6px;padding-bottom:6px}
+  .tbtn-menu{min-width:44px;min-height:42px;display:inline-flex;align-items:center;justify-content:center}
+  .tbtn-menu .ic{width:20px;height:20px}
+  .tbtn-nuevo{min-height:42px;padding:0 14px;font-size:14px}
+  #save-status{font-size:12px}
+
+  /* Botones chicos: 40 px de alto como piso (las tarjetas del historial
+     tenían Ver/Compartir/Chat de 32 px). */
+  .btn-sm{min-height:40px;font-size:13px}
+  .subtab-btn{min-height:44px;font-size:13px}
+  .hestado-sel{min-height:40px;font-size:13px}
+
+  /* Textos que se leen: piso de 12,5–13 px. */
+  .hint,.scol-hint{font-size:12.5px}
+  .isub{font-size:13px}
+  .fg label{font-size:13px}
+  .hmeta{font-size:13px}
+  .est-banner-desc{font-size:13px}
+  .fub-item-days,.fub-item-nota{font-size:12.5px}
+  .hbadge-estado,.hbadge-est,.hbadge-followup,.hbadge-expired,.hbadge-version,
+  .hbadge-reemplazado,.hbadge-colab{font-size:11.5px}
+  .agc-ev-kind{font-size:12px}
+  .agc-ev-note,.agc-ev-hora{font-size:12.5px}
+  .clima-chip{font-size:12.5px}
+  .nt-sub{font-size:13px}
+  .nt-when{font-size:12px}
+  .fu-vars{font-size:12.5px}
+  .fact-hero-label,.fact-card-label{font-size:12px}
+  .fact-hero-sub,.fact-card-sub,.fact-reg-meta,.fact-reg-date{font-size:12.5px}
+  .hmonth-count{font-size:12px}
+  .notif-badge{font-size:11px}
+  .tab-dot{font-size:11px}
+}
 </style>
 
 
@@ -3652,7 +3731,7 @@ input[type=number]{-moz-appearance:textfield}
               </label>
             </label>
             <input type="date" id="date-expiry" readonly>
-            <div class="hint" style="font-size:10px;margin-top:3px">Calculado automáticamente · activá el toggle para mostrarlo en el PDF</div>
+            <div class="hint" style="margin-top:3px">Calculado automáticamente · activá el toggle para mostrarlo en el PDF</div>
           </div>
           <div class="fg"><label>Moneda</label>
             <select id="currency">
@@ -4128,6 +4207,14 @@ input[type=number]{-moz-appearance:textfield}
             </div>
           </div>
 
+        </div>
+
+        <!-- ── SUB-TAB TEXTOS DEL PDF ── -->
+        <div id="subpanel-textos" class="subpanel">
+          <!-- Mensajes de WhatsApp y avisos de seguimiento (v227). Antes vivían en
+               "Negocio", que llegaba a 6,6 pantallas mezclando datos de la
+               empresa, cobro, mensajes y backup. -->
+          <div class="st">Mensajes de WhatsApp y avisos</div>
           <!-- ── SEGUIMIENTO COMERCIAL ── -->
           <div class="fu-config">
             <div class="fu-config-head">
@@ -4226,55 +4313,7 @@ input[type=number]{-moz-appearance:textfield}
             </div>
           </div>
 
-          <!-- ── COPIA DE SEGURIDAD (ARCHIVO) ── -->
-          <div class="fu-config" id="backup-file-section">
-            <div class="fu-config-head">
-              <span class="st" style="margin:0;border:none;padding:0"><svg class="ic"><use href="#i-save"></use></svg> Copia de seguridad (archivo)</span>
-            </div>
-            <p class="fu-help">Tus datos se guardan solo en este dispositivo. Exportá un backup cada tanto (o al cambiar de teléfono) y guardalo en un lugar seguro; lo restaurás con Importar.</p>
-            <div class="arow">
-              <button type="button" class="btn btn-p btn-sm" onclick="openModal('export')"><svg class="ic"><use href="#i-download"></use></svg> Exportar…</button>
-              <button type="button" class="btn btn-g btn-sm" onclick="openModal('import')"><svg class="ic"><use href="#i-folder"></use></svg> Importar…</button>
-            </div>
-          </div>
-
-          <!-- ── COPIA DE SEGURIDAD EN GOOGLE DRIVE ── -->
-          <!-- Oculta hasta que el dueño configure el Client ID (gdriveUpdateUI). -->
-          <div class="fu-config" id="gdrive-section" style="display:none">
-            <div class="fu-config-head">
-              <span class="st" style="margin:0;border:none;padding:0"><svg class="ic"><use href="#i-cloud"></use></svg> Copia de seguridad en Google Drive</span>
-            </div>
-            <p class="fu-help" id="gdrive-status">Guardá una copia automática de todos tus datos en tu Google Drive, para no perderlos si cambiás o perdés el teléfono.</p>
-            <div class="arow" id="gdrive-actions">
-              <button type="button" class="btn btn-p btn-sm" id="gdrive-connect" onclick="gdriveConnect()">Conectar Google Drive</button>
-              <button type="button" class="btn btn-g btn-sm" id="gdrive-restore" onclick="gdriveRestore()" style="display:none">Restaurar desde Drive</button>
-              <button type="button" class="btn btn-g btn-sm" id="gdrive-disconnect" onclick="gdriveDisconnect()" style="display:none">Desconectar</button>
-            </div>
-          </div>
-
-          <!-- ── SINCRONIZAR CON GOOGLE CALENDAR ── -->
-          <!-- Oculta hasta que el dueño configure el Client ID (gcalUpdateUI). -->
-          <div class="fu-config" id="gcal-section" style="display:none">
-            <div class="fu-config-head">
-              <span class="st" style="margin:0;border:none;padding:0"><svg class="ic"><use href="#i-calendar"></use></svg> Sincronizar con Google Calendar</span>
-            </div>
-            <p class="fu-help" id="gcal-status">Creá los eventos de tu agenda automáticamente en un calendario propio de Google ("Presupuestos AR"). Sincroniza con la app abierta y con señal.</p>
-            <p class="fu-help" style="margin-top:-2px">Es de una sola vía (app → Google): la app maneja ese calendario, así que no edites esos eventos a mano en Google.</p>
-            <!-- El caso confuso: los eventos están en Google pero la app de
-                 Android no muestra un calendario nuevo hasta activarlo a mano.
-                 Es un interruptor del dispositivo: no hay API que lo prenda. -->
-            <p class="fu-help" id="gcal-visibilidad" style="display:none;margin-top:-2px">¿Sincroniza pero no ves los eventos en tu celular? En la app de Google Calendar entrá a <b>☰ → Configuración → tu cuenta → "Presupuestos AR"</b> y activá <b>Sincronización</b>: los calendarios nuevos vienen apagados en el teléfono.</p>
-            <div class="arow" id="gcal-actions">
-              <button type="button" class="btn btn-p btn-sm" id="gcal-connect" onclick="gcalConnect()">Conectar Google Calendar</button>
-              <button type="button" class="btn btn-g btn-sm" id="gcal-sync" onclick="gcalSyncNow()" style="display:none">Sincronizar ahora</button>
-              <button type="button" class="btn btn-g btn-sm" id="gcal-disconnect" onclick="gcalDisconnect()" style="display:none">Desconectar</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- ── SUB-TAB TEXTOS DEL PDF ── -->
-        <div id="subpanel-textos" class="subpanel">
-          <div class="st">Orden de las secciones del PDF</div>
+          <div class="st" style="margin-top:24px">Orden de las secciones del PDF</div>
           <p class="hint" style="margin-bottom:10px">Reordená con las flechas cómo aparecen las secciones del presupuesto normal. El encabezado y los datos del cliente van siempre arriba; las fotos, firmas y el pie quedan al final.</p>
           <div id="doc-section-order" class="sord-list"></div>
 
@@ -4502,6 +4541,55 @@ input[type=number]{-moz-appearance:textfield}
              para que el usuario no tenga que hacer scroll para llegar a
              la sección que le interesa. El header muestra el conteo. -->
         <div id="subpanel-datos" class="subpanel">
+          <!-- Copia de seguridad, Google Drive y Google Calendar (v227): estaban
+               al fondo de "Negocio", en la 6ª pantalla. -->
+          <div class="st">Copia de seguridad y sincronización</div>
+          <!-- ── COPIA DE SEGURIDAD (ARCHIVO) ── -->
+          <div class="fu-config" id="backup-file-section">
+            <div class="fu-config-head">
+              <span class="st" style="margin:0;border:none;padding:0"><svg class="ic"><use href="#i-save"></use></svg> Copia de seguridad (archivo)</span>
+            </div>
+            <p class="fu-help">Tus datos se guardan solo en este dispositivo. Exportá un backup cada tanto (o al cambiar de teléfono) y guardalo en un lugar seguro; lo restaurás con Importar.</p>
+            <div class="arow">
+              <button type="button" class="btn btn-p btn-sm" onclick="openModal('export')"><svg class="ic"><use href="#i-download"></use></svg> Exportar…</button>
+              <button type="button" class="btn btn-g btn-sm" onclick="openModal('import')"><svg class="ic"><use href="#i-folder"></use></svg> Importar…</button>
+            </div>
+          </div>
+
+          <!-- ── COPIA DE SEGURIDAD EN GOOGLE DRIVE ── -->
+          <!-- Oculta hasta que el dueño configure el Client ID (gdriveUpdateUI). -->
+          <div class="fu-config" id="gdrive-section" style="display:none">
+            <div class="fu-config-head">
+              <span class="st" style="margin:0;border:none;padding:0"><svg class="ic"><use href="#i-cloud"></use></svg> Copia de seguridad en Google Drive</span>
+            </div>
+            <p class="fu-help" id="gdrive-status">Guardá una copia automática de todos tus datos en tu Google Drive, para no perderlos si cambiás o perdés el teléfono.</p>
+            <div class="arow" id="gdrive-actions">
+              <button type="button" class="btn btn-p btn-sm" id="gdrive-connect" onclick="gdriveConnect()">Conectar Google Drive</button>
+              <button type="button" class="btn btn-g btn-sm" id="gdrive-restore" onclick="gdriveRestore()" style="display:none">Restaurar desde Drive</button>
+              <button type="button" class="btn btn-g btn-sm" id="gdrive-disconnect" onclick="gdriveDisconnect()" style="display:none">Desconectar</button>
+            </div>
+          </div>
+
+          <!-- ── SINCRONIZAR CON GOOGLE CALENDAR ── -->
+          <!-- Oculta hasta que el dueño configure el Client ID (gcalUpdateUI). -->
+          <div class="fu-config" id="gcal-section" style="display:none">
+            <div class="fu-config-head">
+              <span class="st" style="margin:0;border:none;padding:0"><svg class="ic"><use href="#i-calendar"></use></svg> Sincronizar con Google Calendar</span>
+            </div>
+            <p class="fu-help" id="gcal-status">Creá los eventos de tu agenda automáticamente en un calendario propio de Google ("Presupuestos AR"). Sincroniza con la app abierta y con señal.</p>
+            <p class="fu-help" style="margin-top:-2px">Es de una sola vía (app → Google): la app maneja ese calendario, así que no edites esos eventos a mano en Google.</p>
+            <!-- El caso confuso: los eventos están en Google pero la app de
+                 Android no muestra un calendario nuevo hasta activarlo a mano.
+                 Es un interruptor del dispositivo: no hay API que lo prenda. -->
+            <p class="fu-help" id="gcal-visibilidad" style="display:none;margin-top:-2px">¿Sincroniza pero no ves los eventos en tu celular? En la app de Google Calendar entrá a <b>☰ → Configuración → tu cuenta → "Presupuestos AR"</b> y activá <b>Sincronización</b>: los calendarios nuevos vienen apagados en el teléfono.</p>
+            <div class="arow" id="gcal-actions">
+              <button type="button" class="btn btn-p btn-sm" id="gcal-connect" onclick="gcalConnect()">Conectar Google Calendar</button>
+              <button type="button" class="btn btn-g btn-sm" id="gcal-sync" onclick="gcalSyncNow()" style="display:none">Sincronizar ahora</button>
+              <button type="button" class="btn btn-g btn-sm" id="gcal-disconnect" onclick="gcalDisconnect()" style="display:none">Desconectar</button>
+            </div>
+          </div>
+
+          <div class="st" style="margin-top:24px">Datos guardados</div>
 
           <div class="collapsible-section" id="cs-clients">
             <button type="button" class="collapsible-header" onclick="toggleCollapsibleSection('cs-clients')">
@@ -8470,7 +8558,7 @@ function attachClientAutocomplete() {
     dropdown.innerHTML = items.map(e=>`
       <div class="cl-opt" data-name="${esc(e.name)}" style="padding:9px 12px;cursor:pointer;border-bottom:1px solid #f1f5f4;">
         <div style="font-size:13px;font-weight:500;color:var(--text)">${esc(e.name)}</div>
-        ${e.contact||e.address?`<div style="font-size:11px;color:var(--muted);margin-top:1px">${[e.contact,e.address].filter(Boolean).map(v=>esc(v)).join(' · ')}</div>`:''}
+        ${e.contact||e.address?`<div style="font-size:12.5px;color:var(--muted);margin-top:1px">${[e.contact,e.address].filter(Boolean).map(v=>esc(v)).join(' · ')}</div>`:''}
       </div>`).join('');
     dropdown.style.display = 'block';
 
@@ -9271,6 +9359,65 @@ function dupItem(idx) {
   arr.splice(idx+1, 0, c); renderItems(); sched();
 }
 
+// ─── PRECIO SUGERIDO POR ESPECIE ─────────────
+// El último precio cobrado por la misma especie, buscado en el historial (lo
+// más reciente primero). Es una SUGERENCIA, nunca se carga sola: el precio
+// depende del tamaño y del acceso de cada árbol, y un número puesto por la app
+// que el usuario no revisó es peor que el campo vacío. La especie se compara
+// sin mayúsculas ni tildes. No mira el presupuesto abierto ni los trabajos sin
+// presupuesto. "Último" es por fecha de emisión, no por orden de guardado (un
+// presupuesto viejo reabierto y vuelto a guardar queda primero en el array).
+// Devuelve { price, desc, num } o null.
+function _normEspecie(s) {
+  return String(s || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ');
+}
+function ultimoPrecioEspecie(species) {
+  const k = _normEspecie(species);
+  if (!k) return null;
+  let mejor = null, mejorFecha = '';
+  for (const e of getH()) {
+    if (!e || !e.snapshot || e.quoteNumber === S.quoteNumber) continue;
+    if (typeof esTrabajoPropio === 'function' && esTrabajoPropio(e)) continue;
+    const snap = e.snapshot;
+    const fecha = String(snap.dateIssue || e.savedAt || '').slice(0, 10);
+    if (mejor && fecha <= mejorFecha) continue;
+    for (const arr of [snap.items, snap.itemsB]) {
+      if (!Array.isArray(arr)) continue;
+      const it = arr.find(x => x && x.type === 'tree' && _normEspecie(x.species) === k &&
+        moneyToCents((x._basePrice !== undefined && x._basePrice !== '') ? x._basePrice : x.price) > 0);
+      if (!it) continue;
+      // El precio de base (sin el recargo por viáticos de aquel trabajo).
+      const p = (it._basePrice !== undefined && it._basePrice !== '') ? it._basePrice : it.price;
+      mejor = { price: p, desc: String(it.desc || '').trim(), num: e.quoteNumber || '' };
+      mejorFecha = fecha;
+      break;
+    }
+  }
+  return mejor;
+}
+// Pinta (o esconde) la sugerencia debajo del precio. Solo con el precio vacío.
+function precioSugSync(card, idx) {
+  const box = card && card.querySelector('.pr-sug');
+  const sf = card && card.querySelector('.sp-f');
+  const pf = card && card.querySelector('.pr-f');
+  if (!box || !sf || !pf) return;
+  const u = moneyToCents(pf.value) > 0 ? null : ultimoPrecioEspecie(sf.value);
+  if (!u) { box.hidden = true; box.innerHTML = ''; return; }
+  const desc = u.desc ? ' · ' + (u.desc.length > 40 ? u.desc.slice(0, 40) + '…' : u.desc) : '';
+  // Con recargo por viáticos en ESTE presupuesto, el campo es el precio
+  // ajustado: se propone la base de aquella vez con el recargo de hoy.
+  const sur = Number(S.surcharge) || 0;
+  const val = sur > 0 ? roundMoney((moneyToCents(u.price) / 100) * (1 + sur / 100)) : moneyToCents(u.price) / 100;
+  box.innerHTML = `<span class="pr-sug-tx">Última vez: <b>${esc(fmtM(val, S.currency || 'ARS'))}</b>${sur > 0 ? ' (con +' + sur + '%)' : ''}${u.num ? ' · ' + esc(u.num) : ''}${esc(desc)}</span>`
+    + `<button type="button" class="pr-sug-btn">Usar</button>`;
+  box.hidden = false;
+  box.querySelector('.pr-sug-btn').onclick = () => {
+    pf.value = String(val);
+    pf.dispatchEvent(new Event('input', { bubbles: true }));
+    box.hidden = true;
+  };
+}
+
 function setItemField(idx, f, v) { const arr=activeItemsArr(); if(arr[idx]) arr[idx][f]=v; sched(); }
 
 // Completa el placeholder [especie] del "Trabajo a realizar" de UNA tarjeta
@@ -9312,19 +9459,26 @@ function renderItems() {
       const adjBadge = hasSurcharge
         ? `<div class="adj-badge">${icon('fuel')} +${S.surcharge}% aplicado <span class="adj-orig">(base: ${fmtM(basePrice, S.currency||'ARS')})</span></div>`
         : '';
+      // Orden de la tarjeta = orden en que se piensa el trabajo: qué árbol →
+      // qué se le hace → cuánto sale (v227; antes el precio iba antes del
+      // trabajo). El precio lleva debajo la sugerencia del último precio
+      // cobrado por esa especie (precioSugSync), que se usa con un toque.
       inner += `
-        <div class="item-grid-2 mb8" style="margin-bottom:${hasSurcharge?'4px':'8px'}">
-          <div><div class="isub">Especie/s</div>
-          <input class="ii sp-f" type="text" placeholder="Ej: Eucaliptus, Ciprés..." value="${esc(item.species||'')}"></div>
-          <div><div class="isub">Precio${hasSurcharge?' (ajustado)':''}</div>
-          <input class="ii pr-f" type="number" min="0" placeholder="0" inputmode="decimal" value="${esc(String(item.price||''))}"></div>
+        <div class="mb8">
+          <div class="isub">Especie/s</div>
+          <input class="ii sp-f" type="text" placeholder="Ej: Eucaliptus, Ciprés..." value="${esc(item.species||'')}">
         </div>
-        ${adjBadge}
-        <div class="isub mb-row" style="margin-top:${hasSurcharge?'8px':'0'}">
+        <div class="isub mb-row">
           <span>Trabajo a realizar</span>
           <button type="button" class="phrase-btn phrase-btn-mini" onclick="openPhrasesModal('desc','desc-${item.id}')" title="Insertar frase guardada">${icon('pencil')}</button>
         </div>
-        <textarea id="desc-${item.id}" class="ita ds-f" placeholder="Poda de altura, extracción, despeje de ramas...">${esc(item.desc||'')}</textarea>`;
+        <textarea id="desc-${item.id}" class="ita ds-f" placeholder="Poda de altura, extracción, despeje de ramas...">${esc(item.desc||'')}</textarea>
+        <div class="item-grid-2" style="margin-top:8px;margin-bottom:${hasSurcharge?'4px':'0'}">
+          <div><div class="isub">Precio${hasSurcharge?' (ajustado)':''}</div>
+          <input class="ii pr-f" type="number" min="0" placeholder="0" inputmode="decimal" value="${esc(String(item.price||''))}"></div>
+        </div>
+        <div class="pr-sug" hidden></div>
+        ${adjBadge}`;
 
     } else if(item.type==='service'){
       const qty      = parseInt(item.qty) || 1;
@@ -9339,10 +9493,10 @@ function renderItems() {
             <input class="ii qty-f" type="number" min="1" step="1" inputmode="numeric" value="${qty}"
               style="width:64px;text-align:center;font-weight:700;font-size:14px">
             ${qty > 1 && hasPrice
-              ? `<span class="qty-preview" style="font-size:11px;color:var(--accent-fg);font-weight:600">${qty} × ${fmtM(item.price, S.currency||'ARS')} = ${fmtM(total, S.currency||'ARS')}</span>`
-              : `<span class="qty-preview" style="font-size:11px;color:var(--accent-fg);font-weight:600"></span>`}
+              ? `<span class="qty-preview" style="font-size:12.5px;color:var(--accent-fg);font-weight:600">${qty} × ${fmtM(item.price, S.currency||'ARS')} = ${fmtM(total, S.currency||'ARS')}</span>`
+              : `<span class="qty-preview" style="font-size:12.5px;color:var(--accent-fg);font-weight:600"></span>`}
           </div>
-          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:11px;color:var(--muted);white-space:nowrap;flex-shrink:0">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12.5px;color:var(--muted);white-space:nowrap;flex-shrink:0">
             <span class="tgl" style="width:32px;height:18px">
               <input type="checkbox" class="showqty-f" ${showQty?'checked':''}>
               <span class="tgl-sl"></span>
@@ -9420,6 +9574,14 @@ function renderItems() {
     if(sqf) sqf.addEventListener('change', ()=>setItemField(idx,'showQty', sqf.checked));
 
     const sf = card.querySelector('.sp-f');
+    if(sf && item.type==='tree'){
+      // Sugerencia de precio: se recalcula al cambiar la especie o el precio.
+      let _sugT = null;
+      const sug = () => { clearTimeout(_sugT); _sugT = setTimeout(() => precioSugSync(card, idx), 250); };
+      sf.addEventListener('input', sug);
+      if (pf) pf.addEventListener('input', sug);
+      precioSugSync(card, idx);
+    }
     if(sf){
       sf.addEventListener('input', ()=>setItemField(idx,'species',sf.value));
       // Al salir del campo se completa cualquier [especie] que haya
@@ -9777,10 +9939,10 @@ function renderEstItems() {
             <input class="ii est-qty-f" type="number" min="1" step="1" inputmode="numeric" value="${qty}"
               style="width:64px;text-align:center;font-weight:700;font-size:14px">
             ${qty > 1 && hasPrice
-              ? `<span class="qty-preview" style="font-size:11px;color:var(--accent-fg);font-weight:600">${qty} × ${fmtM(item.price, S.currency||'ARS')} = ${fmtM(total, S.currency||'ARS')}</span>`
-              : `<span class="qty-preview" style="font-size:11px;color:var(--accent-fg);font-weight:600"></span>`}
+              ? `<span class="qty-preview" style="font-size:12.5px;color:var(--accent-fg);font-weight:600">${qty} × ${fmtM(item.price, S.currency||'ARS')} = ${fmtM(total, S.currency||'ARS')}</span>`
+              : `<span class="qty-preview" style="font-size:12.5px;color:var(--accent-fg);font-weight:600"></span>`}
           </div>
-          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:11px;color:var(--muted);white-space:nowrap;flex-shrink:0">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12.5px;color:var(--muted);white-space:nowrap;flex-shrink:0">
             <span class="tgl" style="width:32px;height:18px">
               <input type="checkbox" class="est-showqty-f" ${showQty?'checked':''}>
               <span class="tgl-sl"></span>
@@ -11489,7 +11651,7 @@ function openModal(type) {
         <li><b>Creá tu presupuesto</b> — sumá los trabajos y sus precios.</li>
         <li><b>Compartilo</b> — descargá el PDF o enviálo por WhatsApp.</li>
       </ol>
-      <p style="font-size:12px;color:var(--muted);margin:0 0 14px"><svg class="ic ic-c-green"><use href="#i-save"></use></svg> Tus datos se guardan <b>solo en este dispositivo</b>. Hacé un backup cada tanto desde ⚙ Configuración → Mi empresa → Copia de seguridad para no perderlos.</p>
+      <p style="font-size:12px;color:var(--muted);margin:0 0 14px"><svg class="ic ic-c-green"><use href="#i-save"></use></svg> Tus datos se guardan <b>solo en este dispositivo</b>. Hacé un backup cada tanto desde ⚙ Configuración → Datos → Copia de seguridad para no perderlos.</p>
       <button class="btn btn-p btn-bl" onclick="startOnboarding()"><svg class="ic"><use href="#i-building"></use></svg> Configurar mi negocio</button>
       <button class="btn btn-s btn-bl" onclick="closeModal()">Lo hago después</button>
     </div>`;
@@ -11584,7 +11746,7 @@ function checkBackupReminder() {
 
 // Aviso de backup con sus botones. Antes era un texto que mandaba a
 // "⚙ Configuración → Mi empresa → Copia de seguridad": "Mi empresa" no existe
-// (la sub-pestaña es "Negocio") y la sección quedaba en la 6ª pantalla. Ahora
+// y la sección quedaba en la 6ª pantalla (hoy vive en Configuración → Datos). Ahora
 // el aviso exporta de una o lleva derecho a la sección. Uno solo por apertura.
 let _avisoBackupMostrado = false;
 function avisoBackup(msg) {
@@ -11596,11 +11758,11 @@ function avisoBackup(msg) {
   ], 12000));
 }
 
-// Lleva a Configuración → Negocio → Copia de seguridad (archivo y Drive) y la
+// Lleva a Configuración → Datos → Copia de seguridad (archivo y Drive) y la
 // marca un momento para que se vea dónde quedó.
 function irABackup() {
   switchTab('empresa');
-  if (typeof switchSubtab === 'function') switchSubtab('negocio');
+  if (typeof switchSubtab === 'function') switchSubtab('datos');
   const sec = document.getElementById('backup-file-section');
   if (!sec) return;
   requestAnimationFrame(() => {
@@ -14964,7 +15126,7 @@ function renderHistory() {
     const nDir    = h.filter(esTrabajoDirecto).length;
     const bloque = (titulo, txt, color) => `
       <div style="width:1px;height:32px;background:#a7f3d0"></div>
-      <div><div style="font-size:10px;font-weight:700;color:var(--accent-fg);text-transform:uppercase;letter-spacing:.5px">${titulo}</div>
+      <div><div style="font-size:12px;font-weight:700;color:var(--accent-fg);text-transform:uppercase;letter-spacing:.5px">${titulo}</div>
         <div style="font-size:14px;font-weight:700;color:${color}">${txt}</div></div>`;
     const sumaDe = (fn) => fmtM(h.reduce((s,e)=>s+(fn(e)?(e.total||0):0),0), cur);
     // El trabajo directo ya está DENTRO del total acumulado; su renglón dice
@@ -14973,13 +15135,13 @@ function renderHistory() {
       (nDir   ? bloque('Sin presupuesto', `${nDir} · ${sumaDe(esTrabajoDirecto)}`, 'var(--text)') : '') +
       (nColab ? bloque('Colaboraciones',  `${nColab} · ${sumaDe(esColaboracion)}`, '#115e59') : '');
     summaryHtml = `<div style="background:var(--accent-light);border:1px solid #a7f3d0;border-radius:8px;padding:10px 14px;margin-bottom:10px;display:flex;gap:20px;align-items:center;flex-wrap:wrap">
-      <div><div style="font-size:10px;font-weight:700;color:var(--accent-fg);text-transform:uppercase;letter-spacing:.5px">Cliente</div>
+      <div><div style="font-size:12px;font-weight:700;color:var(--accent-fg);text-transform:uppercase;letter-spacing:.5px">Cliente</div>
         <div style="font-size:14px;font-weight:700;color:var(--text)">${esc(h[0].clientName||'—')}</div></div>
       <div style="width:1px;height:32px;background:#a7f3d0"></div>
-      <div><div style="font-size:10px;font-weight:700;color:var(--accent-fg);text-transform:uppercase;letter-spacing:.5px">Presupuestos</div>
+      <div><div style="font-size:12px;font-weight:700;color:var(--accent-fg);text-transform:uppercase;letter-spacing:.5px">Presupuestos</div>
         <div style="font-size:14px;font-weight:700;color:var(--text)">${nPresup}</div></div>
       <div style="width:1px;height:32px;background:#a7f3d0"></div>
-      <div><div style="font-size:10px;font-weight:700;color:var(--accent-fg);text-transform:uppercase;letter-spacing:.5px">Total acumulado</div>
+      <div><div style="font-size:12px;font-weight:700;color:var(--accent-fg);text-transform:uppercase;letter-spacing:.5px">Total acumulado</div>
         <div style="font-size:14px;font-weight:700;color:var(--accent-fg)">${fmtM(totalPresupuestado,cur)}</div></div>
       ${colabDelCliente}
     </div>`;
@@ -21918,6 +22080,32 @@ function _navEsPop(nd) {
     (nd.classList.contains('csel-pop') || nd.classList.contains('cal-pop'));
 }
 
+// Teclado abierto → body.is-typing. En el celular las pestañas van abajo
+// (bloque "CELULAR" del CSS) y con el teclado abierto se esconden: la pantalla
+// útil se reduce a la mitad y una barra de navegación ahí no sirve. Solo
+// campos de texto (no casillas, no botones) y solo en pantallas táctiles.
+const NAV_TIPEO = /^(text|number|tel|email|search|url|password|date|time)$/;
+function _navEsCampoTexto(el) {
+  if (!el || el.disabled || el.readOnly) return false;
+  if (el.tagName === 'TEXTAREA' || el.isContentEditable) return true;
+  return el.tagName === 'INPUT' && NAV_TIPEO.test(el.type || 'text');
+}
+function navTecladoInit() {
+  if (!window.matchMedia || !window.matchMedia('(pointer:coarse)').matches) return;
+  let t = null;
+  const aplicar = (on) => {
+    if (document.body.classList.contains('is-typing') === on) return;
+    document.body.classList.toggle('is-typing', on);
+    if (typeof reserveStickySpace === 'function') reserveStickySpace();
+  };
+  document.addEventListener('focusin', (e) => { if (_navEsCampoTexto(e.target)) { clearTimeout(t); aplicar(true); } });
+  // Con retardo: al saltar de un campo al siguiente no hay que mostrar y
+  // esconder la barra en el medio.
+  document.addEventListener('focusout', () => { clearTimeout(t); t = setTimeout(() => {
+    if (!_navEsCampoTexto(document.activeElement)) aplicar(false);
+  }, 150); });
+}
+
 function navInit() {
   if (!window.history || typeof history.pushState !== 'function' || typeof MutationObserver === 'undefined') return;
   // Recarga parada sobre una entrada nuestra (las entradas sobreviven al
@@ -21996,6 +22184,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   enhanceDateInputs(document);
   // Botón "Atrás" del teléfono: cierra lo abierto o vuelve al Editor.
   try { navInit(); } catch (e) { console.error('navInit', e); }
+  try { navTecladoInit(); } catch (e) { console.error('navTecladoInit', e); }
 
   // Si el presupuesto cargado está en blanco (nada en edición), poner la fecha
   // de emisión en HOY. Evita que un borrador vacío arrastre la fecha vieja del

@@ -259,8 +259,8 @@ const estado = (page) => page.evaluate(() => ({
         JSON.stringify(r.toasts));
       check('El aviso trae "Exportar ahora" y "Más opciones"',
         r.btns.includes('Exportar ahora') && r.btns.includes('Más opciones'), r.btns.join(' · '));
-      check('"Más opciones" lleva a Configuración → Negocio',
-        r.tab === 'panel-empresa' && /Negocio/.test(r.sub), `${r.tab} · ${r.sub.trim()}`);
+      check('"Más opciones" lleva a Configuración → Datos (donde vive el backup)',
+        r.tab === 'panel-empresa' && /Datos/.test(r.sub), `${r.tab} · ${r.sub.trim()}`);
       const exp = await page.evaluate(async () => {
         _avisoBackupMostrado = false;
         avisoBackup('Tercero');
