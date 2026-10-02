@@ -53,6 +53,8 @@ async function medir(page, ancho) {
       mk(1, '2026-0065', 'Sergio', 13, -30),
       mk(2, '2026-0058', 'Fernando Gutiérrez', 25, 4),
     ]);
+    // Los banners viven plegados en una línea (histAvisosSync): se miden desplegados.
+    histAvisosToggle(true);
     renderFollowupBanner();
     document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
     document.getElementById('panel-historial').classList.add('active');
