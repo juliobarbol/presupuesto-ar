@@ -205,6 +205,14 @@ body{background-color:var(--bg)}
 .tbtn:hover{background:rgba(255,255,255,.26)}
 .tbtn-menu{padding:4px 9px;font-size:18px;line-height:1;font-weight:700}
 .tbtn-menu .ic{width:18px;height:18px;display:block}
+/* "+ Nuevo": la acción más frecuente de la app, a la vista desde cualquier
+   pestaña. Antes el único botón vivía al pie del editor, 3,8 pantallas abajo. */
+.tbtn-nuevo{display:inline-flex;align-items:center;gap:4px;padding:5px 11px;font-size:13px;font-weight:700;background:#fff;color:var(--accent);border-color:#fff;white-space:nowrap}
+.tbtn-nuevo:hover{background:rgba(255,255,255,.88)}
+.tbtn-nuevo .ic{width:15px;height:15px;color:inherit}
+/* En un celular el nombre no entra junto a "+ Nuevo" y quedaba "Presupues…":
+   queda el ícono del árbol, y el lugar va para el estado y las acciones. */
+@media (max-width:420px){ #topbar .logo-txt{display:none} }
 #btn-config.is-active{background:rgba(255,255,255,.32);border-color:rgba(255,255,255,.4)}
 
 /* MENÚ DESPLEGABLE del topbar (⚙ Configuración) */
@@ -925,7 +933,7 @@ details.scol[open]>summary .scol-chev{transform:rotate(180deg)}
 
 /* HISTORY */
 .hitem{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-box);padding:10px 12px;margin-bottom:8px;display:flex;flex-direction:column;align-items:stretch;gap:8px}
-/* Fila superior: datos del presupuesto + "Cargar" (la acción más usada)
+/* Fila superior: datos del presupuesto + "Abrir" (la acción más usada)
    anclada arriba a la derecha, fácil de ubicar y apretar sin perderse
    entre el resto de los botones. */
 .htop{display:flex;align-items:flex-start;gap:10px}
@@ -1744,6 +1752,26 @@ input[type=number]{-moz-appearance:textfield}
    que impide que el botón se encoja por debajo de su propia etiqueta y la
    recorte. Si no entran los dos al lado, se apilan a ancho completo. */
 .expiry-banner .fub-nv,.expiry-banner .fub-wa{flex:1 1 auto;justify-content:center;text-align:center}
+
+/* irABackup(): la sección de backup se marca un momento al llegar. */
+.fu-config.is-destacada{box-shadow:0 0 0 3px var(--accent);transition:box-shadow .3s}
+
+/* Avisos del Historial plegados en UNA línea (histAvisosSync). Desplegados, los
+   tres banners ocupaban dos pantallas antes del buscador: el que entraba a
+   buscar un presupuesto tenía que pasar por encima de todos los pendientes. */
+#hist-avisos{margin-bottom:12px}
+.hav-res{display:flex;align-items:center;gap:8px;width:100%;min-height:44px;padding:7px 12px;border:1px solid var(--border);border-radius:var(--radius-box);background:var(--card);color:var(--text);font:inherit;cursor:pointer;text-align:left}
+.hav-chips{display:flex;flex-wrap:wrap;gap:6px;flex:1;min-width:0}
+.hav-chip{display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:999px;font-size:13px;font-weight:600;white-space:nowrap}
+.hav-chip .ic{width:14px;height:14px;color:inherit}
+.hav-chip.is-rec{background:var(--c-recontacto-bg);color:var(--c-recontacto-fg)}
+.hav-chip.is-seg{background:var(--c-seguimiento-bg);color:var(--c-seguimiento-fg)}
+.hav-chip.is-ven{background:var(--c-vence-bg);color:var(--c-vence-fg)}
+.hav-acc{flex:none;font-size:13px;font-weight:600;color:var(--accent-fg);display:inline-flex;align-items:center;gap:3px}
+.hav-acc::after{content:'▾';transition:transform .15s}
+.hav-res[aria-expanded="true"] .hav-acc::after{transform:rotate(180deg)}
+#hist-avisos-body{margin-top:10px}
+#hist-avisos-body[hidden]{display:none}
 
 /* Banner "Podas de hoy" (verde amanecer): salta una vez al abrir la app si
    hay trabajos agendados para hoy. Reusa la estructura .fub-*; cada trabajo
@@ -3469,8 +3497,12 @@ input[type=number]{-moz-appearance:textfield}
 <!-- ════════════════════ APP UI ════════════════════ -->
 <div id="app">
   <div id="topbar">
-    <div class="logo"><svg class="ic"><use href="#i-tree"></use></svg> Presupuestos</div>
+    <div class="logo"><svg class="ic"><use href="#i-tree"></use></svg><span class="logo-txt"> Presupuestos</span></div>
     <span id="save-status"></span>
+    <!-- "+ Nuevo": siempre a la vista, desde cualquier pestaña. Sin
+         confirmación: el presupuesto en curso se guarda solo y el aviso
+         ofrece "Deshacer" (newQuote / deshacerNuevo). -->
+    <button class="tbtn tbtn-nuevo" id="btn-nuevo" onclick="newQuote()" aria-label="Nuevo presupuesto" title="Nuevo presupuesto"><svg class="ic"><use href="#i-plus"></use></svg>Nuevo</button>
     <!-- Configuración (engranaje): abre la pantalla de Configuración (Empresa)
          con sus sub-pestañas (Negocio · Textos · Estilo · Datos). Aloja las
          pantallas de config poco frecuentes para liberar la barra de pestañas.
@@ -4520,9 +4552,6 @@ input[type=number]{-moz-appearance:textfield}
 
       <!-- ══ TAB HISTORIAL ══ -->
       <div id="panel-historial" class="tab-panel">
-        <div id="recontacto-banner" class="recontacto-banner" style="display:none"></div>
-        <div id="followup-banner" class="followup-banner" style="display:none"></div>
-        <div id="expiry-banner" class="expiry-banner" style="display:none"></div>
         <div class="hist-head">
           <!-- "Guardados" a secas: con el título largo los dos botones no
                entraban al lado y el grupo caía siempre a la línea de abajo.
@@ -4542,6 +4571,20 @@ input[type=number]{-moz-appearance:textfield}
                  pasa a "Colaboración". El texto es corto porque al lado de
                  Agenda no entra uno largo en un celular angosto. -->
             <button class="btn btn-s hist-headbtn" id="hist-colab-btn" onclick="abrirColaboracion()" title="Registrar un trabajo sin presupuesto: uno rápido para un cliente, o una jornada para un colega"><span class="hist-headbtn-plus">+</span> Trabajo</button>
+          </div>
+        </div>
+        <!-- Avisos (recontactos · seguimientos · vencidos) plegados en una
+             línea con sus cantidades: el buscador queda arriba, a mano.
+             Tocar la línea despliega los tres banners (histAvisosToggle). -->
+        <div id="hist-avisos" hidden>
+          <button type="button" id="hist-avisos-res" class="hav-res" onclick="histAvisosToggle()" aria-expanded="false" aria-controls="hist-avisos-body">
+            <span class="hav-chips" id="hist-avisos-chips"></span>
+            <span class="hav-acc" id="hist-avisos-acc">Ver</span>
+          </button>
+          <div id="hist-avisos-body" hidden>
+            <div id="recontacto-banner" class="recontacto-banner" style="display:none"></div>
+            <div id="followup-banner" class="followup-banner" style="display:none"></div>
+            <div id="expiry-banner" class="expiry-banner" style="display:none"></div>
           </div>
         </div>
         <div class="r2" style="margin-bottom:4px">
@@ -5256,6 +5299,7 @@ const LS = {
   NOTIF_SEEN:     'pq_notif_seen',
   NOTIF_ORDEN:    'pq_notif_orden', // criterio de orden del panel (preferencia del dispositivo, no va al backup)
   VER_PCT:        'pq_ver_pct',     // último % de actualización usado al armar una versión (preferencia del dispositivo, no va al backup)
+  HIST_AVISOS:    'pq_hist_avisos', // avisos del Historial desplegados ('1') o plegados (preferencia del dispositivo, no va al backup)
 };
 
 // Notificaciones push (avisos de seguimiento con la app cerrada). Ambos se
@@ -6105,6 +6149,31 @@ function toast(msg, type='ok', dur=3000) {
     el.classList.remove('show');
     setTimeout(()=>el.remove(), 300);
   }, dur);
+}
+
+// Toast con botones. `acciones` = [{ label, fn }]: cada botón corre su fn y
+// cierra el aviso. El texto va por textContent (nunca innerHTML).
+function toastAccion(msg, acciones, dur = 8000, type = 'info') {
+  const c = document.getElementById('toast-container');
+  if (!c) return null;
+  const el = document.createElement('div');
+  el.className = `toast toast-${type} toast-action`;
+  const sp = document.createElement('span');
+  sp.textContent = msg;
+  el.appendChild(sp);
+  const close = () => { el.classList.remove('show'); setTimeout(() => el.remove(), 300); };
+  (acciones || []).forEach(a => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'toast-btn';
+    b.textContent = a.label;
+    b.onclick = () => { close(); try { a.fn(); } catch (e) { console.error(e); } };
+    el.appendChild(b);
+  });
+  c.appendChild(el);
+  requestAnimationFrame(() => { requestAnimationFrame(() => el.classList.add('show')); });
+  setTimeout(close, dur);
+  return el;
 }
 
 // ─── CONFIRM DIALOG ──────────────────────────
@@ -10342,6 +10411,8 @@ function switchTab(name) {
   // a otra pestaña descartamos el enlace pendiente para no atar la factura a
   // un presupuesto que no corresponde.
   if (name !== 'facturacion') _pendingFacturaQuote = null;
+  // Botón "Atrás": apila (o consume) la capa de pestaña. Ver js/nav.js.
+  if (typeof _navTab === 'function') _navTab(name);
   // Recordar dónde quedó la pestaña que estamos dejando (antes de ocultarla).
   const _main = document.getElementById('main');
   const _prev = document.querySelector('.tab-panel.active');
@@ -11382,8 +11453,12 @@ function requestPersistentStorage() {
     navigator.storage.persist().then(granted => {
       if (!granted) {
         // El navegador no garantiza persistencia: avisamos con discreción.
+        // Con Drive conectado la copia ya sale sola: el aviso sobra. Y si en
+        // esta apertura ya salió el recordatorio de backup, no se apila otro
+        // (los dos juntos tapaban la barra de abajo).
         setTimeout(() => {
-          toast('⚠️ Este navegador puede borrar los datos al cerrar. Hacé backup en Drive o exportá el archivo para no perderlos.', 'info', 9000);
+          if (typeof gdriveConnected === 'function' && gdriveConnected()) return;
+          avisoBackup('⚠️ Este navegador puede borrar los datos al cerrar. Hacé un backup para no perderlos.');
         }, 3000);
       }
     });
@@ -11403,8 +11478,38 @@ function checkBackupReminder() {
     : Infinity;
   if (daysSince < 14) return;
   setTimeout(()=>{
-    toast('Hace rato que no hacés un backup. Exportalo desde ⚙ Configuración → Mi empresa → Copia de seguridad para no perder tus presupuestos.', 'info', 8000);
+    avisoBackup(isFinite(daysSince)
+      ? `Hace ${Math.floor(daysSince)} días que no hacés un backup de tus presupuestos.`
+      : 'Todavía no hiciste ningún backup de tus presupuestos.');
   }, 2500);
+}
+
+// Aviso de backup con sus botones. Antes era un texto que mandaba a
+// "⚙ Configuración → Mi empresa → Copia de seguridad": "Mi empresa" no existe
+// (la sub-pestaña es "Negocio") y la sección quedaba en la 6ª pantalla. Ahora
+// el aviso exporta de una o lleva derecho a la sección. Uno solo por apertura.
+let _avisoBackupMostrado = false;
+function avisoBackup(msg) {
+  if (_avisoBackupMostrado) return;
+  _avisoBackupMostrado = true;
+  toastAccion(msg, [
+    { label: 'Exportar ahora', fn: () => openModal('export') },
+    { label: 'Más opciones',   fn: () => irABackup() },
+  ], 12000);
+}
+
+// Lleva a Configuración → Negocio → Copia de seguridad (archivo y Drive) y la
+// marca un momento para que se vea dónde quedó.
+function irABackup() {
+  switchTab('empresa');
+  if (typeof switchSubtab === 'function') switchSubtab('negocio');
+  const sec = document.getElementById('backup-file-section');
+  if (!sec) return;
+  requestAnimationFrame(() => {
+    sec.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    sec.classList.add('is-destacada');
+    setTimeout(() => sec.classList.remove('is-destacada'), 2200);
+  });
 }
 
 // ===== js/history.js =====
@@ -11663,8 +11768,8 @@ function loadFromHistory(id) {
   applyMode(currentMode());
   updateTotalsBar(); updateSurchargeUI(); switchTab('editor');
   toast(prevNum
-    ? `Presupuesto cargado · el ${prevNum} quedó guardado en el historial`
-    : 'Presupuesto cargado', 'ok');
+    ? `Presupuesto abierto · el ${prevNum} quedó guardado en el historial`
+    : 'Presupuesto abierto', 'ok');
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -13576,6 +13681,50 @@ window.addEventListener('resize', () => {
   if (ov && ov.classList.contains('open')) _scalePreview();
 });
 
+// ─── AVISOS DEL HISTORIAL: una línea plegable ─────────────────
+// Los tres banners (recontactos · seguimientos · vencidos) viven dentro de
+// #hist-avisos-body. Desplegados ocupaban dos pantallas ANTES del buscador
+// (medido con 36 presupuestos en un celular de 360 px): buscar un presupuesto
+// obligaba a pasar por encima de todos los pendientes. Ahora se resumen en una
+// línea con las cantidades, que se toca para desplegarlos. La preferencia
+// (abierto/cerrado) es del dispositivo: LS.HIST_AVISOS, fuera del backup.
+// Cada banner deja su cantidad en data-n al pintarse y llama acá.
+const HIST_AVISOS_DEF = [
+  ['recontacto-banner', 'is-rec', 'phone',     n => `${n} para recontactar`],
+  ['followup-banner',   'is-seg', 'bell',      n => `${n} para seguimiento`],
+  ['expiry-banner',     'is-ven', 'hourglass', n => `${n} vencido${n > 1 ? 's' : ''}`],
+];
+function histAvisosAbierto() {
+  try { return localStorage.getItem(LS.HIST_AVISOS) === '1'; } catch (_) { return false; }
+}
+function histAvisosSync() {
+  const wrap = document.getElementById('hist-avisos');
+  if (!wrap) return;
+  let total = 0;
+  const chips = HIST_AVISOS_DEF.map(([id, cls, ic, txt]) => {
+    const el = document.getElementById(id);
+    const n = el ? (parseInt(el.dataset.n, 10) || 0) : 0;
+    total += n;
+    return n ? `<span class="hav-chip ${cls}">${icon(ic)}${esc(txt(n))}</span>` : '';
+  }).join('');
+  wrap.hidden = !total;
+  const abierto = histAvisosAbierto();
+  const ch = document.getElementById('hist-avisos-chips');
+  if (ch) ch.innerHTML = chips;
+  const res = document.getElementById('hist-avisos-res');
+  if (res) res.setAttribute('aria-expanded', abierto ? 'true' : 'false');
+  const acc = document.getElementById('hist-avisos-acc');
+  if (acc) acc.textContent = abierto ? 'Ocultar' : 'Ver';
+  const body = document.getElementById('hist-avisos-body');
+  if (body) body.hidden = !abierto;
+}
+// Sin argumento alterna; con true/false fuerza.
+function histAvisosToggle(forzar) {
+  const abrir = (typeof forzar === 'boolean') ? forzar : !histAvisosAbierto();
+  try { localStorage.setItem(LS.HIST_AVISOS, abrir ? '1' : '0'); } catch (_) {}
+  histAvisosSync();
+}
+
 // ─── SEGUIMIENTO: banner ─────────────────────
 // Renderiza el banner de seguimientos pendientes arriba del historial.
 // Se llama al arrancar la app y al entrar a la pestaña Historial.
@@ -13588,6 +13737,8 @@ function renderFollowupBanner() {
   const el = document.getElementById('followup-banner');
   if (!el) return;
   const pend = (typeof getPendingFollowups === 'function') ? getPendingFollowups() : [];
+  el.dataset.n = pend.length;
+  histAvisosSync();
   if (!pend.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
 
   const n = pend.length;
@@ -13624,6 +13775,8 @@ function renderExpiryBanner() {
   const el = document.getElementById('expiry-banner');
   if (!el) return;
   const venc = (typeof getExpiredQuotes === 'function') ? getExpiredQuotes() : [];
+  el.dataset.n = venc.length;
+  histAvisosSync();
   if (!venc.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
 
   const n = venc.length;
@@ -13695,6 +13848,8 @@ function renderRecontactoBanner() {
   if (dot) { dot.textContent = pend.length; dot.hidden = !pend.length; }
   const el = document.getElementById('recontacto-banner');
   if (!el) return;
+  el.dataset.n = pend.length;
+  histAvisosSync();
   if (!pend.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
 
   const n = pend.length;
@@ -14218,7 +14373,7 @@ function versionBadgeFor(e) {
 // ¿Ofrecer "Nueva versión" en esta tarjeta? Solo donde tiene sentido: el
 // presupuesto ya venció o se dio por perdido, y todavía nadie lo reemplazó.
 // Un borrador se edita y listo, y un trabajo ya realizado no se re-presupuesta:
-// poner el botón ahí sería un botón más peleando con "Cargar" en cada tarjeta.
+// poner el botón ahí sería un botón más peleando con "Abrir" en cada tarjeta.
 function ofreceNuevaVersion(e) {
   if (!e || esReemplazado(e)) return false;
   const est = e.estado || 'borrador';
@@ -14742,7 +14897,7 @@ function renderHistory() {
           <div class="hnum">${esc(e.quoteNumber||'—')}${e.isEstimative?'<span class="hbadge-est">Estimativo</span>':''}${versionBadgeFor(e)}${followupBadgeFor(e)}${expiryBadgeFor(e)}${e.facturado?'<span class="hbadge-estado" style="color:#065f46;background:#d1fae5">✓ Facturado</span>':''}</div>
           ${!groupedByClient?`<div class="hclient ${!e.clientName?'is-draft':''}">${esc(e.clientName||'(borrador sin nombre de cliente)')}</div>`:''}
         </div>
-        <button class="btn btn-p btn-sm hcargar" onclick="loadFromHistory(${e.id})" title="Cargar este presupuesto en el editor">${icon('folder')} Cargar</button>
+        <button class="btn btn-p btn-sm hcargar" onclick="loadFromHistory(${e.id})" title="Abrir este presupuesto en el editor">${icon('pencil')} Abrir</button>
       </div>
       <div class="hmeta">${esc(e.currency||'')} ${fmtM(e.total||0,e.currency||'ARS')} · ${e.itemCount||0} ítem(s) · ${fmtD(((e.snapshot&&e.snapshot.dateIssue)||e.savedAt||'').slice(0,10))}</div>
       <div class="hacts">
@@ -14881,12 +15036,29 @@ function toggleHistoryMonth(key) {
 }
 
 // ─── NUEVO PRESUPUESTO ────────────────────────
-async function newQuote() {
-  const ok = await confirmDlg('Nuevo presupuesto', '¿Crear un nuevo presupuesto? El borrador actual se guardará automáticamente en el historial.', 'Crear nuevo', 'btn-p');
-  if (!ok) return;
-  autoSaveToHistory();
+// Sin "¿Crear un nuevo presupuesto?": el que estaba abierto se guarda solo en
+// el historial, así que preguntar era un toque de más en la acción más usada
+// de la app. En su lugar, el aviso ofrece "Deshacer" (vuelve a abrir el
+// anterior). Lo llaman el botón "+ Nuevo" de la barra superior, el del pie del
+// editor y el acceso directo del ícono (?go=nuevo).
+function newQuote() {
+  const prevNum = (S.quoteNumber && autoSaveToHistory()) ? S.quoteNumber : '';
   resetToNewQuote();
-  toast('Nuevo presupuesto creado', 'info');
+  const m = document.getElementById('main');
+  if (m) m.scrollTop = 0;
+  if (!prevNum) { toast('Nuevo presupuesto ' + S.quoteNumber, 'info'); return; }
+  toastAccion(`Nuevo presupuesto ${S.quoteNumber}. El ${prevNum} quedó guardado en el historial.`,
+    [{ label: 'Deshacer', fn: () => deshacerNuevo(prevNum) }], 8000);
+}
+
+// "Deshacer" del aviso de newQuote: vuelve a abrir el presupuesto que estaba en
+// el editor. getH() devuelve lo más reciente primero, así que con números
+// repetidos gana el que se acaba de guardar. Si en el nuevo ya se cargó algo,
+// loadFromHistory lo guarda antes: no se pierde nada.
+function deshacerNuevo(num) {
+  const e = getH().find(x => x && x.quoteNumber === num);
+  if (!e) { toast('No se encontró el ' + num + ' en el historial', 'err'); return; }
+  loadFromHistory(e.id);
 }
 
 // Reinicia el estado a un presupuesto en blanco con el siguiente N° libre.
@@ -15042,8 +15214,8 @@ function buildBackupObject() {
 //   pq_followup · pq_gcal_id · fotos (IndexedDB, vía buildPhotoMap)
 //
 // NO VA (preferencias de UI, caches y estado propio del dispositivo):
-//   pq_theme · pq_cal_view · pq_onboarded · pq_last_backup · pq_day_alert_seen
-//   pq_notif_seen (qué avisos ya viste acá) · pq_clima + pq_clima_warn (cache
+//   pq_theme · pq_cal_view · pq_hist_avisos · pq_onboarded · pq_last_backup
+//   pq_day_alert_seen · pq_notif_seen (qué avisos ya viste acá) · pq_clima + pq_clima_warn (cache
 //   del pronóstico, se rebaja solo) · pq_push_device_id (identifica ESTE
 //   equipo) · pq_gdrive_* y pq_gcal_on/last/email (conexión de este equipo)
 //   · pq_gdrive_tok / pq_gcal_tok (tokens: nunca salen del dispositivo)
@@ -21472,6 +21644,149 @@ function updateNotifBadge(){
   b.hidden = n === 0;
 }
 
+// ===== js/nav.js =====
+// ═══════════════════════════════════════
+// NAV.JS — Botón "Atrás" del teléfono
+// ═══════════════════════════════════════
+// Antes la app no escuchaba "Atrás": en Android (app instalada o TWA) cerraba
+// la app entera aunque hubiera una ventana abierta encima (vista previa,
+// agenda, frases, un desplegable…). Regla de ahora:
+//   1. Con algo abierto encima, "Atrás" lo cierra.
+//   2. En una pestaña que no es el Editor, "Atrás" vuelve al Editor.
+//   3. En el Editor y sin nada abierto, "Atrás" sale (lo normal en Android).
+//
+// Cómo: cada cosa que se abre apila una entrada en el historial del navegador
+// (history.pushState) y una "capa" en _navCapas, su espejo. "Atrás" dispara
+// popstate y se cierran las capas que quedaron arriba. Si la ventana se cierra
+// por su propio botón, la capa se consume con history.back() para que el
+// próximo "Atrás" no quede en el aire. Las ventanas se detectan solas (clase
+// `open` de cada overlay y los desplegables .csel-pop/.cal-pop que se montan en
+// <body>): no hay que tocar cada función que abre o cierra algo.
+//
+// Solo se apila con un toque reciente del usuario (navigator.userActivation).
+// Chrome marca "salteable" la entrada de una página que apila historial sin
+// gesto (la defensa contra páginas que secuestran el botón Atrás), y entonces
+// "Atrás" saltearía la app entera. Lo que se abre solo al arrancar (el aviso
+// del día, la bienvenida) no apila: ahí "Atrás" se comporta como antes.
+//
+// Capa "muerta": la que se cerró por la UI sin estar arriba de todo (no se puede
+// sacar del medio del historial). Al llegarle, "Atrás" la saltea solo.
+
+// Overlay → cómo se cierra. Al sumar un overlay nuevo, agregarlo acá.
+const NAV_OVERLAYS = {
+  'confirm-overlay':      () => { const b = document.getElementById('confirm-cancel'); if (b) b.click(); },
+  'photo-viewer-overlay': () => closePhotoViewer(),
+  'note-edit-overlay':    () => calCloseNoteEdit(),
+  'clima-overlay':        () => closeClimaDetail(),
+  'nv-overlay':           () => nvClose(),
+  'colab-overlay':        () => colabClose(),
+  'agenda-overlay':       () => closeAgendaDlg(),
+  'phrases-overlay':      () => closePhrasesModal(),
+  'share-overlay':        () => closeShareTray(),
+  'doc-preview-overlay':  () => closePreview(),
+  'notif-overlay':        () => notifClose(),
+  'notes-overlay':        () => closeNotesPanel(),
+  'day-alert-overlay':    () => closeDayAlert(),
+  'moverlay':             () => closeModal(),
+};
+const NAV_POP = '_pop';   // desplegables y calendario (closeCsel cierra los dos)
+let _navCapas = [];        // [{ t:'ov'|'tab', id, muerta? }]
+
+function _navConGesto() {
+  const ua = navigator.userActivation;
+  return !ua || ua.isActive;
+}
+
+function _navPush(capa) {
+  if (!_navConGesto()) return false;
+  try { history.pushState({ pq: 1, n: _navCapas.length + 1 }, ''); } catch (_) { return false; }
+  _navCapas.push(capa);
+  return true;
+}
+
+function _navViva(t, id) {
+  return _navCapas.some(c => c.t === t && c.id === id && !c.muerta);
+}
+
+// Se cerró desde la UI: consumir su capa.
+function _navSoltar(t, id) {
+  for (let i = _navCapas.length - 1; i >= 0; i--) {
+    const c = _navCapas[i];
+    if (c.t !== t || c.id !== id || c.muerta) continue;
+    if (i === _navCapas.length - 1) {
+      _navCapas.pop();
+      try { history.back(); } catch (_) {}
+    } else {
+      c.muerta = true;
+    }
+    return;
+  }
+}
+
+function _navCerrar(c) {
+  try {
+    if (c.t === 'tab') {
+      const ed = document.getElementById('panel-editor');
+      if (ed && !ed.classList.contains('active')) switchTab('editor');
+      return;
+    }
+    if (c.id === NAV_POP) { if (typeof closeCsel === 'function') closeCsel(); return; }
+    const el = document.getElementById(c.id);
+    if (el && el.classList.contains('open') && NAV_OVERLAYS[c.id]) NAV_OVERLAYS[c.id]();
+  } catch (e) { console.warn('nav: no se pudo cerrar', c, e); }
+}
+
+function _navOnPop(ev) {
+  const st = ev.state;
+  const n = (st && st.pq) ? Math.max(0, st.n | 0) : 0;
+  let quitadas = 0, cerro = false;
+  while (_navCapas.length > n) {
+    const c = _navCapas.pop();
+    quitadas++;
+    if (!c.muerta) { _navCerrar(c); cerro = true; }
+  }
+  // Solo había capas muertas: este "Atrás" no cerró nada visible, seguir de largo.
+  if (quitadas && !cerro) { try { history.back(); } catch (_) {} }
+}
+
+// Lo llama switchTab. Una sola capa de pestaña: desde cualquier pestaña,
+// "Atrás" vuelve al Editor (la pantalla de inicio de la app).
+function _navTab(name) {
+  const hay = _navViva('tab', 'tab');
+  if (name === 'editor') { if (hay) _navSoltar('tab', 'tab'); }
+  else if (!hay) _navPush({ t: 'tab', id: 'tab' });
+}
+
+function _navEsPop(nd) {
+  return nd && nd.nodeType === 1 && nd.classList &&
+    (nd.classList.contains('csel-pop') || nd.classList.contains('cal-pop'));
+}
+
+function navInit() {
+  if (!window.history || typeof history.pushState !== 'function' || typeof MutationObserver === 'undefined') return;
+  // Recarga parada sobre una entrada nuestra (las entradas sobreviven al
+  // reload): no hay nada abierto que corresponda, así que son capas muertas.
+  const st = history.state;
+  if (st && st.pq && st.n > 0) for (let i = 0; i < st.n; i++) _navCapas.push({ t: 'ov', id: '_viejo', muerta: true });
+  window.addEventListener('popstate', _navOnPop);
+  const abierto = cls => /(^|\s)open(\s|$)/.test(cls || '');
+  const mo = new MutationObserver(recs => recs.forEach(r => {
+    if (r.type === 'attributes') {
+      const id = r.target.id, antes = abierto(r.oldValue), ahora = r.target.classList.contains('open');
+      if (!antes && ahora) { if (!_navViva('ov', id)) _navPush({ t: 'ov', id }); }
+      else if (antes && !ahora) _navSoltar('ov', id);
+    } else {
+      r.addedNodes.forEach(nd => { if (_navEsPop(nd) && !_navViva('ov', NAV_POP)) _navPush({ t: 'ov', id: NAV_POP }); });
+      r.removedNodes.forEach(nd => { if (_navEsPop(nd)) _navSoltar('ov', NAV_POP); });
+    }
+  }));
+  Object.keys(NAV_OVERLAYS).forEach(id => {
+    const el = document.getElementById(id);
+    if (el) mo.observe(el, { attributes: true, attributeFilter: ['class'], attributeOldValue: true });
+  });
+  mo.observe(document.body, { childList: true });
+}
+
 // ===== js/core.js =====
 // ═══════════════════════════════════════
 // CORE.JS — Inicialización principal de la app
@@ -21523,6 +21838,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   enhanceSelects(document);
   // Calendario propio para los <input type="date"> editables.
   enhanceDateInputs(document);
+  // Botón "Atrás" del teléfono: cierra lo abierto o vuelve al Editor.
+  try { navInit(); } catch (e) { console.error('navInit', e); }
 
   // Si el presupuesto cargado está en blanco (nada en edición), poner la fecha
   // de emisión en HOY. Evita que un borrador vacío arrastre la fecha vieja del
