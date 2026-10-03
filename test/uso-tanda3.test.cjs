@@ -11,6 +11,8 @@
 //   3. Configuración repartida: mensajes en "Textos", backup en "Datos".
 //   4. Toques de 44 px y letra legible en la barra de arriba, las pestañas y
 //      los textos de ayuda.
+//   5. Con la lista de trabajos vacía solo se ve "+ Árbol / Trabajo": los
+//      servicios y "Dos opciones" aparecen después del primer trabajo.
 //
 // Uso:  node test/uso-tanda3.test.cjs
 
@@ -215,6 +217,47 @@ async function nuevaPagina(browser, ancho, tactil) {
       check('La letra de las pestañas y las ayudas no baja de 12,5 px',
         r.letraPestana >= 12.5 && r.letraHint >= 12.5 && r.letraIsub >= 12.5,
         `pestaña=${r.letraPestana} hint=${r.letraHint} isub=${r.letraIsub}`);
+      await page.close();
+    }
+
+    // ── 5: Trabajos vacíos → solo "+ Árbol / Trabajo" a la vista ──
+    {
+      const page = await nuevaPagina(browser, 412, true);
+      const r = await page.evaluate(async () => {
+        const espera = ms => new Promise(r => setTimeout(r, ms));
+        const vis = sel => { const el = document.querySelector(sel); return !!el && getComputedStyle(el).display !== 'none'; };
+        // Un servicio frecuente guardado, para que los chips tengan qué mostrar.
+        if (typeof saveServiceToDB === 'function') saveServiceToDB('Camión - Viaje', '50000');
+        resetToNewQuote();
+        setVistaEditor('consola'); editorSetEtapa('trabajos');
+        renderQuickServices(); renderItems();
+        await espera(100);
+        const btn = document.querySelector('.add-tree').getBoundingClientRect();
+        const barra = document.getElementById('sticky-totals').getBoundingClientRect();
+        const vacio = { arbol: vis('.add-tree'), servicio: vis('.add-svc'), nota: vis('.add-note'),
+          chips: vis('#quick-services'), dosOpciones: vis('#scenarios-panel'),
+          aLaVista: btn.top > 0 && btn.bottom < barra.top };
+        document.querySelector('.add-tree').click();
+        await espera(100);
+        const conTrabajo = { servicio: vis('.add-svc'), nota: vis('.add-note'), dosOpciones: vis('#scenarios-panel'),
+          botonesAntesQueChips: (() => { const a = document.querySelector('.items-add').getBoundingClientRect().top,
+            q = document.getElementById('quick-services').getBoundingClientRect().top; return a < q; })() };
+        // Con "Dos opciones" prendido y el escenario B vacío, el control no se esconde.
+        S.items = []; S.scenariosEnabled = true; activeScenario = 'B'; S.itemsB = [];
+        renderItems();
+        const abPrendido = vis('#scenarios-panel');
+        S.scenariosEnabled = false; activeScenario = 'A'; renderItems();
+        setVistaEditor('clasica');
+        return { vacio, conTrabajo, abPrendido };
+      });
+      check('Sin trabajos se ve solo "+ Árbol / Trabajo"',
+        r.vacio.arbol && !r.vacio.servicio && !r.vacio.nota && !r.vacio.chips && !r.vacio.dosOpciones,
+        JSON.stringify(r.vacio));
+      check('…y queda a la vista al entrar a la etapa Trabajos', r.vacio.aLaVista === true);
+      check('Con el primer trabajo vuelven servicio, nota y "Dos opciones"',
+        r.conTrabajo.servicio && r.conTrabajo.nota && r.conTrabajo.dosOpciones, JSON.stringify(r.conTrabajo));
+      check('Los botones van antes que los servicios rápidos', r.conTrabajo.botonesAntesQueChips === true);
+      check('Con "Dos opciones" prendido el control no se esconde aunque B esté vacío', r.abPrendido === true);
       await page.close();
     }
 

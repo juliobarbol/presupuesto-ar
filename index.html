@@ -209,6 +209,13 @@ body{background-color:var(--bg)}
    pestaña. Antes el único botón vivía al pie del editor, 3,8 pantallas abajo. */
 .tbtn-nuevo{display:inline-flex;align-items:center;gap:4px;padding:5px 11px;font-size:13px;font-weight:700;background:#fff;color:var(--accent);border-color:#fff;white-space:nowrap}
 .tbtn-nuevo:hover{background:rgba(255,255,255,.88)}
+/* Trabajos vacíos (itemsVacioSync): solo "+ Árbol / Trabajo", ancho y alto.
+   El !important le gana al display inline que pone renderQuickServices. */
+#section-normal-items.is-vacio #quick-services,
+#section-normal-items.is-vacio .add-svc,
+#section-normal-items.is-vacio .add-note{display:none!important}
+#section-normal-items.sin-ab #scenarios-panel{display:none!important}
+#section-normal-items.is-vacio .add-tree{flex:1 1 100%;justify-content:center;min-height:52px;font-size:16px}
 /* Sugerencia de precio en la tarjeta del árbol (precioSugSync). */
 .pr-sug{display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px;margin-top:6px;padding:6px 10px;border-radius:var(--radius-field);background:var(--accent-light);font-size:13px;color:var(--text)}
 .pr-sug[hidden]{display:none}
@@ -3832,15 +3839,20 @@ input[type=number]{-moz-appearance:textfield}
           <div class="st">Árboles / Trabajos a cotizar <span id="items-count" class="nbadge" style="float:right">0</span></div>
           <div id="items-list"></div>
 
+          <!-- Los botones van ANTES de los servicios rápidos: "+ Árbol / Trabajo"
+               es lo que se toca primero y quedaba abajo de las fichas. Con la
+               lista vacía (clase .is-vacio, itemsVacioSync) solo se ve este
+               botón: un servicio o una nota antes del primer trabajo no tiene
+               sentido, y tampoco "Dos opciones en un PDF". -->
+          <div class="arow items-add" style="margin-bottom:16px">
+            <button class="btn btn-p btn-sm add-tree" onclick="addItem('tree')"><svg class="ic"><use href="#i-tree"></use></svg> + Árbol / Trabajo</button>
+            <button class="btn btn-s btn-sm add-svc" onclick="addItem('service')">+ Servicio</button>
+            <button class="btn btn-g btn-sm add-note" onclick="addItem('note')">+ Nota</button>
+          </div>
+
           <!-- Chips de servicios rápidos: tap = crear ítem service con
                descripción ya cargada. Reduce el flujo de 5 taps a 2. -->
           <div id="quick-services" class="quick-services" style="display:none"></div>
-
-          <div class="arow" style="margin-bottom:16px">
-            <button class="btn btn-p btn-sm" onclick="addItem('tree')"><svg class="ic"><use href="#i-tree"></use></svg> + Árbol / Trabajo</button>
-            <button class="btn btn-s btn-sm" onclick="addItem('service')">+ Servicio</button>
-            <button class="btn btn-g btn-sm" onclick="addItem('note')">+ Nota</button>
-          </div>
         </div>
         </div><!-- /esec-items -->
 
@@ -9434,10 +9446,25 @@ function _fillSpeciesInCard(card, rawSpecies) {
   toast('Especie completada en el trabajo a realizar', 'ok', 1600);
 }
 
+// Lista de trabajos vacía → solo "+ Árbol / Trabajo", bien a la vista. El
+// pedido: "sería muy raro que yo anote un servicio antes de algún árbol o
+// trabajo", y los servicios rápidos + "Dos opciones en un PDF" empujaban el
+// botón fuera de la pantalla al entrar a la etapa Trabajos. Mira la lista del
+// escenario activo (en B vacío también aplica). "Dos opciones" sigue visible
+// si ya está prendido: apagarlo de la vista dejaría el modo A/B sin su control.
+function itemsVacioSync() {
+  const sec = document.getElementById('section-normal-items');
+  if (!sec) return;
+  const vacio = !(activeItemsArr() || []).length;
+  sec.classList.toggle('is-vacio', vacio);
+  sec.classList.toggle('sin-ab', vacio && !S.scenariosEnabled);
+}
+
 function renderItems() {
   const list = document.getElementById('items-list'); if(!list) return;
   const arr  = activeItemsArr();
   const cnt  = document.getElementById('items-count'); if(cnt) cnt.textContent = arr.length;
+  itemsVacioSync();
   list.innerHTML = '';
 
   arr.forEach((item, idx) => {
