@@ -13,7 +13,14 @@
 //
 //  Para forzar actualizacion tras un deploy: subir el CACHE_VERSION.
 
-const CACHE_VERSION = 'presupuesto-v228';
+const CACHE_VERSION = 'presupuesto-v229';
+// Caché APARTE, que sobrevive a las versiones, para lo pesado que se baja bajo
+// demanda: html2pdf (927 KB, "Compartir imagen"). Antes vivía en la caché de la
+// versión y cada deploy la borraba: la primera "Compartir imagen" después de
+// cada actualización necesitaba señal. Se revalida en segundo plano (como el
+// resto), así que un archivo nuevo en /vendor llega solo.
+const VENDOR_CACHE = 'pq-vendor';
+const VENDOR_LAZY = ['/vendor/html2pdf.bundle.min.js'];
 const APP_SHELL = [
   './',
   './index.html',
@@ -64,7 +71,7 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
-    await Promise.all(keys.filter((k) => k !== CACHE_VERSION).map((k) => caches.delete(k)));
+    await Promise.all(keys.filter((k) => k !== CACHE_VERSION && k !== VENDOR_CACHE).map((k) => caches.delete(k)));
     await self.clients.claim();
   })());
 });
@@ -160,12 +167,38 @@ self.addEventListener('fetch', (event) => {
       const ms = swNetLenta() ? 1200 : 3500;
       try {
         const fresh = await fetchWithTimeout(req, ms);
+        // Respuesta de error (un 5xx de Cloudflare durante un deploy, un 404):
+        // antes se entregaba igual y la app abría en una página de error,
+        // aunque tuviera una copia sana guardada. Ahora va la copia; el error
+        // solo se muestra si no hay ninguna. Se mira el código (≥ 400) y no
+        // `ok`: una redirección de navegación llega como 'opaqueredirect' con
+        // status 0 y `ok` en falso, y esa hay que entregarla tal cual.
+        if (fresh.status >= 400) {
+          const cached = await matchAppShell(req);
+          return cached || fresh;
+        }
         cachePut('./index.html', fresh);
         return fresh;
       } catch (e) {
         const cached = await matchAppShell(req);
         return cached || Response.error();
       }
+    })());
+    return;
+  }
+
+  // Librerías pesadas bajo demanda: su caché propia, que no se borra al
+  // actualizar (ver VENDOR_CACHE). Misma estrategia que el resto.
+  if (VENDOR_LAZY.some((p) => url.pathname.endsWith(p))) {
+    event.respondWith((async () => {
+      const vc = await caches.open(VENDOR_CACHE);
+      const cached = (await vc.match(req)) || (await caches.match(req));
+      if (cached && swNetLenta()) return cached;
+      const network = fetch(req).then((res) => {
+        if (res && res.status === 200 && !res.redirected) vc.put(req, res.clone()).catch(() => {});
+        return res;
+      }).catch(() => cached);
+      return cached || network;
     })());
     return;
   }
@@ -249,13 +282,21 @@ self.addEventListener('push', (event) => {
   );
 });
 
+// Con la app ya abierta, antes solo se la traía al frente y el destino de la
+// notificación (`go`) se perdía: la página lee ?go= únicamente al arrancar.
+// Ahora se le manda por mensaje (la página lo resuelve en irDestino) y recién
+// después se la enfoca. Sin ventana abierta, se abre con ?go= como siempre.
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const go = event.notification.data?.go;
-  const url = go ? `./?go=${go}` : './';
+  const url = go ? `./?go=${encodeURIComponent(go)}` : './';
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(wins => {
-      for (const w of wins) if ('focus' in w) return w.focus();
+      const w = wins.find((c) => 'focus' in c);
+      if (w) {
+        if (go) { try { w.postMessage({ type: 'pq-go', go }); } catch (e) {} }
+        return w.focus();
+      }
       return clients.openWindow(url);
     })
   );

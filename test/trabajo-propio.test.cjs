@@ -33,6 +33,13 @@
 //   9. El documento: cada tipo dice lo que es, ninguno inventa vigencia y el
 //      presupuesto de verdad sale igual que antes.
 //
+// FECHA FIJA: el test corre con "hoy" = día 10 del mes en curso (Date
+// reemplazado en la página, ver DIA_FIJO). Varias cuentas suman un trabajo de
+// hoy y otro agendado a 2-3 días, y esperan los dos en el mismo mes: los
+// últimos días de cada mes el agendado caía en el mes siguiente y el test
+// fallaba sin que la app tuviera nada mal. Además los totales se leen del
+// bloque del mes de hoy ([data-month]), no del primero de la lista.
+//
 // Uso:  node test/trabajo-propio.test.cjs
 
 const path = require('node:path');
@@ -57,6 +64,17 @@ const check = (name, ok, extra) => {
 async function nuevaPagina(browser) {
   const page = await browser.newPage();
   page.on('pageerror', (e) => { allOk = false; console.log('PAGEERROR', e.message); });
+  // DIA_FIJO: "hoy" es el día 10 del mes real, a las 12 (ver arriba).
+  await page.evaluateOnNewDocument(() => {
+    const D = Date;
+    const r = new D();
+    const off = new D(r.getFullYear(), r.getMonth(), 10, 12, 0, 0).getTime() - D.now();
+    class F extends D {
+      constructor(...a) { if (!a.length) super(D.now() + off); else super(...a); }
+      static now() { return D.now() + off; }
+    }
+    window.Date = F;
+  });
   await page.goto(APP, { waitUntil: 'domcontentloaded', timeout: 30000 });
   await new Promise(r => setTimeout(r, 1200));
   await page.evaluate(() => { try { localStorage.clear(); } catch (_) {} });
@@ -180,15 +198,15 @@ const RESET = `
         // Antes: un presupuesto aceptado de $400.000 y nada más.
         switchTab('historial'); renderHistory();
         const contAntes  = document.getElementById('hist-count').textContent;
-        const mesAntes   = document.querySelector('.hmonth-total').textContent;
+        const mesAntes   = document.querySelector('.hmonth[data-month="' + today().slice(0, 7) + '"] .hmonth-total').textContent;
         const zonaAntes  = _statsDeZona();
         // Dos colaboraciones: una hecha y una agendada.
         _alta(today(), 2);
         _alta(_enDias(3), 1);
         renderHistory();
         const contDespues = document.getElementById('hist-count').textContent;
-        const mesDespues  = document.querySelector('.hmonth-total').textContent;
-        const cantMes     = document.querySelector('.hmonth-count').textContent;
+        const mesDespues  = document.querySelector('.hmonth[data-month="' + today().slice(0, 7) + '"] .hmonth-total').textContent;
+        const cantMes     = document.querySelector('.hmonth[data-month="' + today().slice(0, 7) + '"] .hmonth-count').textContent;
         const zonaDespues = _statsDeZona();
         // Acumulado por cliente: el colega no tiene presupuestos, así que su
         // acumulado tiene que dar cero aunque le hayamos trabajado $540.000.
@@ -202,7 +220,7 @@ const RESET = `
           contAntes, contDespues, mesAntes, mesDespues, cantMes,
           zonaAntes, zonaDespues, acumColega,
           // El renglón propio del mes sí existe.
-          lineaColab: (document.querySelector('.hmonth-colab') || {}).textContent || '',
+          lineaColab: (document.querySelector('.hmonth[data-month="' + today().slice(0, 7) + '"] .hmonth-colab') || {}).textContent || '',
         };
       })()`));
       check('El contador sigue contando presupuestos, no colaboraciones',
@@ -327,7 +345,7 @@ const RESET = `
       const r = await page.evaluate(new Function(`return (() => {
         ${RESET}
         switchTab('historial'); renderHistory();
-        const mesAntes  = document.querySelector('.hmonth-total').textContent;
+        const mesAntes  = document.querySelector('.hmonth[data-month="' + today().slice(0, 7) + '"] .hmonth-total').textContent;
         const zonaAntes = _statsDeZona();
         // Dos trabajos chicos al MISMO cliente que ya tiene el presupuesto.
         _altaDirecto(today(), 1);
@@ -336,8 +354,8 @@ const RESET = `
         // El primero de la lista es el último registrado (el agendado): acá
         // interesa el de HOY, que es el que tiene que haber quedado realizado.
         const e = getH().filter(esTrabajoDirecto).find(x => x.fechaTrabajo === today());
-        const mesDespues = document.querySelector('.hmonth-total').textContent;
-        const cantMes    = document.querySelector('.hmonth-count').textContent;
+        const mesDespues = document.querySelector('.hmonth[data-month="' + today().slice(0, 7) + '"] .hmonth-total').textContent;
+        const cantMes    = document.querySelector('.hmonth[data-month="' + today().slice(0, 7) + '"] .hmonth-count').textContent;
         const zonaDespues = _statsDeZona();
         // El pin se dibuja SIN prender el filtro de colaboraciones.
         const visibleSinFiltro = !_mapaVerColab && !esColaboracion(e);

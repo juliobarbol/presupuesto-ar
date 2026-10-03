@@ -17,9 +17,8 @@ El JS está dividido por marcadores estables. Buscalos en vez de fiarte de líne
 grep -na "===== js/" index.html
 ```
 
-**El `-a` es obligatorio.** `index.html` tiene un byte NUL suelto, así que sin `-a`
-grep lo trata como binario y avisa `binary file matches` en vez de mostrarte las
-líneas.
+(Hasta la v228 `index.html` tenía un byte NUL suelto y hacía falta `grep -a`;
+se reemplazó por `'\u0000'`. `test/revision-fallas.test.cjs` vigila que no vuelva.)
 
 | Sección | Para qué |
 |---|---|
