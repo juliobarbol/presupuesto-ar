@@ -173,7 +173,8 @@ async function disparar(h, tipo, ev) {
         gdriveFindFile = async () => ({ id: 'abc' });
         buildBackupObject = () => ({ relleno: 'x'.repeat(5e6) });
         await gdriveUpload();
-        out.subida = llamadas.map((l) => l.o);
+        // Solo las subidas (desde la v230 antes se pide la lista de fotos de Drive).
+        out.subida = llamadas.filter((l) => /\/upload\//.test(l.url)).map((l) => l.o);
         netFetch = orig.netFetch; gdriveGetToken = orig.gdriveGetToken;
         gdriveFindFile = orig.gdriveFindFile; buildBackupObject = orig.buildBackupObject;
         // sinCorte: un timeout no suma fallos de red; uno común sí.

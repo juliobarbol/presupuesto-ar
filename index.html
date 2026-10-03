@@ -16121,10 +16121,133 @@ function gdriveTimeoutSubida(bytes) {
   return Math.min(10 * 60 * 1000, 30000 + Math.ceil((bytes || 0) / 40000) * 1000);
 }
 
-// Sube el backup actual (crea o actualiza el único archivo).
+// ─── FOTOS APARTE EN DRIVE (v230) ─────────────────────────────
+// Antes el backup era UN archivo con todo, fotos incluidas en base64 (unos
+// 200 KB cada una): con 100 fotos, 20 MB que se volvían a subir enteros en
+// cada cambio — un precio corregido o un estado cambiado. Diez cambios en un
+// día, 200 MB del plan de datos, casi todo las mismas fotos de siempre.
+//
+// Ahora cada foto es un archivo propio en el appDataFolder
+// (`pq-foto-<id>.jpg`, en binario: un 25 % menos que el base64) y se sube UNA
+// sola vez: una foto no cambia nunca (una foto nueva es un ID nuevo, ver
+// newPhotoId). El backup (GDRIVE.FILE) va sin fotos — `photos: {}` — y con la
+// lista de las que usa en `_fotosAparte`. Cada copia sube el JSON (cientos de
+// KB) más alguna foto nueva, si la hay.
+//
+// Reglas que no se pueden romper:
+//   · Las fotos suben ANTES que el JSON. Si algo se corta en el medio, el
+//     backup que está en Drive nunca nombra una foto que no esté arriba.
+//   · La lista de fotos de Drive se pide FRESCA en cada copia (es un pedido
+//     chico). Con dos teléfonos en la misma cuenta, si el otro borró una foto,
+//     esta copia la vuelve a subir en vez de confiar en un recuerdo viejo.
+//   · Borrar de Drive las que ya no se usan, solo DESPUÉS de subir el JSON, una
+//     vez por sesión, y nunca si este equipo no tiene ninguna foto (un teléfono
+//     recién instalado que todavía no restauró no puede vaciar el Drive).
+//   · Restaurar acepta los dos formatos: el viejo (fotos adentro) y el nuevo.
+//     Si alguna foto no baja (señal), no se aplica nada: se reintenta entero.
+// "Exportar" a un archivo no cambia: sigue siendo un solo archivo con todo.
+const GDRIVE_FOTO_PREF = 'pq-foto-';
+const GDRIVE_FOTO_RE = /^pq-foto-(p_[A-Za-z0-9_]{1,60})\.(jpg|png|webp|gif)$/;
+const GDRIVE_FOTO_ID_RE = /^p_[A-Za-z0-9_]{1,60}$/;
+
+// Fotos que hay en Drive: Map id → fileId. Pagina (pageSize 1000).
+async function gdriveListarFotos(token){
+  const out = new Map();
+  const q = encodeURIComponent(`name contains '${GDRIVE_FOTO_PREF}' and trashed=false`);
+  let pageToken = '';
+  for (let vuelta = 0; vuelta < 50; vuelta++) {
+    const url = `https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=${q}&pageSize=1000`
+      + `&fields=nextPageToken,files(id,name)` + (pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : '');
+    const r = await netFetch(url, { headers: { Authorization: 'Bearer ' + token } });
+    if (!r.ok) throw new Error('Drive fotos ' + r.status);
+    const j = await r.json();
+    (j.files || []).forEach(f => {
+      const m = GDRIVE_FOTO_RE.exec(f && f.name || '');
+      if (m && f.id) out.set(m[1], f.id);
+    });
+    if (!j.nextPageToken) break;
+    pageToken = j.nextPageToken;
+  }
+  return out;
+}
+
+// dataURL → { tipo, ext, bytes } (o null si no es una imagen en base64).
+function _fotoBinaria(dataUrl){
+  const m = /^data:(image\/(jpeg|jpg|png|webp|gif));base64,([A-Za-z0-9+/=\s]+)$/i.exec(dataUrl || '');
+  if (!m) return null;
+  const tipo = m[1].toLowerCase().replace('image/jpg', 'image/jpeg');
+  const ext = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif' }[tipo];
+  const bin = atob(m[3].replace(/\s+/g, ''));
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return { tipo, ext, bytes };
+}
+
+async function gdriveSubirFoto(token, id, dataUrl){
+  const f = _fotoBinaria(dataUrl);
+  if (!f) return false;                       // no es una imagen válida: no se sube
+  const boundary = '----pqf' + Date.now() + Math.random().toString(36).slice(2, 8);
+  const meta = JSON.stringify({ name: GDRIVE_FOTO_PREF + id + '.' + f.ext, parents: ['appDataFolder'],
+    appProperties: { pqFoto: id } });
+  const body = new Blob([
+    `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${meta}\r\n`,
+    `--${boundary}\r\nContent-Type: ${f.tipo}\r\n\r\n`, f.bytes, `\r\n--${boundary}--`,
+  ]);
+  const r = await netFetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+    method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': `multipart/related; boundary=${boundary}` }, body },
+    { timeout: gdriveTimeoutSubida(f.bytes.length), sinCorte: true });
+  if (!r.ok) throw new Error('Drive foto ' + r.status);
+  return true;
+}
+
+// Baja una foto de Drive y la devuelve como dataURL (o '' si no es imagen).
+async function gdriveBajarFoto(token, fileId){
+  const r = await netFetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media`,
+    { headers: { Authorization: 'Bearer ' + token } });
+  if (!r.ok) throw new Error('Drive foto get ' + r.status);
+  const blob = await r.blob();
+  const url = await new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload = () => resolve(String(fr.result || ''));
+    fr.onerror = () => reject(fr.error);
+    fr.readAsDataURL(blob);
+  });
+  // El tipo lo pone Drive según lo que se subió; si no dice imagen, se descarta.
+  return /^data:image\/(jpeg|png|webp|gif);base64,/i.test(url) ? url : '';
+}
+
+// Sube el backup actual: primero las fotos que falten en Drive, después el JSON
+// (sin fotos), y al final —una vez por sesión— borra las fotos que ya no usa.
 async function gdriveUpload(){
   const token = await gdriveGetToken();
-  const body = JSON.stringify(buildBackupObject());
+  const obj = buildBackupObject();
+  const fotos = obj.photos || {};          // las que ESTE equipo tiene (id → dataURL)
+  // Todas las que nombra algún presupuesto, las tenga o no este equipo. Es lo
+  // que protege la limpieza: una foto que este teléfono no tiene (nunca se
+  // restauró, o no bajó) pero que está en Drive y se usa, NO se borra.
+  const nombradas = new Set();
+  collectPhotoIds(S, nombradas);
+  getH().forEach(e => collectPhotoIds(e && e.snapshot, nombradas));
+  Object.keys(fotos).forEach(id => nombradas.add(id));
+
+  // 1. Fotos que faltan arriba (lista fresca: ver la cabecera). Lo que no se
+  //    puede guardar aparte —un ID con otro formato, una imagen que no es
+  //    base64— sigue ADENTRO del JSON, como antes: nunca se pierde una foto.
+  const remotas = await gdriveListarFotos(token);
+  const aparte = [];
+  obj.photos = {};
+  let subidas = 0;
+  for (const id of nombradas) {
+    const ok = GDRIVE_FOTO_ID_RE.test(id);
+    if (ok && remotas.has(id)) { aparte.push(id); continue; }
+    if (!fotos[id]) continue;                // no está ni acá ni en Drive: nada que hacer
+    if (ok && await gdriveSubirFoto(token, id, fotos[id])) { aparte.push(id); subidas++; }
+    else obj.photos[id] = fotos[id];
+  }
+  obj._fotosAparte = aparte;
+
+  // 2. El backup, ya sin fotos.
+  const body = JSON.stringify(obj);
   const subida = { timeout: gdriveTimeoutSubida(body.length), sinCorte: true };
   const existing = await gdriveFindFile(token);
   if (existing) {
@@ -16142,17 +16265,60 @@ async function gdriveUpload(){
     if (!r.ok) throw new Error('Drive create ' + r.status);
   }
   GDRIVE._dirty = false;
+  GDRIVE._ultimaSubida = { json: body.length, fotos: subidas };
   try { localStorage.setItem(LS.GDRIVE_LAST, new Date().toISOString()); localStorage.setItem(LS.LAST_BACKUP, today()); } catch(_){}
+
+  // 3. Limpieza: fotos de Drive que ya no usa ningún presupuesto. No es parte
+  //    de la copia: si falla, la copia igual quedó hecha.
+  if (!GDRIVE._limpiado && nombradas.size) {
+    GDRIVE._limpiado = true;
+    for (const [id, fileId] of remotas) {
+      if (nombradas.has(id)) continue;
+      try {
+        await netFetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}`,
+          { method: 'DELETE', headers: { Authorization: 'Bearer ' + token } });
+      } catch (e) { console.warn('No se pudo borrar una foto vieja de Drive', e); }
+    }
+  }
 }
 
-// Descarga el objeto de backup de Drive (o null si no hay).
-async function gdriveDownload(){
+// Baja a d.photos las fotos de `_fotosAparte` que este equipo no tenga. Si
+// alguna no baja (señal), tira: la restauración se reintenta entera. Las que
+// no están en Drive se saltean (no hay forma de recuperarlas; quedan como
+// "foto no disponible", igual que antes).
+async function gdriveBajarFotos(token, d){
+  if (!d || !Array.isArray(d._fotosAparte)) return d;
+  const ids = d._fotosAparte.filter(id => typeof id === 'string' && GDRIVE_FOTO_ID_RE.test(id)
+    && !photoCache.has(id));
+  if (!ids.length) return d;
+  const remotas = await gdriveListarFotos(token);
+  const fotos = (d.photos && typeof d.photos === 'object') ? d.photos : {};
+  const cola = ids.filter(id => remotas.has(id) && !fotos[id]);
+  // De a 4 a la vez: más rápido que una por una, sin ahogar una señal floja.
+  let k = 0;
+  const trabajador = async () => {
+    while (k < cola.length) {
+      const id = cola[k++];
+      const url = await gdriveBajarFoto(token, remotas.get(id));
+      if (url) fotos[id] = url;
+    }
+  };
+  await Promise.all([trabajador(), trabajador(), trabajador(), trabajador()]);
+  d.photos = fotos;
+  return d;
+}
+
+// Descarga el objeto de backup de Drive (o null si no hay). Con `conFotos`
+// en false baja solo el JSON (para mirar si hay algo antes de preguntar).
+async function gdriveDownload(opts){
   const token = await gdriveGetToken();
   const f = await gdriveFindFile(token);
   if (!f) return null;
   const r = await netFetch(`https://www.googleapis.com/drive/v3/files/${f.id}?alt=media`, { headers: { Authorization: 'Bearer ' + token } });
   if (!r.ok) throw new Error('Drive get ' + r.status);
-  return await r.json();
+  const d = await r.json();
+  if (opts && opts.conFotos === false) return d;
+  return await gdriveBajarFotos(token, d);
 }
 
 // Botón "Conectar": inicia sesión y, si el equipo está vacío y hay copia
@@ -16182,10 +16348,15 @@ async function gdriveConnect(){
     await gdriveRememberEmail(token);  // recordamos la cuenta para renovar callado
     const localEmpty = !(((typeof getH==='function') ? getH() : []).length);
     let remote = null;
-    try { remote = await gdriveDownload(); } catch(_){}
+    // Primero solo el JSON: las fotos se bajan si el usuario acepta recuperar.
+    try { remote = await gdriveDownload({ conFotos: false }); } catch(_){}
     if (remote && remote.history && remote.history.length && localEmpty) {
       const ok = await confirmDlg('Recuperar datos', 'Hay una copia en tu Google Drive. ¿Querés recuperarla en este dispositivo?', 'Recuperar', 'btn-p');
-      if (ok) { applyBackupObject(remote); toast('Datos recuperados desde Drive.', 'ok', 4000); gdriveUpdateUI(); return; }
+      if (ok) {
+        toast('Bajando la copia y sus fotos…', 'info', 4000);
+        await gdriveBajarFotos(token, remote);
+        applyBackupObject(remote); toast('Datos recuperados desde Drive.', 'ok', 4000); gdriveUpdateUI(); return;
+      }
     }
     await gdriveUpload();
     _syncOk(GDRIVE); GDRIVE._warned = false;   // reconectó: se limpia el aviso de caída
