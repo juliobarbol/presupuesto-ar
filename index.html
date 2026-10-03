@@ -214,7 +214,6 @@ body{background-color:var(--bg)}
 #section-normal-items.is-vacio #quick-services,
 #section-normal-items.is-vacio .add-svc,
 #section-normal-items.is-vacio .add-note{display:none!important}
-#section-normal-items.sin-ab #scenarios-panel{display:none!important}
 #section-normal-items.is-vacio .add-tree{flex:1 1 100%;justify-content:center;min-height:52px;font-size:16px}
 /* Sugerencia de precio en la tarjeta del árbol (precioSugSync). */
 .pr-sug{display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px;margin-top:6px;padding:6px 10px;border-radius:var(--radius-field);background:var(--accent-light);font-size:13px;color:var(--text)}
@@ -3842,8 +3841,8 @@ input[type=number]{-moz-appearance:textfield}
           <!-- Los botones van ANTES de los servicios rápidos: "+ Árbol / Trabajo"
                es lo que se toca primero y quedaba abajo de las fichas. Con la
                lista vacía (clase .is-vacio, itemsVacioSync) solo se ve este
-               botón: un servicio o una nota antes del primer trabajo no tiene
-               sentido, y tampoco "Dos opciones en un PDF". -->
+               botón (y "Dos opciones en un PDF", arriba): un servicio o una
+               nota antes del primer trabajo no tiene sentido. -->
           <div class="arow items-add" style="margin-bottom:16px">
             <button class="btn btn-p btn-sm add-tree" onclick="addItem('tree')"><svg class="ic"><use href="#i-tree"></use></svg> + Árbol / Trabajo</button>
             <button class="btn btn-s btn-sm add-svc" onclick="addItem('service')">+ Servicio</button>
@@ -7123,6 +7122,10 @@ function _netFail() {
 // ÚNICA puerta de salida a internet de la app. `o.timeout` pisa el corte por
 // defecto. Un 404 o un 500 NO cuentan como fallo de red (el server contestó:
 // la conexión anda); sí cuentan el timeout y el error de transporte.
+// `o.sinCorte`: el fallo NO alimenta el cortacircuitos. Es para las
+// transferencias grandes (la subida del backup): que 20 MB no terminen de
+// subir no prueba que la red esté caída, y abrir el corte frenaría el clima y
+// todo lo demás por 3 minutos.
 async function netFetch(url, opts, o) {
   const ms = (o && o.timeout) || (netEsLenta() ? NET.TIMEOUT_LENTA_MS : NET.TIMEOUT_MS);
   let ac = null;
@@ -7133,7 +7136,7 @@ async function netFetch(url, opts, o) {
     _netOk();
     return res;
   } catch (e) {
-    _netFail();
+    if (!(o && o.sinCorte)) _netFail();
     throw (e && e.name === 'AbortError')
       ? new Error('La conexión tardó demasiado (más de ' + Math.max(1, Math.round(ms / 1000)) + ' s)')
       : e;
@@ -9450,14 +9453,13 @@ function _fillSpeciesInCard(card, rawSpecies) {
 // pedido: "sería muy raro que yo anote un servicio antes de algún árbol o
 // trabajo", y los servicios rápidos + "Dos opciones en un PDF" empujaban el
 // botón fuera de la pantalla al entrar a la etapa Trabajos. Mira la lista del
-// escenario activo (en B vacío también aplica). "Dos opciones" sigue visible
-// si ya está prendido: apagarlo de la vista dejaría el modo A/B sin su control.
+// escenario activo (en B vacío también aplica). "Dos opciones en un PDF" se ve
+// siempre: es una decisión de cómo armar el presupuesto, y puede tomarse antes
+// del primer trabajo (pedido del usuario, v229).
 function itemsVacioSync() {
   const sec = document.getElementById('section-normal-items');
   if (!sec) return;
-  const vacio = !(activeItemsArr() || []).length;
-  sec.classList.toggle('is-vacio', vacio);
-  sec.classList.toggle('sin-ab', vacio && !S.scenariosEnabled);
+  sec.classList.toggle('is-vacio', !(activeItemsArr() || []).length);
 }
 
 function renderItems() {
@@ -12640,7 +12642,7 @@ function _colabRenderTarifas() {
   if (!box) return;
   const tarifas = (typeof getMisServicios === 'function') ? getMisServicios() : [];
   if (!tarifas.length) {
-    box.innerHTML = '<span class="colab-tarifas-empty">Sin tarifas guardadas. Cargalas en Empresa → Mis servicios para que aparezcan acá.</span>';
+    box.innerHTML = '<span class="colab-tarifas-empty">Sin tarifas guardadas. Cargalas en ⚙ Configuración → Datos → Mis servicios para que aparezcan acá.</span>';
     return;
   }
   // El id va en data-id y lo lee un listener delegado: nunca interpolado en
@@ -13345,7 +13347,7 @@ function enviarDatosDePago(id) {
   // el homebanking — el resto de los datos son para que verifique, no para
   // copiar.
   const clave = (S.coAliasPago || '').trim() || (S.coCbu || '').trim();
-  if (!clave) { toast('Cargá tu alias o CBU en Empresa → Datos para cobrar', 'info', 5000); return; }
+  if (!clave) { toast('Cargá tu alias o CBU en ⚙ Configuración → Negocio → Datos para cobrar', 'info', 5000); return; }
   const cfg = (typeof getFollowupCfg === 'function') ? getFollowupCfg() : FOLLOWUP_DEF;
   const tpl = (cfg.waCobroTemplate && cfg.waCobroTemplate.trim()) ? cfg.waCobroTemplate : FOLLOWUP_DEF.waCobroTemplate;
   // El portapapeles ANTES de abrir WhatsApp: después la pestaña pierde el foco
@@ -15718,7 +15720,7 @@ function impHistCombine() {
   // reciente. Mismo número + cliente distinto = presupuestos DISTINTOS → se
   // conservan los dos y se avisa cuáles quedaron con número repetido, para que
   // el usuario decida. Nada se descarta en silencio.
-  const clave = e => (e.quoteNumber || '') + ' ' + ((e.clientName || '').trim().toLowerCase());
+  const clave = e => (e.quoteNumber || '') + '\u0000' + ((e.clientName || '').trim().toLowerCase());
   const porClave = new Map();
   const sinNumero = [];
   let conflicts = 0, newImported = 0;
@@ -16106,14 +16108,28 @@ async function gdriveFindFile(token){
   return (j.files && j.files[0]) || null;
 }
 
+// Tiempo para SUBIR `bytes`. El backup lleva todas las fotos en base64 (15 a
+// 60 MB con un historial real) y antes salía con el corte general de netFetch
+// (12 s, 25 s en red lenta): el corte cuenta hasta que llega la respuesta, y en
+// una subida eso es después de mandar el archivo entero. 15 MB en 12 s piden
+// 10 Mbps de subida sostenidos; con datos móviles en el campo el backup se
+// cortaba siempre y encima abría el cortacircuitos ("parece que no hay datos").
+// Ahora: 30 s de base + 1 s cada 40 KB (≈ 320 kbps, una subida 3G floja), con
+// techo de 10 minutos. La bajada no lo necesita: ahí la respuesta llega enseguida
+// y el cuerpo se lee sin corte.
+function gdriveTimeoutSubida(bytes) {
+  return Math.min(10 * 60 * 1000, 30000 + Math.ceil((bytes || 0) / 40000) * 1000);
+}
+
 // Sube el backup actual (crea o actualiza el único archivo).
 async function gdriveUpload(){
   const token = await gdriveGetToken();
   const body = JSON.stringify(buildBackupObject());
+  const subida = { timeout: gdriveTimeoutSubida(body.length), sinCorte: true };
   const existing = await gdriveFindFile(token);
   if (existing) {
     const r = await netFetch(`https://www.googleapis.com/upload/drive/v3/files/${existing.id}?uploadType=media`, {
-      method: 'PATCH', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body });
+      method: 'PATCH', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body }, subida);
     if (!r.ok) throw new Error('Drive update ' + r.status);
   } else {
     const boundary = '----pq' + Date.now();
@@ -16122,7 +16138,7 @@ async function gdriveUpload(){
       `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${meta}\r\n` +
       `--${boundary}\r\nContent-Type: application/json\r\n\r\n${body}\r\n--${boundary}--`;
     const r = await netFetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
-      method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': `multipart/related; boundary=${boundary}` }, body: multipart });
+      method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': `multipart/related; boundary=${boundary}` }, body: multipart }, subida);
     if (!r.ok) throw new Error('Drive create ' + r.status);
   }
   GDRIVE._dirty = false;
@@ -16272,9 +16288,20 @@ async function _autoSync(mod, op, invalidate, updateUI, msg){
   }
 }
 
+// Una subida a la vez. Con el tiempo de subida según el tamaño
+// (gdriveTimeoutSubida) una copia puede tardar minutos con datos móviles, y
+// cada cambio programa otra a los 45 s: sin esto se pisaban dos o tres subidas
+// de 20 MB por el mismo caño. Lo que cambie mientras tanto sale en una subida
+// más, al terminar la que está en curso.
 function gdriveAutoUpload(){
-  return _autoSync(GDRIVE, gdriveUpload, gdriveInvalidateToken, gdriveUpdateUI,
-    () => '⚠️ No se está pudiendo guardar la copia en Google Drive. Entrá a Empresa → Copia de seguridad para reconectar.');
+  if (GDRIVE._subiendo) { GDRIVE._repetir = true; return GDRIVE._subiendo; }
+  GDRIVE._subiendo = _autoSync(GDRIVE, gdriveUpload, gdriveInvalidateToken, gdriveUpdateUI,
+    () => '⚠️ No se está pudiendo guardar la copia en Google Drive. Entrá a Configuración → Datos → Copia de seguridad para reconectar.')
+    .finally(() => {
+      GDRIVE._subiendo = null;
+      if (GDRIVE._repetir) { GDRIVE._repetir = false; scheduleGdriveBackup(); }
+    });
+  return GDRIVE._subiendo;
 }
 
 // Copia automática: se dispara (con retardo) tras cada cambio guardado.
@@ -22446,8 +22473,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     const go = params.get('go');
     if (go) {
       history.replaceState(null, '', location.pathname);
-      if (go === 'nuevo' && typeof newQuote === 'function') newQuote();
-      else if (go === 'historial' && typeof switchTab === 'function') switchTab('historial');
+      irDestino(go);
     }
     // Web Share Target: el SW redirigió aquí tras compartir fotos a la app.
     // Limpiamos la URL (para que un reload no reabra la bandeja) y procesamos
@@ -22458,6 +22484,22 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
   } catch (e) {}
 });
+
+// Destino de un acceso directo (?go=…) o de una notificación tocada. Con la app
+// ya abierta, el Service Worker no puede cambiarle la URL: manda el destino
+// por mensaje (`pq-go`, ver notificationclick en sw.js) y se resuelve acá.
+// Antes la notificación solo traía la app al frente y el destino se perdía.
+function irDestino(go) {
+  if (go === 'nuevo' && typeof newQuote === 'function') newQuote();
+  else if (go === 'historial' && typeof switchTab === 'function') switchTab('historial');
+  else if (go === 'agenda' && typeof switchTab === 'function') switchTab('agenda');
+}
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('message', (ev) => {
+    const d = ev && ev.data;
+    if (d && d.type === 'pq-go' && typeof d.go === 'string') irDestino(d.go);
+  });
+}
 
 // ═══════════════════════════════════════════════════════════
 // PWA — Service Worker + botón "Instalar app"

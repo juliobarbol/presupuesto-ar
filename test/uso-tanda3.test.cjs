@@ -12,7 +12,8 @@
 //   4. Toques de 44 px y letra legible en la barra de arriba, las pestañas y
 //      los textos de ayuda.
 //   5. Con la lista de trabajos vacía solo se ve "+ Árbol / Trabajo": los
-//      servicios y "Dos opciones" aparecen después del primer trabajo.
+//      servicios aparecen después del primer trabajo. "Dos opciones en un PDF"
+//      se ve siempre (pedido del usuario, v229).
 //
 // Uso:  node test/uso-tanda3.test.cjs
 
@@ -250,11 +251,12 @@ async function nuevaPagina(browser, ancho, tactil) {
         setVistaEditor('clasica');
         return { vacio, conTrabajo, abPrendido };
       });
-      check('Sin trabajos se ve solo "+ Árbol / Trabajo"',
-        r.vacio.arbol && !r.vacio.servicio && !r.vacio.nota && !r.vacio.chips && !r.vacio.dosOpciones,
+      check('Sin trabajos se ve "+ Árbol / Trabajo" sin servicios ni nota',
+        r.vacio.arbol && !r.vacio.servicio && !r.vacio.nota && !r.vacio.chips,
         JSON.stringify(r.vacio));
+      check('"Dos opciones en un PDF" se ve desde el principio', r.vacio.dosOpciones === true);
       check('…y queda a la vista al entrar a la etapa Trabajos', r.vacio.aLaVista === true);
-      check('Con el primer trabajo vuelven servicio, nota y "Dos opciones"',
+      check('Con el primer trabajo aparecen servicio y nota',
         r.conTrabajo.servicio && r.conTrabajo.nota && r.conTrabajo.dosOpciones, JSON.stringify(r.conTrabajo));
       check('Los botones van antes que los servicios rápidos', r.conTrabajo.botonesAntesQueChips === true);
       check('Con "Dos opciones" prendido el control no se esconde aunque B esté vacío', r.abPrendido === true);
