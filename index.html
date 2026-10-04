@@ -2371,7 +2371,7 @@ input[type=number]{-moz-appearance:textfield}
 .hcolab-resumen-tot{font-family:var(--font-mono);font-size:15px;font-weight:600;color:#115e59}
 .hcolab-resumen-nota{flex:1 1 100%;font-size:11px;color:var(--muted)}
 /* Panel aparte en las estadísticas de zona del mapa */
-.mapa-zona-colab{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px dashed var(--border);font-size:12px;color:#115e59}
+.mapa-zona-colab{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:5px;padding-top:5px;border-top:1px dashed var(--border);font-size:12px;color:#115e59}
 .mapa-zona-colab .ic{width:13px;height:13px}
 /* Tarifas propias en Empresa */
 .missvc-form{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
@@ -3383,16 +3383,33 @@ input[type=number]{-moz-appearance:textfield}
 .pdoc.pdoc-compact .ptitle { font-size: 12pt; margin-bottom: 8px; }
 
 /* ─── MAPA (pestaña Mapa) ───────────────────────────── */
-.mapa-toolbar { display:flex; flex-wrap:wrap; gap:8px 14px; align-items:center; justify-content:space-between; margin-bottom:8px; }
+/* Vista del mapa: ocupa el alto de #main (el mapa se queda con todo lo que
+   sobra). Lo de abajo ("Sin ubicar") se alcanza bajando. */
+#main:has(#panel-mapa.active) > .inner,
+#panel-mapa.active { height:100%; }
+.mapa-vista { display:flex; flex-direction:column; height:100%; min-height:420px; }
+.mapa-toolbar { display:flex; flex-wrap:wrap; gap:6px 8px; align-items:center; margin-bottom:6px; flex:none; }
+/* Resumen de lo filtrado: en su propia línea (al lado del botón quedaba
+   aplastado a 360 px) y solo si hay algo filtrado. */
+.mapa-filtros-res { order:3; flex:1 1 100%; min-width:0; font-size:12.5px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.mapa-filtros-res:empty { display:none; }
+.mapa-filtros-btn[aria-expanded="true"] { border-color:var(--accent); color:var(--accent-fg); background:var(--accent-light); }
+.mapa-filtros { flex:none; display:flex; flex-direction:column; gap:8px; margin-bottom:6px; padding:8px 10px; border:1px solid var(--border); border-radius:10px; background:var(--card); max-height:45%; overflow:auto; overscroll-behavior:contain; }
+.mapa-filtros[hidden] { display:none; }
+.mapa-periodos { display:flex; flex-wrap:wrap; gap:6px; }
+.mapa-periodo { font-size:12.5px; padding:4px 10px; border:1px solid var(--border); border-radius:999px; background:var(--card); color:var(--muted); cursor:pointer; }
+.mapa-periodo.is-on { color:var(--accent-fg); border-color:var(--accent); background:var(--accent-light); font-weight:600; }
+.mapa-fechas { display:flex; flex-wrap:wrap; gap:6px 12px; }
 .mapa-filters { display:flex; flex-wrap:wrap; gap:6px; }
 .mapa-filter { display:inline-flex; align-items:center; gap:5px; font-size:12px; padding:3px 9px 3px 6px; border:1px solid var(--border); border-radius:999px; background:var(--card); cursor:pointer; user-select:none; color:var(--muted); }
 .mapa-filter.is-on { color:var(--fg,#111); border-color:var(--accent); }
 .mapa-filter input { margin:0; width:13px; height:13px; accent-color:var(--accent); }
 .mapa-filter-dot { width:11px; height:11px; border-radius:50%; border:1px solid rgba(0,0,0,.15); }
-.mapa-tools { display:flex; flex-wrap:wrap; gap:6px 10px; align-items:center; }
+.mapa-tools { display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-left:auto; }
+.mapa-tools [hidden] { display:none; }
 .mapa-daterange { font-size:12px; color:var(--muted); display:inline-flex; align-items:center; gap:4px; }
 .mapa-daterange input { font-size:12px; padding:3px 6px; border:1px solid var(--border); border-radius:8px; background:var(--card); color:inherit; }
-#map-canvas { height:60vh; min-height:340px; width:100%; border-radius:12px; border:1px solid var(--border); overflow:hidden; background:var(--surface,#e5e7eb); z-index:0; }
+#map-canvas { flex:1 1 auto; height:auto; min-height:260px; width:100%; border-radius:12px; border:1px solid var(--border); overflow:hidden; background:var(--surface,#e5e7eb); z-index:0; }
 #map-canvas.mapa-placing { cursor:crosshair; }
 #map-canvas.mapa-placing .leaflet-grab { cursor:crosshair; }
 .mapa-pin span { display:block; width:22px; height:22px; box-sizing:border-box; border-radius:50%; border:2px solid #fff; box-shadow:0 1px 4px rgba(0,0,0,.45); }
@@ -3420,13 +3437,23 @@ input[type=number]{-moz-appearance:textfield}
 .mapa-cluster-ring { display:flex; align-items:center; justify-content:center; width:30px; height:30px; box-sizing:border-box; border-radius:50%; border:2px solid #fff; box-shadow:0 1px 4px rgba(0,0,0,.45); }
 .mapa-cluster-count { display:flex; align-items:center; justify-content:center; width:20px; height:20px; box-sizing:border-box; border-radius:50%; background:var(--card,#fff); color:var(--fg,#0f172a); font-size:11px; font-weight:700; font-variant-numeric:tabular-nums; }
 .mapa-cluster.is-hl .mapa-cluster-ring { box-shadow:0 0 0 4px rgba(14,165,233,.55), 0 1px 4px rgba(0,0,0,.45); }
-.mapa-zonastats { margin-top:8px; padding:8px 10px; border:1px solid var(--border); border-radius:10px; background:var(--card); }
-.mapa-zona-title { font-size:12px; font-weight:700; margin-bottom:5px; }
-.mapa-zona-chips { display:flex; flex-wrap:wrap; gap:4px; margin-bottom:5px; }
+/* Grupo de pins CERCANOS (no del mismo punto): más grande y con un halo, para
+   distinguirlo del grupo de un solo lugar. Tocarlo acerca el mapa. */
+.mapa-zgrupo { background:transparent; border:none; }
+.mapa-zgrupo .mapa-cluster-ring { width:100%; height:100%; border-width:3px; box-shadow:0 0 0 5px rgba(255,255,255,.55), 0 1px 6px rgba(0,0,0,.5); }
+.mapa-zgrupo .mapa-cluster-count { width:66%; height:66%; font-size:13px; }
+.mapa-zgrupo.is-hl .mapa-cluster-ring { box-shadow:0 0 0 5px rgba(14,165,233,.6), 0 1px 6px rgba(0,0,0,.5); }
+.mapa-zonastats { flex:none; margin-bottom:6px; padding:5px 10px; border:1px solid var(--border); border-radius:10px; background:var(--card); }
+.mapa-zonastats .mapa-hint { padding:2px 0; }
+.mapa-zona-title { font-size:12.5px; font-weight:700; margin-bottom:4px; line-height:1.35; }
+.mapa-zona-title b { font-weight:700; }
+.mapa-zona-title .mapa-zona-sep { color:var(--muted); font-weight:400; }
+.mapa-zona-chips { display:flex; flex-wrap:nowrap; gap:4px; overflow-x:auto; scrollbar-width:none; }
+.mapa-zona-chips::-webkit-scrollbar { display:none; }
+.mapa-zona-chip { flex:none; }
 .mapa-zona-chip { font-size:11px; font-weight:600; padding:2px 8px; border-radius:999px; }
-.mapa-zona-conv { font-size:12px; color:var(--muted); }
 .mapa-hint-inline { font-size:11px; opacity:.8; }
-.mapa-cerca-panel { margin-top:8px; padding:10px; border:1px solid var(--accent); border-radius:10px; background:var(--accent-tint,var(--card)); }
+.mapa-cerca-panel { flex:0 1 auto; max-height:40%; overflow:auto; overscroll-behavior:contain; margin-top:6px; padding:10px; border:1px solid var(--accent); border-radius:10px; background:var(--accent-tint,var(--card)); }
 .mapa-cerca-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; font-size:13px; }
 .mapa-cerca-close { border:none; background:transparent; cursor:pointer; font-size:15px; color:var(--muted); line-height:1; padding:2px 6px; }
 .mapa-cerca-list { display:flex; flex-direction:column; gap:5px; }
@@ -3436,7 +3463,8 @@ input[type=number]{-moz-appearance:textfield}
 .mapa-ruta-btn { width:100%; margin-top:8px; }
 .mapa-sinubicar { margin-top:10px; border:1px solid var(--border); border-radius:10px; background:var(--card); padding:2px 10px; }
 .mapa-sinubicar > summary { cursor:pointer; font-size:13px; font-weight:600; padding:8px 0; }
-.mapa-count { display:inline-block; min-width:18px; text-align:center; font-size:11px; padding:1px 6px; border-radius:999px; background:var(--accent); color:var(--accent-fg,#fff); }
+.mapa-count { display:inline-block; min-width:18px; text-align:center; font-size:11px; padding:1px 6px; border-radius:999px; background:var(--accent); color:#fff; }
+.mapa-count[hidden] { display:none; }
 .mapa-su-item { display:flex; align-items:center; gap:8px; padding:7px 0; border-top:1px solid var(--border); }
 .mapa-su-info { flex:1; min-width:0; font-size:13px; cursor:pointer; border-radius:8px; padding:2px 4px; margin:-2px -4px; }
 .mapa-su-info:hover { background:var(--surface,rgba(0,0,0,.03)); }
@@ -3549,6 +3577,7 @@ input[type=number]{-moz-appearance:textfield}
 <symbol id="i-share" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3" /> <circle cx="6" cy="12" r="3" /> <circle cx="18" cy="19" r="3" /> <path d="m8.7 10.7 6.6-3.4" /> <path d="m8.7 13.3 6.6 3.4" /></symbol>
 <symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /> <path d="m9 12 2 2 4-4" /></symbol>
 <symbol id="i-pin" viewBox="0 0 24 24"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0" /> <circle cx="12" cy="10" r="3" /></symbol>
+<symbol id="i-sliders" viewBox="0 0 24 24"><path d="M21 4h-7" /> <path d="M10 4H3" /> <path d="M21 12h-9" /> <path d="M8 12H3" /> <path d="M21 20h-5" /> <path d="M12 20H3" /> <path d="M14 2v4" /> <path d="M8 10v4" /> <path d="M16 18v4" /></symbol>
 <symbol id="i-building" viewBox="0 0 24 24"><path d="M10 12h4" /> <path d="M10 8h4" /> <path d="M14 21v-3a2 2 0 0 0-4 0v3" /> <path d="M6 10H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2" /> <path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16" /></symbol>
 <symbol id="i-book" viewBox="0 0 24 24"><path d="M12 7v14" /> <path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z" /></symbol>
 <symbol id="i-clipboard" viewBox="0 0 24 24"><rect width="8" height="4" x="8" y="2" rx="1" ry="1" /> <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" /> <path d="M12 11h4" /> <path d="M12 16h4" /> <path d="M8 11h.01" /> <path d="M8 16h.01" /></symbol>
@@ -4751,21 +4780,36 @@ input[type=number]{-moz-appearance:textfield}
 
       <!-- ══ TAB MAPA ══ -->
       <div id="panel-mapa" class="tab-panel">
-        <div class="mapa-toolbar">
-          <div class="mapa-filters" id="mapa-filters" aria-label="Filtros por estado"><!-- checkboxes por estado (JS) --></div>
-          <div class="mapa-tools">
-            <label class="mapa-daterange">Desde <input type="date" id="mapa-desde" onchange="mapaRefresh()"></label>
-            <label class="mapa-daterange">Hasta <input type="date" id="mapa-hasta" onchange="mapaRefresh()"></label>
-            <button class="btn btn-g btn-sm" id="mapa-cerca-btn" onclick="mapaCercaMio(this)"><svg class="ic"><use href="#i-pin"></use></svg> Cerca mío</button>
+        <!-- La vista ocupa el alto de la pantalla: barra de una fila, franja
+             de la zona ENCIMA del mapa y el mapa con todo el resto. Los
+             filtros quedan detrás del botón "Filtros" (con contador): abiertos
+             ocupaban un cuarto de pantalla. "Sin ubicar" queda abajo, con su
+             atajo en la barra. -->
+        <div class="mapa-vista" id="mapa-vista">
+          <div class="mapa-toolbar">
+            <button type="button" class="btn btn-g btn-sm mapa-filtros-btn" id="mapa-filtros-btn" onclick="mapaFiltrosToggle()" aria-expanded="false" aria-controls="mapa-filtros"><svg class="ic"><use href="#i-sliders"></use></svg> Filtros <span class="mapa-count" id="mapa-filtros-n" hidden>0</span></button>
+            <span class="mapa-filtros-res" id="mapa-filtros-res"></span>
+            <div class="mapa-tools">
+              <button type="button" class="btn btn-g btn-sm" id="mapa-su-btn" onclick="mapaIrSinUbicar()" hidden>Sin ubicar <span class="mapa-count" id="mapa-su-n">0</span></button>
+              <button type="button" class="btn btn-g btn-sm" id="mapa-cerca-btn" onclick="mapaCercaMio(this)"><svg class="ic"><use href="#i-pin"></use></svg> Cerca mío</button>
+            </div>
           </div>
+          <div class="mapa-filtros" id="mapa-filtros" hidden>
+            <div class="mapa-periodos" id="mapa-periodos" role="group" aria-label="Período"><!-- atajos de fecha (JS) --></div>
+            <div class="mapa-fechas">
+              <label class="mapa-daterange">Desde <input type="date" id="mapa-desde" onchange="mapaRefresh()"></label>
+              <label class="mapa-daterange">Hasta <input type="date" id="mapa-hasta" onchange="mapaRefresh()"></label>
+            </div>
+            <div class="mapa-filters" id="mapa-filters" aria-label="Filtros por estado"><!-- checkboxes por estado (JS) --></div>
+          </div>
+          <!-- Fondo del mapa no cargado por conexión mala: los TILES son decenas
+               de pedidos y son lo primero que hay que sacrificar. Los pins se
+               dibujan igual (son del navegador, no de la red). -->
+          <p class="mapa-neti" id="mapa-neti" hidden></p>
+          <div class="mapa-zonastats" id="mapa-zonastats"></div>
+          <div id="map-canvas"></div>
+          <div id="mapa-cerca-panel" class="mapa-cerca-panel" hidden></div>
         </div>
-        <!-- Fondo del mapa no cargado por conexión mala: los TILES son decenas
-             de pedidos y son lo primero que hay que sacrificar. Los pins se
-             dibujan igual (son del navegador, no de la red). -->
-        <p class="mapa-neti" id="mapa-neti" hidden></p>
-        <div id="map-canvas"></div>
-        <div class="mapa-zonastats" id="mapa-zonastats"></div>
-        <div id="mapa-cerca-panel" class="mapa-cerca-panel" hidden></div>
         <details id="mapa-sinubicar" class="mapa-sinubicar">
           <summary>Sin ubicar <span class="mapa-count" id="mapa-sinubicar-count">0</span></summary>
           <div class="mapa-hint">Estos presupuestos no tienen coordenadas. Tocá “Ubicar” y después tocá el punto exacto en el mapa; queda guardado.</div>
@@ -5422,6 +5466,7 @@ const LS = {
   NOTIF_ORDEN:    'pq_notif_orden', // criterio de orden del panel (preferencia del dispositivo, no va al backup)
   VER_PCT:        'pq_ver_pct',     // último % de actualización usado al armar una versión (preferencia del dispositivo, no va al backup)
   HIST_AVISOS:    'pq_hist_avisos', // avisos del Historial desplegados ('1') o plegados (preferencia del dispositivo, no va al backup)
+  MAPA_VISTA:     'pq_mapa_vista',  // última vista del mapa {lat,lng,z} (preferencia del dispositivo, no va al backup)
 };
 
 // Notificaciones push (avisos de seguimiento con la app cerrada). Ambos se
@@ -18817,6 +18862,92 @@ let _mapaGeoRef = null;      // [lat,lng] de referencia para reconstruir Plus Co
 let _mapaVerColab = false;
 const MAPA_COLAB_COLOR = '#0d9488';
 
+// ─── PINS CERCANOS AGRUPADOS ─────────────────────────────────
+// A zoom de provincia los pins de una misma zona se encimaban en una mancha
+// (y un grupo "3" quedaba tapado por otros pins). Ahora los pins a menos de
+// MAPA_GRUPO_PX píxeles en pantalla se juntan en un círculo con la cantidad;
+// tocarlo acerca el mapa. Desde MAPA_GRUPO_HASTA_Z + 1 no se agrupa: a esa
+// escala se distinguen las casas. El grupo del MISMO punto ("N trabajos en
+// este lugar") sigue como estaba: no se separa con zoom, así que se abre en
+// lista. Grilla propia en vez de Leaflet.markercluster: son unas decenas de
+// pins, y así no hay otra librería que bajar ni que cachear para offline.
+const MAPA_GRUPO_PX = 46;
+const MAPA_GRUPO_HASTA_Z = 16;
+let _mapaPuntos = [];        // grupos del mismo punto [{ ll, items }] del último mapaRefresh
+
+// ─── ÚLTIMA VISTA ────────────────────────────────────────────
+// El mapa abre donde se dejó (centro y zoom en LS.MAPA_VISTA, preferencia del
+// dispositivo: fuera del backup, como LS.CAL_VIEW). La primera vez encuadra el
+// NÚCLEO de los pins (_mapaNucleo): los trabajos aislados en otras localidades
+// alejaban la vista a zoom de provincia y la zona de todos los días quedaba
+// chica. Esos pins siguen ahí: se ven alejando el mapa.
+function _mapaVistaLeer() {
+  try {
+    const v = JSON.parse(localStorage.getItem(LS.MAPA_VISTA) || 'null');
+    if (!v || typeof v !== 'object') return null;
+    const lat = +v.lat, lng = +v.lng, z = +v.z;
+    if (!isFinite(lat) || !isFinite(lng) || !Number.isInteger(z)) return null;
+    if (lat < -85 || lat > 85 || lng < -180 || lng > 180 || z < 2 || z > 19) return null;
+    return { lat, lng, z };
+  } catch (_) { return null; }
+}
+function _mapaVistaGuardar() {
+  if (!_mapa) return;
+  // Con el mapa oculto (pestaña dejada a medio animar) Leaflet calcula una
+  // vista de tamaño cero: no se guarda esa.
+  const canvas = document.getElementById('map-canvas');
+  if (!canvas || !canvas.offsetWidth || !canvas.offsetHeight) return;
+  const c = _mapa.getCenter();
+  const v = { lat: +c.lat.toFixed(5), lng: +c.lng.toFixed(5), z: Math.round(_mapa.getZoom()) };
+  try { localStorage.setItem(LS.MAPA_VISTA, JSON.stringify(v)); } catch (_) {}
+}
+
+// Puntos del núcleo: descarta los aislados para el primer encuadre. Mide la
+// distancia de cada punto a la MEDIANA (no al promedio, que los aislados
+// arrastran) y corta en 4 veces la distancia mediana, con piso de 5 km para
+// no partir una ciudad. Es relativo a la escala: en una ciudad pareja no
+// corta nada; con un núcleo de 3 km, un trabajo a 25 km queda afuera. Solo
+// descarta si lo que queda afuera es una minoría (hasta 1 de cada 4): si no,
+// no son aislados sino otra zona de trabajo, y se encuadra todo. Con menos de
+// 5 puntos no hay mayoría que defina una zona: tampoco descarta.
+function _mapaNucleo(pts) {
+  if (!Array.isArray(pts) || pts.length < 5) return pts || [];
+  const med = (arr) => { const a = arr.slice().sort((x, y) => x - y); const k = a.length >> 1; return a.length % 2 ? a[k] : (a[k - 1] + a[k]) / 2; };
+  const cLat = med(pts.map(p => p[0])), cLng = med(pts.map(p => p[1]));
+  const ds = pts.map(p => _haversineKm(cLat, cLng, p[0], p[1]));
+  const corte = Math.max(5, 4 * med(ds));
+  const nucleo = pts.filter((p, i) => ds[i] <= corte);
+  return (pts.length - nucleo.length) <= pts.length / 4 ? nucleo : pts;
+}
+
+// Agrupa puntos cercanos EN PANTALLA. `xy(p)` da la posición en píxeles del
+// punto al zoom actual. Codicioso y estable: los puntos con más trabajos
+// siembran primero (un grupo de 3 en el mismo lugar se lleva a sus vecinos, y
+// no al revés), y cada semilla se queda con los libres a menos de `radio` px.
+// Devuelve [{ ll, puntos }] con ll = centro de sus puntos.
+function _mapaAgruparCercanos(puntos, xy, radio) {
+  const lista = puntos.map((p, i) => ({ p, i, n: p.items.length, q: xy(p) }));
+  const orden = lista.slice().sort((a, b) => (b.n - a.n) || (a.i - b.i));
+  const usado = new Set();
+  const r2 = radio * radio;
+  const out = [];
+  orden.forEach(s => {
+    if (usado.has(s.i)) return;
+    usado.add(s.i);
+    const miembros = [s];
+    orden.forEach(o => {
+      if (usado.has(o.i)) return;
+      const dx = o.q.x - s.q.x, dy = o.q.y - s.q.y;
+      if (dx * dx + dy * dy <= r2) { usado.add(o.i); miembros.push(o); }
+    });
+    const pts = miembros.map(m => m.p);
+    const ll = pts.length === 1 ? pts[0].ll
+      : [pts.reduce((a, p) => a + p.ll[0], 0) / pts.length, pts.reduce((a, p) => a + p.ll[1], 0) / pts.length];
+    out.push({ ll, puntos: pts });
+  });
+  return out;
+}
+
 // Distancia en km entre dos coordenadas (haversine).
 function _haversineKm(lat1, lng1, lat2, lng2) {
   const R = 6371, toR = Math.PI / 180;
@@ -19008,10 +19139,20 @@ function mapaInit() {
   ensureLeaflet().then((L) => {
     if (!_mapa) {
       mapaBuildFilters();
-      _mapa = L.map(canvas, { zoomControl: true }).setView([-34.0, -64.0], 4);
+      const vista = _mapaVistaLeer();
+      _mapa = L.map(canvas, { zoomControl: true, maxZoom: 19 })
+        .setView(vista ? [vista.lat, vista.lng] : [-34.0, -64.0], vista ? vista.z : 4);
+      // Con una vista guardada no se encuadra: el usuario la eligió.
+      if (vista) _mapaFitDone = true;
       _mapaLayer = L.layerGroup().addTo(_mapa);
-      _mapa.on('moveend', mapaUpdateZonaStats);
+      _mapa.on('zoomend', _mapaDibujar);
+      _mapa.on('moveend', () => { mapaUpdateZonaStats(); _mapaVistaGuardar(); });
       _mapa.on('click', mapaOnMapClick);
+      // El alto del mapa cambia al abrir los filtros o "Cerca mío", y al
+      // girar el teléfono: Leaflet tiene que enterarse o deja franjas grises.
+      if (typeof ResizeObserver === 'function') {
+        new ResizeObserver(() => { if (_mapa && canvas.offsetWidth) _mapa.invalidateSize(); }).observe(canvas);
+      }
     }
     // Fuera del if: si el mapa se creó sin fondo por mala señal, al volver a
     // entrar con red sana el fondo aparece solo (la función es idempotente).
@@ -19041,6 +19182,76 @@ function mapaBuildFilters() {
   + `<label class="mapa-filter mapa-filter-colab${_mapaVerColab ? ' is-on' : ''}" title="Trabajos propios para colegas. Nunca suman a los números de la zona.">
       <input type="checkbox" ${_mapaVerColab ? 'checked' : ''} onchange="mapaToggleColab(this.checked)">
       <span class="mapa-filter-dot" style="background:${MAPA_COLAB_COLOR}"></span>Colaboraciones</label>`;
+  const per = document.getElementById('mapa-periodos');
+  if (per) per.innerHTML = MAPA_PERIODOS.map(([k, txt]) =>
+    `<button type="button" class="mapa-periodo" data-per="${k}" onclick="mapaPeriodo('${k}')">${txt}</button>`).join('');
+  mapaFiltrosSync();
+}
+
+// Atajos de fecha: llenan Desde/Hasta (que siguen ahí para un rango a mano).
+// Cuentan desde el primer día del período hasta hoy, sin tope ("Hasta" vacío).
+const MAPA_PERIODOS = [['todo', 'Todo'], ['mes', 'Este mes'], ['3m', 'Últimos 3 meses'], ['anio', 'Este año']];
+function _mapaPeriodoDesde(k) {
+  const d = new Date();
+  if (k === 'mes')  return toLocalISODate(new Date(d.getFullYear(), d.getMonth(), 1));
+  if (k === '3m')   return toLocalISODate(new Date(d.getFullYear(), d.getMonth() - 3, d.getDate()));
+  if (k === 'anio') return toLocalISODate(new Date(d.getFullYear(), 0, 1));
+  return '';
+}
+// Qué atajo describe el rango actual, o null si es un rango a mano.
+function _mapaPeriodoActual() {
+  const desde = (document.getElementById('mapa-desde')?.value || '').trim();
+  const hasta = (document.getElementById('mapa-hasta')?.value || '').trim();
+  if (hasta) return null;
+  const hit = MAPA_PERIODOS.find(([k]) => _mapaPeriodoDesde(k) === desde);
+  return hit ? hit[0] : null;
+}
+function mapaPeriodo(k) {
+  const d = document.getElementById('mapa-desde'), h = document.getElementById('mapa-hasta');
+  if (d) d.value = _mapaPeriodoDesde(k);
+  if (h) h.value = '';
+  // El selector de fecha propio dibuja su etiqueta aparte: hay que avisarle.
+  if (typeof syncCdate === 'function') { if (d) syncCdate(d); if (h) syncCdate(h); }
+  mapaRefresh();
+}
+
+// Botón "Filtros": el panel arranca cerrado. El contador dice cuántos
+// filtros cambian lo que se ve (estados ocultos, período, colaboraciones).
+function mapaFiltrosToggle(abrir) {
+  const box = document.getElementById('mapa-filtros');
+  const btn = document.getElementById('mapa-filtros-btn');
+  if (!box) return;
+  const open = (typeof abrir === 'boolean') ? abrir : box.hidden;
+  box.hidden = !open;
+  if (btn) btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+}
+function mapaFiltrosSync() {
+  const filt = _mapaFilterSet || new Set(ESTADOS);
+  const desde = (document.getElementById('mapa-desde')?.value || '').trim();
+  const hasta = (document.getElementById('mapa-hasta')?.value || '').trim();
+  const ocultos = ESTADOS.filter(s => !filt.has(s)).length;
+  const n = (ocultos ? 1 : 0) + ((desde || hasta) ? 1 : 0) + (_mapaVerColab ? 1 : 0);
+  const cnt = document.getElementById('mapa-filtros-n');
+  if (cnt) { cnt.textContent = n; cnt.hidden = !n; }
+  const per = _mapaPeriodoActual();
+  document.querySelectorAll('#mapa-periodos .mapa-periodo').forEach(b =>
+    b.classList.toggle('is-on', b.dataset.per === per));
+  // Resumen al lado del botón: lo que está filtrado sin abrir el panel.
+  const partes = [];
+  if (per && per !== 'todo') partes.push((MAPA_PERIODOS.find(p => p[0] === per) || [])[1]);
+  else if (desde || hasta) partes.push((desde ? 'desde ' + fmtD(desde) : '') + (desde && hasta ? ' ' : '') + (hasta ? 'hasta ' + fmtD(hasta) : ''));
+  if (ocultos) partes.push(ocultos === 1 ? '1 estado oculto' : ocultos + ' estados ocultos');
+  if (_mapaVerColab) partes.push('con colaboraciones');
+  const res = document.getElementById('mapa-filtros-res');
+  if (res) res.textContent = partes.join(' · ');
+}
+
+// Atajo de la barra a la lista "Sin ubicar", que quedó debajo del mapa.
+function mapaIrSinUbicar() {
+  const det = document.getElementById('mapa-sinubicar');
+  if (!det) return;
+  det.open = true;
+  det.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 function mapaToggleFilter(s, on) {
   if (!_mapaFilterSet) _mapaFilterSet = new Set(ESTADOS);
@@ -19057,7 +19268,6 @@ function mapaToggleColab(on) {
 // Re-dibuja los marcadores según filtros de estado y de fecha.
 function mapaRefresh() {
   if (!_mapa || !_mapaLayer) return;
-  const L = window.L;
   _mapaGeoRef = _mapaComputeGeoRef(); // referencia para Plus Codes cortos
   _mapaLayer.clearLayers();
   const desde = (document.getElementById('mapa-desde')?.value || '').trim();
@@ -19090,20 +19300,36 @@ function mapaRefresh() {
     if (!g) { g = { ll, items: [] }; groups.set(key, g); }
     g.items.push({ e, est });
   });
-  groups.forEach(g => {
-    bounds.push(g.ll);
-    if (g.items.length === 1) {
-      const { e, est } = g.items[0];
-      _mapaLayer.addLayer(mapaMarker(L, e, est, g.ll));
-    } else {
-      _mapaLayer.addLayer(mapaClusterMarker(L, g));
-    }
-  });
+  _mapaPuntos = Array.from(groups.values());
+  _mapaPuntos.forEach(g => bounds.push(g.ll));
   mapaRenderSinUbicar(sinUbicar);
+  mapaFiltrosSync();
   if (!_mapaFitDone && bounds.length) {
-    _mapa.fitBounds(bounds, { padding: [30, 30], maxZoom: 15 });
+    // Primer encuadre: el núcleo, sin los trabajos aislados (ver _mapaNucleo).
+    _mapa.fitBounds(_mapaNucleo(bounds), { padding: [30, 30], maxZoom: 15, animate: false });
     _mapaFitDone = true;
   }
+  _mapaDibujar();
+}
+
+// Dibuja los puntos de _mapaPuntos al zoom actual: los cercanos en pantalla
+// van juntos en un círculo (mapaZonaMarker), los demás como siempre (pin
+// suelto o grupo del mismo punto). Corre en cada cambio de zoom; panear no
+// cambia la distancia en píxeles, así que no hace falta redibujar.
+function _mapaDibujar() {
+  if (!_mapa || !_mapaLayer) return;
+  const L = window.L;
+  _mapaLayer.clearLayers();
+  const z = _mapa.getZoom();
+  const grupos = (z <= MAPA_GRUPO_HASTA_Z)
+    ? _mapaAgruparCercanos(_mapaPuntos, p => _mapa.project(p.ll, z), MAPA_GRUPO_PX)
+    : _mapaPuntos.map(p => ({ ll: p.ll, puntos: [p] }));
+  grupos.forEach(c => {
+    if (c.puntos.length > 1) { _mapaLayer.addLayer(mapaZonaMarker(L, c)); return; }
+    const g = c.puntos[0];
+    if (g.items.length === 1) _mapaLayer.addLayer(mapaMarker(L, g.items[0].e, g.items[0].est, g.ll));
+    else _mapaLayer.addLayer(mapaClusterMarker(L, g));
+  });
   mapaUpdateZonaStats();
 }
 
@@ -19139,20 +19365,8 @@ function mapaClusterMarker(L, g) {
   // Segmentos del anillo por estado, en el orden canónico de ESTADOS.
   // Las colaboraciones son su propio segmento (teal): en el mismo punto puede
   // haber un presupuesto del cliente y una jornada trabajada para un colega.
-  const byEst = {};
-  items.forEach(x => {
-    const k = esColaboracion(x.e) ? 'colab' : x.est;
-    byEst[k] = (byEst[k] || 0) + 1;
-  });
   const n = items.length;
-  let acc = 0;
-  const segs = ESTADOS.concat(['colab']).filter(s => byEst[s]).map(s => {
-    const [txt] = (s === 'colab') ? [MAPA_COLAB_COLOR] : (ESTADO_COLORS[s] || ESTADO_COLORS.borrador);
-    const from = acc / n * 360, to = (acc + byEst[s]) / n * 360;
-    acc += byEst[s];
-    return `${txt} ${from}deg ${to}deg`;
-  });
-  const ring = segs.length > 1 ? `conic-gradient(${segs.join(',')})` : segs[0].split(' ')[0];
+  const ring = _mapaAnillo(_mapaPorEstado(items), n);
   const icon = L.divIcon({
     className: 'mapa-cluster' + (hl ? ' is-hl' : ''),
     html: `<span class="mapa-cluster-ring" style="background:${ring}"><span class="mapa-cluster-count">${n}</span></span>`,
@@ -19162,6 +19376,62 @@ function mapaClusterMarker(L, g) {
   m._entries = items.map(x => x.e);
   m.bindPopup(mapaGroupPopupHtml(g), { minWidth: 210 });
   return m;
+}
+
+// Cuenta por estado para el anillo. La colaboración es su propio segmento.
+function _mapaPorEstado(items) {
+  const byEst = {};
+  items.forEach(x => {
+    const k = esColaboracion(x.e) ? 'colab' : x.est;
+    byEst[k] = (byEst[k] || 0) + 1;
+  });
+  return byEst;
+}
+// Fondo del anillo: segmentos proporcionales en el orden canónico de ESTADOS.
+function _mapaAnillo(byEst, n) {
+  let acc = 0;
+  const segs = ESTADOS.concat(['colab']).filter(s => byEst[s]).map(s => {
+    const [txt] = (s === 'colab') ? [MAPA_COLAB_COLOR] : (ESTADO_COLORS[s] || ESTADO_COLORS.borrador);
+    const from = acc / n * 360, to = (acc + byEst[s]) / n * 360;
+    acc += byEst[s];
+    return `${txt} ${from}deg ${to}deg`;
+  });
+  return segs.length > 1 ? `conic-gradient(${segs.join(',')})` : segs[0].split(' ')[0];
+}
+
+// Marca de pins CERCANOS (en lugares distintos) juntados por el zoom: círculo
+// con la cantidad de trabajos y el anillo de estados. No abre lista: tocarlo
+// acerca el mapa hasta separarlos (o hasta el zoom donde ya no se agrupa).
+function mapaZonaMarker(L, c) {
+  const items = [];
+  c.puntos.forEach(p => p.items.forEach(x => items.push(x)));
+  const n = items.length;
+  const hl = items.some(x => _mapaHighlight.has(x.e.id));
+  const lado = n < 10 ? 38 : (n < 50 ? 44 : 50);
+  const icon = L.divIcon({
+    className: 'mapa-zgrupo' + (hl ? ' is-hl' : ''),
+    html: `<span class="mapa-cluster-ring" style="background:${_mapaAnillo(_mapaPorEstado(items), n)}"><span class="mapa-cluster-count">${n}</span></span>`,
+    iconSize: [lado, lado], iconAnchor: [lado / 2, lado / 2],
+  });
+  const m = L.marker(c.ll, { icon, title: n + ' trabajos en esta zona. Tocá para acercar.' });
+  m._entries = items.map(x => x.e);
+  m._puntos = c.puntos; // las stats de zona cuentan cada punto por su ubicación real
+  m.on('click', () => mapaAcercarGrupo(c.puntos.map(p => p.ll)));
+  return m;
+}
+
+// Acerca el mapa a un grupo: encuadra sus puntos, y siempre avanza al menos
+// dos niveles (si no, un grupo muy apretado quedaría igual tras el toque).
+// Nunca pasa del zoom donde se deja de agrupar + 1: ahí ya se separan.
+function mapaAcercarGrupo(lls) {
+  if (!_mapa || !lls || !lls.length) return;
+  const L = window.L;
+  const b = L.latLngBounds(lls);
+  const cur = _mapa.getZoom();
+  let z = _mapa.getBoundsZoom(b, false, L.point(60, 60));
+  if (z <= cur) z = cur + 2;
+  z = Math.min(z, MAPA_GRUPO_HASTA_Z + 1);
+  _mapa.setView(b.getCenter(), Math.max(z, cur + 1));
 }
 
 // Popup de un grupo apilado: lista todos los trabajos del mismo lugar, del más
@@ -19257,6 +19527,10 @@ function mapaRenderSinUbicar(list) {
   const cnt = document.getElementById('mapa-sinubicar-count');
   const box = document.getElementById('mapa-sinubicar-list');
   if (cnt) cnt.textContent = list.length;
+  // Atajo en la barra: la lista quedó debajo del mapa, fuera de la pantalla.
+  const suBtn = document.getElementById('mapa-su-btn'), suN = document.getElementById('mapa-su-n');
+  if (suN) suN.textContent = list.length;
+  if (suBtn) suBtn.hidden = !list.length;
   if (!box) return;
   if (!list.length) { box.innerHTML = '<div class="mapa-hint">Todos los presupuestos del filtro actual están ubicados. 🎉</div>'; return; }
   // Los estimativos suelen no llevar ubicación exacta: se dejan al final y se
@@ -19288,6 +19562,9 @@ function mapaUbicar(id) {
   const det = document.getElementById('mapa-sinubicar');
   if (det) det.open = false;
   if (_mapa) _mapa.closePopup();
+  // La lista está debajo del mapa: subir para que el mapa quede a la vista.
+  const vista = document.getElementById('mapa-vista');
+  if (vista) vista.scrollIntoView({ behavior: 'smooth', block: 'start' });
   toast('Tocá en el mapa el punto exacto de este trabajo', 'info', 4000);
 }
 
@@ -19323,11 +19600,20 @@ function mapaUpdateZonaStats() {
   // directo sí sume a las VENTAS del mes no lo mete acá: esto es el embudo,
   // y por el embudo no pasó. Ver test/trabajo-propio.test.cjs.
   let colabN = 0, colabTotal = 0, dirN = 0, dirTotal = 0;
+  const visibles = [];
   _mapaLayer.eachLayer(m => {
+    // Grupo de pins cercanos: cada punto cuenta por su ubicación REAL, no por
+    // el centro del círculo (que puede caer adentro con pins afuera).
+    if (m._puntos) {
+      m._puntos.forEach(p => { if (b.contains(p.ll)) p.items.forEach(x => visibles.push(x.e)); });
+      return;
+    }
     if (!m.getLatLng || !b.contains(m.getLatLng())) return;
     // Cada marca puede representar varios presupuestos (grupo apilado): se
     // cuentan todos sus entries (m._entries), no la marca.
-    (m._entries || []).forEach(e => {
+    (m._entries || []).forEach(e => visibles.push(e));
+  });
+  visibles.forEach(e => {
       if (!cur && e.currency) cur = e.currency;
       if (esColaboracion(e))   { colabN++; colabTotal += e.total || 0; return; }
       if (esTrabajoDirecto(e)) { dirN++;   dirTotal   += e.total || 0; return; }
@@ -19335,7 +19621,6 @@ function mapaUpdateZonaStats() {
       counts[est] = (counts[est] || 0) + 1;
       total += e.total || 0;
       totalMarks++;
-    });
   });
   // Panel propio de lo que se ve en la zona pero no pasó por un presupuesto.
   const colabBox =
@@ -19360,10 +19645,12 @@ function mapaUpdateZonaStats() {
     const [txt, bg] = ESTADO_COLORS[s];
     return `<span class="mapa-zona-chip" style="color:${txt};background:${bg}">${estadoLabel(s)} ${counts[s]}</span>`;
   }).join('');
+  // Franja ENCIMA del mapa: una línea de números y los chips (que hacen de
+  // leyenda de colores, ahora que los filtros quedan plegados).
+  const sep = '<span class="mapa-zona-sep"> · </span>';
   box.innerHTML = `
-    <div class="mapa-zona-title">En esta zona: ${totalMarks} presupuesto(s)</div>
+    <div class="mapa-zona-title" title="Conversión: aceptado + realizado sobre decididos">En esta zona: ${totalMarks} presupuesto(s)${sep}${conv != null ? `Conversión: <b>${conv}%</b>` : 'Conversión: —'}${total ? `${sep}Presupuestado: <b>${fmtM(total, cur || 'ARS')}</b>` : ''}</div>
     <div class="mapa-zona-chips">${chips}</div>
-    <div class="mapa-zona-conv">${conv != null ? `Conversión: <b>${conv}%</b> <span class="mapa-hint-inline">(aceptado+realizado / decididos)</span>` : 'Conversión: —'}${total ? ` · Presupuestado: <b>${fmtM(total, cur || 'ARS')}</b>` : ''}</div>
     ${colabBox}`;
 }
 
