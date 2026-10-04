@@ -1,6 +1,6 @@
 # Mapa — análisis e ideas (2026-10-03)
 
-> Estado: **puntos 1, 2, 3 (v231), 4, 5, 9 y 10 (v232) implementados**. Quedan 6, 7 y 8.
+> Estado: **puntos 1, 2, 3 (v231), 4, 5, 9 y 10 (v232; conversión corregida en v233) implementados**. Quedan 6, 7 y 8.
 > Base: lectura de `js/mapa.js` (v230) y 5 capturas del uso real.
 > Próxima sesión: ver "Siguientes pasos" al final.
 
@@ -117,7 +117,10 @@
   - Pin hueco: relleno blanco y anillo del color (`mapaEsVencido`).
   - Criterio: enviado con `dateExpiry` pasada. "Vence hoy" sigue vigente.
   - No mira `vencimientoVistoEn`. Descartar el aviso no vuelve vigente al presupuesto.
-  - Conversión por zona: aceptado + realizado sobre aceptado + realizado + perdido.
+  - Conversión por zona (corregida en la v233): aceptado + realizado sobre aceptado + realizado + perdido + enviados vencidos.
+    - La v232 dejaba afuera a los vencidos. En el uso real casi nadie marca "perdido": una zona con 20 vencidos y 0 perdidos daba 100%.
+    - El enviado vigente sigue afuera: todavía puede aceptarse.
+    - La franja muestra la fracción: "Conversión: 55% (12/22)".
   - La franja dice "Enviado 3 · 1 vencido".
 - **5. Colores y símbolos.**
   - Paleta propia `MAPA_PIN_COLORS`. `ESTADO_COLORS` quedó igual.

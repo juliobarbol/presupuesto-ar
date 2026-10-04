@@ -3455,6 +3455,7 @@ input[type=number]{-moz-appearance:textfield}
 .mapa-zona-title { font-size:12.5px; font-weight:700; margin-bottom:4px; line-height:1.35; }
 .mapa-zona-title b { font-weight:700; }
 .mapa-zona-title .mapa-zona-sep { color:var(--muted); font-weight:400; }
+.mapa-zona-frac { color:var(--muted); font-weight:400; font-variant-numeric:tabular-nums; }
 .mapa-zona-chips { display:flex; flex-wrap:nowrap; gap:4px; overflow-x:auto; scrollbar-width:none; }
 .mapa-zona-chips::-webkit-scrollbar { display:none; }
 .mapa-zona-chip { flex:none; display:inline-flex; align-items:center; gap:4px; }
@@ -19693,11 +19694,14 @@ function mapaUpdateZonaStats() {
     return;
   }
   const c = k => counts[k] || 0;
-  // Conversión: solo lo DECIDIDO. Un enviado todavía está abierto (vencido o
-  // no): contarlo como decidido bajaba la conversión con presupuestos que el
-  // cliente puede aceptar mañana.
+  // Conversión: ganados sobre DECIDIDOS. Decidido = aceptado, realizado,
+  // perdido… y el enviado VENCIDO: la vigencia pasó sin respuesta, y en el uso
+  // real casi nadie lo marca "perdido" (zona con 20 vencidos y 0 perdidos).
+  // Sacarlo de la cuenta daba 100% (v232, el reporte con captura); contarlo
+  // como abierto también. El enviado VIGENTE sí queda afuera: el cliente
+  // todavía puede aceptarlo, y contarlo bajaba la conversión (v231).
   const ganados = c('aceptado') + c('realizado');
-  const decididos = ganados + c('perdido');
+  const decididos = ganados + c('perdido') + vencidos;
   const conv = decididos ? Math.round(ganados / decididos * 100) : null;
   // Cada chip lleva el punto con el color del PIN: con los filtros plegados,
   // la franja es la leyenda del mapa.
@@ -19711,7 +19715,7 @@ function mapaUpdateZonaStats() {
   // leyenda de colores, ahora que los filtros quedan plegados).
   const sep = '<span class="mapa-zona-sep"> · </span>';
   box.innerHTML = `
-    <div class="mapa-zona-title" title="Conversión: aceptado + realizado sobre decididos (aceptado + realizado + perdido)">En esta zona: ${totalMarks} presupuesto(s)${sep}${conv != null ? `Conversión: <b>${conv}%</b>` : 'Conversión: —'}${total ? `${sep}Presupuestado: <b>${fmtM(total, cur || 'ARS')}</b>` : ''}</div>
+    <div class="mapa-zona-title" title="Conversión: aceptado + realizado sobre decididos (aceptado + realizado + perdido + enviados vencidos). Los enviados vigentes no cuentan: siguen abiertos.">En esta zona: ${totalMarks} presupuesto(s)${sep}${conv != null ? `Conversión: <b>${conv}%</b> <span class="mapa-zona-frac">(${ganados}/${decididos})</span>` : 'Conversión: —'}${total ? `${sep}Presupuestado: <b>${fmtM(total, cur || 'ARS')}</b>` : ''}</div>
     <div class="mapa-zona-chips">${chips}</div>
     ${colabBox}`;
 }

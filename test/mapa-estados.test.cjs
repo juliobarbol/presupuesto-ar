@@ -116,10 +116,31 @@ function historial() {
     await new Promise((r) => setTimeout(r, 200));
     return document.getElementById('mapa-zonastats').textContent.replace(/\s+/g, ' ').trim();
   });
-  // Decididos: aceptado 1 + realizado 1 + perdido 1 = 3; ganados 2 → 67%.
-  // Antes contaba los 3 enviados: 2/6 = 33%.
-  check(/Conversión: 67%/.test(c), 'La conversión cuenta solo lo decidido (los enviados siguen abiertos)', c.slice(0, 120));
+  // Decididos: aceptado 1 + realizado 1 + perdido 1 + 1 enviado vencido = 4;
+  // ganados 2 → 50%. Los 2 enviados vigentes (uno vence hoy) quedan afuera.
+  // v231 contaba los 3 enviados (2/6 = 33%); v232 no contaba ninguno (2/3).
+  check(/Conversión: 50% \(2\/4\)/.test(c), 'Conversión: el enviado vencido cuenta como decidido; el vigente no', c.slice(0, 120));
   check(/Enviado 3 · 1 vencido/.test(c), 'La franja dice cuántos enviados están vencidos', c);
+
+  // El caso del reporte: 0 perdidos, muchos vencidos. Daba "Conversión: 100%".
+  const c2 = await page.evaluate(async () => {
+    const h = getH();
+    const vencido = h.find(e => e.clientName === 'Felipe vencido');
+    const base = JSON.parse(JSON.stringify(vencido));
+    const extra = [];
+    for (let i = 0; i < 5; i++) extra.push(Object.assign(JSON.parse(JSON.stringify(base)), { id: 6100 + i, clientName: 'Vencido ' + i }));
+    const sinPerdido = h.filter(e => e.estado !== 'perdido').concat(extra);
+    const prev = JSON.stringify(h);
+    setH(sinPerdido);
+    mapaRefresh();
+    await new Promise((r) => setTimeout(r, 200));
+    const txt = document.getElementById('mapa-zonastats').textContent.replace(/\s+/g, ' ').trim();
+    setH(JSON.parse(prev));
+    mapaRefresh();
+    return txt;
+  });
+  // Ganados 2 (aceptado + realizado); decididos 2 + 6 vencidos = 8 → 25%.
+  check(/Conversión: 25% \(2\/8\)/.test(c2), 'Sin perdidos y con vencidos la conversión no da 100%', c2.slice(0, 120));
 
   // ── D) Tramos de ruta ─────────────────────────────────────────────────
   const d = await page.evaluate(() => {
