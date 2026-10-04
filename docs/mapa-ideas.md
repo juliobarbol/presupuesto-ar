@@ -1,6 +1,6 @@
 # Mapa — análisis e ideas (2026-10-03)
 
-> Estado: **puntos 1, 2 y 3 implementados (v231, 2026-10-04)**. El resto sigue en análisis.
+> Estado: **puntos 1, 2, 3 (v231), 4, 5, 9 y 10 (v232) implementados**. Quedan 6, 7 y 8.
 > Base: lectura de `js/mapa.js` (v230) y 5 capturas del uso real.
 > Próxima sesión: ver "Siguientes pasos" al final.
 
@@ -111,33 +111,29 @@
   - Solo descarta si lo de afuera es 1 de cada 4 o menos.
 - Test: `test/mapa-agrupar.test.cjs` (22 checks).
 
+## Hecho en la v232 (puntos 4, 5, 9 y 10)
+
+- **4. Enviados vencidos.**
+  - Pin hueco: relleno blanco y anillo del color (`mapaEsVencido`).
+  - Criterio: enviado con `dateExpiry` pasada. "Vence hoy" sigue vigente.
+  - No mira `vencimientoVistoEn`. Descartar el aviso no vuelve vigente al presupuesto.
+  - Conversión por zona: aceptado + realizado sobre aceptado + realizado + perdido.
+  - La franja dice "Enviado 3 · 1 vencido".
+- **5. Colores y símbolos.**
+  - Paleta propia `MAPA_PIN_COLORS`. `ESTADO_COLORS` quedó igual.
+  - ✓ en realizado. Ojo en "Ir a ver".
+  - Borde blanco de 3 px y sombra doble.
+  - Los chips de la franja llevan el punto del color del pin: son la leyenda.
+  - Pendiente: probar al sol con el celular real.
+- **9. Límite de paradas.**
+  - Verificado en la documentación de Google: 3 paradas intermedias en navegador de celular, 9 en el resto.
+  - Tramos de hasta 4 paradas. Cada tramo arranca en la última parada del anterior.
+  - "Cerca mío": lista de tramos en el panel.
+  - "Ruta del día" del banner: aviso con un botón por tramo. Tenía el mismo problema.
+- **10. Barra de totales.** El arranque la muestra solo si el Editor sigue activo.
+- Test: `test/mapa-estados.test.cjs` (19 checks). El check de la barra falla sin el arreglo.
+
 ## Siguientes pasos (recomendación)
-
-### Tanda 4: lectura de estados (puntos 4 y 5)
-
-Hacer los dos juntos. Tocan las mismas funciones: `mapaMarker` y `_mapaAnillo`.
-
-- Crear una paleta propia del mapa (`MAPA_PIN_COLORS`).
-  - No cambiar `ESTADO_COLORS`: la usan el Historial y los chips.
-  - El anillo de los grupos, los puntos de los filtros y los pins leen la paleta nueva.
-- Enviado vencido: pin hueco (relleno blanco, borde del color).
-  - Reusar el criterio de `getExpiredQuotes` (`dateExpiry`, no `enviadoEn`).
-  - Respetar `vencimientoVistoEn` y `reemplazadoPor`.
-- Conversión por zona: `decididos = aceptado + realizado + perdido`.
-  - Revisar `test/trabajo-propio.test.cjs`: afirma textos de la franja.
-- Símbolo dentro del pin: ✓ en realizado, ojo en "Ir a ver".
-- Verificar contraste con captura a pleno sol (brillo alto, fondo verde).
-
-### Arreglos chicos (puntos 10 y 9)
-
-Van en cualquier tanda. Son bugs, no funciones.
-
-- **10.** Condicionar `#sticky-totals` del init al panel Editor activo.
-- **9.** Límite de paradas en `mapaArmarRuta`.
-  - Verificar el límite real antes de programar.
-  - La documentación de Google Maps URLs dice: 3 paradas en navegador del celular, 9 en el resto.
-  - "Cerca mío" (15 km) puede juntar más de 3 pendientes con facilidad.
-  - Propuesta: partir en tramos ("Tramo 1 de 3") o avisar cuántas quedan afuera.
 
 ### Tanda 5: ubicar lo que falta (punto 7)
 
@@ -149,7 +145,7 @@ Van en cualquier tanda. Son bugs, no funciones.
 
 ### Tanda 6: el día de trabajo (punto 6)
 
-- Depende del punto 9: la ruta del día usa el mismo armado de URL.
+- Los tramos del punto 9 ya están. La ruta del día los reusa.
 - Visitas en el mapa: notas con `tipo:'visita'` y ubicación.
   - Hoy las notas no tienen coordenadas resueltas. Revisar qué guarda la nota.
 - "Ruta de hoy": trabajos (`fechasTrabajo`) y visitas de hoy, por hora.
@@ -164,8 +160,9 @@ Es el de más riesgo. Toca el Service Worker.
 - El `activate` no debe borrarla (igual que `pq-vendor`).
 - Nunca descargar por adelantado: solo guardar lo que ya se vio.
 
-### Ideas nuevas que salieron de esta tanda
+### Ideas nuevas
 
 - **Botón "Ver todo"** sobre el mapa. Con la última vista guardada, el usuario puede quedar lejos de sus pins. Un toque encuadra todos los pins del filtro.
 - **Calibrar con el uso real** el radio de 46 px y el corte del zoom 17. Revisar con el historial real del celular.
 - **Recordar los filtros** (estado y período) como la vista. Hoy vuelven a "Todo" al recargar.
+- **Tramos de 10 paradas en la app de Maps.** Si el link abre siempre en la app de Google Maps del teléfono, el límite es 9 intermedias. Probar en el celular real antes de subir `MAPA_RUTA_INTERMEDIAS`.

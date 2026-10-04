@@ -3412,7 +3412,14 @@ input[type=number]{-moz-appearance:textfield}
 #map-canvas { flex:1 1 auto; height:auto; min-height:260px; width:100%; border-radius:12px; border:1px solid var(--border); overflow:hidden; background:var(--surface,#e5e7eb); z-index:0; }
 #map-canvas.mapa-placing { cursor:crosshair; }
 #map-canvas.mapa-placing .leaflet-grab { cursor:crosshair; }
-.mapa-pin span { display:block; width:22px; height:22px; box-sizing:border-box; border-radius:50%; border:2px solid #fff; box-shadow:0 1px 4px rgba(0,0,0,.45); }
+.mapa-pin { background:transparent; border:none; }
+/* Borde blanco de 3 px y sombra doble: el pin se despega del verde del mapa
+   y del brillo del sol. El símbolo (✓ / ojo) va en blanco adentro. */
+.mapa-pin span { display:flex; align-items:center; justify-content:center; width:24px; height:24px; box-sizing:border-box; border-radius:50%; border:3px solid #fff; box-shadow:0 0 0 1px rgba(0,0,0,.35), 0 1px 5px rgba(0,0,0,.45); }
+.mapa-pin svg { width:13px; height:13px; fill:none; stroke:#fff; stroke-width:3.2; stroke-linecap:round; stroke-linejoin:round; }
+/* Enviado vencido: hueco. Relleno blanco y anillo grueso del color. */
+.mapa-pin.is-venc span { background:#fff; border-width:6px; box-shadow:0 0 0 2px #fff, 0 0 0 3px rgba(0,0,0,.35), 0 1px 5px rgba(0,0,0,.45); }
+.mapa-pin.is-venc.is-hl span { box-shadow:0 0 0 2px #fff, 0 0 0 6px rgba(14,165,233,.55), 0 1px 5px rgba(0,0,0,.45); }
 .mapa-pin.is-hl span { box-shadow:0 0 0 4px rgba(14,165,233,.55), 0 1px 4px rgba(0,0,0,.45); }
 .mapa-popup { min-width:170px; }
 .mapa-popup-cli { font-weight:700; font-size:14px; margin-bottom:2px; }
@@ -3450,7 +3457,9 @@ input[type=number]{-moz-appearance:textfield}
 .mapa-zona-title .mapa-zona-sep { color:var(--muted); font-weight:400; }
 .mapa-zona-chips { display:flex; flex-wrap:nowrap; gap:4px; overflow-x:auto; scrollbar-width:none; }
 .mapa-zona-chips::-webkit-scrollbar { display:none; }
-.mapa-zona-chip { flex:none; }
+.mapa-zona-chip { flex:none; display:inline-flex; align-items:center; gap:4px; }
+.mapa-zona-dot { display:inline-block; width:9px; height:9px; border-radius:50%; box-shadow:0 0 0 1px rgba(255,255,255,.8); }
+.mapa-zona-dot.is-venc { box-sizing:border-box; background:#fff; border:2.5px solid; }
 .mapa-zona-chip { font-size:11px; font-weight:600; padding:2px 8px; border-radius:999px; }
 .mapa-hint-inline { font-size:11px; opacity:.8; }
 .mapa-cerca-panel { flex:0 1 auto; max-height:40%; overflow:auto; overscroll-behavior:contain; margin-top:6px; padding:10px; border:1px solid var(--accent); border-radius:10px; background:var(--accent-tint,var(--card)); }
@@ -3461,6 +3470,10 @@ input[type=number]{-moz-appearance:textfield}
 .mapa-cerca-cli { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .mapa-cerca-dist { font-size:12px; color:var(--muted); font-variant-numeric:tabular-nums; }
 .mapa-ruta-btn { width:100%; margin-top:8px; }
+.mapa-tramos { display:flex; flex-direction:column; gap:6px; margin-top:8px; }
+.mapa-tramos[hidden] { display:none; }
+.mapa-tramo-btn { flex-wrap:wrap; justify-content:flex-start; text-align:left; height:auto; padding-top:6px; padding-bottom:6px; }
+.mapa-tramo-nombres { flex:1 1 100%; font-size:11.5px; font-weight:400; opacity:.85; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .mapa-sinubicar { margin-top:10px; border:1px solid var(--border); border-radius:10px; background:var(--card); padding:2px 10px; }
 .mapa-sinubicar > summary { cursor:pointer; font-size:13px; font-weight:600; padding:8px 0; }
 .mapa-count { display:inline-block; min-width:18px; text-align:center; font-size:11px; padding:1px 6px; border-radius:999px; background:var(--accent); color:#fff; }
@@ -14402,12 +14415,14 @@ function rutaDelDiaMaps() {
     toast('Necesitás al menos dos trabajos con dirección o ubicación para armar la ruta', 'info', 3500);
     return;
   }
-  const dest = stops[stops.length - 1];
-  const wps = stops.slice(0, -1);
-  const url = 'https://www.google.com/maps/dir/?api=1'
-    + '&destination=' + encodeURIComponent(dest)
-    + '&waypoints=' + wps.map(encodeURIComponent).join('%7C');
-  window.open(url, '_blank', 'noopener');
+  // Más de 4 paradas no entran en un recorrido de Google Maps en el celular
+  // (ver MAPA_RUTA_INTERMEDIAS en js/mapa.js): se ofrece en tramos. Cada
+  // botón abre uno; para el siguiente se vuelve a tocar "Ruta del día".
+  const tramos = _mapaRutaTramos('', stops.map(q => ({ q })), MAPA_RUTA_INTERMEDIAS);
+  if (tramos.length === 1) { window.open(_mapaRutaUrl(tramos[0]), '_blank', 'noopener'); return; }
+  toastAccion(`Son ${stops.length} paradas y Google Maps acepta 4 por recorrido. Abrí los tramos en orden.`,
+    tramos.map((t, i) => ({ label: `Tramo ${i + 1}`, fn: () => window.open(_mapaRutaUrl(t), '_blank', 'noopener') })),
+    20000);
 }
 
 // Botón "Voy en camino": abre WhatsApp con un aviso corto y editable de que
@@ -18862,6 +18877,43 @@ let _mapaGeoRef = null;      // [lat,lng] de referencia para reconstruir Plus Co
 let _mapaVerColab = false;
 const MAPA_COLAB_COLOR = '#0d9488';
 
+// ─── COLORES DE LOS PINS ─────────────────────────────────────
+// Paleta PROPIA del mapa. Antes los pins usaban el color de TEXTO de
+// ESTADO_COLORS: tonos oscuros pensados para leerse sobre un chip claro, que
+// sobre el verde del mapa y al sol se confundían (realizado #065f46, ir a ver
+// #155e63 y borrador #475569 eran tres manchas oscuras iguales). Acá van
+// tonos vivos, separados en el círculo de colores, y dos estados llevan
+// símbolo para no depender solo del color: ✓ en realizado y ojo en "Ir a ver".
+// ESTADO_COLORS no se toca: la usan el Historial y los chips.
+const MAPA_PIN_COLORS = {
+  por_ver:   '#06b6d4',
+  borrador:  '#94a3b8',
+  enviado:   '#2563eb',
+  aceptado:  '#f59e0b',
+  realizado: '#16a34a',
+  evolucion: '#9333ea',
+  perdido:   '#dc2626',
+};
+function mapaPinColor(est) { return MAPA_PIN_COLORS[est] || MAPA_PIN_COLORS.borrador; }
+const MAPA_PIN_SIMBOLO = {
+  realizado: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+  por_ver:   '<path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="2.6"/>',
+};
+
+// Enviado VENCIDO: el presupuesto salió, la vigencia pasó y nadie lo cerró.
+// Se dibuja hueco (relleno blanco, borde del color) para no confundirlo con
+// un enviado que todavía está en plazo. Es un dato del presupuesto, no un
+// aviso: por eso no mira vencimientoVistoEn (descartar el aviso no lo
+// vuelve vigente) ni la configuración del seguimiento. Mismo criterio de
+// fecha que getExpiredQuotes: desde dateExpiry, y "vence hoy" sigue vigente.
+function mapaEsVencido(e) {
+  if (!e || (e.estado || 'borrador') !== 'enviado') return false;
+  const exp = e.snapshot && e.snapshot.dateExpiry;
+  if (!exp) return false;
+  const d = daysSinceDate(exp);
+  return d !== null && d >= 1;
+}
+
 // ─── PINS CERCANOS AGRUPADOS ─────────────────────────────────
 // A zoom de provincia los pins de una misma zona se encimaban en una mancha
 // (y un grupo "3" quedaba tapado por otros pins). Ahora los pins a menos de
@@ -19171,11 +19223,10 @@ function mapaBuildFilters() {
   const box = document.getElementById('mapa-filters');
   if (!box) return;
   box.innerHTML = ESTADOS.map(s => {
-    const [txt] = ESTADO_COLORS[s] || ESTADO_COLORS.borrador;
     const on = _mapaFilterSet.has(s);
     return `<label class="mapa-filter${on ? ' is-on' : ''}">
       <input type="checkbox" ${on ? 'checked' : ''} onchange="mapaToggleFilter('${s}', this.checked)">
-      <span class="mapa-filter-dot" style="background:${txt}"></span>${estadoLabel(s)}</label>`;
+      <span class="mapa-filter-dot" style="background:${mapaPinColor(s)}"></span>${estadoLabel(s)}</label>`;
   }).join('')
   // Interruptor de colaboraciones: separado de los estados porque no es un
   // estado sino OTRO tipo de trabajo, y apagado por defecto.
@@ -19337,14 +19388,17 @@ function mapaMarker(L, e, est, ll) {
   // La colaboración lleva color propio (teal): no comparte la paleta de los
   // estados comerciales porque no es una etapa de venta. El trabajo directo
   // sí usa el color de su estado: es trabajo para un cliente, como el resto.
-  const [txt] = esColaboracion(e)
-    ? [MAPA_COLAB_COLOR]
-    : (ESTADO_COLORS[est] || ESTADO_COLORS.borrador);
+  const colab = esColaboracion(e);
+  const color = colab ? MAPA_COLAB_COLOR : mapaPinColor(est);
   const hl = _mapaHighlight.has(e.id);
+  const venc = !colab && mapaEsVencido(e);
+  const sim = !colab && MAPA_PIN_SIMBOLO[est];
   const icon = L.divIcon({
-    className: 'mapa-pin' + (hl ? ' is-hl' : '') + (esColaboracion(e) ? ' is-colab' : ''),
-    html: `<span style="background:${txt}"></span>`,
-    iconSize: [20, 20], iconAnchor: [10, 10], popupAnchor: [0, -10],
+    className: 'mapa-pin' + (hl ? ' is-hl' : '') + (colab ? ' is-colab' : '') + (venc ? ' is-venc' : ''),
+    html: venc
+      ? `<span style="border-color:${color}"></span>`
+      : `<span style="background:${color}">${sim ? `<svg viewBox="0 0 24 24" aria-hidden="true">${sim}</svg>` : ''}</span>`,
+    iconSize: [24, 24], iconAnchor: [12, 12], popupAnchor: [0, -12],
   });
   const m = L.marker(ll, { icon });
   m._estado = est;
@@ -19391,7 +19445,7 @@ function _mapaPorEstado(items) {
 function _mapaAnillo(byEst, n) {
   let acc = 0;
   const segs = ESTADOS.concat(['colab']).filter(s => byEst[s]).map(s => {
-    const [txt] = (s === 'colab') ? [MAPA_COLAB_COLOR] : (ESTADO_COLORS[s] || ESTADO_COLORS.borrador);
+    const txt = (s === 'colab') ? MAPA_COLAB_COLOR : mapaPinColor(s);
     const from = acc / n * 360, to = (acc + byEst[s]) / n * 360;
     acc += byEst[s];
     return `${txt} ${from}deg ${to}deg`;
@@ -19599,7 +19653,7 @@ function mapaUpdateZonaStats() {
   // aceptaron más trabajos de los que de verdad se aceptaron. Que el trabajo
   // directo sí sume a las VENTAS del mes no lo mete acá: esto es el embudo,
   // y por el embudo no pasó. Ver test/trabajo-propio.test.cjs.
-  let colabN = 0, colabTotal = 0, dirN = 0, dirTotal = 0;
+  let colabN = 0, colabTotal = 0, dirN = 0, dirTotal = 0, vencidos = 0;
   const visibles = [];
   _mapaLayer.eachLayer(m => {
     // Grupo de pins cercanos: cada punto cuenta por su ubicación REAL, no por
@@ -19619,6 +19673,7 @@ function mapaUpdateZonaStats() {
       if (esTrabajoDirecto(e)) { dirN++;   dirTotal   += e.total || 0; return; }
       const est = e.estado || 'borrador';
       counts[est] = (counts[est] || 0) + 1;
+      if (mapaEsVencido(e)) vencidos++;
       total += e.total || 0;
       totalMarks++;
   });
@@ -19638,18 +19693,25 @@ function mapaUpdateZonaStats() {
     return;
   }
   const c = k => counts[k] || 0;
+  // Conversión: solo lo DECIDIDO. Un enviado todavía está abierto (vencido o
+  // no): contarlo como decidido bajaba la conversión con presupuestos que el
+  // cliente puede aceptar mañana.
   const ganados = c('aceptado') + c('realizado');
-  const decididos = c('enviado') + c('aceptado') + c('realizado') + c('perdido');
+  const decididos = ganados + c('perdido');
   const conv = decididos ? Math.round(ganados / decididos * 100) : null;
+  // Cada chip lleva el punto con el color del PIN: con los filtros plegados,
+  // la franja es la leyenda del mapa.
   const chips = ESTADOS.filter(s => counts[s]).map(s => {
     const [txt, bg] = ESTADO_COLORS[s];
-    return `<span class="mapa-zona-chip" style="color:${txt};background:${bg}">${estadoLabel(s)} ${counts[s]}</span>`;
+    const venc = (s === 'enviado' && vencidos)
+      ? ` · <span class="mapa-zona-dot is-venc" style="border-color:${mapaPinColor(s)}"></span>${vencidos} vencido${vencidos === 1 ? '' : 's'}` : '';
+    return `<span class="mapa-zona-chip" style="color:${txt};background:${bg}"><span class="mapa-zona-dot" style="background:${mapaPinColor(s)}"></span>${estadoLabel(s)} ${counts[s]}${venc}</span>`;
   }).join('');
   // Franja ENCIMA del mapa: una línea de números y los chips (que hacen de
   // leyenda de colores, ahora que los filtros quedan plegados).
   const sep = '<span class="mapa-zona-sep"> · </span>';
   box.innerHTML = `
-    <div class="mapa-zona-title" title="Conversión: aceptado + realizado sobre decididos">En esta zona: ${totalMarks} presupuesto(s)${sep}${conv != null ? `Conversión: <b>${conv}%</b>` : 'Conversión: —'}${total ? `${sep}Presupuestado: <b>${fmtM(total, cur || 'ARS')}</b>` : ''}</div>
+    <div class="mapa-zona-title" title="Conversión: aceptado + realizado sobre decididos (aceptado + realizado + perdido)">En esta zona: ${totalMarks} presupuesto(s)${sep}${conv != null ? `Conversión: <b>${conv}%</b>` : 'Conversión: —'}${total ? `${sep}Presupuestado: <b>${fmtM(total, cur || 'ARS')}</b>` : ''}</div>
     <div class="mapa-zona-chips">${chips}</div>
     ${colabBox}`;
 }
@@ -19716,7 +19778,8 @@ function mapaRenderCerca(near) {
         <button class="btn btn-g btn-sm" onclick="comoLlegar(${n.e.id})">${icon('pin')} Llegar</button>
       </div>`;
     }).join('')}</div>
-    ${near.length >= 2 ? `<button class="btn btn-p mapa-ruta-btn" onclick="mapaArmarRuta()">${icon('pin')} Armar recorrido en Google Maps</button>` : ''}`;
+    ${near.length >= 2 ? `<button class="btn btn-p mapa-ruta-btn" onclick="mapaArmarRuta()">${icon('pin')} Armar recorrido en Google Maps</button>
+    <div class="mapa-tramos" id="mapa-tramos" hidden></div>` : ''}`;
 }
 
 function mapaCerrarCerca() {
@@ -19730,6 +19793,40 @@ function mapaCerrarCerca() {
 
 // Ordena las paradas cercanas por vecino más cercano desde la ubicación
 // actual (recorrido "más práctico") y abre Google Maps en modo direcciones.
+//
+// Límite de paradas: Google Maps URLs acepta hasta 3 paradas intermedias si
+// el link abre en el navegador del celular, y 9 en el resto. Con más, la ruta
+// sale cortada sin aviso. Como no se puede saber dónde va a abrir, se usa el
+// límite seguro: tramos de hasta 4 paradas (3 intermedias + destino). Cada
+// tramo arranca en la última parada del anterior. Con un solo tramo se abre
+// directo, como antes; con más, el panel de "Cerca mío" lista los tramos.
+const MAPA_RUTA_INTERMEDIAS = 3;
+let _mapaTramos = [];
+
+// Parte las paradas en tramos: [{ origen, paradas }]. Pura (testeable).
+function _mapaRutaTramos(origen, paradas, maxIntermedias) {
+  const porTramo = maxIntermedias + 1;
+  const out = [];
+  let o = origen;
+  for (let i = 0; i < paradas.length; i += porTramo) {
+    const tramo = paradas.slice(i, i + porTramo);
+    out.push({ origen: o, paradas: tramo });
+    o = tramo[tramo.length - 1].q;
+  }
+  return out;
+}
+function _mapaRutaUrl(t) {
+  const qs = t.paradas.map(p => p.q);
+  const dest = qs[qs.length - 1];
+  const wps = qs.slice(0, -1);
+  // Sin origen, Google Maps arranca desde la ubicación del teléfono.
+  let url = 'https://www.google.com/maps/dir/?api=1'
+    + (t.origen ? '&origin=' + encodeURIComponent(t.origen) : '')
+    + '&destination=' + encodeURIComponent(dest);
+  if (wps.length) url += '&waypoints=' + wps.map(encodeURIComponent).join('%7C');
+  return url;
+}
+
 function mapaArmarRuta() {
   if (!_mapaUserLatLng || _mapaCercaList.length < 1) { toast('Primero tocá “Cerca mío”', 'info', 3000); return; }
   const [ulat, ulng] = _mapaUserLatLng;
@@ -19745,14 +19842,30 @@ function mapaArmarRuta() {
     const nx = rem.splice(bi, 1)[0];
     ordered.push(nx); clat = nx.ll[0]; clng = nx.ll[1];
   }
-  const stops = ordered.map(n => _stopQueryForSnap(n.e.snapshot) || `${n.ll[0]},${n.ll[1]}`);
-  const dest = stops[stops.length - 1];
-  const wps = stops.slice(0, -1);
-  let url = 'https://www.google.com/maps/dir/?api=1'
-    + '&origin=' + encodeURIComponent(`${ulat},${ulng}`)
-    + '&destination=' + encodeURIComponent(dest);
-  if (wps.length) url += '&waypoints=' + wps.map(encodeURIComponent).join('%7C');
-  window.open(url, '_blank', 'noopener');
+  const paradas = ordered.map(n => ({
+    q: _stopQueryForSnap(n.e.snapshot) || `${n.ll[0]},${n.ll[1]}`,
+    nombre: n.e.clientName || '(sin nombre)',
+  }));
+  _mapaTramos = _mapaRutaTramos(`${ulat},${ulng}`, paradas, MAPA_RUTA_INTERMEDIAS);
+  if (_mapaTramos.length === 1) { window.open(_mapaRutaUrl(_mapaTramos[0]), '_blank', 'noopener'); return; }
+  mapaRenderTramos();
+}
+
+function mapaRenderTramos() {
+  const box = document.getElementById('mapa-tramos');
+  if (!box) return;
+  let n = 0;
+  box.innerHTML = `<div class="mapa-hint">Google Maps acepta hasta 4 paradas por recorrido en el celular. Abrí los tramos en orden: cada uno arranca donde terminó el anterior.</div>`
+    + _mapaTramos.map((t, i) => {
+      const desde = n + 1; n += t.paradas.length;
+      const nombres = t.paradas.map(p => esc(p.nombre)).join(' → ');
+      return `<button type="button" class="btn btn-p btn-sm mapa-tramo-btn" onclick="mapaAbrirTramo(${i})">${icon('pin')} Tramo ${i + 1} · paradas ${desde} a ${n}<span class="mapa-tramo-nombres">${nombres}</span></button>`;
+    }).join('');
+  box.hidden = false;
+}
+function mapaAbrirTramo(i) {
+  const t = _mapaTramos[i];
+  if (t) window.open(_mapaRutaUrl(t), '_blank', 'noopener');
 }
 
 // ===== js/clima.js =====
@@ -22715,9 +22828,13 @@ window.addEventListener('DOMContentLoaded', async () => {
   renderRiskDefects(); // Renderizar defectos guardados
   renderQuickServices(); // Chips de servicios rápidos en el editor
 
-  // Editor es la pestaña inicial → mostrar sticky totals desde el inicio
+  // Editor es la pestaña inicial → mostrar sticky totals desde el inicio.
+  // Solo si el Editor SIGUE activo: este init corre después de varios
+  // `await`, y si el usuario ya tocó otra pestaña la barra aparecía encima
+  // del Mapa o de la Agenda (switchTab ya la había ocultado).
   const sticky = document.getElementById('sticky-totals');
-  if (sticky) {
+  const editorActivo = document.getElementById('panel-editor')?.classList.contains('active');
+  if (sticky && editorActivo) {
     sticky.style.display = 'block';
     document.body.classList.add('has-sticky-totals');
     reserveStickySpace();
