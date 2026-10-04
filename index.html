@@ -14912,12 +14912,34 @@ function mapsUrlFor(mapLink, addr) {
   return '';
 }
 
-// Abre Google Maps con la ubicación del trabajo del presupuesto.
+// Igual que mapsUrlFor, pero en modo RUTA: Google Maps abre con el camino
+// ya cargado desde la ubicación del teléfono hasta el trabajo, como "Armar
+// recorrido". mapsUrlFor abría la BÚSQUEDA del lugar y había que tocar
+// "Cómo llegar" de nuevo adentro de Maps (pedido del usuario: que pase lo
+// mismo que con el recorrido, aunque haya un solo trabajo). Sin `origin`,
+// Maps sale desde donde está el teléfono. Un link completo de Maps
+// (maps.app.goo.gl) no se puede convertir en destino: se abre tal cual.
+// mapsUrlFor sigue para "Probar" (verificar el punto) y para compartir.
+function mapsDirUrlFor(mapLink, addr) {
+  const link = (mapLink || '').trim();
+  const dir  = (addr || '').trim();
+  const BASE = 'https://www.google.com/maps/dir/?api=1&destination=';
+  if (link) {
+    if (/^https?:\/\//i.test(link)) return link;
+    const coord = link.match(/^(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)$/);
+    if (coord) return BASE + coord[1] + ',' + coord[2];
+    return BASE + encodeURIComponent(link);
+  }
+  if (dir) return BASE + encodeURIComponent(dir);
+  return '';
+}
+
+// Abre Google Maps con la ruta hasta el trabajo del presupuesto.
 // Los datos viven en el snapshot (workMapLink / workAddress).
 function comoLlegar(id) {
   const e = getH().find(x => x.id === id);
   const snap = (e && e.snapshot) || {};
-  const url = mapsUrlFor(snap.workMapLink, snap.workAddress);
+  const url = mapsDirUrlFor(snap.workMapLink, snap.workAddress);
   if (!url) {
     toast('Este presupuesto no tiene dirección ni ubicación cargada', 'info', 3000);
     return;
@@ -21265,7 +21287,7 @@ function _calEvHTML(ev, dateLabel) {
     // compartir y editar, más grandes. Las visitas suman "Crear presupuesto":
     // al volver de la evaluación, pasa los datos de la visita al editor.
     const mapBtn = ev.mapUrl
-      ? `<button class="agc-ev-btn agc-ev-map" onclick="calOpenNoteMap('${ev.noteId}')" title="Abrir la ubicación en Maps">${icon('pin')}<span>Mapa</span></button>`
+      ? `<button class="agc-ev-btn agc-ev-map" onclick="calOpenNoteMap('${ev.noteId}')" title="Cómo llegar: abre la ruta en Maps">${icon('pin')}<span>Mapa</span></button>`
       : '';
     const crearBtn = (ev.tipo === 'visita' && !ev.done)
       ? `<button class="agc-ev-btn" onclick="calCrearPresupuestoDesdeVisita('${ev.noteId}')" title="Crear un presupuesto con los datos de esta visita">${icon('file')}<span>Presupuestar</span></button>`
@@ -21829,10 +21851,11 @@ function probarUbicacionInput(inputId) {
   if (!url) { toast('Cargá una ubicación para verla en Maps', 'info', 3000); return; }
   window.open(url, '_blank', 'noopener');
 }
-// Botón de Maps de la tarjeta de nota: abre la ubicación guardada de la nota.
+// Botón de Maps de la tarjeta de nota (y "Cómo llegar" de la visita en el
+// banner de hoy): abre la ruta hasta la ubicación guardada de la nota.
 function calOpenNoteMap(id) {
   const n = getNotes().find(x => x.id === id);
-  const url = (n && typeof mapsUrlFor === 'function') ? mapsUrlFor((n.ubic || '').trim(), '') : '';
+  const url = (n && typeof mapsDirUrlFor === 'function') ? mapsDirUrlFor((n.ubic || '').trim(), '') : '';
   if (!url) { toast('Esta nota no tiene ubicación cargada', 'info', 3000); return; }
   window.open(url, '_blank', 'noopener');
 }
