@@ -200,6 +200,36 @@ function historial() {
   check(JSON.stringify(d3.btns) === '["Tramo 1","Tramo 2"]', '"Ruta del día" con 6 paradas ofrece los tramos', JSON.stringify(d3.btns));
   check(d3.abiertas.length === 1 && !/origin=/.test(d3.abiertas[0]), '"Ruta del día" con 3 paradas abre directo, como antes');
 
+  // ── F) "Cómo llegar" abre la RUTA, no la búsqueda del lugar ───────────
+  // Pedido del usuario: que pase lo mismo que con "Armar recorrido" (Maps
+  // abre con el camino cargado), aunque sea un solo trabajo.
+  const f = await page.evaluate(() => {
+    const abiertas = []; const prev = window.open; window.open = (u) => { abiertas.push(u); return null; };
+    const felipe = getH().find(e => e.clientName === 'Felipe vencido');
+    comoLlegar(felipe.id);
+    const notas = getNotes();
+    setNotes(notas.concat([{ id: 'n_test_llegar', fecha: toLocalISODate(new Date()), texto: 'Ir a ver árbol', tipo: 'visita', ubic: 'V75V+8Q Río Ceballos' }]));
+    calOpenNoteMap('n_test_llegar');
+    setNotes(notas);
+    window.open = prev;
+    return {
+      abiertas,
+      coord: mapsDirUrlFor(' -31.2 , -64.3 ', ''),
+      dir: mapsDirUrlFor('', 'San Martín 123, Unquillo'),
+      link: mapsDirUrlFor('https://maps.app.goo.gl/abc', 'x'),
+      nada: mapsDirUrlFor('', ''),
+      buscar: mapsUrlFor('-31.2,-64.3', ''),
+    };
+  });
+  check(f.abiertas[0] === 'https://www.google.com/maps/dir/?api=1&destination=-31.2,-64.3000',
+    '"Cómo llegar" de un presupuesto abre la ruta hasta el trabajo, desde el teléfono', f.abiertas[0]);
+  check(/^https:\/\/www\.google\.com\/maps\/dir\/\?api=1&destination=V75V%2B8Q%20R%C3%ADo%20Ceballos$/.test(f.abiertas[1] || ''),
+    '"Cómo llegar" de una visita abre la ruta (Plus Code con localidad)', f.abiertas[1]);
+  check(f.coord.endsWith('destination=-31.2,-64.3') && /destination=San%20Mart%C3%ADn/.test(f.dir)
+    && f.link === 'https://maps.app.goo.gl/abc' && f.nada === '',
+    'Coordenadas y dirección van como destino; un link de Maps se abre tal cual', JSON.stringify(f));
+  check(/maps\/search\//.test(f.buscar), '"Probar" y compartir siguen con la búsqueda del lugar');
+
   // ── E) Barra de totales y el arranque ─────────────────────────────────
   const p2 = await browser.newPage();
   await p2.setViewport({ width: 360, height: 740, isMobile: true, hasTouch: true });

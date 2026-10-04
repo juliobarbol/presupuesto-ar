@@ -13,7 +13,7 @@
 //
 //  Para forzar actualizacion tras un deploy: subir el CACHE_VERSION.
 
-const CACHE_VERSION = 'presupuesto-v233';
+const CACHE_VERSION = 'presupuesto-v234';
 // Caché APARTE, que sobrevive a las versiones, para lo pesado que se baja bajo
 // demanda: html2pdf (927 KB, "Compartir imagen"). Antes vivía en la caché de la
 // versión y cada deploy la borraba: la primera "Compartir imagen" después de
