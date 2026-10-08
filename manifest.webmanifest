@@ -47,6 +47,20 @@
       "description": "Ver presupuestos anteriores",
       "url": "./index.html?go=historial",
       "icons": [{ "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Agenda",
+      "short_name": "Agenda",
+      "description": "Trabajos, visitas y recordatorios",
+      "url": "./index.html?go=agenda",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Mapa",
+      "short_name": "Mapa",
+      "description": "Presupuestos en el mapa",
+      "url": "./index.html?go=mapa",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }]
     }
   ],
   "share_target": {
