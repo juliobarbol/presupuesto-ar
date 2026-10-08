@@ -266,10 +266,10 @@ body.modal-open #main{overflow:hidden}
    Se aplica al panel entrante; la dirección indica hacia dónde se fue el dedo. */
 @keyframes tabSlideNext{from{opacity:.35;transform:translateX(26px)}to{opacity:1;transform:none}}
 @keyframes tabSlidePrev{from{opacity:.35;transform:translateX(-26px)}to{opacity:1;transform:none}}
-.tab-panel.tab-slide-next{animation:tabSlideNext .22s ease}
-.tab-panel.tab-slide-prev{animation:tabSlidePrev .22s ease}
+.tab-panel.tab-slide-next,.agc-grid.tab-slide-next{animation:tabSlideNext .22s ease}
+.tab-panel.tab-slide-prev,.agc-grid.tab-slide-prev{animation:tabSlidePrev .22s ease}
 @media (prefers-reduced-motion:reduce){
-  .tab-panel.tab-slide-next,.tab-panel.tab-slide-prev{animation:none}
+  .tab-panel.tab-slide-next,.tab-panel.tab-slide-prev,.agc-grid.tab-slide-next,.agc-grid.tab-slide-prev{animation:none}
 }
 
 /* Pastilla de destino del swipe entre pestañas (setupTabSwipe): dice a qué
@@ -279,6 +279,13 @@ body.modal-open #main{overflow:hidden}
 #tab-swipe-hint.is-prev{left:12px;right:auto}
 #tab-swipe-hint.is-on{opacity:1}
 #tab-swipe-hint.is-ready{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+/* Ventanas que se cierran deslizando hacia abajo (navHojasInit): la rayita de
+   arriba es la seña de que se puede agarrar. Solo en pantallas táctiles. */
+@media (pointer:coarse){
+  .hoja-desliza{position:relative}
+  .hoja-desliza::before{content:'';position:absolute;top:7px;left:50%;width:36px;height:4px;margin-left:-18px;border-radius:2px;background:var(--muted);opacity:.35;pointer-events:none;z-index:1}
+}
 
 /* PRINT ZONE */
 #print-zone{display:none}
@@ -10972,6 +10979,19 @@ function _swipeTab(dir) {
   }
 }
 
+// Paso del calendario por gesto: misma animación de entrada que las pestañas,
+// aplicada a la grilla (el elemento se conserva entre renders).
+function _swipeCal(dir) {
+  calStep(dir);
+  const g = document.getElementById('agc-grid');
+  if (!g) return;
+  const cls = dir > 0 ? 'tab-slide-next' : 'tab-slide-prev';
+  g.classList.remove('tab-slide-next', 'tab-slide-prev');
+  void g.offsetWidth;
+  g.classList.add(cls);
+  g.addEventListener('animationend', () => g.classList.remove(cls), { once: true });
+}
+
 // ─── MODE ────────────────────────────────────
 // Devuelve el modo activo a partir de los flags de state. Centraliza la
 // lógica para que loadFromHistory, impIndividual, impBackup, etc. no la
@@ -21239,6 +21259,21 @@ function calStep(dir) {
 }
 function calPrev() { calStep(-1); }
 function calNext() { calStep(1); }
+// Deslizar sobre el calendario (setupTabSwipe): en Mes y en 3 días el gesto
+// horizontal es del calendario —pasa de mes o de tanda de días, como en
+// cualquier app de calendario— y no de la barra de pestañas. Semana queda
+// afuera porque sus columnas ya se desplazan de costado.
+function calSwipeActivo() {
+  return _calView === 'mes' || _calView === '3dias';
+}
+// Lo que dice la pastilla mientras se arrastra: a dónde se va.
+function calSwipeLabel(dir) {
+  if (_calView === '3dias') return dir > 0 ? 'Días siguientes' : 'Días anteriores';
+  let m = (_calM == null ? +today().split('-')[1] - 1 : _calM) + dir, y = _calY == null ? +today().split('-')[0] : _calY;
+  if (m < 0) { m = 11; y--; } else if (m > 11) { m = 0; y++; }
+  const ya = +today().split('-')[0];
+  return CAL_MESES[m] + (y !== ya ? ' ' + y : '');
+}
 function calToday() {
   const t = today().split('-');
   _calY = +t[0]; _calM = +t[1] - 1;
@@ -22845,6 +22880,7 @@ function _navSoltar(t, id) {
 
 function _navCerrar(c) {
   try {
+    if (c.t === 'salir') { _navAvisoSalir(); return; }
     if (c.t === 'tab') {
       const ed = document.getElementById('panel-editor');
       if (ed && !ed.classList.contains('active')) switchTab('editor');
@@ -22875,6 +22911,113 @@ function _navTab(name) {
   const hay = _navViva('tab', 'tab');
   if (name === 'editor') { if (hay) _navSoltar('tab', 'tab'); }
   else if (!hay) _navPush({ t: 'tab', id: 'tab' });
+}
+
+// "Tocá Atrás de nuevo para salir" (como las apps de Android). En el Editor y sin
+// nada abierto, "Atrás" cerraba la app de un toque: con el pulgar cerca del
+// borde, a mitad de un presupuesto, es fácil tocarlo sin querer. No se pierde
+// nada (el presupuesto se autoguarda), pero hay que volver a abrir la app y
+// encontrar dónde se estaba. Ahora el primer "Atrás" deja un aviso y recién el
+// segundo, dentro de NAV_SALIR_MS, sale.
+// Cómo: una capa 'salir' al FONDO de la pila, armada con el primer toque en el
+// Editor (sin gesto no se puede apilar, ver _navConGesto). Al consumirla se
+// avisa y se deja de armar por NAV_SALIR_MS: el "Atrás" siguiente encuentra la
+// pila vacía y sale. Pasado ese tiempo, el próximo toque la vuelve a armar.
+// Solo en pantallas táctiles: en la compu el "Atrás" del navegador no cierra
+// nada y un aviso ahí sería ruido.
+const NAV_SALIR_MS = 2500;
+let _navSalirHasta = 0;
+function _navAvisoSalir() {
+  _navSalirHasta = Date.now() + NAV_SALIR_MS;
+  if (typeof toast === 'function') toast('Tocá Atrás de nuevo para salir', 'info', NAV_SALIR_MS);
+}
+function _navArmarSalida() {
+  if (_navCapas.length || Date.now() < _navSalirHasta) return;
+  const ed = document.getElementById('panel-editor');
+  if (!ed || !ed.classList.contains('active')) return;
+  _navPush({ t: 'salir', id: 'salir' });
+}
+function navSalirInit() {
+  if (!window.matchMedia || !window.matchMedia('(pointer:coarse)').matches) return;
+  if (!window.history || typeof history.pushState !== 'function') return;
+  // pointerup (no click): corre ANTES del click, así si ese toque abre una
+  // ventana o cambia de pestaña, la capa 'salir' queda debajo de la nueva.
+  document.addEventListener('pointerup', _navArmarSalida, true);
+  document.addEventListener('keyup', _navArmarSalida, true);
+}
+
+// Cerrar ventanas deslizando hacia abajo (como una hoja de Android/iOS). Solo
+// las ventanas de consulta o de carga corta; quedan afuera la confirmación (es
+// una decisión: que la tome un botón), la vista previa (un documento que se
+// recorre y se agranda) y el visor de fotos (tiene sus propios gestos). El
+// gesto arranca solo si lo que está debajo del dedo está scrolleado arriba de
+// todo — si no, deslizar hacia abajo es volver hacia arriba en la lista — y
+// nunca sobre campos ni sobre las tiras que se arrastran de costado. Se cierra
+// con la misma función que la ✕ (NAV_OVERLAYS), así "Atrás" queda en orden.
+const NAV_HOJAS = ['clima-overlay', 'notif-overlay', 'notes-overlay', 'day-alert-overlay',
+  'phrases-overlay', 'moverlay', 'agenda-overlay', 'note-edit-overlay', 'nv-overlay', 'colab-overlay'];
+const NAV_HOJA_BLOCK = 'input,textarea,select,[contenteditable="true"],.agenda-clima-strip,' +
+  '.csel-pop,.cal-pop,.cpk-sv,.cpk-hue,.agc-swipe,[draggable="true"]';
+const NAV_HOJA_UMBRAL = 110;
+function navHojasInit() {
+  if (!window.matchMedia || !window.matchMedia('(pointer:coarse)').matches) return;
+  let g = null;
+  const volver = (box) => {
+    box.style.transition = 'transform .18s ease, opacity .18s ease';
+    box.style.transform = ''; box.style.opacity = '';
+    setTimeout(() => { box.style.transition = ''; }, 200);
+  };
+  NAV_HOJAS.forEach(id => {
+    const ov = document.getElementById(id);
+    const box = ov && ov.querySelector('[role="dialog"]');
+    if (!box || !NAV_OVERLAYS[id]) return;
+    box.classList.add('hoja-desliza');
+    ov.addEventListener('touchstart', (e) => {
+      g = null;
+      if (e.touches.length !== 1 || !ov.classList.contains('open')) return;
+      const t = e.target;
+      if (!box.contains(t) || (t.closest && t.closest(NAV_HOJA_BLOCK))) return;
+      for (let el = t; el; el = el.parentElement) {
+        if (el.scrollTop > 0) return;
+        if (el === box) break;
+      }
+      const p = e.touches[0];
+      g = { ov, box, id, x0: p.clientX, y0: p.clientY, t0: Date.now(), eje: 0, dy: 0, listo: false };
+    }, { passive: true });
+    ov.addEventListener('touchmove', (e) => {
+      if (!g || g.ov !== ov) return;
+      const p = e.touches[0], dx = p.clientX - g.x0, dy = p.clientY - g.y0;
+      if (!g.eje) {
+        if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
+        g.eje = (dy > 0 && dy > Math.abs(dx) * 1.3) ? 1 : 2;
+        if (g.eje === 2) { g = null; return; }
+      }
+      if (e.cancelable) e.preventDefault();   // que no rebote ni recargue la página
+      g.dy = Math.max(0, dy);
+      box.style.transition = 'none';
+      box.style.transform = `translateY(${g.dy}px)`;
+      box.style.opacity = String(Math.max(0.4, 1 - g.dy / 500));
+      const listo = g.dy > NAV_HOJA_UMBRAL;
+      if (listo && !g.listo) haptic(8);
+      g.listo = listo;
+    }, { passive: false });
+    const fin = (cancelado) => {
+      const s = g; g = null;
+      if (!s || s.ov !== ov || s.eje !== 1) return;
+      const vel = s.dy / Math.max(1, Date.now() - s.t0);       // px/ms: un tirón corto también cierra
+      if (!cancelado && (s.dy > NAV_HOJA_UMBRAL || (s.dy > 50 && vel > 0.6))) {
+        box.style.transition = 'transform .16s ease, opacity .16s ease';
+        box.style.transform = `translateY(${Math.round(window.innerHeight * 0.6)}px)`;
+        box.style.opacity = '0';
+        setTimeout(() => {
+          try { NAV_OVERLAYS[id](); } catch (err) { console.warn('hoja: no se pudo cerrar', id, err); }
+          box.style.transition = ''; box.style.transform = ''; box.style.opacity = '';
+        }, 150);
+      } else volver(box);
+    };
+    ov.addEventListener('touchend', () => fin(false), { passive: true });
+    ov.addEventListener('touchcancel', () => fin(true), { passive: true });
+  });
 }
 
 function _navEsPop(nd) {
@@ -23045,6 +23188,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   try { navInit(); } catch (e) { console.error('navInit', e); }
   try { navTecladoInit(); } catch (e) { console.error('navTecladoInit', e); }
   try { navSiguienteInit(); } catch (e) { console.error('navSiguienteInit', e); }
+  try { navSalirInit(); } catch (e) { console.error('navSalirInit', e); }
+  try { navHojasInit(); } catch (e) { console.error('navHojasInit', e); }
   try { pvGestosInit(); } catch (e) { console.error('pvGestosInit', e); }
 
   // Si el presupuesto cargado está en blanco (nada en edición), poner la fecha
@@ -23106,12 +23251,18 @@ window.addEventListener('DOMContentLoaded', async () => {
   (function setupTabSwipe(){
     const main = document.getElementById('main');
     if (!main) return;
+    // Los campos de texto NO bloquean: en el Editor casi toda la pantalla son
+    // campos y el gesto que arrancaba sobre uno no hacía nada. Lo que sí importa
+    // —estar escribiendo— ya lo corta `is-typing` (teclado arriba), y el campo
+    // enfocado se excluye igual por si el teclado es físico. El deslizador
+    // (range) sí es dueño del arrastre horizontal.
     const BLOCK = '#map-canvas,.leaflet-container,.agc-cols,.agc-viewtoggle,' +
-      '.agenda-clima-strip,.agc-swipe,.cpk-sv,.cpk-hue,input,textarea,select,' +
+      '.agenda-clima-strip,.agc-swipe,.cpk-sv,.cpk-hue,input[type="range"],' +
       '.csel-pop,.cal-pop';
     const UMBRAL = 70;
     let x0 = 0, y0 = 0, tracking = false, axis = 0;  // axis: 0 indeciso, 1 horiz, 2 vert
-    let panel = null, listo = false, hint = null;
+    const CAL = '#agc-grid,#agc-grid-head';
+    let panel = null, listo = false, hint = null, modo = 'tab';   // modo: 'tab' | 'cal'
     const pastilla = () => {
       if (hint) return hint;
       hint = document.createElement('div');
@@ -23136,7 +23287,13 @@ window.addEventListener('DOMContentLoaded', async () => {
       if (document.body.classList.contains('modal-open')) return;
       if (document.body.classList.contains('is-typing')) return;
       if (!_swipeVecina(1)) return;
-      if (e.target.closest && e.target.closest(BLOCK)) return;
+      modo = 'tab';
+      // Sobre la grilla de la Agenda (Mes / 3 días) el gesto cambia de mes o
+      // de días, no de pestaña. Se mira antes que BLOCK: 3 días usa .agc-cols.
+      if (e.target.closest && e.target.closest(CAL) &&
+          typeof calSwipeActivo === 'function' && calSwipeActivo()) modo = 'cal';
+      else if (e.target.closest && e.target.closest(BLOCK)) return;
+      if (e.target === document.activeElement && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
       const t = e.touches[0]; x0 = t.clientX; y0 = t.clientY; tracking = true;
     };
     const move = (e) => {
@@ -23147,17 +23304,17 @@ window.addEventListener('DOMContentLoaded', async () => {
         // Se bloquea en horizontal solo si domina claramente; si no, es scroll.
         axis = (Math.abs(dx) > Math.abs(dy) * 1.4) ? 1 : 2;
         if (axis === 2) { tracking = false; return; }       // scroll vertical: abandonar
-        panel = document.querySelector('.tab-panel.active');
+        panel = modo === 'cal' ? document.getElementById('agc-grid') : document.querySelector('.tab-panel.active');
       }
       const dir = dx < 0 ? 1 : -1;                          // dedo a la izquierda → siguiente
-      const dest = _swipeVecina(dir);
+      const dest = modo === 'cal' ? calSwipeLabel(dir) : TAB_LABELS[_swipeVecina(dir)];
       if (panel) {
         panel.style.transform = `translateX(${Math.round(dx * 0.35)}px)`;
         panel.style.opacity = String(Math.max(0.55, 1 - Math.abs(dx) / 600));
       }
       const h = pastilla();
       const ya = Math.abs(dx) > UMBRAL;
-      h.textContent = dir > 0 ? `${TAB_LABELS[dest] || ''} →` : `← ${TAB_LABELS[dest] || ''}`;
+      h.textContent = dir > 0 ? `${dest || ''} →` : `← ${dest || ''}`;
       h.classList.toggle('is-next', dir > 0);
       h.classList.toggle('is-prev', dir < 0);
       h.classList.add('is-on');
@@ -23171,7 +23328,8 @@ window.addEventListener('DOMContentLoaded', async () => {
       const t = e.changedTouches[0], dx = t.clientX - x0, dy = t.clientY - y0;
       if (Math.abs(dx) > UMBRAL && Math.abs(dx) > Math.abs(dy) * 1.5) {
         soltar(false);
-        _swipeTab(dx < 0 ? 1 : -1);
+        if (modo === 'cal') _swipeCal(dx < 0 ? 1 : -1);
+        else _swipeTab(dx < 0 ? 1 : -1);
       } else soltar(true);
     };
     const cancel = () => { tracking = false; soltar(true); };
