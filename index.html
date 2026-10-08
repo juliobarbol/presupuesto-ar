@@ -272,6 +272,14 @@ body.modal-open #main{overflow:hidden}
   .tab-panel.tab-slide-next,.tab-panel.tab-slide-prev{animation:none}
 }
 
+/* Pastilla de destino del swipe entre pestañas (setupTabSwipe): dice a qué
+   pestaña se va mientras se arrastra y se pinta al pasar el umbral. */
+#tab-swipe-hint{position:fixed;top:50%;z-index:1500;padding:8px 14px;border-radius:999px;background:var(--surface);color:var(--text);border:1px solid var(--border);box-shadow:0 4px 14px rgba(0,0,0,.14);font-size:13px;font-weight:600;font-family:var(--font-text);pointer-events:none;opacity:0;transform:translateY(-50%);transition:opacity .12s ease,background .12s ease,color .12s ease}
+#tab-swipe-hint.is-next{right:12px;left:auto}
+#tab-swipe-hint.is-prev{left:12px;right:auto}
+#tab-swipe-hint.is-on{opacity:1}
+#tab-swipe-hint.is-ready{background:var(--accent);color:#fff;border-color:var(--accent)}
+
 /* PRINT ZONE */
 #print-zone{display:none}
 
@@ -1882,7 +1890,8 @@ input[type=number]{-moz-appearance:textfield}
 /* Visor de foto a pantalla completa (tocar la miniatura de un ítem) */
 #photo-viewer-overlay{display:none;position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(0,0,0,.92);z-index:2100;align-items:center;justify-content:center;padding:16px}
 #photo-viewer-overlay.open{display:flex}
-#photo-viewer-overlay img{max-width:100%;max-height:100%;border-radius:var(--radius-box);object-fit:contain;cursor:zoom-out}
+#photo-viewer-overlay{touch-action:none;user-select:none;-webkit-user-select:none}
+#photo-viewer-overlay img{max-width:100%;max-height:100%;border-radius:var(--radius-box);object-fit:contain;cursor:zoom-in;transform-origin:center center;will-change:transform;-webkit-user-drag:none;pointer-events:none}
 #photo-viewer-close{position:absolute;top:14px;right:16px;width:42px;height:42px;border-radius:50%;background:rgba(255,255,255,.16);color:#fff;border:none;font-size:22px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center}
 
 /* ═══ ELEVACIÓN DE CARDS ════════════════════════════════════════════
@@ -5328,7 +5337,7 @@ input[type=number]{-moz-appearance:textfield}
 <!-- ════════════════════ VISOR DE FOTO ════════════════════
      Pantalla completa para revisar la foto de un ítem durante la edición.
      Se abre al tocar la miniatura; se cierra tocando la imagen/fondo o ✕. -->
-<div id="photo-viewer-overlay" role="dialog" aria-modal="true" aria-label="Foto del ítem" onclick="closePhotoViewer()">
+<div id="photo-viewer-overlay" role="dialog" aria-modal="true" aria-label="Foto del ítem">
   <button id="photo-viewer-close" type="button" aria-label="Cerrar" onclick="closePhotoViewer()">✕</button>
   <img id="photo-viewer-img" src="" alt="Foto del ítem">
 </div>
@@ -10390,6 +10399,7 @@ function openPhotoViewer(src){
   const ov  = document.getElementById('photo-viewer-overlay');
   const img = document.getElementById('photo-viewer-img');
   if (!ov || !img) return;
+  _pvReset(false);
   img.src = src;
   ov.classList.add('open');
 }
@@ -10399,6 +10409,132 @@ function closePhotoViewer(){
   const img = document.getElementById('photo-viewer-img');
   if (ov)  ov.classList.remove('open');
   if (img) img.src = '';   // liberar el dataURL en memoria
+  _pvReset(false);
+}
+
+// ─── Gestos del visor de fotos ───────────────────────────────────
+// La foto del ítem es para evaluar el árbol (dónde está la rama seca, si toca
+// el cable), y antes solo se podía mirar entera: tocarla la cerraba. Ahora:
+//   · pellizcar acerca/aleja (hasta 5×) alrededor de los dedos;
+//   · doble toque acerca 2,5× donde se tocó, y otro doble toque vuelve;
+//   · con zoom, un dedo arrastra la foto (sin salirse de sus bordes);
+//   · sin zoom, deslizar hacia arriba o abajo la cierra (como en la galería);
+//   · sin zoom, un toque la cierra como siempre (después de esperar un posible
+//     doble toque). El ✕ y "Atrás" siguen cerrando.
+// Pointer events + touch-action:none en el overlay: el navegador no hace su
+// propio zoom de página encima (que agrandaba toda la app y no la foto).
+const PV = { z: 1, x: 0, y: 0, ptrs: new Map(), g: null, tapT: 0, tapX: 0, tapY: 0, tapTimer: null };
+function _pvApply(animar) {
+  const img = document.getElementById('photo-viewer-img');
+  const ov  = document.getElementById('photo-viewer-overlay');
+  if (!img) return;
+  img.style.transition = animar ? 'transform .2s ease' : 'none';
+  img.style.transform = (PV.z === 1 && !PV.x && !PV.y) ? '' :
+    `translate(${PV.x}px, ${PV.y}px) scale(${PV.z})`;
+  // Al arrastrar para cerrar, el fondo se aclara: se ve que se va a cerrar.
+  if (ov) ov.style.background = (PV.z === 1 && PV.y) ?
+    `rgba(0,0,0,${Math.max(0.35, 0.92 - Math.abs(PV.y) / 400)})` : '';
+}
+function _pvReset(animar) {
+  PV.z = 1; PV.x = 0; PV.y = 0; PV.ptrs.clear(); PV.g = null;
+  clearTimeout(PV.tapTimer); PV.tapTimer = null; PV.tapT = 0;
+  _pvApply(animar);
+}
+// Que la foto agrandada no se pueda arrastrar fuera de la pantalla.
+function _pvLimitar() {
+  const img = document.getElementById('photo-viewer-img');
+  if (!img) return;
+  const mx = Math.max(0, (img.offsetWidth * PV.z - window.innerWidth) / 2);
+  const my = Math.max(0, (img.offsetHeight * PV.z - window.innerHeight) / 2);
+  PV.x = Math.min(mx, Math.max(-mx, PV.x));
+  PV.y = Math.min(my, Math.max(-my, PV.y));
+}
+// Zoom a `z` dejando quieto el punto de pantalla (px,py) que estaba en (ax,ay)
+// con el zoom z0 y el corrimiento (x0,y0). El centro de la foto es el centro
+// de la pantalla (el overlay la centra con flex).
+function _pvZoomEn(z, z0, x0, y0, ax, ay, px, py) {
+  const cx = window.innerWidth / 2, cy = window.innerHeight / 2;
+  PV.z = z;
+  PV.x = px - cx - z * (ax - cx - x0) / z0;
+  PV.y = py - cy - z * (ay - cy - y0) / z0;
+}
+function _pvTap(e) {
+  const now = Date.now();
+  const doble = PV.tapT && now - PV.tapT < 300 &&
+    Math.abs(e.clientX - PV.tapX) < 30 && Math.abs(e.clientY - PV.tapY) < 30;
+  clearTimeout(PV.tapTimer); PV.tapTimer = null;
+  if (doble) {
+    PV.tapT = 0;
+    if (PV.z > 1) { PV.z = 1; PV.x = 0; PV.y = 0; }
+    else { _pvZoomEn(2.5, 1, 0, 0, e.clientX, e.clientY, e.clientX, e.clientY); _pvLimitar(); }
+    _pvApply(true);
+    return;
+  }
+  PV.tapT = now; PV.tapX = e.clientX; PV.tapY = e.clientY;
+  if (PV.z === 1) PV.tapTimer = setTimeout(() => { PV.tapTimer = null; closePhotoViewer(); }, 300);
+}
+function pvGestosInit() {
+  const ov = document.getElementById('photo-viewer-overlay');
+  if (!ov) return;
+  const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+  ov.addEventListener('pointerdown', (e) => {
+    if (e.target.closest && e.target.closest('#photo-viewer-close')) return;
+    PV.ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    try { ov.setPointerCapture(e.pointerId); } catch (_) {}
+    const ps = [...PV.ptrs.values()];
+    if (ps.length === 1) {
+      PV.g = { tipo: 'uno', sx: e.clientX, sy: e.clientY, x0: PV.x, y0: PV.y, t: Date.now(), movio: false };
+    } else if (ps.length === 2) {
+      clearTimeout(PV.tapTimer); PV.tapTimer = null; PV.tapT = 0;
+      PV.g = { tipo: 'pinza', d0: dist(ps[0], ps[1]) || 1, z0: PV.z, x0: PV.x, y0: PV.y,
+        ax: (ps[0].x + ps[1].x) / 2, ay: (ps[0].y + ps[1].y) / 2 };
+    }
+  });
+  ov.addEventListener('pointermove', (e) => {
+    if (!PV.ptrs.has(e.pointerId) || !PV.g) return;
+    PV.ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const g = PV.g;
+    if (g.tipo === 'pinza') {
+      const ps = [...PV.ptrs.values()];
+      if (ps.length < 2) return;
+      const z = Math.min(5, Math.max(1, g.z0 * dist(ps[0], ps[1]) / g.d0));
+      _pvZoomEn(z, g.z0, g.x0, g.y0, g.ax, g.ay, (ps[0].x + ps[1].x) / 2, (ps[0].y + ps[1].y) / 2);
+      _pvApply(false);
+      return;
+    }
+    const dx = e.clientX - g.sx, dy = e.clientY - g.sy;
+    if (!g.movio && Math.hypot(dx, dy) < 8) return;
+    g.movio = true;
+    if (PV.z > 1) { PV.x = g.x0 + dx; PV.y = g.y0 + dy; _pvLimitar(); }
+    else { PV.x = 0; PV.y = dy; }       // sin zoom: arrastre vertical para cerrar
+    _pvApply(false);
+  });
+  const fin = (e) => {
+    if (!PV.ptrs.has(e.pointerId)) return;
+    PV.ptrs.delete(e.pointerId);
+    const g = PV.g;
+    if (!g) return;
+    if (g.tipo === 'pinza') {
+      if (PV.ptrs.size) {                 // queda un dedo: sigue como arrastre
+        const r = [...PV.ptrs.values()][0];
+        PV.g = { tipo: 'uno', sx: r.x, sy: r.y, x0: PV.x, y0: PV.y, t: 0, movio: true };
+        return;
+      }
+      PV.g = null;
+      if (PV.z < 1.05) { PV.z = 1; PV.x = 0; PV.y = 0; } else _pvLimitar();
+      _pvApply(true);
+      return;
+    }
+    PV.g = null;
+    if (e.type === 'pointercancel') { if (PV.z === 1) { PV.y = 0; _pvApply(true); } return; }
+    if (!g.movio) { _pvTap(e); return; }
+    if (PV.z === 1) {
+      if (Math.abs(PV.y) > 110) { haptic(8); closePhotoViewer(); }
+      else { PV.y = 0; _pvApply(true); }
+    }
+  };
+  ov.addEventListener('pointerup', fin);
+  ov.addEventListener('pointercancel', fin);
 }
 
 // Cerrar el visor con Escape (en desktop). En el celular se cierra tocando.
@@ -10802,19 +10938,31 @@ function scrollMainToTop() {
 // con el orden de los .tab-btn y con el array `names` de switchTab. 'empresa'
 // (Configuración) no está: se llega por el engranaje, no por swipe.
 const TAB_ORDER = ['editor', 'historial', 'agenda', 'mapa', 'facturacion'];
+const TAB_LABELS = { editor: 'Editor', historial: 'Historial', agenda: 'Agenda', mapa: 'Mapa', facturacion: 'Facturas' };
 
-// Navega a la pestaña vecina (dir: +1 siguiente, -1 anterior) con una animación
-// de entrada. Usada por el gesto de swipe. En los bordes no hace nada.
-function _navTab(dir) {
+// Pestaña vecina de la actual en la dirección dir (+1 siguiente, -1 anterior),
+// con wrap circular: desde Facturas (última) sigue a Editor (primera) y
+// viceversa. El +len antes del módulo evita el negativo con dir=-1. Devuelve
+// null en una pantalla sin swipe (Configuración).
+function _swipeVecina(dir) {
   const cur = document.querySelector('.tab-panel.active');
-  if (!cur) return;
+  if (!cur) return null;
   const i = TAB_ORDER.indexOf(cur.id.replace('panel-', ''));
-  if (i < 0) return;                 // p. ej. Configuración: sin swipe-nav
-  // Wrap circular: desde Facturas (última) el swipe sigue a Editor (primera) y
-  // viceversa. El +len antes del módulo evita el negativo con dir=-1.
-  const j = (i + dir + TAB_ORDER.length) % TAB_ORDER.length;
-  switchTab(TAB_ORDER[j]);
-  const p = document.getElementById('panel-' + TAB_ORDER[j]);
+  if (i < 0) return null;
+  return TAB_ORDER[(i + dir + TAB_ORDER.length) % TAB_ORDER.length];
+}
+
+// Navega a la pestaña vecina con una animación de entrada. La usa el gesto.
+// OJO con el nombre: hasta la v234 se llamaba `_navTab`, igual que la función
+// del botón Atrás de js/nav.js. Como todo el JS vive en un mismo ámbito global,
+// la declaración de nav.js (más abajo) pisaba a esta y el swipe terminaba
+// llamando a la del botón Atrás con 1/-1: no cambiaba de pestaña. Por eso
+// test/gestos.test.cjs exige que no haya dos funciones con el mismo nombre.
+function _swipeTab(dir) {
+  const dest = _swipeVecina(dir);
+  if (!dest) return;
+  switchTab(dest);
+  const p = document.getElementById('panel-' + dest);
   if (p) {
     const cls = dir > 0 ? 'tab-slide-next' : 'tab-slide-prev';
     p.classList.remove('tab-slide-next', 'tab-slide-prev');
@@ -21947,7 +22095,9 @@ function _swMove(e) {
   const del  = s.wrap.querySelector('.agc-swipe-del');
   if (done) done.style.opacity = dx > 0 ? String(0.45 + 0.55 * ratio) : '0';
   if (del)  del.style.opacity  = dx < 0 ? String(0.45 + 0.55 * ratio) : '0';
-  s.wrap.classList.toggle('agc-swipe-ready', Math.abs(dx) >= s.commit);
+  const listo = Math.abs(dx) >= s.commit;
+  if (listo && !s.wrap.classList.contains('agc-swipe-ready')) haptic(8);
+  s.wrap.classList.toggle('agc-swipe-ready', listo);
 }
 function _swUp() {
   const s = _swState;
@@ -22758,6 +22908,63 @@ function navTecladoInit() {
   }, 150); });
 }
 
+// Vibración corta de confirmación (Android; iOS no expone la API y se ignora).
+// Solo en pantallas táctiles: en la compu no hay nada que vibrar. Se usa al
+// cruzar el umbral de un gesto ("ya podés soltar"), no en cada toque.
+function haptic(ms) {
+  try {
+    if (!navigator.vibrate || !window.matchMedia || !window.matchMedia('(pointer:coarse)').matches) return;
+    navigator.vibrate(ms || 8);
+  } catch (_) {}
+}
+
+// Tecla de acción del teclado del celular ("Siguiente" / "Listo"). Sin esto,
+// en el Editor y en Configuración el Enter de un campo de una línea no hacía
+// nada y había que cerrar el teclado y tocar el campo siguiente. Ahora pasa al
+// próximo campo de texto VISIBLE de la misma pantalla y, en el último, cierra
+// el teclado. El teclado muestra la flecha correcta porque al enfocar se pone
+// `enterkeyhint`. Fuera de esas dos pantallas no se toca nada (las notas de la
+// Agenda guardan con Enter), ni los campos que ya usan Enter (si el handler
+// propio hace preventDefault, se respeta), ni las áreas de texto (Enter es
+// salto de línea), ni la búsqueda.
+const NAV_SIG_ZONA = '#panel-editor, #panel-empresa';
+const NAV_SIG_ORIGEN = /^(text|number|tel|email|url)$/;
+function _navSigEsOrigen(el) {
+  return el && el.tagName === 'INPUT' && NAV_SIG_ORIGEN.test(el.type || 'text') &&
+    !el.readOnly && !el.disabled && el.closest && el.closest(NAV_SIG_ZONA);
+}
+function _navSigCampos(el) {
+  const zona = el.closest(NAV_SIG_ZONA);
+  if (!zona) return [];
+  return Array.prototype.filter.call(zona.querySelectorAll('input, textarea'), c =>
+    (c.tagName === 'TEXTAREA' || NAV_SIG_ORIGEN.test(c.type || 'text')) &&
+    !c.readOnly && !c.disabled && c.tabIndex >= 0 && c.getClientRects().length > 0);
+}
+function _navSiguiente(el) {
+  const campos = _navSigCampos(el);
+  const i = campos.indexOf(el);
+  return i >= 0 ? (campos[i + 1] || null) : null;
+}
+function navSiguienteInit() {
+  document.addEventListener('focusin', (e) => {
+    const el = e.target;
+    if (!_navSigEsOrigen(el) || el.hasAttribute('data-ekh-propio')) return;
+    if (el.hasAttribute('enterkeyhint') && !el.hasAttribute('data-ekh')) { el.setAttribute('data-ekh-propio', ''); return; }
+    el.setAttribute('enterkeyhint', _navSiguiente(el) ? 'next' : 'done');
+    el.setAttribute('data-ekh', '');
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' || e.defaultPrevented || e.isComposing) return;
+    if (e.shiftKey || e.altKey || e.ctrlKey || e.metaKey) return;
+    const el = e.target;
+    if (!_navSigEsOrigen(el)) return;
+    e.preventDefault();
+    const sig = _navSiguiente(el);
+    if (sig) sig.focus();
+    else el.blur();                    // último campo: "Listo" cierra el teclado
+  });
+}
+
 function navInit() {
   if (!window.history || typeof history.pushState !== 'function' || typeof MutationObserver === 'undefined') return;
   // Recarga parada sobre una entrada nuestra (las entradas sobreviven al
@@ -22837,6 +23044,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   // Botón "Atrás" del teléfono: cierra lo abierto o vuelve al Editor.
   try { navInit(); } catch (e) { console.error('navInit', e); }
   try { navTecladoInit(); } catch (e) { console.error('navTecladoInit', e); }
+  try { navSiguienteInit(); } catch (e) { console.error('navSiguienteInit', e); }
+  try { pvGestosInit(); } catch (e) { console.error('pvGestosInit', e); }
 
   // Si el presupuesto cargado está en blanco (nada en edición), poner la fecha
   // de emisión en HOY. Evita que un borrador vacío arrastre la fecha vieja del
@@ -22882,45 +23091,97 @@ window.addEventListener('DOMContentLoaded', async () => {
     update();
   })();
 
-  // Navegación por swipe entre pestañas. Detector liviano sobre #main con LOCK
-  // DE EJE: solo actúa si el gesto es claramente horizontal, así no interfiere
-  // con el scroll vertical. Guardas: no navega con un modal abierto, ni cuando
-  // el gesto arranca sobre un elemento que ya es dueño del deslizamiento
-  // horizontal (mapa, columnas del calendario, tiras, filas con swipe-acción,
-  // color picker, inputs/selects/dropdowns). Listeners pasivos → no bloquea el
-  // scroll nativo. El feedback visual lo da la animación de _navTab.
+  // Navegación por swipe entre pestañas. Detector liviano con LOCK DE EJE: solo
+  // actúa si el gesto es claramente horizontal, así no interfiere con el
+  // scroll vertical. Guardas: no navega con un modal abierto ni con el teclado
+  // arriba, ni cuando el gesto arranca sobre un elemento que ya es dueño del
+  // deslizamiento horizontal (mapa, columnas del calendario, tiras, filas con
+  // swipe-acción, color picker, inputs/selects/dropdowns). Listeners pasivos →
+  // no bloquea el scroll nativo.
+  // Feedback mientras se arrastra: la pantalla acompaña al dedo (amortiguada) y
+  // una pastilla dice a qué pestaña se va; al pasar el umbral se pinta y el
+  // teléfono vibra corto — "ya podés soltar". Se escucha también en la barra
+  // de pestañas: en el Mapa la pantalla entera es el mapa (que se arrastra) y
+  // la barra es la única superficie libre para deslizar.
   (function setupTabSwipe(){
     const main = document.getElementById('main');
     if (!main) return;
     const BLOCK = '#map-canvas,.leaflet-container,.agc-cols,.agc-viewtoggle,' +
       '.agenda-clima-strip,.agc-swipe,.cpk-sv,.cpk-hue,input,textarea,select,' +
       '.csel-pop,.cal-pop';
+    const UMBRAL = 70;
     let x0 = 0, y0 = 0, tracking = false, axis = 0;  // axis: 0 indeciso, 1 horiz, 2 vert
-    main.addEventListener('touchstart', (e) => {
+    let panel = null, listo = false, hint = null;
+    const pastilla = () => {
+      if (hint) return hint;
+      hint = document.createElement('div');
+      hint.id = 'tab-swipe-hint';
+      hint.setAttribute('aria-hidden', 'true');
+      document.body.appendChild(hint);
+      return hint;
+    };
+    const soltar = (animar) => {
+      if (panel) {
+        const p = panel;
+        p.style.transition = animar ? 'transform .18s ease, opacity .18s ease' : '';
+        p.style.transform = ''; p.style.opacity = '';
+        if (animar) setTimeout(() => { p.style.transition = ''; }, 200);
+      }
+      if (hint) hint.classList.remove('is-on', 'is-ready');
+      panel = null; listo = false;
+    };
+    const start = (e) => {
       tracking = false; axis = 0;
       if (e.touches.length !== 1) return;
       if (document.body.classList.contains('modal-open')) return;
-      const cur = document.querySelector('.tab-panel.active');
-      if (!cur || TAB_ORDER.indexOf(cur.id.replace('panel-', '')) < 0) return;
+      if (document.body.classList.contains('is-typing')) return;
+      if (!_swipeVecina(1)) return;
       if (e.target.closest && e.target.closest(BLOCK)) return;
       const t = e.touches[0]; x0 = t.clientX; y0 = t.clientY; tracking = true;
-    }, { passive: true });
-    main.addEventListener('touchmove', (e) => {
-      if (!tracking || axis !== 0) return;
+    };
+    const move = (e) => {
+      if (!tracking) return;
       const t = e.touches[0], dx = t.clientX - x0, dy = t.clientY - y0;
-      if (Math.abs(dx) < 12 && Math.abs(dy) < 12) return;   // aún indeciso
-      // Se bloquea en horizontal solo si domina claramente; si no, es scroll.
-      axis = (Math.abs(dx) > Math.abs(dy) * 1.4) ? 1 : 2;
-      if (axis === 2) tracking = false;                     // scroll vertical: abandonar
-    }, { passive: true });
-    main.addEventListener('touchend', (e) => {
-      if (!tracking || axis !== 1) { tracking = false; return; }
+      if (axis === 0) {
+        if (Math.abs(dx) < 12 && Math.abs(dy) < 12) return;   // aún indeciso
+        // Se bloquea en horizontal solo si domina claramente; si no, es scroll.
+        axis = (Math.abs(dx) > Math.abs(dy) * 1.4) ? 1 : 2;
+        if (axis === 2) { tracking = false; return; }       // scroll vertical: abandonar
+        panel = document.querySelector('.tab-panel.active');
+      }
+      const dir = dx < 0 ? 1 : -1;                          // dedo a la izquierda → siguiente
+      const dest = _swipeVecina(dir);
+      if (panel) {
+        panel.style.transform = `translateX(${Math.round(dx * 0.35)}px)`;
+        panel.style.opacity = String(Math.max(0.55, 1 - Math.abs(dx) / 600));
+      }
+      const h = pastilla();
+      const ya = Math.abs(dx) > UMBRAL;
+      h.textContent = dir > 0 ? `${TAB_LABELS[dest] || ''} →` : `← ${TAB_LABELS[dest] || ''}`;
+      h.classList.toggle('is-next', dir > 0);
+      h.classList.toggle('is-prev', dir < 0);
+      h.classList.add('is-on');
+      h.classList.toggle('is-ready', ya);
+      if (ya && !listo) haptic(8);
+      listo = ya;
+    };
+    const end = (e) => {
+      if (!tracking || axis !== 1) { tracking = false; soltar(false); return; }
       tracking = false;
       const t = e.changedTouches[0], dx = t.clientX - x0, dy = t.clientY - y0;
-      if (Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy) * 1.5) {
-        _navTab(dx < 0 ? 1 : -1);     // dedo a la izquierda → siguiente
-      }
-    }, { passive: true });
+      if (Math.abs(dx) > UMBRAL && Math.abs(dx) > Math.abs(dy) * 1.5) {
+        soltar(false);
+        _swipeTab(dx < 0 ? 1 : -1);
+      } else soltar(true);
+    };
+    const cancel = () => { tracking = false; soltar(true); };
+    [main, document.getElementById('tabs')].forEach(el => {
+      if (!el) return;
+      el.addEventListener('touchstart', start, { passive: true });
+      el.addEventListener('touchmove', move, { passive: true });
+      el.addEventListener('touchend', end, { passive: true });
+      el.addEventListener('touchcancel', cancel, { passive: true });
+    });
   })();
 
   // Lock de scroll unificado para modales: un único observador vigila la clase
@@ -23095,6 +23356,7 @@ function irDestino(go) {
   if (go === 'nuevo' && typeof newQuote === 'function') newQuote();
   else if (go === 'historial' && typeof switchTab === 'function') switchTab('historial');
   else if (go === 'agenda' && typeof switchTab === 'function') switchTab('agenda');
+  else if (go === 'mapa' && typeof switchTab === 'function') switchTab('mapa');
 }
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.addEventListener('message', (ev) => {
