@@ -17,6 +17,13 @@
 //   5. Visor de fotos: doble toque acerca y vuelve, un toque cierra, y
 //      deslizar hacia abajo cierra.
 //   6. Accesos directos del ícono: Agenda y Mapa, y ?go=mapa resuelve.
+//   7. Agenda: deslizar sobre la grilla de Mes / 3 días cambia de mes o de
+//      días (no de pestaña); en la vista Agenda (lista) sigue cambiando de
+//      pestaña.
+//   8. "Tocá Atrás de nuevo para salir": en el Editor el primer "Atrás" avisa
+//      y no sale; el segundo sale.
+//   9. Ventanas que se cierran deslizando hacia abajo; un tirón corto no
+//      cierra, y con la lista scrolleada el gesto es scroll, no cierre.
 //
 // Uso:  node test/gestos.test.cjs
 
@@ -124,6 +131,21 @@ const tab = (page) => page.evaluate(() => (document.querySelector('.tab-panel.ac
 
       await deslizar(page, 200, 500, 170, 200);
       check('2e un gesto vertical no navega', await tab(page) === 'panel-editor', await tab(page));
+
+      // Arrancar sobre un campo de texto (sin escribir en él) también navega:
+      // en el Editor casi toda la pantalla son campos.
+      {
+        const c = await page.evaluate(() => {
+          document.getElementById('main').scrollTop = 0;
+          const r = document.getElementById('client-name').getBoundingClientRect();
+          return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+        });
+        await espera(400);
+        await deslizar(page, 300, c.y, 60, c.y);
+        check('2e2 arrancando sobre un campo de texto también cambia de pestaña', await tab(page) === 'panel-historial', await tab(page));
+        await page.evaluate(() => { switchTab('editor'); document.getElementById('main').scrollTop = 0; });
+        await espera(300);
+      }
 
       // Mientras se arrastra: la pastilla dice a dónde va.
       {
@@ -238,6 +260,128 @@ const tab = (page) => page.evaluate(() => (document.querySelector('.tab-panel.ac
       await page.evaluate(() => irDestino('mapa'));
       await espera(300);
       check('6b irDestino("mapa") abre el Mapa', await tab(page) === 'panel-mapa', await tab(page));
+      await page.close();
+    }
+
+    // ── 7. Agenda: deslizar sobre el calendario ──
+    {
+      const page = await nuevaPagina(browser);
+      await page.evaluate(() => { switchTab('agenda'); calSetView('mes'); calToday(); });
+      await espera(300);
+      const leer = () => page.evaluate(() => ({
+        tab: document.querySelector('.tab-panel.active').id,
+        tit: document.getElementById('agc-title').textContent, m: _calM, a: _calAnchor,
+      }));
+      const antes = await leer();
+      const r = await page.evaluate(() => {
+        const g = document.getElementById('agc-grid').getBoundingClientRect();
+        return { y: g.top + Math.min(g.height / 2, 120) };
+      });
+      // Pastilla durante el gesto: dice el mes de destino.
+      {
+        const cdp = await page.target().createCDPSession();
+        const tp = (x) => [{ x, y: Math.round(r.y), id: 1, radiusX: 4, radiusY: 4, force: 1 }];
+        await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: tp(300) });
+        for (const x of [285, 255, 215, 180]) { await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: tp(x) }); await espera(15); }
+        const h = await page.evaluate(() => document.getElementById('tab-swipe-hint').textContent);
+        const esperado = await page.evaluate(() => CAL_MESES[(_calM + 1) % 12]);
+        check('7a la pastilla dice el mes siguiente', h.includes(esperado), h);
+        await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+        await cdp.detach();
+        await espera(350);
+      }
+      let d = await leer();
+      check('7b Mes: deslizar a la izquierda pasa al mes siguiente (sin cambiar de pestaña)',
+        d.tab === 'panel-agenda' && d.m === (antes.m + 1) % 12, JSON.stringify(d));
+      await deslizar(page, 60, r.y, 300, r.y);
+      d = await leer();
+      check('7c a la derecha vuelve al mes de antes', d.tab === 'panel-agenda' && d.m === antes.m, JSON.stringify(d));
+
+      await page.evaluate(() => { calSetView('3dias'); calToday(); });
+      await espera(200);
+      const a0 = (await leer()).a;
+      const r3 = await page.evaluate(() => { const g = document.getElementById('agc-grid').getBoundingClientRect(); return g.top + Math.min(g.height / 2, 80); });
+      await deslizar(page, 300, r3, 60, r3);
+      d = await leer();
+      check('7d 3 días: deslizar avanza 3 días', d.tab === 'panel-agenda' && d.a === await page.evaluate((x) => _calAddDays(x, 3), a0), JSON.stringify(d));
+
+      await page.evaluate(() => calSetView('agenda'));
+      await espera(200);
+      await deslizar(page, 300, 400, 60, 400);
+      check('7e en la vista Agenda (lista) deslizar sigue cambiando de pestaña', await tab(page) === 'panel-mapa', await tab(page));
+      await page.evaluate(() => calSetView('mes'));
+      await page.close();
+    }
+
+    // ── 8. "Atrás" de nuevo para salir ──
+    {
+      const page = await nuevaPagina(browser);
+      await page.touchscreen.tap(180, 330);          // un toque cualquiera arma la capa
+      await espera(150);
+      const capas = await page.evaluate(() => _navCapas.map(c => c.t).join(','));
+      await page.goBack({ timeout: 4000 }).catch(() => {});
+      await espera(400);
+      const s1 = await page.evaluate(() => ({
+        app: /index\.html/.test(location.href),
+        toast: [...document.querySelectorAll('#toast-container .toast')].map(t => t.textContent).join('|'),
+      }));
+      check('8a primer "Atrás" en el Editor avisa y no sale',
+        capas === 'salir' && s1.app && /Atrás de nuevo/.test(s1.toast), `${capas} ${JSON.stringify(s1)}`);
+      await page.goBack({ timeout: 4000 }).catch(() => {});
+      await espera(400);
+      check('8b el segundo "Atrás" sale', page.url() === 'about:blank', page.url());
+      await page.close();
+    }
+    {
+      // Con la capa armada, ir y volver de otra pestaña sigue funcionando.
+      const page = await nuevaPagina(browser);
+      await page.touchscreen.tap(180, 330);
+      await espera(150);
+      const btn = await page.evaluate(() => { const r = document.querySelectorAll('.tab-btn')[1].getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; });
+      await page.touchscreen.tap(btn.x, btn.y);
+      await espera(300);
+      const c1 = await page.evaluate(() => _navCapas.map(c => c.t).join(','));
+      await page.goBack({ timeout: 4000 }).catch(() => {});
+      await espera(400);
+      const t1 = await tab(page);
+      check('8c pestaña → "Atrás" vuelve al Editor, sin aviso de salir',
+        c1 === 'salir,tab' && t1 === 'panel-editor' &&
+        !(await page.evaluate(() => /Atrás de nuevo/.test(document.getElementById('toast-container').textContent))), `${c1} ${t1}`);
+      await page.close();
+    }
+
+    // ── 9. Ventanas que se cierran deslizando hacia abajo ──
+    {
+      const page = await nuevaPagina(browser);
+      const abierto = () => page.evaluate(() => document.getElementById('notif-overlay').classList.contains('open'));
+      const caja = async () => page.evaluate(() => { const r = document.getElementById('notif-box').getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + 30 }; });
+      await page.evaluate(() => notifOpen());
+      await espera(300);
+      const grip = await page.evaluate(() => { const bx = document.getElementById('notif-box'); return bx.className + ' ' + getComputedStyle(bx, '::before').content; });
+      check('9f la ventana muestra la rayita para agarrar', /hoja-desliza ""/.test(grip), grip);
+      let b = await caja();
+      await deslizar(page, b.x, b.y, b.x, b.y + 40, 10);
+      check('9a un tirón corto no cierra', await abierto());
+      const tr = await page.evaluate(() => document.getElementById('notif-box').style.transform);
+      check('9b y la ventana vuelve a su lugar', !tr, tr);
+      await deslizar(page, b.x, b.y, b.x + 4, b.y + 200, 10);
+      await espera(300);
+      check('9c deslizar hacia abajo la cierra', !(await abierto()));
+      const capas = await page.evaluate(() => _navCapas.filter(c => !c.muerta && c.t === 'ov').length);
+      check('9d sin capa de "Atrás" colgada', capas === 0, String(capas));
+
+      // Con el contenido scrolleado, deslizar hacia abajo es scroll.
+      await page.evaluate(() => {
+        notifOpen();
+        const box = document.getElementById('notif-box');
+        const relleno = document.createElement('div'); relleno.style.height = '2000px'; relleno.id = '__relleno';
+        box.appendChild(relleno);
+        box.scrollTop = 300;
+      });
+      await espera(300);
+      b = await caja();
+      await deslizar(page, b.x, b.y + 100, b.x, b.y + 320, 10);
+      check('9e con la lista scrolleada no cierra', await abierto());
       await page.close();
     }
   } catch (e) {
