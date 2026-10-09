@@ -15,8 +15,17 @@ solo al mergear a `main`: la app se despliega sola, el Worker no. Desde tu compu
 
 ```bash
 cd push-worker
-npx wrangler deploy
+npx wrangler deploy --config ./wrangler.toml
 ```
+
+> ⚠️ **El `--config` no es opcional.** En la raíz del repo está el
+> `wrangler.jsonc` de la app, y wrangler busca primero `wrangler.json(c)`
+> subiendo carpetas **antes** que el `wrangler.toml` local: sin `--config`,
+> desde `push-worker/` publica la **app** (`presupuesto-ar`) en vez del Worker
+> de avisos. Pasó el 09/10/2026 (sin daño: subió la misma versión que ya
+> estaba).
+
+Publicado por última vez: 09/10/2026 (versión del repo v237).
 
 Con eso quedan activos los avisos de trabajos/visitas, los recordatorios con
 hora y el botón **"Probar notificaciones"** de la app. Mientras no lo publiques,
@@ -118,8 +127,8 @@ npx wrangler secret put ALLOWED_ORIGIN
 ### 4. Desplegar el Worker
 
 ```bash
-# Desde push-worker/
-npx wrangler deploy
+# Desde push-worker/ (el --config es obligatorio, ver arriba)
+npx wrangler deploy --config ./wrangler.toml
 ```
 
 Te da la URL pública, por ejemplo:
