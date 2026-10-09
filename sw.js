@@ -13,7 +13,7 @@
 //
 //  Para forzar actualizacion tras un deploy: subir el CACHE_VERSION.
 
-const CACHE_VERSION = 'presupuesto-v236';
+const CACHE_VERSION = 'presupuesto-v237';
 // Caché APARTE, que sobrevive a las versiones, para lo pesado que se baja bajo
 // demanda: html2pdf (927 KB, "Compartir imagen"). Antes vivía en la caché de la
 // versión y cada deploy la borraba: la primera "Compartir imagen" después de
@@ -269,9 +269,10 @@ self.addEventListener('push', (event) => {
       icon: './icon-192.png',
       badge: './icon-192.png',
       lang: 'es-AR',
-      // tag + renotify: si llega otro aviso, reemplaza al anterior pero vuelve
-      // a sonar/vibrar (mejor que apilar o que quede silencioso).
-      tag: 'presupuesto-aviso',
+      // tag + renotify: un aviso reemplaza al anterior DEL MISMO TIPO pero
+      // vuelve a sonar. Antes todos compartían un tag y el de vencidos borraba
+      // al de seguimiento que había llegado un segundo antes.
+      tag: (typeof data.tag === 'string' && data.tag) ? data.tag : 'presupuesto-aviso',
       renotify: true,
       // requireInteraction: en Android la deja fija hasta que la tocás, así no
       // se pierde si no estás mirando el teléfono en ese momento.
@@ -279,6 +280,21 @@ self.addEventListener('push', (event) => {
       vibrate: [120, 60, 120],
       data: { go: data.go || '' },
     })
+  );
+});
+
+// El navegador puede renovar la suscripción por su cuenta (vence, rota la
+// clave). Sin esto el teléfono quedaba sin avisos hasta desactivar y volver a
+// activar. Se re-suscribe con la misma clave; la app manda el endpoint nuevo
+// al Worker la próxima vez que abre con señal (initPush).
+self.addEventListener('pushsubscriptionchange', (event) => {
+  const opts = event.oldSubscription && event.oldSubscription.options;
+  if (!opts || !opts.applicationServerKey) return;
+  event.waitUntil(
+    self.registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: opts.applicationServerKey,
+    }).catch(() => {})
   );
 });
 

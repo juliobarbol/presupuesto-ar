@@ -1791,6 +1791,16 @@ input[type=number]{-moz-appearance:textfield}
 
 /* irABackup(): la sección de backup se marca un momento al llegar. */
 .fu-config.is-destacada{box-shadow:0 0 0 3px var(--accent);transition:box-shadow .3s}
+.push-tipos{display:flex;flex-direction:column;gap:6px;margin:8px 0}
+.push-tipos .fu-check{display:flex;gap:8px;align-items:flex-start;font-size:13px;line-height:1.35}
+.push-estado{font-size:12.5px;color:var(--muted);white-space:pre-line;margin:8px 0}
+.push-estado.is-ok{color:var(--accent-fg,var(--text))}
+.push-estado.is-err{color:var(--red)}
+.push-estado:empty{display:none}
+.nt-push-cta{display:flex;flex-direction:column;gap:8px;padding:10px 12px;margin:0 0 10px;border-radius:10px;background:var(--accent-tint);border:1px solid var(--border)}
+.nt-push-cta strong{display:block;font-size:13.5px}
+.nt-push-cta span{display:block;font-size:12.5px;opacity:.85;margin-top:2px}
+.nt-push-btns{display:flex;gap:8px;justify-content:flex-end}
 
 /* Avisos del Historial plegados en UNA línea (histAvisosSync). Desplegados, los
    tres banners ocupaban dos pantallas antes del buscador: el que entraba a
@@ -4332,7 +4342,14 @@ input[type=number]{-moz-appearance:textfield}
                 <span class="fu-slider"></span>
               </label>
             </div>
-            <p class="fu-help">Te llega una notificación al teléfono cuando un presupuesto llega al día de seguimiento o se vence, aunque la app esté cerrada. Usa los mismos avisos del sistema de seguimiento de arriba.</p>
+            <p class="fu-help">Te llega una notificación al teléfono aunque la app esté cerrada. Se activa en cada teléfono por separado.</p>
+            <div id="push-tipos" class="push-tipos" hidden>
+              <label class="fu-check"><input type="checkbox" checked disabled> Seguimientos y vencimientos (9, 14 y 19 h, según el seguimiento de arriba)</label>
+              <label class="fu-check"><input type="checkbox" id="push-agenda" onchange="pushTiposSave()"> Trabajos y visitas: la noche anterior (19 h) y a la mañana (7:30)</label>
+              <label class="fu-check"><input type="checkbox" id="push-hora" onchange="pushTiposSave()"> Visitas y recordatorios con hora: 1 hora antes</label>
+            </div>
+            <p id="push-estado" class="push-estado"></p>
+            <button type="button" id="push-probar" class="btn btn-s btn-sm" onclick="pushProbar()" hidden>Probar notificaciones</button>
           </div>
 
           <!-- ── MENSAJE DE ENVÍO POR WHATSAPP ── -->
@@ -5485,6 +5502,8 @@ const LS = {
   GCAL_TOK:       'pq_gcal_tok',
   PDF_THEME:      'pq_pdf_theme',
   PUSH_DEVICE_ID: 'pq_push_device_id',
+  PUSH_ESTADO:    'pq_push_estado', // último resultado del registro en el Worker (diagnóstico del dispositivo, no va al backup)
+  PUSH_CTA_NO:    'pq_push_cta_no', // "Ahora no" a la invitación de la campanita (preferencia del dispositivo, no va al backup)
   THEME:          'pq_theme',
   DAY_ALERT_SEEN: 'pq_day_alert_seen',
   NOTES:          'pq_agenda_notes',
@@ -6593,6 +6612,9 @@ const FOLLOWUP_DEF = {
   days: 10,             // días tras el envío para recordar (editable)
   expiryEnabled: true,  // avisar cuando un presupuesto enviado se vence
   estados: ['enviado'], // qué estados disparan recordatorio
+  // Avisos al teléfono con la app cerrada (además de seguimiento/vencimiento):
+  pushAgenda: true,     // trabajos y visitas: la noche anterior y a la mañana
+  pushHora: true,       // visitas y recordatorios con hora: 1 h antes
   // Plantilla del mensaje de SEGUIMIENTO. Variables: {cliente} {numero} {empresa}
   waTemplate: 'Hola {cliente}, ¿cómo andás? Te escribo por el presupuesto que te pasé. No es para apurarte, sino para saber si te quedó alguna duda o si querés que repasemos algo del trabajo.',
   // Plantilla del mensaje de ENVÍO (botón "Enviar por WhatsApp"). Mismas variables.
@@ -6883,12 +6905,19 @@ function normalizeArgPhone(raw) {
 }
 
 // ── PUSH NOTIFICATIONS ─────────────────────────────────────────────────────
-// Avisos de seguimiento que llegan al teléfono aunque la app esté cerrada.
-// El dispositivo se suscribe (Push API + VAPID) y manda al Worker su endpoint
-// + la lista de seguimientos con su fecha de vencimiento. El Worker corre un
-// cron diario y envía el push cuando vence alguno. La app sigue siendo
-// offline-first: los datos viven local; lo único que sale a la red es la
-// suscripción (y solo si hay señal). Inerte si PUSH_WORKER_URL está vacío.
+// Avisos que llegan al teléfono aunque la app esté cerrada. El dispositivo se
+// suscribe (Push API + VAPID) y le manda al Worker (push-worker/) su endpoint
+// y lo que hay que avisar: seguimientos y vencimientos (el Worker arma el
+// texto) y los AVISOS CON HORARIO (`avisos`: la app arma texto y hora local, el
+// Worker solo los entrega a su hora — así sumar un aviso nuevo no obliga a
+// volver a publicar el Worker). La app sigue offline-first: los datos viven
+// local; lo único que sale es la suscripción y esas listas, y solo con señal.
+// Inerte si PUSH_WORKER_URL está vacío.
+//
+// Por qué "nunca aparecían" (v237): solo existían los avisos de seguimiento y
+// vencimiento; trabajos, visitas y recordatorios con hora no salían nunca con
+// la app cerrada. Y nada decía si el circuito andaba: si la suscripción se
+// perdía, el interruptor seguía prendido y no llegaba nada, sin aviso.
 
 // ID estable por dispositivo (clave del registro en el KV del Worker).
 function _pushDeviceId() {
@@ -6910,6 +6939,13 @@ function _b64uToUint8(b64) {
   return Uint8Array.from(raw, (c) => c.charCodeAt(0));
 }
 
+// ¿Este navegador puede recibir push y la app está conectada a un Worker?
+function pushDisponible() {
+  return !!(PUSH_WORKER_URL && PUSH_VAPID_KEY && typeof navigator !== 'undefined' &&
+    'serviceWorker' in navigator && typeof window !== 'undefined' &&
+    'PushManager' in window && typeof Notification !== 'undefined');
+}
+
 // Arma la lista de seguimientos que el Worker necesita: por cada presupuesto
 // que aún espera seguimiento, su FECHA de vencimiento (envío + días de la
 // config). El Worker compara contra "hoy" en su cron y dispara el push.
@@ -6923,16 +6959,11 @@ function _buildPushFollowups(cfg) {
     if (e.reemplazadoPor) continue;   // el pendiente pasó a la versión nueva
     if (e.seguimientoHechoEn && new Date(e.seguimientoHechoEn) >= new Date(e.enviadoEn)) continue;
     const dueMs = new Date(e.enviadoEn).getTime() + cfg.days * 86400000;
-    let dueDate;
-    try {
-      dueDate = (typeof toLocalISODate === 'function')
-        ? toLocalISODate(new Date(dueMs))
-        : new Date(dueMs).toISOString().slice(0, 10);
-    } catch (_) { dueDate = new Date(dueMs).toISOString().slice(0, 10); }
+    if (!isFinite(dueMs)) continue;
     out.push({
       id: e.id,
       clientName: e.clientName || '(sin nombre)',
-      date: dueDate,
+      date: toLocalISODate(new Date(dueMs)),
       diasDesdeEnvio: (typeof daysSince === 'function') ? (daysSince(e.enviadoEn) || 0) : 0,
     });
   }
@@ -6962,30 +6993,149 @@ function _buildPushExpiries(cfg) {
   return out;
 }
 
-// Sube al Worker la suscripción + los seguimientos y vencimientos al día.
-// Silencioso: si no hay URL, no hay señal o no hay suscripción, no hace nada.
+// ── Avisos con horario (los arma la app, el Worker los entrega a su hora) ──
+const PUSH_HORIZONTE_DIAS = 14;     // qué tan adelante se mandan
+const PUSH_HORA_NOCHE = '19:00';    // "Mañana tenés…" la noche anterior
+const PUSH_HORA_MANANA = '07:30';   // "Hoy:" a primera hora
+const PUSH_ANTES_MIN = 60;          // recordatorio con hora: 1 h antes
+const PUSH_MAX_AVISOS = 120;
+
+function _pushAt(d) {   // Date local → 'YYYY-MM-DDTHH:MM'
+  return toLocalISODate(d) + 'T' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+}
+function _pushCorto(s, n) { s = String(s || '').replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n - 1) + '…' : s; }
+function _pushPlural(n, uno, varios) { return n + ' ' + (n === 1 ? uno : varios); }
+
+// Una línea por evento: "Poda · García", "Visita 10:30 · López".
+function _pushLineaEv(ev) {
+  const que = ev.tipo === 'trabajo' ? 'Trabajo' : ev.tipo === 'visita' ? 'Visita'
+    : ev.tipo === 'recontacto' ? '' : 'Nota';
+  const cab = [que, ev.hora || ''].filter(Boolean).join(' ');
+  return _pushCorto((cab ? cab + ' · ' : '') + (ev.title || ''), 70);
+}
+
+// Resumen "1 trabajo y 2 visitas".
+function _pushResumen(evs) {
+  const n = (t) => evs.filter(e => e.tipo === t).length;
+  const partes = [];
+  if (n('trabajo')) partes.push(_pushPlural(n('trabajo'), 'trabajo', 'trabajos'));
+  if (n('visita')) partes.push(_pushPlural(n('visita'), 'visita', 'visitas'));
+  if (n('recontacto')) partes.push(_pushPlural(n('recontacto'), 'llamada', 'llamadas'));
+  if (n('nota')) partes.push(_pushPlural(n('nota'), 'recordatorio', 'recordatorios'));
+  return partes.length > 1 ? partes.slice(0, -1).join(', ') + ' y ' + partes[partes.length - 1] : (partes[0] || '');
+}
+
+function _buildPushAvisos(cfg, ahora) {
+  if (typeof calBuildIndex !== 'function') return [];
+  const ag = cfg.pushAgenda !== false, hr = cfg.pushHora !== false;
+  if (!ag && !hr) return [];
+  const idx = calBuildIndex();
+  const now = ahora || new Date();
+  const hoy = toLocalISODate(now);
+  const out = [];
+  for (let i = 0; i <= PUSH_HORIZONTE_DIAS; i++) {
+    const d = _calAddDays(hoy, i);
+    const evs = (idx[d] || []).filter(ev => !ev.done);
+    if (ag) {
+      // La noche anterior: lo que hay que preparar (trabajos y visitas).
+      const man = evs.filter(ev => ev.tipo === 'trabajo' || ev.tipo === 'visita');
+      if (man.length && i >= 1) {
+        out.push({
+          k: 'man:' + d, at: _calAddDays(d, -1) + 'T' + PUSH_HORA_NOCHE, go: 'agenda', tag: 'pq-manana',
+          title: 'Mañana: ' + _pushResumen(man),
+          body: man.slice(0, 4).map(_pushLineaEv).join('\n') + (man.length > 4 ? '\n…y ' + (man.length - 4) + ' más' : ''),
+        });
+      }
+      // A primera hora: el día completo (llamadas y recordatorios incluidos).
+      const dia = evs.filter(ev => ['trabajo', 'visita', 'recontacto', 'nota'].includes(ev.tipo));
+      if (dia.length) {
+        out.push({
+          k: 'hoy:' + d, at: d + 'T' + PUSH_HORA_MANANA, go: 'agenda', tag: 'pq-hoy',
+          title: 'Hoy: ' + _pushResumen(dia),
+          body: dia.slice(0, 4).map(_pushLineaEv).join('\n') + (dia.length > 4 ? '\n…y ' + (dia.length - 4) + ' más' : ''),
+        });
+      }
+    }
+    if (hr) {
+      // Visitas y notas con hora: 1 h antes, cada una su propio aviso.
+      evs.filter(ev => ev.hora && ev.noteId != null).forEach(ev => {
+        const [hh, mm] = ev.hora.split(':').map(Number);
+        const [y, mo, da] = d.split('-').map(Number);
+        const at = new Date(y, mo - 1, da, hh, mm - PUSH_ANTES_MIN);
+        if (at.getTime() < now.getTime() - 3 * 3600000) return;
+        out.push({
+          k: 'hr:' + ev.noteId + ':' + d + ':' + ev.hora.replace(':', ''),
+          at: _pushAt(at), go: 'agenda', tag: 'pq-hora-' + String(ev.noteId).replace(/[^\w-]/g, '').slice(0, 30),
+          title: (ev.tipo === 'visita' ? 'Visita' : 'Recordatorio') + ' a las ' + ev.hora,
+          body: _pushCorto([ev.title, ev.sub, ev.ubic].filter(Boolean).join(' · '), 200),
+        });
+      });
+    }
+  }
+  out.sort((a, b) => a.at < b.at ? -1 : a.at > b.at ? 1 : 0);
+  return out.slice(0, PUSH_MAX_AVISOS);
+}
+
+// Estado del circuito en ESTE teléfono (diagnóstico: no va al backup).
+function _pushEstadoGet() {
+  try { const o = JSON.parse(localStorage.getItem(LS.PUSH_ESTADO) || 'null'); return (o && typeof o === 'object') ? o : {}; }
+  catch (_) { return {}; }
+}
+function _pushEstadoSet(patch) {
+  const o = Object.assign(_pushEstadoGet(), patch);
+  try { localStorage.setItem(LS.PUSH_ESTADO, JSON.stringify(o)); } catch (_) {}
+  pushEstadoRender();
+}
+
+// Sube al Worker la suscripción + todo lo que hay que avisar. Devuelve true si
+// el Worker la guardó. Silencioso: sin URL, sin señal o sin suscripción no hace
+// nada; el resultado queda en el estado que se ve en Configuración.
 async function syncPushFollowups(sub) {
-  if (!PUSH_WORKER_URL || navigator.onLine === false) return;
+  if (!PUSH_WORKER_URL || navigator.onLine === false) return false;
   try {
     const reg = await navigator.serviceWorker.ready;
     const subscription = sub || await reg.pushManager.getSubscription();
-    if (!subscription) return;
+    if (!subscription) return false;
     const cfg = (typeof getFollowupCfg === 'function')
       ? getFollowupCfg() : { enabled: false, estados: [], days: 10 };
     const followups = cfg.enabled ? _buildPushFollowups(cfg) : [];
     const expiries = (cfg.enabled && cfg.expiryEnabled) ? _buildPushExpiries(cfg) : [];
-    await netFetch(PUSH_WORKER_URL + '/subscribe', {
+    const avisos = _buildPushAvisos(cfg);
+    const res = await netFetch(PUSH_WORKER_URL + '/subscribe', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ deviceId: _pushDeviceId(), subscription: subscription.toJSON(), followups, expiries }),
+      body: JSON.stringify({
+        deviceId: _pushDeviceId(), subscription: subscription.toJSON(),
+        followups, expiries, avisos, tz: new Date().getTimezoneOffset(),
+      }),
     });
-  } catch (e) {}
+    if (!res.ok) throw new Error('el servidor de avisos respondió ' + res.status);
+    _pushEstadoSet({ ok: new Date().toISOString(), err: '', n: avisos.length + followups.length + expiries.length });
+    return true;
+  } catch (e) {
+    _pushEstadoSet({ err: (e && e.message) || 'sin conexión', errEn: new Date().toISOString() });
+    return false;
+  }
 }
 
-// Suscribe el dispositivo (lo llama el toggle tras conceder permiso).
-async function pushSubscribe() {
-  if (!PUSH_WORKER_URL || !PUSH_VAPID_KEY) return;
-  if (!('PushManager' in window)) { toast('Tu navegador no soporta notificaciones push', 'err'); return; }
+// Re-sincronización con retardo tras cada cambio del historial o la agenda:
+// agendar un trabajo para mañana tiene que llegar al Worker sin esperar a que
+// se vuelva a abrir la app.
+let _pushSyncTimer = null;
+function schedulePushSync() {
+  if (!S.pushEnabled || !pushDisponible()) return;
+  clearTimeout(_pushSyncTimer);
+  _pushSyncTimer = setTimeout(() => {
+    if (typeof netPuedeAutoImportante === 'function' && !netPuedeAutoImportante()) return;
+    syncPushFollowups().catch(() => {});
+  }, 8000);
+}
+
+// Suscribe el dispositivo (lo llama el toggle tras conceder permiso, y el
+// arranque si la suscripción se perdió). `silencioso`: sin toasts.
+async function pushSubscribe(silencioso) {
+  if (!PUSH_WORKER_URL || !PUSH_VAPID_KEY) return false;
+  if (!('PushManager' in window)) { if (!silencioso) toast('Tu navegador no soporta notificaciones push', 'err'); return false; }
   try {
     const reg = await navigator.serviceWorker.ready;
     let sub = await reg.pushManager.getSubscription();
@@ -6995,16 +7145,22 @@ async function pushSubscribe() {
         applicationServerKey: _b64uToUint8(PUSH_VAPID_KEY),
       });
     }
-    await syncPushFollowups(sub);
     S.pushEnabled = true;
     saveLS();
     const el = document.getElementById('push-enabled');
     if (el) el.checked = true;
-    toast('Notificaciones activadas', 'ok');
+    const ok = await syncPushFollowups(sub);
+    if (!silencioso) {
+      if (ok) toastAccion('Avisos activados en este teléfono', [{ label: 'Probar', fn: pushProbar }]);
+      else toast('Avisos activados. Se van a registrar cuando haya señal.', 'ok');
+    }
+    return true;
   } catch (e) {
-    toast('No se pudieron activar las notificaciones', 'err');
+    _pushEstadoSet({ err: (e && e.message) || 'no se pudo suscribir', errEn: new Date().toISOString() });
+    if (!silencioso) toast('No se pudieron activar las notificaciones', 'err');
     const el = document.getElementById('push-enabled');
-    if (el) el.checked = false;
+    if (el) el.checked = !!S.pushEnabled;
+    return false;
   }
 }
 
@@ -7027,39 +7183,172 @@ async function pushUnsubscribe() {
   saveLS();
   const el = document.getElementById('push-enabled');
   if (el) el.checked = false;
+  try { localStorage.removeItem(LS.PUSH_ESTADO); } catch (_) {}
+  pushEstadoRender();
   toast('Notificaciones desactivadas', '');
 }
+
+// Qué hacer cuando el permiso está bloqueado: el navegador no vuelve a
+// preguntar, hay que habilitarlo a mano.
+const PUSH_MSG_BLOQUEADO = 'Las notificaciones están bloqueadas para esta app. En Android: mantené apretado el ícono de la app → Información de la app → Notificaciones → Permitir. (Si la usás desde Chrome: el candado de la barra de dirección → Permisos → Notificaciones.)';
 
 // Handler del toggle: pide permiso al prender, desuscribe al apagar.
 async function onPushToggle(on) {
   if (on) {
+    if (typeof Notification === 'undefined') { toast('Este navegador no permite notificaciones', 'err'); return; }
     const perm = await Notification.requestPermission();
     if (perm !== 'granted') {
-      toast('Permiso de notificaciones denegado. Habilitalo en ajustes del teléfono.', 'err');
+      toast(perm === 'denied' ? PUSH_MSG_BLOQUEADO : 'No diste el permiso de notificaciones.', 'err');
       const el = document.getElementById('push-enabled');
       if (el) el.checked = false;
+      pushEstadoRender();
       return;
     }
     await pushSubscribe();
   } else {
     await pushUnsubscribe();
   }
+  pushEstadoRender();
+  if (document.getElementById('notif-overlay')?.classList.contains('open') && typeof notifRender === 'function') notifRender();
+}
+
+// Botón "Probar": separa los dos tramos para saber DÓNDE se corta.
+//   1. Una notificación local (sin internet): prueba el teléfono — permiso,
+//      canal de notificaciones, No molestar.
+//   2. Un push de verdad desde el Worker a este equipo: prueba el servidor y
+//      la entrega con la app cerrada.
+async function pushProbar() {
+  const out = (msg, tipo) => { _pushEstadoSet({ prueba: msg }); if (tipo) toast(msg, tipo); };
+  if (!pushDisponible()) { out('Este navegador no recibe notificaciones push.', 'err'); return; }
+  if (Notification.permission !== 'granted') { out(Notification.permission === 'denied' ? PUSH_MSG_BLOQUEADO : 'Primero activá los avisos.', 'err'); return; }
+  let reg;
+  try {
+    reg = await navigator.serviceWorker.ready;
+    await reg.showNotification('Prueba en este teléfono', {
+      body: 'Si ves esto, el teléfono muestra los avisos. En unos segundos llega otra desde el servidor.',
+      icon: './icon-192.png', badge: './icon-192.png', tag: 'pq-prueba-local', lang: 'es-AR',
+    });
+  } catch (e) {
+    out('El teléfono no dejó mostrar la notificación: ' + ((e && e.message) || e), 'err');
+    return;
+  }
+  if (!(await pushSubscribe(true)) || !(await syncPushFollowups())) {
+    out('El teléfono muestra avisos, pero no se pudo registrar en el servidor (¿hay señal?).', 'err');
+    return;
+  }
+  try {
+    const res = await netFetch(PUSH_WORKER_URL + '/ping', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ deviceId: _pushDeviceId() }),
+    });
+    if (res.ok) out('Prueba enviada: tienen que llegar dos notificaciones. Si llega solo la primera, el teléfono está frenando las de la app cerrada (ahorro de batería).', 'ok');
+    else if (res.status === 429) out('Esperá unos segundos antes de volver a probar.', 'err');
+    else if (res.status === 404) out('El servidor de avisos está desactualizado: hay que volver a publicarlo (docs/push-setup.md).', 'err');
+    else out('El servidor no pudo mandar la prueba (' + res.status + ').', 'err');
+  } catch (e) {
+    out('No se pudo pedir la prueba al servidor: ' + ((e && e.message) || e), 'err');
+  }
+}
+
+function _pushHace(iso) {
+  const min = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+  if (!isFinite(min)) return '';
+  if (min < 2) return 'recién';
+  if (min < 60) return 'hace ' + min + ' min';
+  const h = Math.round(min / 60);
+  if (h < 24) return 'hace ' + h + ' h';
+  const d = Math.round(h / 24);
+  return d === 1 ? 'ayer' : 'hace ' + d + ' días';
+}
+
+// Línea de estado en Configuración: qué pasa con los avisos en ESTE teléfono.
+function pushEstadoRender() {
+  const el = document.getElementById('push-estado');
+  if (!el) return;
+  const st = _pushEstadoGet();
+  const perm = (typeof Notification !== 'undefined') ? Notification.permission : 'denied';
+  let cls = '', txt;
+  if (!pushDisponible()) { txt = 'Este navegador no recibe notificaciones push.'; cls = 'is-err'; }
+  else if (perm === 'denied') { txt = PUSH_MSG_BLOQUEADO; cls = 'is-err'; }
+  else if (!S.pushEnabled) { txt = 'Apagados en este teléfono.'; }
+  else if (st.err && (!st.ok || (st.errEn || '') > st.ok)) {
+    txt = 'No se pudo actualizar el servidor de avisos: ' + st.err + '. Se reintenta solo con señal.'; cls = 'is-err';
+  } else if (st.ok) {
+    txt = 'Activos · servidor actualizado ' + _pushHace(st.ok) +
+      ' · ' + _pushPlural(st.n || 0, 'aviso programado', 'avisos programados') + '.';
+    cls = 'is-ok';
+  } else txt = 'Activos · todavía no se registraron en el servidor (falta señal).';
+  el.className = 'push-estado ' + cls;
+  el.textContent = txt + (st.prueba ? '\n' + st.prueba : '');
+  const pr = document.getElementById('push-probar');
+  if (pr) pr.hidden = !S.pushEnabled || !pushDisponible();
+  const tipos = document.getElementById('push-tipos');
+  if (tipos) tipos.hidden = !S.pushEnabled;
+}
+
+// Tipos de aviso (Configuración): viven en la config de seguimiento.
+function pushTiposSave() {
+  const ag = document.getElementById('push-agenda');
+  const hr = document.getElementById('push-hora');
+  setFollowupCfg(Object.assign({}, getFollowupCfg(), {
+    pushAgenda: ag ? !!ag.checked : true,
+    pushHora: hr ? !!hr.checked : true,
+  }));
+  if (S.pushEnabled) syncPushFollowups().catch(() => {});
+}
+
+// Lleva a la sección de avisos en Configuración (desde la campanita).
+function irAPush() {
+  if (typeof notifClose === 'function') notifClose();
+  switchTab('empresa');
+  if (typeof switchSubtab === 'function') switchSubtab('textos');
+  const sec = document.getElementById('push-section');
+  if (!sec) return;
+  requestAnimationFrame(() => {
+    sec.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    sec.classList.add('is-destacada');
+    setTimeout(() => sec.classList.remove('is-destacada'), 2200);
+  });
+}
+
+// Invitación en la campanita: los avisos ya están ahí, falta que suenen con la
+// app cerrada. Se esconde para siempre con "Ahora no".
+function pushCtaHTML() {
+  if (!pushDisponible() || S.pushEnabled) return '';
+  try { if (localStorage.getItem(LS.PUSH_CTA_NO)) return ''; } catch (_) {}
+  const bloq = Notification.permission === 'denied';
+  return `<div class="nt-push-cta"><div><strong>📲 Que te lleguen al teléfono</strong>` +
+    `<span>${bloq ? 'Las notificaciones están bloqueadas para la app.' : 'Trabajos de mañana, visitas con hora, seguimientos y vencimientos, aunque la app esté cerrada.'}</span></div>` +
+    `<div class="nt-push-btns"><button type="button" class="btn btn-s btn-sm" onclick="pushCtaNo()">Ahora no</button>` +
+    `<button type="button" class="btn btn-p btn-sm" onclick="${bloq ? 'irAPush()' : 'onPushToggle(true)'}">${bloq ? 'Cómo habilitar' : 'Activar'}</button></div></div>`;
+}
+function pushCtaNo() {
+  try { localStorage.setItem(LS.PUSH_CTA_NO, '1'); } catch (_) {}
+  if (typeof notifRender === 'function') notifRender();
 }
 
 // Al iniciar: mostrar la sección solo si el push está configurado; si ya
-// estaba activado, re-sincronizar los seguimientos (cambian con el tiempo).
+// estaba activado, re-sincronizar (los avisos cambian con el tiempo) y, si la
+// suscripción se perdió (el navegador la renovó, se borraron datos), rehacerla
+// en silencio: antes el interruptor seguía prendido y no llegaba nada.
 async function initPush() {
-  if (!PUSH_WORKER_URL || !PUSH_VAPID_KEY) return;
-  if (!('PushManager' in window)) return;
+  if (!pushDisponible()) return;
   const ps = document.getElementById('push-section');
   if (ps) ps.style.display = '';
+  pushEstadoRender();
   if (!S.pushEnabled) return;
   if (Notification.permission === 'granted') {
-    syncPushFollowups().catch(() => {});
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.getSubscription();
+      if (sub) syncPushFollowups(sub).catch(() => {});
+      else pushSubscribe(true).catch(() => {});
+    } catch (_) {}
   } else {
     // El usuario revocó el permiso desde el sistema: reflejarlo.
     S.pushEnabled = false;
     saveLS();
+    pushEstadoRender();
   }
 }
 
@@ -7637,6 +7926,8 @@ function sanitizeFollowup(raw) {
   const out = {};
   if (raw.enabled       != null) out.enabled       = sanBool(raw.enabled);
   if (raw.expiryEnabled != null) out.expiryEnabled = sanBool(raw.expiryEnabled);
+  if (raw.pushAgenda    != null) out.pushAgenda    = sanBool(raw.pushAgenda);
+  if (raw.pushHora      != null) out.pushHora      = sanBool(raw.pushHora);
   if (raw.days != null) {
     // Entre 1 y 365 días: fuera de ese rango el seguimiento no tiene sentido.
     const d = Math.round(sanNum(raw.days));
@@ -12081,6 +12372,7 @@ function setH(h) {
   _hRawCache = payload; _hArrCache = h;
   safeSetLS(LS.HISTORY, payload);
   if (typeof scheduleGcalSync === 'function') scheduleGcalSync();
+  if (typeof schedulePushSync === 'function') schedulePushSync();
 }
 
 // Devuelve true si el presupuesto ACTUAL (estado en memoria `S`) está en
@@ -14983,6 +15275,11 @@ function loadFollowupUI() {
   if (opts) opts.style.pointerEvents = cfg.enabled ? 'auto' : 'none';
   const pushEl = document.getElementById('push-enabled');
   if (pushEl) pushEl.checked = !!S.pushEnabled;
+  const pAg = document.getElementById('push-agenda');
+  if (pAg) pAg.checked = cfg.pushAgenda !== false;
+  const pHr = document.getElementById('push-hora');
+  if (pHr) pHr.checked = cfg.pushHora !== false;
+  if (typeof pushEstadoRender === 'function') pushEstadoRender();
 }
 
 // Lee los campos del panel y guarda la config. Refresca banner e historial.
@@ -21060,6 +21357,7 @@ function getNotes() {
 function setNotes(a) {
   safeSetLS(LS.NOTES, JSON.stringify(a || []));
   if (typeof scheduleGcalSync === 'function') scheduleGcalSync();
+  if (typeof schedulePushSync === 'function') schedulePushSync();
   // Las visitas de hoy viven también en el banner del día → mantenerlo al día.
   try { if (typeof renderMorningBanner === 'function') renderMorningBanner(); } catch (_) {}
 }
@@ -22725,7 +23023,7 @@ function notifRender(){
 
   const orden = notifGetOrden();
 
-  let h = '';
+  let h = (typeof pushCtaHTML === 'function') ? pushCtaHTML() : '';
   if (!pend.length) {
     h += `<div class="nt-sec">Pendientes</div><div class="nt-empty">Nada pendiente. Todo al día 👌</div>`;
   } else {
@@ -22747,6 +23045,9 @@ function notifRender(){
     h += `<button type="button" class="nt-clear" onclick="notifClearLog()">Vaciar recientes</button>`;
   } else {
     h += `<div class="nt-empty">Los avisos que aparezcan van a quedar acá para que puedas volver a verlos.</div>`;
+  }
+  if (typeof pushDisponible === 'function' && pushDisponible() && S.pushEnabled) {
+    h += `<button type="button" class="nt-clear" onclick="irAPush()">📲 Avisos en el teléfono: activos · Configurar</button>`;
   }
   body.innerHTML = h;
   _wireNotifPanel(body);

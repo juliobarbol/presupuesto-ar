@@ -7,16 +7,42 @@
 > configurás esto, la app funciona igual que siempre y la sección de avisos ni
 > aparece.
 
+## Actualizar el Worker (v237) — hacelo una vez
+
+El Worker que estaba publicado era una versión **anterior** a la del repo (sin
+los arreglos de seguridad ni los avisos nuevos). Publicar el Worker **no** pasa
+solo al mergear a `main`: la app se despliega sola, el Worker no. Desde tu compu:
+
+```bash
+cd push-worker
+npx wrangler deploy
+```
+
+Con eso quedan activos los avisos de trabajos/visitas, los recordatorios con
+hora y el botón **"Probar notificaciones"** de la app. Mientras no lo publiques,
+la app sigue andando con los seguimientos y vencimientos de siempre, y el botón
+"Probar" avisa que el servidor está desactualizado.
+
+**Para no tener que acordarte nunca más:** en el panel de Cloudflare → Workers
+→ `presupuesto-push` → Settings → **Build** → conectá este repositorio con
+*Root directory* `push-worker`. Desde ahí cada merge a `main` publica también
+el Worker.
+
 ## Cómo funciona (resumen)
 
 1. El teléfono se suscribe a push (Push API + clave VAPID) y le manda al Worker
    su endpoint + la lista de seguimientos (con su **fecha de aviso**) y la de
    vencimientos (con la **fecha de vigencia** de cada presupuesto).
-2. El **Worker de Cloudflare** (`push-worker/`) corre un **cron varias veces al
-   día** (por defecto 09/14/19 hs Argentina = `0 12,17,22 * * *` UTC) y, por
-   cada dispositivo, manda un push si hay algún seguimiento que llegó a su día
-   o algún presupuesto enviado cuya vigencia ya pasó. Tiene **deduplicación**:
-   cada presupuesto avisa una sola vez por día aunque el cron corra varias veces.
+2. El **Worker de Cloudflare** (`push-worker/`) corre un **cron cada 15
+   minutos**. Seguimientos y vencimientos salen en las franjas de **9, 14 y
+   19 h** (hora del teléfono, que la app manda como `tz`), una vez por día cada
+   presupuesto. Además entrega los **avisos con horario** que arma la app
+   (`avisos`: `{k, at, title, body, go, tag}`): "Mañana: …" a las 19 h del día
+   anterior, "Hoy: …" a las 7:30 y el recordatorio 1 h antes de una visita o
+   nota con hora. Cada aviso sale una vez, y no si tiene más de 3 h de atraso.
+   Como el texto y la hora los arma la app, **sumar un aviso nuevo no requiere
+   volver a publicar el Worker**. Una suscripción que el servicio de push da
+   por muerta (404/410) se borra sola.
 3. El push lo entrega el navegador/Android (transporte FCM transparente: **no
    hace falta cuenta de Firebase**). El Service Worker muestra la notificación.
 
@@ -99,9 +125,8 @@ npx wrangler deploy
 Te da la URL pública, por ejemplo:
 `https://presupuesto-push.juliobarribolbo.workers.dev`
 
-> El cron ya queda activo (configurado en `wrangler.toml`: `0 11 * * *` = todos
-> los días a las 11:00 UTC ≈ 8:00 en Argentina). Para cambiar la hora, editá
-> esa línea y volvé a desplegar.
+> El cron ya queda activo (configurado en `wrangler.toml`: cada 15 minutos).
+> Las horas de cada aviso se deciden en la app y en `runDue`, no en el cron.
 
 ### 5. Conectar la app con el Worker
 
@@ -122,13 +147,21 @@ Cloudflare publica solo.
 
 ### 7. Activar en el teléfono
 
-Abrí la app → pestaña **Empresa** → bajá hasta **"📲 Avisos con la app
-cerrada"** (solo aparece si los pasos anteriores están hechos). Prendé el
-toggle y aceptá el permiso de notificaciones. Listo.
+Lo más rápido: tocá la **campanita** → "Activar". O en **Configuración →
+Textos → "Avisos con la app cerrada"**: prendé el interruptor, aceptá el
+permiso y elegí qué avisos querés. Se activa en **cada teléfono** por separado.
 
 ---
 
 ## Probar que anda
+
+- **Desde la app**: Configuración → Textos → "Probar notificaciones". Manda
+  dos: una **local** (prueba el teléfono: permiso, canal, No molestar) y otra
+  **desde el Worker** (`POST /ping`, solo a ese equipo). Si llega la primera y
+  no la segunda, el teléfono frena las de la app cerrada: en Android,
+  Información de la app → Batería → **Sin restricciones**. La línea de estado
+  dice cuándo se actualizó el servidor por última vez y cuántos avisos hay
+  programados.
 
 - **Prueba inmediata del envío** (sin esperar al cron): podés disparar el cron a
   mano desde el panel de Cloudflare (Workers → tu worker → Triggers → "Trigger"
