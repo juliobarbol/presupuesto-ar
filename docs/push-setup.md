@@ -25,7 +25,7 @@ npx wrangler deploy --config ./wrangler.toml
 > de avisos. Pasó el 09/10/2026 (sin daño: subió la misma versión que ya
 > estaba).
 
-Publicado por última vez: 09/10/2026 (versión del repo v237).
+Publicado por última vez: 09/10/2026 (versión del repo v237 + arreglo del cifrado).
 
 Con eso quedan activos los avisos de trabajos/visitas, los recordatorios con
 hora y el botón **"Probar notificaciones"** de la app. Mientras no lo publiques,

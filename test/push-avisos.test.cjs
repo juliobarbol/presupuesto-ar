@@ -130,6 +130,35 @@ async function parteWorker() {
   check('A5 /ping de un equipo sin suscripción da 404', p3.status === 404);
   check('A5 CORS solo para el origen de la app', p1.headers.get('Access-Control-Allow-Origin') === ORIGIN);
 
+
+  // A7 — el teléfono tiene que poder DESCIFRAR lo que manda el Worker (RFC 8291).
+  // Hasta la v237 el Worker armaba mal la clave (un 0x01 de más en el info del
+  // HKDF): el servicio de push aceptaba el mensaje y el teléfono lo tiraba.
+  {
+    const nc = require('node:crypto');
+    const uaE = nc.createECDH('prime256v1'); uaE.generateKeys();
+    const authB = nc.randomBytes(16);
+    const sub7 = { endpoint: 'https://push.example/a7', keys: { p256dh: b64u(uaE.getPublicKey()), auth: b64u(authB) } };
+    let cuerpo = null;
+    respuesta = 201;
+    global.fetch = async (url, opts) => { cuerpo = Buffer.from(opts.body); return { ok: true, status: 201 }; };
+    const DEV7 = 'pq-1700000000000-desc7';
+    kv.set('sub:' + DEV7, JSON.stringify({ subscription: sub7 }));
+    await W.fetch(req('/ping', 'POST', { deviceId: DEV7 }), env);
+    let texto = '';
+    try {
+      const salt = cuerpo.subarray(0, 16), idlen = cuerpo[20], asPub = cuerpo.subarray(21, 21 + idlen), ct = cuerpo.subarray(21 + idlen);
+      const ikm = Buffer.from(nc.hkdfSync('sha256', uaE.computeSecret(asPub), authB, Buffer.concat([Buffer.from('WebPush: info\0'), uaE.getPublicKey(), asPub]), 32));
+      const cek = Buffer.from(nc.hkdfSync('sha256', ikm, salt, Buffer.from('Content-Encoding: aes128gcm\0'), 16));
+      const nonce = Buffer.from(nc.hkdfSync('sha256', ikm, salt, Buffer.from('Content-Encoding: nonce\0'), 12));
+      const d = nc.createDecipheriv('aes-128-gcm', cek, nonce); d.setAuthTag(ct.subarray(ct.length - 16));
+      const pt = Buffer.concat([d.update(ct.subarray(0, ct.length - 16)), d.final()]);
+      texto = pt.subarray(0, pt.length - 1).toString();
+    } catch (e) { texto = 'ERROR ' + e.message; }
+    check('A7 el teléfono puede descifrar el push (RFC 8291)', /prueba/.test(texto), texto.slice(0, 80));
+    global.fetch = async (url, opts) => { enviados.push({ url, opts }); return { ok: respuesta < 300, status: respuesta }; };
+  }
+
   // A4 — 410: suscripción muerta.
   const r4 = JSON.parse(kv.get('sub:' + DEV));
   r4.avisos.push({ k: 'x410', at: '2026-10-12T09:00', title: 'Prueba', body: '', go: 'agenda', tag: 'pq-hoy' });

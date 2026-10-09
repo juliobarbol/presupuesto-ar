@@ -70,8 +70,13 @@ async function encryptPush(sub, plaintext) {
 
   const ikm  = await hkdf(ecdhSecret, authSecret, cat(te.encode('WebPush: info\x00'), uaPub, asPub), 32);
   const salt = crypto.getRandomValues(new Uint8Array(16));
-  const cek   = await hkdf(ikm, salt, cat(te.encode('Content-Encoding: aes128gcm\x00'), new Uint8Array([1])), 16);
-  const nonce = await hkdf(ikm, salt, cat(te.encode('Content-Encoding: nonce\x00'),     new Uint8Array([1])), 12);
+  // El info va SIN un 0x01 al final: el contador de bloque ya lo agrega
+  // hkdfExpand. Con el 0x01 de más (receta de otras librerías que expanden a
+  // mano) la clave y el nonce salían mal: el servicio de push aceptaba el
+  // mensaje (201) pero el teléfono no lo podía descifrar y lo tiraba callado.
+  // Por eso NUNCA llegó una notificación del servidor hasta la v237.
+  const cek   = await hkdf(ikm, salt, te.encode('Content-Encoding: aes128gcm\x00'), 16);
+  const nonce = await hkdf(ikm, salt, te.encode('Content-Encoding: nonce\x00'),     12);
 
   const padded    = cat(te.encode(plaintext), new Uint8Array([2]));
   const cryptoKey = await crypto.subtle.importKey('raw', cek, 'AES-GCM', false, ['encrypt']);
