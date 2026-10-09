@@ -103,6 +103,10 @@ async function sendPush(sub, payload, env) {
     },
     body,
   });
+  // 404/410: el servicio de push dice que esa suscripción ya no existe (se
+  // desinstaló la app, se borraron los datos del sitio, se revocó el permiso).
+  // El llamador la borra del KV en vez de reintentarla para siempre.
+  if (res.status === 404 || res.status === 410) return 'gone';
   return res.ok;
 }
 
@@ -163,6 +167,43 @@ function avisosValidos(arr) {
   })).filter((f) => f.date);
 }
 
+// Avisos GENÉRICOS con horario: la app arma el texto y la hora local en que
+// tiene que sonar cada uno (trabajo de mañana, agenda del día, recordatorio con
+// hora…) y el Worker solo los entrega cuando llega la hora. Así cada aviso
+// nuevo se agrega del lado de la app, sin volver a publicar el Worker.
+const MAX_GEN = 120;
+const AT_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
+const GO_OK = ['historial', 'agenda', 'editor', 'mapa', 'facturacion', 'nuevo'];
+function avisosGenValidos(arr) {
+  if (!Array.isArray(arr)) return [];
+  const out = [];
+  for (const a of arr.slice(0, MAX_GEN)) {
+    if (!a || typeof a !== 'object') continue;
+    const k = String(a.k ?? '').slice(0, 80);
+    if (!/^[\w:.-]+$/.test(k) || !AT_RE.test(String(a.at ?? ''))) continue;
+    const title = String(a.title ?? '').slice(0, 120);
+    if (!title) continue;
+    out.push({
+      k, at: a.at, title,
+      body: String(a.body ?? '').slice(0, 400),
+      go: GO_OK.includes(a.go) ? a.go : 'agenda',
+      tag: /^[\w-]{1,40}$/.test(a.tag || '') ? a.tag : 'pq-agenda',
+    });
+  }
+  return out;
+}
+
+// Minutos de diferencia con UTC del teléfono (getTimezoneOffset: 180 en
+// Argentina). Con eso el Worker sabe qué hora es "allá" sin suponer el país.
+function tzValido(n) {
+  n = Number(n);
+  return Number.isFinite(n) && n >= -840 && n <= 840 ? Math.round(n) : 180;
+}
+// 'YYYY-MM-DDTHH:MM' de la hora local del dispositivo.
+function localAhora(tzOff, ms = Date.now()) {
+  return new Date(ms - tzOff * 60000).toISOString().slice(0, 16);
+}
+
 // ── Worker entry points ────────────────────────────────────────────────────
 export default {
   async fetch(request, env) {
@@ -192,7 +233,7 @@ export default {
             body: 'Las notificaciones funcionan. Ya vas a recibir los avisos de seguimiento.',
             go: 'historial',
           }, env);
-          if (sent) ok++;
+          if (sent === true) ok++;
         } catch(e) {}
       }
       const msg = ok > 0
@@ -219,7 +260,11 @@ export default {
           subscription: { endpoint: subscription.endpoint, keys: { p256dh: subscription.keys.p256dh, auth: subscription.keys.auth } },
           followups: avisosValidos(body.followups),
           expiries:  avisosValidos(body.expiries),
+          avisos:    avisosGenValidos(body.avisos),
+          tz:        tzValido(body.tz),
           notified:  prev.notified || {},
+          enviados:  prev.enviados || {},
+          lastPing:  prev.lastPing || 0,
         }), {
           // Un equipo que deja de usarse se limpia solo: la app re-suscribe en
           // cada apertura con señal, así que 90 días sin aparecer = abandonado.
@@ -228,6 +273,29 @@ export default {
           expirationTtl: 60 * 60 * 24 * 90,
         });
         return new Response('OK', {headers:CORS});
+      } catch(e) { return new Response('Error', {status:500, headers:CORS}); }
+    }
+
+    // POST /ping {deviceId} — push de prueba SOLO al dispositivo que lo pide (el
+    // botón "Probar" de la app). No puede hacer sonar a otro equipo: usa la
+    // suscripción que ese mismo deviceId guardó. Uno cada 30 s como máximo.
+    if (url.pathname === '/ping' && request.method === 'POST') {
+      try {
+        const { deviceId } = await request.json();
+        if (!DEVICE_ID_RE.test(String(deviceId || ''))) return new Response('Bad deviceId', {status:400, headers:CORS});
+        const key = `sub:${deviceId}`;
+        const data = JSON.parse(await env.PUSH_KV.get(key) || 'null');
+        if (!data?.subscription) return new Response('No subscription', {status:404, headers:CORS});
+        if (Date.now() - (data.lastPing || 0) < 30000) return new Response('Too many', {status:429, headers:CORS});
+        data.lastPing = Date.now();
+        await env.PUSH_KV.put(key, JSON.stringify(data), { expirationTtl: 60 * 60 * 24 * 90 });
+        const r = await sendPush(data.subscription, {
+          title: 'Presupuesto AR — prueba ✓',
+          body: 'Las notificaciones llegan a este teléfono.',
+          go: 'agenda', tag: 'pq-prueba',
+        }, env);
+        if (r === 'gone') { await env.PUSH_KV.delete(key); return new Response('Gone', {status:410, headers:CORS}); }
+        return new Response(r ? 'OK' : 'Push failed', {status: r ? 200 : 502, headers:CORS});
       } catch(e) { return new Response('Error', {status:500, headers:CORS}); }
     }
 
@@ -251,8 +319,7 @@ export default {
 // Recorre cada dispositivo y manda los avisos que correspondan HOY, con
 // deduplicación: cada presupuesto avisa una sola vez por día (clave en
 // `notified`), sin importar cuántas veces corra el cron en el día.
-export async function runDue(env) {
-  const today = new Date().toISOString().slice(0,10);
+export async function runDue(env, ms = Date.now()) {
   const { keys } = await env.PUSH_KV.list({ prefix: 'sub:' });
   let total = 0;
 
@@ -260,13 +327,28 @@ export async function runDue(env) {
     try {
       const data = JSON.parse(await env.PUSH_KV.get(name));
       if (!data?.subscription) return;
+      const tz = tzValido(data.tz);
+      const ahora = localAhora(tz, ms);          // 'YYYY-MM-DDTHH:MM' del teléfono
+      const today = ahora.slice(0, 10);
+      const hora = Number(ahora.slice(11, 13));
       const notified = data.notified || {};
-      let changed = false;
+      const enviados = data.enviados || {};
+      let changed = false, gone = false;
 
-      // Seguimientos al día de aviso que NO se avisaron todavía hoy.
-      const due = (data.followups || [])
-        .filter(f => f.date <= today && notified['fu:' + f.id] !== today);
-      if (due.length) {
+      const enviar = async (payload) => {
+        const r = await sendPush(data.subscription, payload, env);
+        if (r === 'gone') gone = true;
+        return r === true;
+      };
+
+      // Seguimientos y vencimientos: el cron corre cada 15 minutos, pero estos
+      // salen solo en las tres franjas de siempre (9, 14 y 19 h del teléfono),
+      // una vez por día cada presupuesto.
+      const franja = [9, 14, 19].includes(hora);
+
+      const due = franja ? (data.followups || [])
+        .filter(f => f.date <= today && notified['fu:' + f.id] !== today) : [];
+      if (due.length && !gone) {
         const n = due.length;
         const title = n === 1
           ? `Seguimiento: ${due[0].clientName}`
@@ -274,16 +356,15 @@ export async function runDue(env) {
         const body = n === 1
           ? `Llevan ${due[0].diasDesdeEnvio} días sin respuesta.`
           : due.slice(0,3).map(f=>f.clientName).join(', ') + (n>3?' y más.':'.');
-        if (await sendPush(data.subscription, {title, body, go:'historial'}, env)) {
+        if (await enviar({title, body, go:'historial', tag:'pq-seguimiento'})) {
           due.forEach(f => { notified['fu:' + f.id] = today; });
           changed = true; total++;
         }
       }
 
-      // Vencidos (fecha de vigencia pasada) que NO se avisaron todavía hoy.
-      const exp = (data.expiries || [])
-        .filter(f => f.date < today && notified['vc:' + f.id] !== today);
-      if (exp.length) {
+      const exp = franja ? (data.expiries || [])
+        .filter(f => f.date < today && notified['vc:' + f.id] !== today) : [];
+      if (exp.length && !gone) {
         const n = exp.length;
         const title = n === 1
           ? `Presupuesto vencido: ${exp[0].clientName}`
@@ -291,20 +372,39 @@ export async function runDue(env) {
         const body = n === 1
           ? 'Pasó su fecha de vigencia. Buen momento para contactar al cliente.'
           : exp.slice(0,3).map(f=>f.clientName).join(', ') + (n>3?' y más.':'.');
-        if (await sendPush(data.subscription, {title, body, go:'historial'}, env)) {
+        if (await enviar({title, body, go:'historial', tag:'pq-vencimiento'})) {
           exp.forEach(f => { notified['vc:' + f.id] = today; });
           changed = true; total++;
         }
       }
 
-      // Limpiar marcas de días anteriores para que `notified` no crezca sin fin.
+      // Avisos con horario armados por la app. Sale el que ya llegó a su hora
+      // y no tiene más de 3 h de atraso (un "mañana tenés trabajo" que llega al
+      // otro día confunde más de lo que ayuda). Cada uno, una sola vez.
+      const desde = localAhora(tz, ms - 3 * 3600000);
+      for (const a of (data.avisos || [])) {
+        if (gone) break;
+        if (a.at > ahora || a.at < desde || enviados[a.k]) continue;
+        if (await enviar({ title: a.title, body: a.body, go: a.go, tag: a.tag })) {
+          enviados[a.k] = a.at; changed = true; total++;
+        }
+      }
+
+      if (gone) { await env.PUSH_KV.delete(name); return; }
+
+      // Limpiar marcas viejas para que no crezcan sin fin.
       for (const k of Object.keys(notified)) {
         if (notified[k] < today) { delete notified[k]; changed = true; }
+      }
+      const viejo = localAhora(tz, ms - 3 * 86400000);
+      for (const k of Object.keys(enviados)) {
+        if (enviados[k] < viejo) { delete enviados[k]; changed = true; }
       }
 
       if (changed) {
         data.notified = notified;
-        await env.PUSH_KV.put(name, JSON.stringify(data));
+        data.enviados = enviados;
+        await env.PUSH_KV.put(name, JSON.stringify(data), { expirationTtl: 60 * 60 * 24 * 90 });
       }
     } catch(e) { console.error('Push error', name, e.message); }
   }));

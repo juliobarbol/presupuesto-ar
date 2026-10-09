@@ -15,9 +15,9 @@
 
 ## Estructura de archivos
 - `index.html` — **toda la app** (markup + `<style>` + `<script>`).
-- `sw.js` — Service Worker (offline + actualizaciones). **`CACHE_VERSION` actual: `presupuesto-v236`**.
+- `sw.js` — Service Worker (offline + actualizaciones). **`CACHE_VERSION` actual: `presupuesto-v237`**.
 - `manifest.webmanifest`, `*.png` — PWA (instalación, iconos).
-- `push-worker/` — Cloudflare Worker **opcional** para notificaciones push de seguimiento (avisos con la app cerrada). No es parte del PWA shell; se despliega aparte. Ver `docs/push-setup.md`. La app es inerte a esto hasta rellenar `PUSH_WORKER_URL` / `PUSH_VAPID_KEY` en `index.html`.
+- `push-worker/` — Cloudflare Worker para las notificaciones con la app cerrada. No es parte del PWA shell y **no se publica al mergear a `main`** (`npx wrangler deploy` desde `push-worker/`, o conectarlo a Workers Builds). Ver `docs/push-setup.md`. La app es inerte a esto si `PUSH_WORKER_URL` / `PUSH_VAPID_KEY` están vacíos. **Avisos con horario (v237):** la app arma texto y hora local de cada aviso (`_buildPushAvisos`: "Mañana" 19 h, "Hoy" 7:30, 1 h antes de visitas/notas con hora; tipos `pushAgenda`/`pushHora` en la config de seguimiento) y el Worker solo los entrega (cron cada 15 min; seguimiento/vencimiento en franjas 9/14/19 h locales). Para un aviso nuevo, sumarlo en `_buildPushAvisos`, sin tocar el Worker. Diagnóstico en Configuración → Textos (`pushEstadoRender`, `LS.PUSH_ESTADO`, botón `pushProbar`: notificación local + `POST /ping`). Re-sync con retardo tras cada cambio (`schedulePushSync`, en `setH`/`setNotes`); suscripción perdida se rehace al abrir (`initPush`). Invitación a activarlos en la campanita (`pushCtaHTML`). Ver `test/push-avisos.test.cjs`.
 
 ## Mapa del código dentro de `index.html`
 El JS está organizado por secciones marcadas con comentarios `// ===== js/<nombre>.js =====`.
@@ -98,7 +98,7 @@ El CSS vive en el `<style>` (líneas ~16–1711). Hay dos bloques de estilos del
 > versión nueva la próxima vez que abran la app con conexión.
 
 1. Desarrollar en la rama de trabajo (`claude/...`), no en `main`.
-2. **Subir `CACHE_VERSION` en `sw.js`** en cada cambio que se despliegue (si no, los dispositivos siguen con la versión vieja en caché). Formato: `presupuesto-vNN`. **Versión actual: v236**.
+2. **Subir `CACHE_VERSION` en `sw.js`** en cada cambio que se despliegue (si no, los dispositivos siguen con la versión vieja en caché). Formato: `presupuesto-vNN`. **Versión actual: v237**.
 3. Si agregás un archivo nuevo (ej. otro `.js` o `.css`), **agregarlo a `APP_SHELL` en `sw.js`** o se rompe el offline. Lo pesado que se baja bajo demanda (hoy `html2pdf`) va en `VENDOR_LAZY`: vive en la caché `pq-vendor`, que el `activate` de una versión nueva **no borra** (antes cada deploy la borraba y "Compartir imagen" pedía señal). Otras reglas del SW (v229): una navegación que vuelve con **≥ 400** entrega la copia guardada (no la página de error; una redirección, status 0, pasa tal cual), y una **notificación tocada con la app abierta** manda el destino por mensaje `pq-go` que la página resuelve en `irDestino` (antes solo enfocaba y el destino se perdía). Ver `test/revision-fallas.test.cjs`.
 4. **Mergear a `main`** → Cloudflare despliega solo.
 
