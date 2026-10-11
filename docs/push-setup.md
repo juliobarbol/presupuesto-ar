@@ -40,23 +40,31 @@ el Worker.
 ## Cómo funciona (resumen)
 
 1. El teléfono se suscribe a push (Push API + clave VAPID) y le manda al Worker
-   su endpoint + la lista de seguimientos (con su **fecha de aviso**) y la de
-   vencimientos (con la **fecha de vigencia** de cada presupuesto).
+   su endpoint + la lista de **avisos con horario** que arma la app (`avisos`:
+   `{k, at, title, body, go, tag, acts?, clima?, soloSiClima?}`), con la hora
+   local de cada uno.
 2. El **Worker de Cloudflare** (`push-worker/`) corre un **cron cada 15
-   minutos**. Seguimientos y vencimientos salen en las franjas de **9, 14 y
-   19 h** (hora del teléfono, que la app manda como `tz`), una vez por día cada
-   presupuesto. Además entrega los **avisos con horario** que arma la app
-   (`avisos`: `{k, at, title, body, go, tag}`): "Mañana: …" a las 19 h del día
-   anterior, "Hoy: …" a las 7:30 y el recordatorio 1 h antes de una visita o
-   nota con hora. Cada aviso sale una vez, y no si tiene más de 3 h de atraso.
-   Como el texto y la hora los arma la app, **sumar un aviso nuevo no requiere
-   volver a publicar el Worker**. Una suscripción que el servicio de push da
-   por muerta (404/410) se borra sola.
+   minutos** y entrega cada aviso cuando llega su hora (hora del teléfono, que
+   la app manda como `tz`). Cada aviso sale una vez, y no si tiene más de 3 h
+   de atraso. Desde la v239 la app arma todo: el **resumen del día** (Agenda +
+   seguimientos + vencidos, a la hora elegida), la **noche anterior** (con el
+   clima), los recordatorios con hora y, los lunes, la semana y el tope de
+   facturación. Los horarios y los días sin avisos se eligen en Configuración →
+   Textos. Como el texto y la hora los arma la app, **sumar un aviso nuevo no
+   requiere volver a publicar el Worker**. Lo que sí hace el Worker:
+   - **Clima**: si el aviso trae `clima: {d, pts}`, consulta Open-Meteo para
+     esos puntos (coordenadas a ~1 km) y, si llueve o hay ráfagas ≥ 45 km/h, lo
+     suma al texto. Con `soloSiClima`, el aviso sale solo si el día está feo.
+   - **Posponer**: el botón "Posponer 1 h" hace `POST /posponer {deviceId, k}` y
+     el Worker vuelve a mandar ese mismo aviso guardado una hora después.
+   - Las franjas de 9, 14 y 19 h para `followups`/`expiries` quedan solo para
+     apps anteriores a la v239 (las nuevas los mandan vacíos).
+   Una suscripción que el servicio de push da por muerta (404/410) se borra sola.
 3. El push lo entrega el navegador/Android (transporte FCM transparente: **no
    hace falta cuenta de Firebase**). El Service Worker muestra la notificación.
 
 ```
-[Teléfono/PWA] --suscripción+seguimientos--> [Worker + KV] --cron 3x/día--> push --> [Teléfono]
+[Teléfono/PWA] --suscripción+avisos--> [Worker + KV] --cron c/15 min (+ Open-Meteo)--> push --> [Teléfono]
 ```
 
 ---

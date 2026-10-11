@@ -1793,6 +1793,17 @@ input[type=number]{-moz-appearance:textfield}
 .fu-config.is-destacada{box-shadow:0 0 0 3px var(--accent);transition:box-shadow .3s}
 .push-tipos{display:flex;flex-direction:column;gap:6px;margin:8px 0}
 .push-tipos .fu-check{display:flex;gap:8px;align-items:flex-start;font-size:13px;line-height:1.35}
+/* v239: horarios y días de los avisos. */
+.push-horas{display:flex;flex-wrap:wrap;gap:8px 12px;margin-bottom:2px}
+.push-hora-f{display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:var(--muted);flex:1 1 130px}
+.push-hora-f input{min-height:40px}
+.push-fila{display:flex;flex-direction:column;gap:5px;margin:2px 0 2px 26px}
+.push-fila-lbl{font-size:12.5px;color:var(--muted)}
+.push-chips{display:flex;flex-wrap:wrap;gap:6px}
+.push-chips button{min-height:36px;padding:0 12px;border-radius:18px;border:1px solid var(--border);background:var(--card);color:var(--text);font:inherit;font-size:13px;cursor:pointer}
+.push-chips button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+.push-dias{gap:4px}
+.push-dias button{min-width:36px;padding:0}
 .push-estado{font-size:12.5px;color:var(--muted);white-space:pre-line;margin:8px 0}
 .push-estado.is-ok{color:var(--accent-fg,var(--text))}
 .push-estado.is-err{color:var(--red)}
@@ -4344,9 +4355,36 @@ input[type=number]{-moz-appearance:textfield}
             </div>
             <p class="fu-help">Te llega una notificación al teléfono aunque la app esté cerrada. Se activa en cada teléfono por separado.</p>
             <div id="push-tipos" class="push-tipos" hidden>
-              <label class="fu-check"><input type="checkbox" checked disabled> Seguimientos y vencimientos (9, 14 y 19 h, según el seguimiento de arriba)</label>
-              <label class="fu-check"><input type="checkbox" id="push-agenda" onchange="pushTiposSave()"> Trabajos y visitas: la noche anterior (19 h) y a la mañana (7:30)</label>
-              <label class="fu-check"><input type="checkbox" id="push-hora" onchange="pushTiposSave()"> Visitas y recordatorios con hora: 1 hora antes</label>
+              <div class="push-horas">
+                <label class="push-hora-f"><span>Resumen del día</span><input type="time" id="push-h-resumen" onchange="pushTiposSave()"></label>
+                <label class="push-hora-f"><span>Noche anterior</span><input type="time" id="push-h-noche" onchange="pushTiposSave()"></label>
+              </div>
+              <label class="fu-check"><input type="checkbox" id="push-agenda" onchange="pushTiposSave()"> <span><b>Trabajos y visitas</b>: en el resumen del día y la noche anterior.</span></label>
+              <label class="fu-check"><input type="checkbox" checked disabled> <span><b>Seguimientos y vencidos</b>, en el resumen: el día que tocan y una vez más a la semana. Después quedan en el Historial (según el seguimiento de arriba).</span></label>
+              <label class="fu-check"><input type="checkbox" id="push-hora" onchange="pushTiposSave()"> <span><b>Visitas y recordatorios con hora</b>, con botones “Cómo llegar” o “WhatsApp” y “Posponer 1 h”.</span></label>
+              <div class="push-fila">
+                <span class="push-fila-lbl">Avisar</span>
+                <div class="push-chips" id="push-antes" role="group" aria-label="Cuánto antes avisar">
+                  <button type="button" data-min="30" onclick="pushAntesSet(30)">30 min antes</button>
+                  <button type="button" data-min="60" onclick="pushAntesSet(60)">1 h antes</button>
+                  <button type="button" data-min="120" onclick="pushAntesSet(120)">2 h antes</button>
+                </div>
+              </div>
+              <label class="fu-check"><input type="checkbox" id="push-clima" onchange="pushTiposSave()"> <span><b>Clima</b>: la noche anterior, si llueve o hay ráfagas fuertes donde trabajás mañana.</span></label>
+              <label class="fu-check"><input type="checkbox" id="push-semana" onchange="pushTiposSave()"> <span><b>Los lunes</b>: la semana que viene, cuántos presupuestos esperan respuesta y la facturación, si pasaste el 80 % del tope.</span></label>
+              <div class="push-fila">
+                <span class="push-fila-lbl">Días sin avisos</span>
+                <div class="push-chips push-dias" id="push-silencio" role="group" aria-label="Días sin avisos">
+                  <button type="button" data-dow="1" onclick="pushSilToggle(1)" aria-label="Lunes">L</button>
+                  <button type="button" data-dow="2" onclick="pushSilToggle(2)" aria-label="Martes">M</button>
+                  <button type="button" data-dow="3" onclick="pushSilToggle(3)" aria-label="Miércoles">X</button>
+                  <button type="button" data-dow="4" onclick="pushSilToggle(4)" aria-label="Jueves">J</button>
+                  <button type="button" data-dow="5" onclick="pushSilToggle(5)" aria-label="Viernes">V</button>
+                  <button type="button" data-dow="6" onclick="pushSilToggle(6)" aria-label="Sábado">S</button>
+                  <button type="button" data-dow="0" onclick="pushSilToggle(0)" aria-label="Domingo">D</button>
+                </div>
+              </div>
+              <span class="fu-vars">Esos días no llegan resúmenes. Si al día siguiente hay trabajo y el pronóstico está feo, el aviso de la noche llega igual. Los recordatorios con hora llegan siempre.</span>
             </div>
             <p id="push-estado" class="push-estado"></p>
             <button type="button" id="push-probar" class="btn btn-s btn-sm" onclick="pushProbar()" hidden>Probar notificaciones</button>
@@ -6615,6 +6653,13 @@ const FOLLOWUP_DEF = {
   // Avisos al teléfono con la app cerrada (además de seguimiento/vencimiento):
   pushAgenda: true,     // trabajos y visitas: la noche anterior y a la mañana
   pushHora: true,       // visitas y recordatorios con hora: 1 h antes
+  // v239 — horarios a medida y avisos nuevos (ver _buildPushAvisos):
+  pushHoraResumen: '07:30', // resumen del día (Agenda + seguimientos + vencidos)
+  pushHoraNoche: '19:00',   // "Mañana tenés…" la noche anterior
+  pushAntesMin: 60,         // visitas/recordatorios con hora: cuánto antes
+  pushSilencio: [],         // días sin resúmenes (0 = domingo … 6 = sábado)
+  pushClima: true,          // la noche anterior, si llueve o hay viento fuerte
+  pushSemana: true,         // los lunes: la semana + tope de facturación
   // Plantilla del mensaje de SEGUIMIENTO. Variables: {cliente} {numero} {empresa}
   waTemplate: 'Hola {cliente}, ¿cómo andás? Te escribo por el presupuesto que te pasé. No es para apurarte, sino para saber si te quedó alguna duda o si querés que repasemos algo del trabajo.',
   // Plantilla del mensaje de ENVÍO (botón "Enviar por WhatsApp"). Mismas variables.
@@ -6994,17 +7039,48 @@ function _buildPushExpiries(cfg) {
 }
 
 // ── Avisos con horario (los arma la app, el Worker los entrega a su hora) ──
+// v239: la app arma TODO lo que suena con la app cerrada —también los
+// seguimientos y vencidos, que antes calculaba el Worker en franjas fijas (9,
+// 14 y 19 h)—, así los horarios se eligen en Configuración y cualquier aviso
+// nuevo se suma acá sin volver a publicar el Worker. Lo que sale:
+//   · Resumen del día (`hoy:`), a la hora elegida: Agenda del día + los
+//     seguimientos y vencidos que tocan + los lunes, la semana y el tope.
+//   · La noche anterior (`man:`): trabajos y visitas de mañana, con el clima.
+//   · Visitas/recordatorios con hora (`hr:`): N minutos antes.
+//   · Solo clima (`clima:`): con los avisos de la Agenda apagados.
 const PUSH_HORIZONTE_DIAS = 14;     // qué tan adelante se mandan
-const PUSH_HORA_NOCHE = '19:00';    // "Mañana tenés…" la noche anterior
-const PUSH_HORA_MANANA = '07:30';   // "Hoy:" a primera hora
-const PUSH_ANTES_MIN = 60;          // recordatorio con hora: 1 h antes
 const PUSH_MAX_AVISOS = 120;
+const PUSH_ANTES_OPC = [30, 60, 120];
+// Un seguimiento/vencido avisa el día que toca y UNA vez más a la semana.
+// Antes repetía todos los días hasta marcarlo: un aviso diario por presupuestos
+// muertos, que es lo que enseña a ignorar las notificaciones. Después de eso
+// queda en el banner del Historial y en la campanita.
+const PUSH_REPITE_DIAS = 7;
+const PUSH_SEMANA_DOW = 1;          // lunes: resumen de la semana
+const PUSH_TOPE_AVISO_PCT = 80;     // desde acá el tope de facturación entra al resumen
+// Mismas URLs que deja pasar el Worker (ACT_URL_RE): el botón la abre tal cual.
+const PUSH_MAPS_URL_RE = /^https:\/\/(?:www\.google\.com\/maps\/|maps\.google\.com\/|maps\.app\.goo\.gl\/|goo\.gl\/maps\/)[^\s"'<>]{0,560}$/;
 
 function _pushAt(d) {   // Date local → 'YYYY-MM-DDTHH:MM'
   return toLocalISODate(d) + 'T' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
 }
 function _pushCorto(s, n) { s = String(s || '').replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n - 1) + '…' : s; }
 function _pushPlural(n, uno, varios) { return n + ' ' + (n === 1 ? uno : varios); }
+function _pushUnir(partes) {   // ['a','b','c'] → "a, b y c"
+  return partes.length > 1 ? partes.slice(0, -1).join(', ') + ' y ' + partes[partes.length - 1] : (partes[0] || '');
+}
+function _pushDow(iso) { const p = iso.split('-').map(Number); return new Date(p[0], p[1] - 1, p[2]).getDay(); }
+
+// Horarios elegidos, con los de fábrica si falta algo.
+function _pushHorarios(cfg) {
+  const c = cfg || {};
+  return {
+    resumen: sanHoraHM(c.pushHoraResumen) || FOLLOWUP_DEF.pushHoraResumen,
+    noche: sanHoraHM(c.pushHoraNoche) || FOLLOWUP_DEF.pushHoraNoche,
+    antes: PUSH_ANTES_OPC.includes(c.pushAntesMin) ? c.pushAntesMin : FOLLOWUP_DEF.pushAntesMin,
+    silencio: new Set(Array.isArray(c.pushSilencio) ? c.pushSilencio : []),
+  };
+}
 
 // Una línea por evento: "Poda · García", "Visita 10:30 · López".
 function _pushLineaEv(ev) {
@@ -7014,54 +7090,193 @@ function _pushLineaEv(ev) {
   return _pushCorto((cab ? cab + ' · ' : '') + (ev.title || ''), 70);
 }
 
-// Resumen "1 trabajo y 2 visitas".
-function _pushResumen(evs) {
+// Partes del resumen: ["1 trabajo", "2 visitas"].
+function _pushResumenPartes(evs) {
   const n = (t) => evs.filter(e => e.tipo === t).length;
   const partes = [];
   if (n('trabajo')) partes.push(_pushPlural(n('trabajo'), 'trabajo', 'trabajos'));
   if (n('visita')) partes.push(_pushPlural(n('visita'), 'visita', 'visitas'));
   if (n('recontacto')) partes.push(_pushPlural(n('recontacto'), 'llamada', 'llamadas'));
   if (n('nota')) partes.push(_pushPlural(n('nota'), 'recordatorio', 'recordatorios'));
-  return partes.length > 1 ? partes.slice(0, -1).join(', ') + ' y ' + partes[partes.length - 1] : (partes[0] || '');
+  return partes;
+}
+// Resumen "1 trabajo y 2 visitas".
+function _pushResumen(evs) { return _pushUnir(_pushResumenPartes(evs)); }
+
+// Lista de nombres para el cuerpo: "García, Pérez y 2 más".
+function _pushNombres(items) {
+  const n = items.map(x => x.clientName || '(sin nombre)');
+  return n.length > 3 ? n.slice(0, 3).join(', ') + ' y ' + (n.length - 3) + ' más' : _pushUnir(n);
+}
+
+// Botones de la notificación. Android muestra dos: el primero es lo útil de
+// ESE aviso (la ruta si hay lugar, si no el chat), el segundo "Posponer".
+// Ruta y teléfono de un presupuesto (`e`) o de una nota (`n`): { maps, tel }.
+function _pushFuente(e, n) {
+  let maps = '', tel = '';
+  if (e) {
+    const snap = e.snapshot || {};
+    maps = mapsDirUrlFor(snap.workMapLink, snap.workAddress);
+    tel = normalizeArgPhone(histClientPhone(e));
+  } else if (n) {
+    maps = n.ubic ? mapsDirUrlFor(n.ubic, '') : '';
+    tel = normalizeArgPhone(n.tel || '');
+  }
+  return { maps: PUSH_MAPS_URL_RE.test(maps || '') ? maps : '', tel: /^\d{6,15}$/.test(tel || '') ? tel : '' };
+}
+function _pushWa(f) { return f.tel ? { a: 'wa', url: 'https://wa.me/' + f.tel } : null; }
+// El botón útil de un aviso: la ruta si hay lugar, si no el chat.
+function _pushActUtil(f) { return f.maps ? { a: 'maps', url: f.maps } : _pushWa(f); }
+function _pushFuenteEv(ev, hById, nById) {
+  return ev.entryId != null ? _pushFuente(hById.get(ev.entryId), null) : _pushFuente(null, nById.get(String(ev.noteId)));
+}
+
+// Puntos para que el Worker mire el clima de los trabajos y visitas de un día:
+// coordenadas redondeadas a ~1 km (como las que la app ya manda a Open-Meteo)
+// y el nombre del cliente para el texto ("Ráfagas de 55 km/h — García").
+function _pushClimaPts(evs, hById, nById) {
+  const pts = [], vistos = new Set();
+  evs.forEach(ev => {
+    let ll = null;
+    try {
+      if (ev.tipo === 'trabajo' && ev.entryId != null && typeof _climaLatLngDe === 'function') ll = _climaLatLngDe(hById.get(ev.entryId));
+      else if (ev.tipo === 'visita' && ev.noteId != null && typeof _climaLatLngNota === 'function') ll = _climaLatLngNota(nById.get(String(ev.noteId)));
+    } catch (_) { ll = null; }
+    if (!ll || !Number.isFinite(ll[0]) || !Number.isFinite(ll[1])) return;
+    const la = Math.round(ll[0] * 100) / 100, lo = Math.round(ll[1] * 100) / 100;
+    const clave = la + ',' + lo + ',' + ev.title;
+    if (vistos.has(clave) || pts.length >= 5) return;
+    vistos.add(clave);
+    pts.push({ la, lo, n: _pushCorto(ev.title, 40) });
+  });
+  return pts;
+}
+
+// ¿Este seguimiento/vencido entra en el resumen del día `d`? Entra el día que
+// toca (`base`) y a la semana; y si esos días caen en días sin avisos, pasa al
+// primer resumen que sí sale (`desde` = primer día de silencio antes de `d`).
+function _pushToca(base, desde, d) {
+  if (!base) return false;
+  const rep = _calAddDays(base, PUSH_REPITE_DIAS);
+  return (base >= desde && base <= d) || (rep >= desde && rep <= d);
+}
+
+// Facturación de los últimos 12 meses sobre el tope anual, en %.
+function _pushPctTope() {
+  try {
+    const tope = (typeof getTope === 'function') ? getTope() : 0;
+    if (!(tope > 0) || typeof factTotalAnual !== 'function') return 0;
+    return factTotalAnual(new Date()) / tope * 100;
+  } catch (_) { return 0; }
+}
+
+// Los lunes: lo que viene en la semana, lo que espera respuesta y el tope.
+function _pushSemanaLineas(d, idx, h) {
+  const lineas = [];
+  const evs = [];
+  for (let i = 0; i < 7; i++) (idx[_calAddDays(d, i)] || []).forEach(ev => {
+    if (!ev.done && (ev.tipo === 'trabajo' || ev.tipo === 'visita')) evs.push(ev);
+  });
+  if (evs.length) lineas.push('Semana: ' + _pushResumen(evs));
+  const esperan = h.filter(e => (e.estado || '') === 'enviado' && !e.reemplazadoPor
+    && !(e.snapshot && e.snapshot.dateExpiry && e.snapshot.dateExpiry < d)).length;
+  if (esperan) lineas.push(_pushPlural(esperan, 'presupuesto espera', 'presupuestos esperan') + ' respuesta');
+  const pct = _pushPctTope();
+  if (pct >= PUSH_TOPE_AVISO_PCT) lineas.push('Facturación: ' + Math.round(pct) + ' % del tope anual');
+  return lineas;
 }
 
 function _buildPushAvisos(cfg, ahora) {
   if (typeof calBuildIndex !== 'function') return [];
+  cfg = cfg || {};
   const ag = cfg.pushAgenda !== false, hr = cfg.pushHora !== false;
-  if (!ag && !hr) return [];
+  const clima = cfg.pushClima !== false, semana = cfg.pushSemana !== false;
+  const conSeg = !!cfg.enabled, conVenc = !!(cfg.enabled && cfg.expiryEnabled);
+  const H = _pushHorarios(cfg);
+  const sil = (iso) => H.silencio.has(_pushDow(iso));
   const idx = calBuildIndex();
+  const h = (typeof getH === 'function') ? getH() : [];
+  const hById = new Map(h.map(e => [e.id, e]));
+  const nById = new Map((typeof getNotes === 'function' ? getNotes() : []).map(n => [String(n.id), n]));
+  const segs = conSeg ? _buildPushFollowups(cfg) : [];
+  const vencs = conVenc ? _buildPushExpiries(cfg).map(v => Object.assign({}, v, { date: _calAddDays(v.date, 1) })) : [];
   const now = ahora || new Date();
   const hoy = toLocalISODate(now);
   const out = [];
   for (let i = 0; i <= PUSH_HORIZONTE_DIAS; i++) {
     const d = _calAddDays(hoy, i);
     const evs = (idx[d] || []).filter(ev => !ev.done);
-    if (ag) {
-      // La noche anterior: lo que hay que preparar (trabajos y visitas).
-      const man = evs.filter(ev => ev.tipo === 'trabajo' || ev.tipo === 'visita');
-      if (man.length && i >= 1) {
-        out.push({
-          k: 'man:' + d, at: _calAddDays(d, -1) + 'T' + PUSH_HORA_NOCHE, go: 'agenda:' + d, tag: 'pq-manana',
+    const man = evs.filter(ev => ev.tipo === 'trabajo' || ev.tipo === 'visita');
+
+    // La noche anterior: lo que hay que preparar (trabajos y visitas), con el
+    // clima. En un día de silencio solo sale si el pronóstico está feo.
+    if (i >= 1 && man.length && (ag || clima)) {
+      const pts = clima ? _pushClimaPts(man, hById, nById) : [];
+      const silencio = sil(_calAddDays(d, -1));
+      if (ag || pts.length) {
+        const a = {
+          k: (ag ? 'man:' : 'clima:') + d, at: _calAddDays(d, -1) + 'T' + H.noche,
+          go: 'agenda:' + d, tag: ag ? 'pq-manana' : 'pq-clima',
           title: 'Mañana: ' + _pushResumen(man),
           body: man.slice(0, 4).map(_pushLineaEv).join('\n') + (man.length > 4 ? '\n…y ' + (man.length - 4) + ' más' : ''),
-        });
+        };
+        if (pts.length) a.clima = { d, pts };
+        if (!ag || silencio) a.soloSiClima = true;
+        // Un solo trabajo: el chat con el cliente, para confirmarle que vas.
+        if (man.length === 1) {
+          const wa = _pushWa(_pushFuenteEv(man[0], hById, nById));
+          if (wa) a.acts = [wa];
+        }
+        if (!(silencio && !a.clima)) out.push(a);
       }
-      // A primera hora: el día completo (llamadas y recordatorios incluidos).
-      const dia = evs.filter(ev => ['trabajo', 'visita', 'recontacto', 'nota'].includes(ev.tipo));
-      if (dia.length) {
+    }
+
+    // Resumen del día: Agenda + seguimientos/vencidos que tocan + la semana.
+    if (!sil(d)) {
+      let desde = d;
+      for (let n = 0; n < 6 && sil(_calAddDays(desde, -1)); n++) desde = _calAddDays(desde, -1);
+      const dia = ag ? evs.filter(ev => ['trabajo', 'visita', 'recontacto', 'nota'].includes(ev.tipo)) : [];
+      const sg = segs.filter(x => _pushToca(x.date, desde, d));
+      const vc = vencs.filter(x => _pushToca(x.date, desde, d));
+      const sem = (semana && _pushDow(d) === PUSH_SEMANA_DOW) ? _pushSemanaLineas(d, idx, h) : [];
+      if (dia.length || sg.length || vc.length || sem.length) {
+        const partes = _pushResumenPartes(dia);
+        if (sg.length) partes.push(_pushPlural(sg.length, 'seguimiento', 'seguimientos'));
+        if (vc.length) partes.push(_pushPlural(vc.length, 'vencido', 'vencidos'));
+        const cuerpo = dia.slice(0, 4).map(_pushLineaEv);
+        if (dia.length > 4) cuerpo.push('…y ' + (dia.length - 4) + ' más');
+        if (sg.length) cuerpo.push('Seguimiento: ' + _pushNombres(sg));
+        if (vc.length) cuerpo.push((vc.length === 1 ? 'Vencido: ' : 'Vencidos: ') + _pushNombres(vc));
+        cuerpo.push(...sem);
+        const title = partes.length ? 'Hoy: ' + _pushUnir(partes)
+          : 'Tu semana · ' + sem[0].replace(/^Semana: /, '');
+        const items = sg.concat(vc);
+        let go = 'agenda:' + d;
+        if (!dia.length && items.length === 1) go = 'hist:' + items[0].id;
+        else if (!dia.length && items.length) go = vc.length >= sg.length ? 'historial:venc' : 'historial:seg';
+        // Una sola cosa en el día: su botón útil (ruta o chat) + "Posponer".
+        // Seguimiento/vencido: lo útil es escribirle al cliente, no la ruta.
+        let util = null;
+        if (dia.length + items.length === 1) {
+          util = dia.length ? _pushActUtil(_pushFuenteEv(dia[0], hById, nById))
+            : _pushWa(_pushFuente(hById.get(items[0].id), null));
+        }
+        const acts = (util ? [util] : []).concat([{ a: 'posponer' }]);
         out.push({
-          k: 'hoy:' + d, at: d + 'T' + PUSH_HORA_MANANA, go: 'agenda:' + d, tag: 'pq-hoy',
-          title: 'Hoy: ' + _pushResumen(dia),
-          body: dia.slice(0, 4).map(_pushLineaEv).join('\n') + (dia.length > 4 ? '\n…y ' + (dia.length - 4) + ' más' : ''),
+          k: 'hoy:' + d, at: d + 'T' + H.resumen, go, tag: 'pq-hoy', acts,
+          title: _pushCorto(title, 120),
+          body: cuerpo.join('\n').slice(0, 400),
         });
       }
     }
+
     if (hr) {
-      // Visitas y notas con hora: 1 h antes, cada una su propio aviso.
+      // Visitas y notas con hora: N minutos antes, cada una su propio aviso.
+      // Los días de silencio no las frenan: la hora la puso el usuario.
       evs.filter(ev => ev.hora && ev.noteId != null).forEach(ev => {
         const [hh, mm] = ev.hora.split(':').map(Number);
         const [y, mo, da] = d.split('-').map(Number);
-        const at = new Date(y, mo - 1, da, hh, mm - PUSH_ANTES_MIN);
+        const at = new Date(y, mo - 1, da, hh, mm - H.antes);
         if (at.getTime() < now.getTime() - 3 * 3600000) return;
         out.push({
           k: 'hr:' + ev.noteId + ':' + d + ':' + ev.hora.replace(':', ''),
@@ -7069,6 +7284,7 @@ function _buildPushAvisos(cfg, ahora) {
           tag: 'pq-hora-' + String(ev.noteId).replace(/[^\w-]/g, '').slice(0, 30),
           title: (ev.tipo === 'visita' ? 'Visita' : 'Recordatorio') + ' a las ' + ev.hora,
           body: _pushCorto([ev.title, ev.sub, ev.ubic].filter(Boolean).join(' · '), 200),
+          acts: [_pushActUtil(_pushFuenteEv(ev, hById, nById)), { a: 'posponer' }].filter(Boolean),
         });
       });
     }
@@ -7099,8 +7315,10 @@ async function syncPushFollowups(sub) {
     if (!subscription) return false;
     const cfg = (typeof getFollowupCfg === 'function')
       ? getFollowupCfg() : { enabled: false, estados: [], days: 10 };
-    const followups = cfg.enabled ? _buildPushFollowups(cfg) : [];
-    const expiries = (cfg.enabled && cfg.expiryEnabled) ? _buildPushExpiries(cfg) : [];
+    // v239: seguimientos y vencidos van DENTRO del resumen del día (avisos).
+    // Las listas sueltas viajan vacías: con ellas el Worker repetía el aviso
+    // todos los días en franjas fijas (lo sigue haciendo para apps viejas).
+    const followups = [], expiries = [];
     const avisos = _buildPushAvisos(cfg);
     const res = await netFetch(PUSH_WORKER_URL + '/subscribe', {
       method: 'POST',
@@ -7288,14 +7506,47 @@ function pushEstadoRender() {
 }
 
 // Tipos de aviso (Configuración): viven en la config de seguimiento.
-function pushTiposSave() {
-  const ag = document.getElementById('push-agenda');
-  const hr = document.getElementById('push-hora');
-  setFollowupCfg(Object.assign({}, getFollowupCfg(), {
-    pushAgenda: ag ? !!ag.checked : true,
-    pushHora: hr ? !!hr.checked : true,
-  }));
+function pushTiposSave(extra) {
+  const chk = (id) => { const el = document.getElementById(id); return el ? !!el.checked : true; };
+  const hora = (id, def) => { const el = document.getElementById(id); return (el && sanHoraHM(el.value)) || def; };
+  const cfg = getFollowupCfg();
+  setFollowupCfg(Object.assign({}, cfg, {
+    pushAgenda: chk('push-agenda'),
+    pushHora: chk('push-hora'),
+    pushClima: chk('push-clima'),
+    pushSemana: chk('push-semana'),
+    pushHoraResumen: hora('push-h-resumen', cfg.pushHoraResumen),
+    pushHoraNoche: hora('push-h-noche', cfg.pushHoraNoche),
+  }, extra || {}));
+  pushHorariosRender();
   if (S.pushEnabled) syncPushFollowups().catch(() => {});
+}
+function pushAntesSet(min) {
+  if (PUSH_ANTES_OPC.includes(min)) pushTiposSave({ pushAntesMin: min });
+}
+function pushSilToggle(dow) {
+  const cur = new Set(getFollowupCfg().pushSilencio || []);
+  if (cur.has(dow)) cur.delete(dow); else cur.add(dow);
+  // Los siete días en silencio es apagar los resúmenes: para eso está el
+  // interruptor de arriba. No se deja marcar el séptimo.
+  if (cur.size > 6) { toast('Para no recibir ninguno, apagá los avisos con el interruptor de arriba', 'info', 3200); return; }
+  pushTiposSave({ pushSilencio: [...cur].sort() });
+}
+// Pinta horarios, anticipación y días de silencio desde la config guardada.
+function pushHorariosRender() {
+  const cfg = getFollowupCfg();
+  const H = _pushHorarios(cfg);
+  const set = (id, v) => { const el = document.getElementById(id); if (el && el.value !== v) el.value = v; };
+  set('push-h-resumen', H.resumen);
+  set('push-h-noche', H.noche);
+  document.querySelectorAll('#push-antes button').forEach(b =>
+    b.setAttribute('aria-pressed', String(Number(b.dataset.min) === H.antes)));
+  document.querySelectorAll('#push-silencio button').forEach(b =>
+    b.setAttribute('aria-pressed', String(H.silencio.has(Number(b.dataset.dow)))));
+  const cl = document.getElementById('push-clima');
+  if (cl) cl.checked = cfg.pushClima !== false;
+  const se = document.getElementById('push-semana');
+  if (se) se.checked = cfg.pushSemana !== false;
 }
 
 // Lleva a la sección de avisos en Configuración (desde la campanita).
@@ -7319,7 +7570,7 @@ function pushCtaHTML() {
   try { if (localStorage.getItem(LS.PUSH_CTA_NO)) return ''; } catch (_) {}
   const bloq = Notification.permission === 'denied';
   return `<div class="nt-push-cta"><div><strong>📲 Que te lleguen al teléfono</strong>` +
-    `<span>${bloq ? 'Las notificaciones están bloqueadas para la app.' : 'Trabajos de mañana, visitas con hora, seguimientos y vencimientos, aunque la app esté cerrada.'}</span></div>` +
+    `<span>${bloq ? 'Las notificaciones están bloqueadas para la app.' : 'Un resumen del día, los trabajos de mañana con el clima y las visitas con hora, aunque la app esté cerrada.'}</span></div>` +
     `<div class="nt-push-btns"><button type="button" class="btn btn-s btn-sm" onclick="pushCtaNo()">Ahora no</button>` +
     `<button type="button" class="btn btn-p btn-sm" onclick="${bloq ? 'irAPush()' : 'onPushToggle(true)'}">${bloq ? 'Cómo habilitar' : 'Activar'}</button></div></div>`;
 }
@@ -7929,6 +8180,19 @@ function sanitizeFollowup(raw) {
   if (raw.expiryEnabled != null) out.expiryEnabled = sanBool(raw.expiryEnabled);
   if (raw.pushAgenda    != null) out.pushAgenda    = sanBool(raw.pushAgenda);
   if (raw.pushHora      != null) out.pushHora      = sanBool(raw.pushHora);
+  if (raw.pushClima     != null) out.pushClima     = sanBool(raw.pushClima);
+  if (raw.pushSemana    != null) out.pushSemana    = sanBool(raw.pushSemana);
+  ['pushHoraResumen', 'pushHoraNoche'].forEach(k => {
+    if (raw[k] != null) { const h = sanHoraHM(raw[k]); if (h) out[k] = h; }
+  });
+  if (raw.pushAntesMin != null) {
+    const m = Math.round(sanNum(raw.pushAntesMin));
+    out.pushAntesMin = PUSH_ANTES_OPC.includes(m) ? m : FOLLOWUP_DEF.pushAntesMin;
+  }
+  if (raw.pushSilencio !== undefined) {
+    out.pushSilencio = [...new Set(_sanToArray(raw.pushSilencio).map(Number)
+      .filter(n => Number.isInteger(n) && n >= 0 && n <= 6))].sort();
+  }
   if (raw.days != null) {
     // Entre 1 y 365 días: fuera de ese rango el seguimiento no tiene sentido.
     const d = Math.round(sanNum(raw.days));
@@ -15280,6 +15544,7 @@ function loadFollowupUI() {
   if (pAg) pAg.checked = cfg.pushAgenda !== false;
   const pHr = document.getElementById('push-hora');
   if (pHr) pHr.checked = cfg.pushHora !== false;
+  if (typeof pushHorariosRender === 'function') pushHorariosRender();
   if (typeof pushEstadoRender === 'function') pushEstadoRender();
 }
 
@@ -18990,6 +19255,13 @@ function getFacturas() {
   } catch(e){ return []; }
 }
 function setFacturas(arr) { safeSetLS(FACT_KEY, JSON.stringify(arr)); }
+// Facturado en los últimos 12 meses (lo que se compara contra el tope). Lo usan
+// la pantalla de Facturación y el resumen de los lunes de las notificaciones.
+function factTotalAnual(now, facturas) {
+  const hace12 = new Date(now); hace12.setFullYear(hace12.getFullYear()-1);
+  const ultimas = (facturas || getFacturas()).filter(f=>{ const d=new Date(f.fecha); return d>=hace12 && d<=now; });
+  return centsToMoney(ultimas.reduce((s,f)=>s+moneyToCents(f.monto), 0));
+}
 function getTope() { const v=roundMoney(localStorage.getItem(TOPE_KEY)); return v>0? v : TOPE_DEF; }
 function setTope(v) { safeSetLS(TOPE_KEY, String(v)); }
 
@@ -19057,10 +19329,7 @@ function factRender() {
   const tope     = getTope();
   const now      = new Date();
 
-  // Últimos 12 meses
-  const hace12 = new Date(now); hace12.setFullYear(hace12.getFullYear()-1);
-  const ultimas = facturas.filter(f=>{ const d=new Date(f.fecha); return d>=hace12 && d<=now; });
-  const totalAnual = centsToMoney(ultimas.reduce((s,f)=>s+moneyToCents(f.monto), 0));
+  const totalAnual = factTotalAnual(now, facturas);
 
   // Este mes
   const mesActual = now.getFullYear()+'-'+(String(now.getMonth()+1).padStart(2,'0'));

@@ -196,7 +196,7 @@ async function parteApp() {
       setH(h);
       const now = new Date(); now.setHours(12, 0, 0, 0);
       const av = _buildPushAvisos(getFollowupCfg(), now);
-      const cfgOff = Object.assign({}, getFollowupCfg(), { pushAgenda: false });
+      const cfgOff = Object.assign({}, getFollowupCfg(), { pushAgenda: false, pushSemana: false, pushClima: false });
       const avOff = _buildPushAvisos(cfgOff, now);
       const san = sanitizeFollowup({ pushAgenda: false, pushHora: 'x' });
       return { hoy, man, pas, av, avOff, san };
@@ -211,7 +211,7 @@ async function parteApp() {
     check('B1 visita con hora: aviso 1 h antes', hr && hr.at === r.man + 'T09:30' && hr.title === 'Visita a las 10:30', hr && (hr.at + ' ' + hr.title));
     check('B1 lo marcado como hecho no avisa', !r.av.some(a => a.k.includes(r.pas)));
     check('B1 todos van a la Agenda (al día del aviso)', r.av.every(a => a.go.startsWith('agenda:')));
-    check('B2 sin "Trabajos y visitas" queda solo el de la hora', r.avOff.length === 1 && r.avOff[0].k.startsWith('hr:'), r.avOff.map(a => a.k).join(','));
+    check('B2 sin "Trabajos y visitas" (ni semana ni clima) queda solo el de la hora', r.avOff.length === 1 && r.avOff[0].k.startsWith('hr:'), r.avOff.map(a => a.k).join(','));
     check('B2 sanitizeFollowup conserva los tipos como booleanos', r.san.pushAgenda === false && r.san.pushHora === true);
 
     // B3 / B4 — simular un navegador con push.

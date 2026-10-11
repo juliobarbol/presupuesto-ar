@@ -13,7 +13,7 @@
 //
 //  Para forzar actualizacion tras un deploy: subir el CACHE_VERSION.
 
-const CACHE_VERSION = 'presupuesto-v238';
+const CACHE_VERSION = 'presupuesto-v239';
 // Caché APARTE, que sobrevive a las versiones, para lo pesado que se baja bajo
 // demanda: html2pdf (927 KB, "Compartir imagen"). Antes vivía en la caché de la
 // versión y cada deploy la borraba: la primera "Compartir imagen" después de
@@ -260,9 +260,32 @@ self.addEventListener('message', (event) => {
 });
 
 // -- Push: mostrar notificación de seguimiento ---
+// Mismo Worker que PUSH_WORKER_URL en index.html (el test push-v239 los compara).
+const PUSH_WORKER_URL = 'https://presupuesto-push.juliobarribolbo.workers.dev';
+// Botones de la notificación (v239). El Worker solo deja pasar URLs de Maps y
+// WhatsApp; acá se vuelven a validar antes de abrirlas.
+const PUSH_ACCION_TXT = { maps: 'Cómo llegar', wa: 'WhatsApp', posponer: 'Posponer 1 h' };
+const PUSH_ACCION_URL = {
+  maps: /^https:\/\/(?:www\.google\.com\/maps\/|maps\.google\.com\/|maps\.app\.goo\.gl\/|goo\.gl\/maps\/)/,
+  wa: /^https:\/\/wa\.me\/\d{6,15}$/,
+};
+function pushAcciones(acts) {
+  const actions = [], urls = {};
+  (Array.isArray(acts) ? acts : []).slice(0, 2).forEach((x) => {
+    if (!x || !PUSH_ACCION_TXT[x.a]) return;
+    if (x.a !== 'posponer') {
+      if (typeof x.url !== 'string' || !PUSH_ACCION_URL[x.a].test(x.url)) return;
+      urls[x.a] = x.url;
+    }
+    actions.push({ action: x.a, title: PUSH_ACCION_TXT[x.a] });
+  });
+  return { actions, urls };
+}
+
 self.addEventListener('push', (event) => {
   let data = { title: 'Presupuesto AR', body: 'Tenés seguimientos pendientes.' };
   try { if (event.data) data = Object.assign(data, event.data.json()); } catch(e) {}
+  const { actions, urls } = pushAcciones(data.acts);
   event.waitUntil(
     self.registration.showNotification(data.title, {
       body: data.body,
@@ -278,7 +301,13 @@ self.addEventListener('push', (event) => {
       // se pierde si no estás mirando el teléfono en ese momento.
       requireInteraction: true,
       vibrate: [120, 60, 120],
-      data: { go: data.go || '' },
+      actions,
+      data: {
+        go: data.go || '', urls,
+        // Para "Posponer 1 h": qué aviso y de qué equipo (lo arma el Worker).
+        k: typeof data.k === 'string' ? data.k : '', dev: typeof data.dev === 'string' ? data.dev : '',
+        title: data.title, body: data.body, tag: data.tag || '',
+      },
     })
   );
 });
@@ -304,7 +333,33 @@ self.addEventListener('pushsubscriptionchange', (event) => {
 // después se la enfoca. Sin ventana abierta, se abre con ?go= como siempre.
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const go = event.notification.data?.go;
+  const dat = event.notification.data || {};
+  // Botones (v239): abren Maps/WhatsApp directo, o le piden al Worker que
+  // vuelva a mandar el aviso en una hora, sin abrir la app.
+  if (event.action === 'maps' || event.action === 'wa') {
+    const u = dat.urls && dat.urls[event.action];
+    if (typeof u === 'string' && PUSH_ACCION_URL[event.action].test(u)) {
+      event.waitUntil(clients.openWindow(u));
+      return;
+    }
+  }
+  if (event.action === 'posponer') {
+    event.waitUntil(
+      fetch(PUSH_WORKER_URL + '/posponer', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deviceId: dat.dev, k: dat.k }),
+      }).then((r) => {
+        if (!r.ok) throw new Error(String(r.status));
+      }).catch(() => self.registration.showNotification('No se pudo posponer', {
+        // Sin señal (o el Worker no lo encontró): que no se pierda el aviso.
+        body: (dat.title ? dat.title + ' — ' : '') + 'abrí la app para verlo.',
+        icon: './icon-192.png', badge: './icon-192.png', lang: 'es-AR',
+        tag: dat.tag || 'presupuesto-aviso', data: { go: dat.go || '' },
+      }))
+    );
+    return;
+  }
+  const go = dat.go;
   const url = go ? `./?go=${encodeURIComponent(go)}` : './';
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(wins => {

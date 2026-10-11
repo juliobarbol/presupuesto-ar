@@ -193,6 +193,42 @@ export function goAvisos(lista, banner) {
   return (typeof id === 'number' && Number.isSafeInteger(id) && id >= 0)
     ? 'hist:' + id : 'historial:' + banner;
 }
+// Botones de la notificación (v239). Android muestra dos como mucho. Los que
+// abren algo llevan su URL, y solo se aceptan las de Maps y WhatsApp: el
+// Service Worker la abre tal cual al tocar el botón, así que acá no puede
+// pasar cualquier dirección.
+const MAX_ACTS = 2;
+const ACT_URL_RE = {
+  maps: /^https:\/\/(?:www\.google\.com\/maps\/|maps\.google\.com\/|maps\.app\.goo\.gl\/|goo\.gl\/maps\/)[^\s"'<>]{0,560}$/,
+  wa: /^https:\/\/wa\.me\/\d{6,15}$/,
+};
+export function actsValidos(arr) {
+  if (!Array.isArray(arr)) return [];
+  const out = [];
+  for (const x of arr) {
+    if (out.length >= MAX_ACTS || !x || typeof x !== 'object') continue;
+    if (out.some(o => o.a === x.a)) continue;
+    if (x.a === 'posponer') out.push({ a: 'posponer' });
+    else if (ACT_URL_RE[x.a] && ACT_URL_RE[x.a].test(String(x.url ?? ''))) out.push({ a: x.a, url: x.url });
+  }
+  return out;
+}
+
+// Puntos para mirar el clima de un día (v239): coordenadas ya redondeadas a
+// ~1 km por la app (2 decimales) y el nombre corto del cliente para el texto.
+const MAX_PTS = 5;
+export function climaValido(c) {
+  if (!c || typeof c !== 'object' || !/^\d{4}-\d{2}-\d{2}$/.test(c.d)) return null;
+  const pts = [];
+  for (const p of (Array.isArray(c.pts) ? c.pts : [])) {
+    if (pts.length >= MAX_PTS || !p) continue;
+    const la = Math.round(Number(p.la) * 100) / 100, lo = Math.round(Number(p.lo) * 100) / 100;
+    if (!Number.isFinite(la) || !Number.isFinite(lo) || Math.abs(la) > 90 || Math.abs(lo) > 180) continue;
+    pts.push({ la, lo, n: String(p.n ?? '').slice(0, 40) });
+  }
+  return pts.length ? { d: c.d, pts } : null;
+}
+
 function avisosGenValidos(arr) {
   if (!Array.isArray(arr)) return [];
   const out = [];
@@ -202,15 +238,118 @@ function avisosGenValidos(arr) {
     if (!/^[\w:.-]+$/.test(k) || !AT_RE.test(String(a.at ?? ''))) continue;
     const title = String(a.title ?? '').slice(0, 120);
     if (!title) continue;
-    out.push({
+    const aviso = {
       k, at: a.at, title,
       body: String(a.body ?? '').slice(0, 400),
       go: goValido(a.go) ? a.go : 'agenda',
       tag: /^[\w-]{1,40}$/.test(a.tag || '') ? a.tag : 'pq-agenda',
-    });
+    };
+    const acts = actsValidos(a.acts);
+    if (acts.length) aviso.acts = acts;
+    const clima = climaValido(a.clima);
+    if (clima) {
+      aviso.clima = clima;
+      // Aviso que existe SOLO para avisar del clima (días de silencio, o con
+      // los avisos de la Agenda apagados): sin pronóstico feo no sale.
+      if (a.soloSiClima === true) aviso.soloSiClima = true;
+    }
+    out.push(aviso);
   }
   return out;
 }
+
+// ── Clima (v239) ───────────────────────────────────────────────────────────
+// La noche anterior a un trabajo el Worker mira el pronóstico del lugar y, si
+// llueve o hay viento fuerte, lo dice en el aviso. Hasta ahora eso solo se
+// veía al abrir la app. Mismos umbrales que la app (climaEsLluvia /
+// climaEsViento): lluvia con ≥ 50 % de probabilidad, ≥ 2 mm o código de
+// lluvia/tormenta; ráfaga (o viento sostenido, si no hay ráfaga) ≥ 45 km/h.
+const CLIMA_WIND_WARN = 45;
+export function climaMotivo(d) {
+  if (!d) return null;
+  const c = d.code;
+  const codLluvia = c != null && ((c >= 51 && c <= 67) || (c >= 80 && c <= 82) || c >= 95);
+  const lluvia = (d.pp != null && d.pp >= 50) || (d.mm != null && d.mm >= 2) || codLluvia;
+  const g = d.gust != null ? d.gust : d.wind;
+  const viento = g != null && g >= CLIMA_WIND_WARN;
+  if (!lluvia && !viento) return null;
+  const rafaga = `ráfagas de ${Math.round(g)} km/h`;
+  const llu = d.pp != null ? `lluvia (${Math.round(d.pp)} %)` : 'lluvia';
+  return { lluvia, viento, txt: lluvia && viento ? `${llu} y ${rafaga}` : (lluvia ? llu : rafaga) };
+}
+
+// Pronóstico del día `d` en (la, lo). null si no se pudo (sin señal, error):
+// el llamador reintenta en la corrida siguiente. `memo` evita pedir dos veces
+// el mismo punto en una corrida (varios equipos, varios trabajos).
+async function climaDia(la, lo, d, memo) {
+  const key = `${la},${lo},${d}`;
+  if (memo.has(key)) return memo.get(key);
+  let out = null;
+  try {
+    const url = 'https://api.open-meteo.com/v1/forecast'
+      + `?latitude=${la}&longitude=${lo}`
+      + '&daily=weather_code,precipitation_probability_max,precipitation_sum,wind_speed_10m_max,wind_gusts_10m_max'
+      + `&timezone=auto&start_date=${d}&end_date=${d}`;
+    const r = await fetch(url, typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? { signal: AbortSignal.timeout(8000) } : {});
+    if (r.ok) {
+      const j = await r.json();
+      const x = j && j.daily;
+      const i = x && Array.isArray(x.time) ? x.time.indexOf(d) : -1;
+      if (i >= 0) {
+        out = {
+          code: x.weather_code?.[i] ?? null, pp: x.precipitation_probability_max?.[i] ?? null,
+          mm: x.precipitation_sum?.[i] ?? null, wind: x.wind_speed_10m_max?.[i] ?? null,
+          gust: x.wind_gusts_10m_max?.[i] ?? null,
+        };
+      }
+    }
+  } catch (_) {}
+  memo.set(key, out);
+  return out;
+}
+
+// Mira el clima de todos los puntos del aviso. { ok, lineas, viento } —
+// ok=false si no se pudo consultar NINGUNO.
+async function climaDeAviso(clima, memo) {
+  let ok = false, viento = false;
+  const lineas = [];
+  for (const p of clima.pts) {
+    const d = await climaDia(p.la, p.lo, clima.d, memo);
+    if (!d) continue;
+    ok = true;
+    const m = climaMotivo(d);
+    if (!m) continue;
+    if (m.viento && !m.lluvia) viento = true;
+    const txt = m.txt.charAt(0).toUpperCase() + m.txt.slice(1);
+    const linea = `⚠️ ${txt}${p.n ? ' — ' + p.n : ''}`;
+    if (!lineas.includes(linea)) lineas.push(linea);
+  }
+  return { ok, lineas, viento };
+}
+
+// Aviso listo para mandar: el texto de la app + el clima, si está feo.
+function conClima(a, cl) {
+  if (!cl || !cl.lineas.length) return a;
+  const emoji = cl.viento ? '💨' : '🌧️';
+  return Object.assign({}, a, {
+    title: `${emoji} ${a.title}`.slice(0, 120),
+    body: (cl.lineas.slice(0, 3).join('\n') + '\n¿Reprogramás?' + (a.body ? '\n' + a.body : '')).slice(0, 400),
+  });
+}
+
+// Lo que viaja al teléfono. `k` y `dev` son para el botón "Posponer" (el
+// Service Worker le pide al Worker que lo vuelva a mandar en una hora).
+function payloadDe(a, deviceId) {
+  const p = { title: a.title, body: a.body, go: a.go, tag: a.tag };
+  if (a.acts && a.acts.length) {
+    p.acts = a.acts;
+    if (a.acts.some(x => x.a === 'posponer')) { p.k = a.k; p.dev = deviceId; }
+  }
+  return p;
+}
+
+const POSPONER_MIN = 60;
+const MAX_POSPUESTOS = 10;
 
 // Minutos de diferencia con UTC del teléfono (getTimezoneOffset: 180 en
 // Argentina). Con eso el Worker sabe qué hora es "allá" sin suponer el país.
@@ -283,6 +422,7 @@ export default {
           tz:        tzValido(body.tz),
           notified:  prev.notified || {},
           enviados:  prev.enviados || {},
+          pospuestos: Array.isArray(prev.pospuestos) ? prev.pospuestos : [],
           lastPing:  prev.lastPing || 0,
         }), {
           // Un equipo que deja de usarse se limpia solo: la app re-suscribe en
@@ -318,6 +458,36 @@ export default {
       } catch(e) { return new Response('Error', {status:500, headers:CORS}); }
     }
 
+    // POST /posponer {deviceId, k} — botón "Posponer 1 h" de la notificación.
+    // Vuelve a mandar ESE aviso (el que ya tiene guardado este equipo, con su
+    // texto) dentro de una hora. No acepta texto nuevo: quien conozca un
+    // deviceId solo puede repetir un aviso que ese equipo ya iba a recibir.
+    if (url.pathname === '/posponer' && request.method === 'POST') {
+      try {
+        const { deviceId, k } = await request.json();
+        if (!DEVICE_ID_RE.test(String(deviceId || '')) || !/^[\w:.-]{1,80}$/.test(String(k || ''))) {
+          return new Response('Bad request', {status:400, headers:CORS});
+        }
+        const key = `sub:${deviceId}`;
+        const data = JSON.parse(await env.PUSH_KV.get(key) || 'null');
+        if (!data?.subscription) return new Response('No subscription', {status:404, headers:CORS});
+        const pos = Array.isArray(data.pospuestos) ? data.pospuestos : [];
+        const orig = (data.avisos || []).concat(pos).find(a => a.k === k);
+        if (!orig) return new Response('Not found', {status:404, headers:CORS});
+        if (pos.length >= MAX_POSPUESTOS) pos.shift();
+        const tz = tzValido(data.tz);
+        pos.push({
+          k: `${String(orig.k).replace(/:p[0-9a-z]+$/, '').slice(0, 66)}:p${Date.now().toString(36)}`,
+          at: localAhora(tz, Date.now() + POSPONER_MIN * 60000),
+          title: orig.title, body: orig.body, go: orig.go, tag: orig.tag,
+          ...(orig.acts ? { acts: orig.acts } : {}),
+        });
+        data.pospuestos = pos;
+        await env.PUSH_KV.put(key, JSON.stringify(data), { expirationTtl: 60 * 60 * 24 * 90 });
+        return new Response('OK', {headers:CORS});
+      } catch(e) { return new Response('Error', {status:500, headers:CORS}); }
+    }
+
     if (url.pathname === '/subscribe' && request.method === 'DELETE') {
       try {
         const { deviceId } = await request.json();
@@ -341,6 +511,7 @@ export default {
 export async function runDue(env, ms = Date.now()) {
   const { keys } = await env.PUSH_KV.list({ prefix: 'sub:' });
   let total = 0;
+  const memo = new Map();   // pronósticos ya pedidos en esta corrida
 
   await Promise.all(keys.map(async ({name}) => {
     try {
@@ -401,13 +572,28 @@ export async function runDue(env, ms = Date.now()) {
       // y no tiene más de 3 h de atraso (un "mañana tenés trabajo" que llega al
       // otro día confunde más de lo que ayuda). Cada uno, una sola vez.
       const desde = localAhora(tz, ms - 3 * 3600000);
-      for (const a of (data.avisos || [])) {
+      const devId = name.slice(4);
+      const pospuestos = Array.isArray(data.pospuestos) ? data.pospuestos : [];
+      for (const a of (data.avisos || []).concat(pospuestos)) {
         if (gone) break;
         if (a.at > ahora || a.at < desde || enviados[a.k]) continue;
-        if (await enviar({ title: a.title, body: a.body, go: a.go, tag: a.tag })) {
+        let listo = a;
+        if (a.clima) {
+          const cl = await climaDeAviso(a.clima, memo);
+          if (a.soloSiClima) {
+            if (!cl.ok) continue;                       // sin pronóstico: reintentar
+            if (!cl.lineas.length) { enviados[a.k] = a.at; changed = true; continue; }   // día lindo: nada que avisar
+          }
+          listo = conClima(a, cl);
+        }
+        if (await enviar(payloadDe(listo, devId))) {
           enviados[a.k] = a.at; changed = true; total++;
         }
       }
+      // Pospuestos: se quedan un día (para poder posponerlos otra vez) y se van.
+      const ayer = localAhora(tz, ms - 86400000);
+      const vivos = pospuestos.filter(a => a.at >= ayer);
+      if (vivos.length !== pospuestos.length) { data.pospuestos = vivos; changed = true; }
 
       if (gone) { await env.PUSH_KV.delete(name); return; }
 
