@@ -7041,7 +7041,7 @@ function _buildPushAvisos(cfg, ahora) {
       const man = evs.filter(ev => ev.tipo === 'trabajo' || ev.tipo === 'visita');
       if (man.length && i >= 1) {
         out.push({
-          k: 'man:' + d, at: _calAddDays(d, -1) + 'T' + PUSH_HORA_NOCHE, go: 'agenda', tag: 'pq-manana',
+          k: 'man:' + d, at: _calAddDays(d, -1) + 'T' + PUSH_HORA_NOCHE, go: 'agenda:' + d, tag: 'pq-manana',
           title: 'Mañana: ' + _pushResumen(man),
           body: man.slice(0, 4).map(_pushLineaEv).join('\n') + (man.length > 4 ? '\n…y ' + (man.length - 4) + ' más' : ''),
         });
@@ -7050,7 +7050,7 @@ function _buildPushAvisos(cfg, ahora) {
       const dia = evs.filter(ev => ['trabajo', 'visita', 'recontacto', 'nota'].includes(ev.tipo));
       if (dia.length) {
         out.push({
-          k: 'hoy:' + d, at: d + 'T' + PUSH_HORA_MANANA, go: 'agenda', tag: 'pq-hoy',
+          k: 'hoy:' + d, at: d + 'T' + PUSH_HORA_MANANA, go: 'agenda:' + d, tag: 'pq-hoy',
           title: 'Hoy: ' + _pushResumen(dia),
           body: dia.slice(0, 4).map(_pushLineaEv).join('\n') + (dia.length > 4 ? '\n…y ' + (dia.length - 4) + ' más' : ''),
         });
@@ -7065,7 +7065,8 @@ function _buildPushAvisos(cfg, ahora) {
         if (at.getTime() < now.getTime() - 3 * 3600000) return;
         out.push({
           k: 'hr:' + ev.noteId + ':' + d + ':' + ev.hora.replace(':', ''),
-          at: _pushAt(at), go: 'agenda', tag: 'pq-hora-' + String(ev.noteId).replace(/[^\w-]/g, '').slice(0, 30),
+          at: _pushAt(at), go: 'agenda:' + d + (SAN_ID_RE.test(String(ev.noteId)) ? ':' + ev.noteId : ''),
+          tag: 'pq-hora-' + String(ev.noteId).replace(/[^\w-]/g, '').slice(0, 30),
           title: (ev.tipo === 'visita' ? 'Visita' : 'Recordatorio') + ' a las ' + ev.hora,
           body: _pushCorto([ev.title, ev.sub, ev.ubic].filter(Boolean).join(' · '), 200),
         });
@@ -21738,7 +21739,7 @@ function _calColEv(ev) {
   const hora = ev.hora ? `<span class="agc-col-ev-h">${esc(ev.hora)}</span>` : '';
   let act = '';
   if (ev.entryId != null) act = `onclick="goToHistoryEntry(${ev.entryId})" title="Ver el presupuesto"`;
-  else if (ev.noteId != null) act = `onclick="calToggleNote('${ev.noteId}')" title="${ev.done ? 'Marcar pendiente' : 'Marcar hecho'}"`;
+  else if (ev.noteId != null) act = `onclick="calToggleNote('${ev.noteId}')" data-note-id="${esc(String(ev.noteId))}" title="${ev.done ? 'Marcar pendiente' : 'Marcar hecho'}"`;
   return `<button type="button" class="agc-col-ev t-${ev.tipo}${ev.done ? ' done' : ''}" ${act}>`
     + `<div class="agc-col-ev-title">${hora}${esc(ev.title)}</div>${sub}</button>`;
 }
@@ -21950,7 +21951,7 @@ function renderCalList() {
       // Aviso de carga del día (≥2 trabajos) en el encabezado de la lista.
       const nTrab = _calJobCount(futuros[iso]);
       const load = nTrab >= 2 ? ` <span class="agc-day-load">${nTrab} trabajos</span>` : '';
-      return `<div class="agc-list-group">
+      return `<div class="agc-list-group" data-iso="${iso}">
         <h4 class="agc-list-dayhead${iso === hoy ? ' is-today' : ''}">${esc(lbl)}${load}</h4>
         ${rows}
       </div>`;
@@ -23811,11 +23812,74 @@ window.addEventListener('DOMContentLoaded', async () => {
 // ya abierta, el Service Worker no puede cambiarle la URL: manda el destino
 // por mensaje (`pq-go`, ver notificationclick en sw.js) y se resuelve acá.
 // Antes la notificación solo traía la app al frente y el destino se perdía.
+//
+// v238: además de la pestaña, el destino puede decir el LUGAR exacto (antes
+// "Presupuesto vencido: López" abría el Historial con los avisos plegados y
+// nada hablaba de López). Formatos —los arma _buildPushAvisos y el Worker—:
+//   agenda:YYYY-MM-DD[:idNota]  el día del aviso, con la nota resaltada
+//   hist:<id>                   ese presupuesto, centrado y resaltado
+//   historial:seg|venc          el banner de seguimientos / vencidos, abierto
+// Llega desde afuera (URL, mensaje del SW) y termina en selectores: se valida
+// con estas regex y lo que no calce no hace nada.
+const IR_AGENDA_RE = /^agenda:(\d{4}-\d{2}-\d{2})(?::([\w-]{1,40}))?$/;
 function irDestino(go) {
+  go = String(go || '');
+  let m;
   if (go === 'nuevo' && typeof newQuote === 'function') newQuote();
-  else if (go === 'historial' && typeof switchTab === 'function') switchTab('historial');
-  else if (go === 'agenda' && typeof switchTab === 'function') switchTab('agenda');
-  else if (go === 'mapa' && typeof switchTab === 'function') switchTab('mapa');
+  else if (['historial', 'agenda', 'mapa', 'facturacion', 'editor'].includes(go)) switchTab(go);
+  else if ((m = IR_AGENDA_RE.exec(go))) irAgendaDia(m[1], m[2]);
+  else if ((m = /^hist:(\d{1,20})$/.exec(go))) {
+    const id = Number(m[1]);
+    // Borrado desde que salió el aviso: al menos, el Historial.
+    if (getH().some(e => e.id === id)) goToHistoryEntry(id);
+    else switchTab('historial');
+  }
+  else if ((m = /^historial:(seg|venc)$/.exec(go))) irAvisosHistorial(m[1]);
+}
+
+// Destella un elemento al llegar (misma animación que goToHistoryEntry).
+function _irFlash(el) {
+  el.classList.remove('hitem-flash');
+  void el.offsetWidth;
+  el.classList.add('hitem-flash');
+  setTimeout(() => el.classList.remove('hitem-flash'), 2600);
+}
+
+// La Agenda parada en ese día, en la vista que el usuario tenga elegida. Con
+// nota (visita/recordatorio con hora), esa tarjeta centrada y resaltada.
+function irAgendaDia(iso, noteId) {
+  switchTab('agenda');   // calInit: arma el estado y la vista recordada
+  const p = iso.split('-').map(Number);
+  _calY = p[0]; _calM = p[1] - 1; _calAnchor = iso; _calSel = iso;
+  renderCal();
+  requestAnimationFrame(() => {
+    const panel = document.getElementById('panel-agenda');
+    if (!panel) return;
+    const visible = (el) => !!el && el.offsetParent !== null;
+    let card = noteId
+      ? [...panel.querySelectorAll(`[data-note-id="${noteId}"]`)].find(visible)
+      : null;
+    if (card && card.classList.contains('agc-swipe')) card = card.querySelector('.agc-ev') || card;
+    const dia = _calView === 'agenda' ? panel.querySelector(`.agc-list-group[data-iso="${iso}"]`)
+      : _calView === 'mes' ? document.getElementById('agc-day')
+      : panel.querySelector('.agc-col.is-sel');
+    const dest = card || (visible(dia) ? dia : null);
+    if (!dest) return;
+    dest.scrollIntoView({ behavior: 'smooth', block: card ? 'center' : 'start' });
+    if (card) _irFlash(card);
+  });
+}
+
+// Varios seguimientos/vencidos en un aviso: el Historial con su banner abierto.
+function irAvisosHistorial(cual) {
+  switchTab('historial');   // renderHistory repinta los banners
+  const ban = document.getElementById(cual === 'seg' ? 'followup-banner' : 'expiry-banner');
+  if (!ban || !(parseInt(ban.dataset.n, 10) > 0)) return;   // ya resueltos
+  histAvisosToggle(true);
+  requestAnimationFrame(() => {
+    ban.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    _irFlash(ban);
+  });
 }
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.addEventListener('message', (ev) => {

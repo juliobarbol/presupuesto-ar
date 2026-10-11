@@ -179,6 +179,20 @@ function avisosValidos(arr) {
 const MAX_GEN = 120;
 const AT_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
 const GO_OK = ['historial', 'agenda', 'editor', 'mapa', 'facturacion', 'nuevo'];
+// Destino al tocar la notificación. Además de la pestaña, puede decir el LUGAR
+// exacto: un día de la Agenda (y la nota de ese día), un presupuesto del
+// Historial, o el banner de seguimientos/vencidos. La app lo resuelve en
+// irDestino; una app vieja que no lo entienda abre igual, sin moverse.
+const GO_RE = /^(?:agenda:\d{4}-\d{2}-\d{2}(?::[\w-]{1,40})?|hist:\d{1,20}|historial:(?:seg|venc))$/;
+export function goValido(go) {
+  return GO_OK.includes(go) || (typeof go === 'string' && GO_RE.test(go));
+}
+// Seguimiento/vencimiento: uno solo lleva al presupuesto; varios, al banner.
+export function goAvisos(lista, banner) {
+  const id = lista.length === 1 ? lista[0].id : null;
+  return (typeof id === 'number' && Number.isSafeInteger(id) && id >= 0)
+    ? 'hist:' + id : 'historial:' + banner;
+}
 function avisosGenValidos(arr) {
   if (!Array.isArray(arr)) return [];
   const out = [];
@@ -191,7 +205,7 @@ function avisosGenValidos(arr) {
     out.push({
       k, at: a.at, title,
       body: String(a.body ?? '').slice(0, 400),
-      go: GO_OK.includes(a.go) ? a.go : 'agenda',
+      go: goValido(a.go) ? a.go : 'agenda',
       tag: /^[\w-]{1,40}$/.test(a.tag || '') ? a.tag : 'pq-agenda',
     });
   }
@@ -361,7 +375,7 @@ export async function runDue(env, ms = Date.now()) {
         const body = n === 1
           ? `Llevan ${due[0].diasDesdeEnvio} días sin respuesta.`
           : due.slice(0,3).map(f=>f.clientName).join(', ') + (n>3?' y más.':'.');
-        if (await enviar({title, body, go:'historial', tag:'pq-seguimiento'})) {
+        if (await enviar({title, body, go:goAvisos(due, 'seg'), tag:'pq-seguimiento'})) {
           due.forEach(f => { notified['fu:' + f.id] = today; });
           changed = true; total++;
         }
@@ -377,7 +391,7 @@ export async function runDue(env, ms = Date.now()) {
         const body = n === 1
           ? 'Pasó su fecha de vigencia. Buen momento para contactar al cliente.'
           : exp.slice(0,3).map(f=>f.clientName).join(', ') + (n>3?' y más.':'.');
-        if (await enviar({title, body, go:'historial', tag:'pq-vencimiento'})) {
+        if (await enviar({title, body, go:goAvisos(exp, 'venc'), tag:'pq-vencimiento'})) {
           exp.forEach(f => { notified['vc:' + f.id] = today; });
           changed = true; total++;
         }
