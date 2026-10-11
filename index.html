@@ -7082,12 +7082,103 @@ function _pushHorarios(cfg) {
   };
 }
 
-// Una línea por evento: "Poda · García", "Visita 10:30 · López".
-function _pushLineaEv(ev) {
-  const que = ev.tipo === 'trabajo' ? 'Trabajo' : ev.tipo === 'visita' ? 'Visita'
-    : ev.tipo === 'recontacto' ? '' : 'Nota';
-  const cab = [que, ev.hora || ''].filter(Boolean).join(' ');
-  return _pushCorto((cab ? cab + ' · ' : '') + (ev.title || ''), 70);
+// ── Detalle para leer sin abrir la app (v240) ──
+// "A veces no tengo tiempo para ponerme a ver, pero si veo la notificación y
+// la puedo leer directamente, me sirve." Android despliega el texto entero, así
+// que cada renglón dice QUÉ, DÓNDE y CUÁNTO, y el primero (el que se ve sin
+// desplegar) es el más importante del aviso.
+const PUSH_MAX_BODY = 900;     // el Worker recorta por bytes si hiciera falta
+const PUSH_MAX_LINEAS = 5;     // eventos por aviso; el resto, "…y N más"
+
+// Un lugar que se pueda LEER: una dirección. Coordenadas, Plus Codes y links
+// no le dicen nada a nadie en una notificación (para eso está "Cómo llegar").
+function _pushLugar(u) {
+  u = String(u || '').trim();
+  if (!u || /^https?:\/\//i.test(u) || /^-?\d{1,3}(\.\d+)?\s*,\s*-?\d{1,3}(\.\d+)?$/.test(u)
+      || /^[23456789CFGHJMPQRVWX]{2,8}\+[23456789CFGHJMPQRVWX]*/i.test(u)) return '';
+  return _pushCorto(u, 45);
+}
+// Qué se va a hacer: las especies de los árboles ("Eucalipto y Pino"), o la
+// primera descripción si el presupuesto no tiene árboles (estimativo, servicios).
+function _pushQueTrabajo(snap) {
+  const s = snap || {};
+  const esp = [];
+  (Array.isArray(s.items) ? s.items : []).forEach(it => {
+    if (!it || it.type !== 'tree') return;
+    String(it.species || '').split(/,|\s+y\s+/).forEach(x => {
+      x = x.trim();
+      if (x && !/^\[/.test(x) && !esp.some(y => y.toLowerCase() === x.toLowerCase())) esp.push(x);
+    });
+  });
+  if (esp.length) return _pushUnir(esp.slice(0, 3)) + (esp.length > 3 ? ' y más' : '');
+  const d = [].concat(s.items || [], s.estItems || []).map(it => String((it && it.desc) || '').trim()).find(Boolean);
+  return d ? _pushCorto(d, 45) : '';
+}
+function _pushMonto(e) {
+  return (e && Number(e.total) > 0) ? fmtM(e.total, e.currency) : '';
+}
+function _pushDiasEntre(a, b) {   // días de calendario de a → b (ISO locales)
+  return Math.round((new Date(b + 'T12:00') - new Date(a + 'T12:00')) / 86400000);
+}
+// Recorta a `max` caracteres sin partir un renglón (como recortarRenglones del Worker).
+function _pushRecortar(txt, max) {
+  txt = String(txt || '');
+  if (txt.length <= max) return txt;
+  const corte = txt.lastIndexOf('\n', max);
+  return corte > 0 ? txt.slice(0, corte) : txt.slice(0, max);
+}
+function _pushHaceDias(n) { return n <= 0 ? 'hoy' : n === 1 ? 'ayer' : 'hace ' + n + ' días'; }
+
+// Un renglón por evento de la Agenda:
+//   "🌳 García — Eucalipto y Pino · Av. Mitre 1234 · $ 450.000 · día 1 de 2"
+//   "👁️ 10:30 Ver pino — López · Barrio Norte"
+function _pushDetalleEv(ev, hById, nById) {
+  const hora = ev.hora ? ev.hora + ' ' : '';
+  if (ev.tipo === 'trabajo') {
+    const e = hById.get(ev.entryId);
+    const snap = (e && e.snapshot) || {};
+    const que = _pushQueTrabajo(snap);
+    const dia = (String(ev.sub || '').match(/día \d+ de \d+/) || [''])[0];
+    return _pushCorto('🌳 ' + [ev.title + (que ? ' — ' + que : ''), _pushLugar(snap.workAddress), _pushMonto(e), dia]
+      .filter(Boolean).join(' · '), 140);
+  }
+  if (ev.tipo === 'visita' || ev.tipo === 'nota') {
+    const n = nById.get(String(ev.noteId)) || {};
+    return _pushCorto((ev.tipo === 'visita' ? '👁️ ' : '📝 ') + hora
+      + [ev.title + (ev.sub ? ' — ' + ev.sub : ''), _pushLugar(n.ubic)].filter(Boolean).join(' · '), 140);
+  }
+  if (ev.tipo === 'recontacto') {
+    return _pushCorto('📞 ' + ev.title + (ev.sub && !/^N° /.test(ev.sub) ? ' — ' + ev.sub : ''), 140);
+  }
+  return _pushCorto(hora + (ev.title || ''), 140);
+}
+// Renglones de los eventos, con el "…y N más" si no entran. Los trabajos van
+// primero (son el día; el primer renglón es lo que se ve sin desplegar) y el
+// resto por hora.
+const PUSH_ORDEN_TIPO = { trabajo: 0, visita: 1, recontacto: 2, nota: 3 };
+function _pushLineasEv(evs, hById, nById) {
+  const orden = evs.slice().sort((a, b) => ((PUSH_ORDEN_TIPO[a.tipo] ?? 9) - (PUSH_ORDEN_TIPO[b.tipo] ?? 9))
+    || String(a.hora || '99:99').localeCompare(String(b.hora || '99:99')));
+  const l = orden.slice(0, PUSH_MAX_LINEAS).map(ev => _pushDetalleEv(ev, hById, nById));
+  if (evs.length > PUSH_MAX_LINEAS) l.push('…y ' + (evs.length - PUSH_MAX_LINEAS) + ' más');
+  return l;
+}
+// Seguimientos y vencidos del resumen del día `d`, uno por renglón:
+//   "📨 Seguimiento: Gómez · N° 2026-0003 · $ 320.000 · enviado hace 10 días"
+//   "⌛ Vencido: Pérez · N° 2026-0002 · $ 500.000 · venció ayer"
+function _pushLineasPres(tipo, items, hById, d) {
+  const l = items.slice(0, 3).map(x => {
+    const e = hById.get(x.id) || {};
+    const snap = e.snapshot || {};
+    let cuando = '';
+    if (tipo === 'seg' && e.enviadoEn) cuando = 'enviado ' + _pushHaceDias(_pushDiasEntre(_calTsToLocalISO(e.enviadoEn), d));
+    if (tipo === 'venc' && snap.dateExpiry) cuando = 'venció ' + _pushHaceDias(_pushDiasEntre(snap.dateExpiry, d));
+    return _pushCorto((tipo === 'seg' ? '📨 Seguimiento: ' : '⌛ Vencido: ')
+      + [x.clientName || '(sin nombre)', e.quoteNumber ? 'N° ' + e.quoteNumber : '', _pushMonto(e), cuando]
+        .filter(Boolean).join(' · '), 140);
+  });
+  if (items.length > 3) l.push('…y ' + (items.length - 3) + ' ' + (tipo === 'seg' ? 'seguimientos' : 'vencidos') + ' más');
+  return l;
 }
 
 // Partes del resumen: ["1 trabajo", "2 visitas"].
@@ -7102,12 +7193,6 @@ function _pushResumenPartes(evs) {
 }
 // Resumen "1 trabajo y 2 visitas".
 function _pushResumen(evs) { return _pushUnir(_pushResumenPartes(evs)); }
-
-// Lista de nombres para el cuerpo: "García, Pérez y 2 más".
-function _pushNombres(items) {
-  const n = items.map(x => x.clientName || '(sin nombre)');
-  return n.length > 3 ? n.slice(0, 3).join(', ') + ' y ' + (n.length - 3) + ' más' : _pushUnir(n);
-}
 
 // Botones de la notificación. Android muestra dos: el primero es lo útil de
 // ESE aviso (la ruta si hay lugar, si no el chat), el segundo "Posponer".
@@ -7147,7 +7232,8 @@ function _pushClimaPts(evs, hById, nById) {
     const clave = la + ',' + lo + ',' + ev.title;
     if (vistos.has(clave) || pts.length >= 5) return;
     vistos.add(clave);
-    pts.push({ la, lo, n: _pushCorto(ev.title, 40) });
+    // El nombre del cliente (en una visita el título puede ser "Ver pino").
+    pts.push({ la, lo, n: _pushCorto(ev.tipo === 'visita' ? (ev.sub || ev.title) : ev.title, 40) });
   });
   return pts;
 }
@@ -7186,6 +7272,17 @@ function _pushSemanaLineas(d, idx, h) {
   return lineas;
 }
 
+// Cuerpo del recordatorio con hora: qué hay que hacer y dónde.
+function _pushHoraCuerpo(ev, n) {
+  n = n || {};
+  const texto = String(n.texto || '').trim();
+  const lugar = _pushLugar(n.ubic);
+  return [
+    texto && ev.sub ? '📝 ' + _pushCorto(texto, 200) : '',
+    lugar ? '📍 ' + lugar : (n.ubic ? '📍 Ubicación cargada: tocá "Cómo llegar"' : ''),
+  ].filter(Boolean).join('\n');
+}
+
 function _buildPushAvisos(cfg, ahora) {
   if (typeof calBuildIndex !== 'function') return [];
   cfg = cfg || {};
@@ -7218,7 +7315,7 @@ function _buildPushAvisos(cfg, ahora) {
           k: (ag ? 'man:' : 'clima:') + d, at: _calAddDays(d, -1) + 'T' + H.noche,
           go: 'agenda:' + d, tag: ag ? 'pq-manana' : 'pq-clima',
           title: 'Mañana: ' + _pushResumen(man),
-          body: man.slice(0, 4).map(_pushLineaEv).join('\n') + (man.length > 4 ? '\n…y ' + (man.length - 4) + ' más' : ''),
+          body: _pushRecortar(_pushLineasEv(man, hById, nById).join('\n'), PUSH_MAX_BODY),
         };
         if (pts.length) a.clima = { d, pts };
         if (!ag || silencio) a.soloSiClima = true;
@@ -7243,11 +7340,8 @@ function _buildPushAvisos(cfg, ahora) {
         const partes = _pushResumenPartes(dia);
         if (sg.length) partes.push(_pushPlural(sg.length, 'seguimiento', 'seguimientos'));
         if (vc.length) partes.push(_pushPlural(vc.length, 'vencido', 'vencidos'));
-        const cuerpo = dia.slice(0, 4).map(_pushLineaEv);
-        if (dia.length > 4) cuerpo.push('…y ' + (dia.length - 4) + ' más');
-        if (sg.length) cuerpo.push('Seguimiento: ' + _pushNombres(sg));
-        if (vc.length) cuerpo.push((vc.length === 1 ? 'Vencido: ' : 'Vencidos: ') + _pushNombres(vc));
-        cuerpo.push(...sem);
+        const cuerpo = _pushLineasEv(dia, hById, nById)
+          .concat(_pushLineasPres('seg', sg, hById, d), _pushLineasPres('venc', vc, hById, d), sem);
         const title = partes.length ? 'Hoy: ' + _pushUnir(partes)
           : 'Tu semana · ' + sem[0].replace(/^Semana: /, '');
         const items = sg.concat(vc);
@@ -7262,11 +7356,16 @@ function _buildPushAvisos(cfg, ahora) {
             : _pushWa(_pushFuente(hById.get(items[0].id), null));
         }
         const acts = (util ? [util] : []).concat([{ a: 'posponer' }]);
-        out.push({
+        const aviso = {
           k: 'hoy:' + d, at: d + 'T' + H.resumen, go, tag: 'pq-hoy', acts,
           title: _pushCorto(title, 120),
-          body: cuerpo.join('\n').slice(0, 400),
-        });
+          body: _pushRecortar(cuerpo.join('\n'), PUSH_MAX_BODY),
+        };
+        // El pronóstico del día, para leerlo en el mismo aviso (lo agrega el
+        // Worker a la hora de mandarlo, con el dato fresco).
+        const pts = clima ? _pushClimaPts(dia.filter(ev => ev.tipo === 'trabajo' || ev.tipo === 'visita'), hById, nById) : [];
+        if (pts.length) aviso.clima = { d, pts };
+        out.push(aviso);
       }
     }
 
@@ -7282,8 +7381,9 @@ function _buildPushAvisos(cfg, ahora) {
           k: 'hr:' + ev.noteId + ':' + d + ':' + ev.hora.replace(':', ''),
           at: _pushAt(at), go: 'agenda:' + d + (SAN_ID_RE.test(String(ev.noteId)) ? ':' + ev.noteId : ''),
           tag: 'pq-hora-' + String(ev.noteId).replace(/[^\w-]/g, '').slice(0, 30),
-          title: (ev.tipo === 'visita' ? 'Visita' : 'Recordatorio') + ' a las ' + ev.hora,
-          body: _pushCorto([ev.title, ev.sub, ev.ubic].filter(Boolean).join(' · '), 200),
+          title: _pushCorto((ev.tipo === 'visita' ? 'Visita' : 'Recordatorio') + ' a las ' + ev.hora
+            + (ev.sub || ev.title ? ' · ' + (ev.sub || ev.title) : ''), 120),
+          body: _pushHoraCuerpo(ev, nById.get(String(ev.noteId))),
           acts: [_pushActUtil(_pushFuenteEv(ev, hById, nById)), { a: 'posponer' }].filter(Boolean),
         });
       });

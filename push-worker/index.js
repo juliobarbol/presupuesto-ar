@@ -177,6 +177,18 @@ function avisosValidos(arr) {
 // hora…) y el Worker solo los entrega cuando llega la hora. Así cada aviso
 // nuevo se agrega del lado de la app, sin volver a publicar el Worker.
 const MAX_GEN = 120;
+// v240: el aviso se lee entero sin abrir la app (Android lo despliega), así
+// que el cuerpo trae el detalle. El tope real es el del push (~4 KB cifrado):
+// payloadDe recorta si hiciera falta.
+const MAX_BODY = 900;
+const MAX_PAYLOAD_BYTES = 3500;
+// Recorta a `max` caracteres sin partir un renglón (si hay alguno entero).
+export function recortarRenglones(txt, max) {
+  txt = String(txt ?? '');
+  if (txt.length <= max) return txt;
+  const corte = txt.lastIndexOf('\n', max);
+  return corte > 0 ? txt.slice(0, corte) : txt.slice(0, max);
+}
 const AT_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
 const GO_OK = ['historial', 'agenda', 'editor', 'mapa', 'facturacion', 'nuevo'];
 // Destino al tocar la notificación. Además de la pestaña, puede decir el LUGAR
@@ -240,7 +252,7 @@ function avisosGenValidos(arr) {
     if (!title) continue;
     const aviso = {
       k, at: a.at, title,
-      body: String(a.body ?? '').slice(0, 400),
+      body: recortarRenglones(a.body, MAX_BODY),
       go: goValido(a.go) ? a.go : 'agenda',
       tag: /^[\w-]{1,40}$/.test(a.tag || '') ? a.tag : 'pq-agenda',
     };
@@ -288,7 +300,7 @@ async function climaDia(la, lo, d, memo) {
   try {
     const url = 'https://api.open-meteo.com/v1/forecast'
       + `?latitude=${la}&longitude=${lo}`
-      + '&daily=weather_code,precipitation_probability_max,precipitation_sum,wind_speed_10m_max,wind_gusts_10m_max'
+      + '&daily=weather_code,precipitation_probability_max,precipitation_sum,wind_speed_10m_max,wind_gusts_10m_max,temperature_2m_max,temperature_2m_min'
       + `&timezone=auto&start_date=${d}&end_date=${d}`;
     const r = await fetch(url, typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? { signal: AbortSignal.timeout(8000) } : {});
     if (r.ok) {
@@ -300,6 +312,7 @@ async function climaDia(la, lo, d, memo) {
           code: x.weather_code?.[i] ?? null, pp: x.precipitation_probability_max?.[i] ?? null,
           mm: x.precipitation_sum?.[i] ?? null, wind: x.wind_speed_10m_max?.[i] ?? null,
           gust: x.wind_gusts_10m_max?.[i] ?? null,
+          tmax: x.temperature_2m_max?.[i] ?? null, tmin: x.temperature_2m_min?.[i] ?? null,
         };
       }
     }
@@ -308,42 +321,89 @@ async function climaDia(la, lo, d, memo) {
   return out;
 }
 
-// Mira el clima de todos los puntos del aviso. { ok, lineas, viento } —
-// ok=false si no se pudo consultar NINGUNO.
-async function climaDeAviso(clima, memo) {
-  let ok = false, viento = false;
-  const lineas = [];
-  for (const p of clima.pts) {
-    const d = await climaDia(p.la, p.lo, clima.d, memo);
-    if (!d) continue;
-    ok = true;
-    const m = climaMotivo(d);
-    if (!m) continue;
-    if (m.viento && !m.lluvia) viento = true;
-    const txt = m.txt.charAt(0).toUpperCase() + m.txt.slice(1);
-    const linea = `⚠️ ${txt}${p.n ? ' — ' + p.n : ''}`;
-    if (!lineas.includes(linea)) lineas.push(linea);
+// Emoji del código WMO (el mismo criterio que _climaEmojiDesc de la app).
+function climaEmoji(c) {
+  if (c == null) return '🌡️';
+  if (c === 0) return '☀️';
+  if (c <= 2) return '🌤️';
+  if (c === 3) return '☁️';
+  if (c === 45 || c === 48) return '🌫️';
+  if (c <= 67 || (c >= 80 && c <= 82)) return '🌧️';
+  if (c <= 86) return '🌨️';
+  return '⛈️';
+}
+const CLIMA_WIND_MOSTRAR = 35;   // como WIND_CHIP de la app: menos es ruido
+
+// Una línea de pronóstico para leer sin abrir la app:
+//   "☀️ 14–24 °C · sin lluvia — García"
+//   "⚠️ Ráfagas de 55 km/h · 14–24 °C — García y López"
+export function climaLinea(d, quien) {
+  const temp = (d.tmin != null && d.tmax != null) ? `${Math.round(d.tmin)}–${Math.round(d.tmax)} °C` : '';
+  const m = climaMotivo(d);
+  const g = d.gust != null ? d.gust : d.wind;
+  let txt;
+  if (m) {
+    txt = '⚠️ ' + m.txt.charAt(0).toUpperCase() + m.txt.slice(1) + (temp ? ' · ' + temp : '');
+  } else {
+    const partes = [temp, (d.pp != null && d.pp >= 30) ? `lluvia ${Math.round(d.pp)} %` : 'sin lluvia'];
+    if (g != null && g >= CLIMA_WIND_MOSTRAR) partes.push(`ráfagas de ${Math.round(g)} km/h`);
+    txt = climaEmoji(d.code) + ' ' + partes.filter(Boolean).join(' · ');
   }
-  return { ok, lineas, viento };
+  return { mala: !!m, viento: !!(m && m.viento && !m.lluvia), txt: txt + (quien ? ' — ' + quien : '') };
 }
 
-// Aviso listo para mandar: el texto de la app + el clima, si está feo.
+// Mira el clima de todos los puntos del aviso (los de la misma zona, juntos).
+// { ok, malas, buenas, viento } — ok=false si no se pudo consultar NINGUNO.
+async function climaDeAviso(clima, memo) {
+  let ok = false, viento = false;
+  const malas = [], buenas = [];
+  const zonas = new Map();
+  for (const p of clima.pts) {
+    const z = `${p.la},${p.lo}`;
+    if (!zonas.has(z)) zonas.set(z, { la: p.la, lo: p.lo, n: [] });
+    if (p.n && !zonas.get(z).n.includes(p.n)) zonas.get(z).n.push(p.n);
+  }
+  for (const z of zonas.values()) {
+    const d = await climaDia(z.la, z.lo, clima.d, memo);
+    if (!d) continue;
+    ok = true;
+    const quien = z.n.length > 2 ? z.n.slice(0, 2).join(', ') + ' y otros' : z.n.join(' y ');
+    const l = climaLinea(d, quien);
+    if (l.viento) viento = true;
+    (l.mala ? malas : buenas).push(l.txt);
+  }
+  return { ok, malas, buenas, viento };
+}
+
+// Aviso listo para mandar: el texto de la app + el pronóstico. Si está feo va
+// PRIMERO (es lo que se ve sin desplegar) y el título lo marca; si está lindo,
+// al final, como dato.
 function conClima(a, cl) {
-  if (!cl || !cl.lineas.length) return a;
+  if (!cl || (!cl.malas.length && !cl.buenas.length)) return a;
+  if (!cl.malas.length) {
+    return Object.assign({}, a, { body: [a.body, ...cl.buenas.slice(0, 3)].filter(Boolean).join('\n') });
+  }
   const emoji = cl.viento ? '💨' : '🌧️';
   return Object.assign({}, a, {
     title: `${emoji} ${a.title}`.slice(0, 120),
-    body: (cl.lineas.slice(0, 3).join('\n') + '\n¿Reprogramás?' + (a.body ? '\n' + a.body : '')).slice(0, 400),
+    body: [...cl.malas.slice(0, 3), '¿Reprogramás?', a.body, ...cl.buenas.slice(0, 2)].filter(Boolean).join('\n'),
   });
 }
 
 // Lo que viaja al teléfono. `k` y `dev` son para el botón "Posponer" (el
 // Service Worker le pide al Worker que lo vuelva a mandar en una hora).
-function payloadDe(a, deviceId) {
-  const p = { title: a.title, body: a.body, go: a.go, tag: a.tag };
+export function payloadDe(a, deviceId) {
+  const p = { title: a.title, body: recortarRenglones(a.body, MAX_BODY), go: a.go, tag: a.tag };
   if (a.acts && a.acts.length) {
     p.acts = a.acts;
     if (a.acts.some(x => x.a === 'posponer')) { p.k = a.k; p.dev = deviceId; }
+  }
+  // El servicio de push rechaza más de ~4 KB: se recorta el cuerpo por renglones
+  // enteros (y, si un renglón solo no entra, a lo bruto) hasta que entre.
+  const bytes = () => new TextEncoder().encode(JSON.stringify(p)).length;
+  while (bytes() > MAX_PAYLOAD_BYTES && p.body) {
+    const corte = p.body.lastIndexOf('\n');
+    p.body = corte > 0 ? p.body.slice(0, corte) : p.body.slice(0, Math.max(0, p.body.length - 50));
   }
   return p;
 }
@@ -582,7 +642,7 @@ export async function runDue(env, ms = Date.now()) {
           const cl = await climaDeAviso(a.clima, memo);
           if (a.soloSiClima) {
             if (!cl.ok) continue;                       // sin pronóstico: reintentar
-            if (!cl.lineas.length) { enviados[a.k] = a.at; changed = true; continue; }   // día lindo: nada que avisar
+            if (!cl.malas.length) { enviados[a.k] = a.at; changed = true; continue; }   // día lindo: nada que avisar
           }
           listo = conClima(a, cl);
         }
