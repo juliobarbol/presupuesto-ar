@@ -219,6 +219,20 @@ body{background-color:var(--bg)}
 .pr-sug{display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px;margin-top:6px;padding:6px 10px;border-radius:var(--radius-field);background:var(--accent-light);font-size:13px;color:var(--text)}
 .pr-sug[hidden]{display:none}
 .pr-sug-tx{flex:1;min-width:0}
+/* Rubro (v241): chips en "Cliente y lugar", con el mismo estilo que el cobro
+   del trabajo. Lo que no aplica a un rubro se esconde por clase sobre
+   #panel-editor (rubroSync). */
+.rubro-fg[hidden]{display:none}
+.cobro-b .ic{width:15px;height:15px;vertical-align:-3px;margin-right:2px}
+#panel-editor.is-jardineria .rub-arb{display:none!important}
+#panel-editor:not(.is-jardineria) .rub-jar{display:none!important}
+.add-tree .rub-arb,.add-tree .rub-jar{display:inline-flex;align-items:center;gap:4px}
+/* Cobro por unidad del trabajo (a ojo / por metro / por m² / por jornada). */
+.cobro-row{margin-top:8px}
+.cobro-seg{display:flex;flex-wrap:wrap;gap:6px}
+.cobro-b{min-height:36px;padding:0 12px;border:1px solid var(--border);border-radius:999px;background:var(--card);color:var(--muted);font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+.cobro-b.on{border-color:var(--accent-fg);background:var(--accent-light);color:var(--accent-fg)}
+.cobro-prev{margin-top:6px;font-size:12.5px;color:var(--accent-fg);font-weight:600;min-height:1em}
 .pr-sug-btn{flex:none;min-height:36px;padding:0 14px;border:1px solid var(--accent-fg);border-radius:var(--radius-field);background:var(--card);color:var(--accent-fg);font:inherit;font-weight:600;cursor:pointer}
 .tbtn-nuevo .ic{width:15px;height:15px;color:inherit}
 /* En un celular el nombre no entra junto a "+ Nuevo" y quedaba "Presupues…":
@@ -3619,6 +3633,7 @@ input[type=number]{-moz-appearance:textfield}
      <svg class="ic"><use href="#i-nombre"></use></svg>. Reemplazan a los emojis
      para un look más limpio. Sin red en runtime (offline-first). -->
 <svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true"><defs>
+<symbol id="i-leaf" viewBox="0 0 24 24"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z" /> <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12" /></symbol>
 <symbol id="i-tree" viewBox="0 0 24 24"><path d="M8 19a4 4 0 0 1-2.24-7.32A3.5 3.5 0 0 1 9 6.03V6a3 3 0 1 1 6 0v.04a3.5 3.5 0 0 1 3.24 5.65A4 4 0 0 1 16 19Z" /> <path d="M12 19v3" /></symbol>
 <symbol id="i-camera" viewBox="0 0 24 24"><path d="M13.997 4a2 2 0 0 1 1.76 1.05l.486.9A2 2 0 0 0 18.003 7H20a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1.997a2 2 0 0 0 1.759-1.048l.489-.904A2 2 0 0 1 10.004 4z" /> <circle cx="12" cy="13" r="3" /></symbol>
 <symbol id="i-trash" viewBox="0 0 24 24"><path d="M10 11v6" /> <path d="M14 11v6" /> <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" /> <path d="M3 6h18" /> <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></symbol>
@@ -3841,6 +3856,19 @@ input[type=number]{-moz-appearance:textfield}
         <div class="st st-with-action">Cliente y Lugar
           <button type="button" id="btn-import-contact" class="btn btn-g btn-sm" onclick="importFromContacts()" style="display:none"><svg class="ic"><use href="#i-idcard"></use></svg> Importar</button>
         </div>
+        <!-- Rubro (v241): QUÉ se cotiza, independiente del modo (que dice CÓMO).
+             Jardinería cambia el título del documento, saca el plan de trabajo
+             y "Cómo Trabajamos", y habilita el cobro por metro, m² o jornada.
+             Vive acá (etapa Datos) y no junto al selector de modo: arriba de
+             todo empujaba "+ Árbol / Trabajo" debajo de la barra de totales en
+             la etapa Trabajos del celular. Se oculta en riesgo. Ver rubroSync(). -->
+        <div class="fg rubro-fg" id="rubro-switch">
+          <label id="rubro-lbl">Rubro</label>
+          <div class="cobro-seg" role="group" aria-labelledby="rubro-lbl">
+            <button type="button" class="cobro-b on" id="rubro-btn-arbolado" onclick="setRubro('arbolado')" aria-pressed="true" title="Poda, extracción y trabajos en árboles."><svg class="ic"><use href="#i-tree"></use></svg> Arbolado</button>
+            <button type="button" class="cobro-b" id="rubro-btn-jardineria" onclick="setRubro('jardineria')" aria-pressed="false" title="Cercos, limpieza de terrenos, césped. El documento sale con su propio título y sin plan de trabajo ni criterios."><svg class="ic"><use href="#i-leaf"></use></svg> Jardinería</button>
+          </div>
+        </div>
         <div class="r2">
           <div class="fg"><label>Nombre / Cliente</label><input type="text" id="client-name" placeholder="Nombre del cliente"></div>
           <div class="fg"><label>Contacto / Teléfono</label><input type="text" id="client-contact" placeholder="Teléfono o email"></div>
@@ -3915,7 +3943,7 @@ input[type=number]{-moz-appearance:textfield}
             </div>
           </div>
 
-          <div class="st">Árboles / Trabajos a cotizar <span id="items-count" class="nbadge" style="float:right">0</span></div>
+          <div class="st"><span class="rub-arb">Árboles / </span>Trabajos a cotizar <span id="items-count" class="nbadge" style="float:right">0</span></div>
           <div id="items-list"></div>
 
           <!-- Los botones van ANTES de los servicios rápidos: "+ Árbol / Trabajo"
@@ -3924,7 +3952,7 @@ input[type=number]{-moz-appearance:textfield}
                botón (y "Dos opciones en un PDF", arriba): un servicio o una
                nota antes del primer trabajo no tiene sentido. -->
           <div class="arow items-add" style="margin-bottom:16px">
-            <button class="btn btn-p btn-sm add-tree" onclick="addItem('tree')"><svg class="ic"><use href="#i-tree"></use></svg> + Árbol / Trabajo</button>
+            <button class="btn btn-p btn-sm add-tree" onclick="addItem('tree')"><span class="rub-arb"><svg class="ic"><use href="#i-tree"></use></svg> + Árbol / Trabajo</span><span class="rub-jar"><svg class="ic"><use href="#i-leaf"></use></svg> + Trabajo</span></button>
             <button class="btn btn-s btn-sm add-svc" onclick="addItem('service')">+ Servicio</button>
             <button class="btn btn-g btn-sm add-note" onclick="addItem('note')">+ Nota</button>
           </div>
@@ -4201,16 +4229,16 @@ input[type=number]{-moz-appearance:textfield}
         </div><!-- /esec-est-obs -->
 
         <details class="scol">
-          <summary>Opciones del documento <span class="scol-hint">plan · criterios · firmas</span><span class="scol-chev" aria-hidden="true">▾</span></summary>
+          <summary>Opciones del documento <span class="scol-hint"><span class="rub-arb">plan · criterios · </span>firmas</span><span class="scol-chev" aria-hidden="true">▾</span></summary>
           <div class="scol-body">
-        <div class="trow"><span class="tlabel">Mostrar plan de trabajo</span><label class="tgl"><input type="checkbox" id="show-work-plan" checked><span class="tgl-sl"></span></label></div>
-        <div class="trow"><span class="tlabel">Plan de trabajo a medida <span style="font-weight:400;color:var(--muted)">(solo este presupuesto)</span></span><label class="tgl"><input type="checkbox" id="wp-override" onchange="toggleWorkPlanOverride()"><span class="tgl-sl"></span></label></div>
-        <div id="wp-override-box" class="fg" style="display:none;margin:4px 0 6px">
+        <div class="trow rub-arb"><span class="tlabel">Mostrar plan de trabajo</span><label class="tgl"><input type="checkbox" id="show-work-plan" checked><span class="tgl-sl"></span></label></div>
+        <div class="trow rub-arb"><span class="tlabel">Plan de trabajo a medida <span style="font-weight:400;color:var(--muted)">(solo este presupuesto)</span></span><label class="tgl"><input type="checkbox" id="wp-override" onchange="toggleWorkPlanOverride()"><span class="tgl-sl"></span></label></div>
+        <div id="wp-override-box" class="fg rub-arb" style="display:none;margin:4px 0 6px">
           <input type="text" id="wp-custom-title" placeholder="Título (ej. Plan de Trabajo)" style="margin-bottom:6px">
           <div id="wp-custom-list" class="linelist"></div>
           <div class="hint">Reemplaza el plan de trabajo <strong>solo en este presupuesto</strong>. El plan por defecto (Empresa → Textos del PDF) no se modifica. Al crear un presupuesto nuevo vuelve a usarse el default.</div>
         </div>
-        <div class="trow"><span class="tlabel">Mostrar criterios de costeo</span><label class="tgl"><input type="checkbox" id="show-criteria" checked><span class="tgl-sl"></span></label></div>
+        <div class="trow rub-arb"><span class="tlabel">Mostrar criterios de costeo</span><label class="tgl"><input type="checkbox" id="show-criteria" checked><span class="tgl-sl"></span></label></div>
         <div class="trow"><span class="tlabel">Mostrar firma del titular</span><label class="tgl"><input type="checkbox" id="show-sig-owner" checked><span class="tgl-sl"></span></label></div>
         <div class="trow"><span class="tlabel">Mostrar firma del cliente</span><label class="tgl"><input type="checkbox" id="show-sig-client"><span class="tgl-sl"></span></label></div>
           </div>
@@ -4457,6 +4485,13 @@ input[type=number]{-moz-appearance:textfield}
 
           <div class="fg"><label>Título — Presupuesto estimativo</label>
             <textarea class="ta-line" rows="1" id="doc-title-est" placeholder="Presupuesto Estimativo de Servicio..."></textarea></div>
+
+          <div class="fg"><label>Título — Jardinería</label>
+            <textarea class="ta-line" rows="1" id="doc-title-jard" placeholder="Presupuesto de Servicio de Jardinería"></textarea>
+            <div class="hint">Para los presupuestos con el rubro <strong>Jardinería</strong>. Esos presupuestos no llevan plan de trabajo ni "Cómo Trabajamos".</div></div>
+
+          <div class="fg"><label>Título — Jardinería estimativo</label>
+            <textarea class="ta-line" rows="1" id="doc-title-est-jard" placeholder="Presupuesto Estimativo de Servicio de Jardinería"></textarea></div>
 
           <div class="fg"><label>Título — Informe de Riesgo</label>
             <textarea class="ta-line" rows="1" id="doc-title-risk" placeholder="Informe Técnico de Riesgo Arbóreo y Propuesta de Trabajo"></textarea></div>
@@ -5606,6 +5641,13 @@ const DEF = {
   // suma como bloque separado y el PDF muestra dos totales (uno por
   // escenario).
   scenariosEnabled: false,
+  // Rubro (v241): 'arbolado' (lo de siempre) o 'jardineria' (cercos, terrenos,
+  // césped). Dato DEL PRESUPUESTO —dos presupuestos del mismo día pueden ser de
+  // rubros distintos—, así que NO va en CFG_GLOBAL_FIELDS y viaja en el
+  // snapshot. En jardinería el documento usa docTitleJard/docTitleEstJard y no
+  // lleva "Plan de trabajo" ni "Cómo Trabajamos" (pedido del usuario). El modo
+  // riesgo lo ignora: el informe ISA es siempre de un árbol.
+  rubro: 'arbolado',
   scenarioLabelA: 'Opción A — Extracción',
   scenarioLabelB: 'Opción B — Poda',
   itemsB: [],
@@ -5659,6 +5701,10 @@ const DEF = {
   docTitle:        'Presupuesto de Servicio de Poda en Altura y Extracción de Árboles',
   docTitleEst:     'Presupuesto Estimativo de Servicio de Poda y Extracción de Árboles',
   docTitleRisk:    'Informe Técnico de Riesgo Arbóreo y Propuesta de Trabajo',
+  // Títulos de los presupuestos de JARDINERÍA (v241). Config del negocio,
+  // como los de arriba; el rubro de cada presupuesto (S.rubro) elige cuál sale.
+  docTitleJard:    'Presupuesto de Servicio de Jardinería',
+  docTitleEstJard: 'Presupuesto Estimativo de Servicio de Jardinería',
   docEstBanner:    'Presupuesto Estimativo — Basado en fotos y/o videos',
   docDisclaimer:   'Este presupuesto es estimativo y se basa en las fotos y/o videos enviados. El valor final puede ajustarse luego de una inspección presencial, ya que hay aspectos que solo pueden evaluarse en el lugar.',
   docDisclaimerSvc:'Los costos de servicios adicionales (camión, volquetes, etc.) son valores consultados con los proveedores al momento de la emisión de este presupuesto. En caso de demorar la confirmación de fecha, dichos valores serán consultados nuevamente antes de iniciar el trabajo.',
@@ -5724,6 +5770,7 @@ const CFG_GLOBAL_FIELDS = [
   'vistaEditor',
   // Textos editables del PDF (Empresa → Textos del PDF)
   'docTitle','docTitleEst','docTitleRisk','docEstBanner','docDisclaimer',
+  'docTitleJard','docTitleEstJard',
   'docDisclaimerSvc','docCriteria','docGreeting','docCriteriaTitle',
   'docCriteriaIntro','workPlanTitle','workPlan','docDiscountLabel',
   'docDiscountNote','docSectionOrder',
@@ -6235,6 +6282,9 @@ function migrateState(raw) {
   if (typeof next.workPlanCustom      !== 'string')  next.workPlanCustom = '';
   if (typeof next.workPlanCustomTitle !== 'string')  next.workPlanCustomTitle = '';
   if (typeof next.scenariosEnabled !== 'boolean') next.scenariosEnabled = false;
+  // Rubro: un snapshot anterior a la v241 es de arbolado (no existía otro). Sin
+  // esto heredaría el rubro del presupuesto abierto y saldría con otro título.
+  if (next.rubro !== 'jardineria') next.rubro = 'arbolado';
   if (typeof next.scenarioLabelA   !== 'string')  next.scenarioLabelA = DEF.scenarioLabelA;
   if (typeof next.scenarioLabelB   !== 'string')  next.scenarioLabelB = DEF.scenarioLabelB;
   // Disposición de la leña/residuos: sin esto, abrir un presupuesto anterior a
@@ -7965,6 +8015,14 @@ const PDF_FONTS  = ['auto','dm','plex','lora-inter','inter'];
 // Vistas del editor (S.vistaEditor). Va a un atributo del DOM
 // (#panel-editor[data-vista]), así que no puede entrar sin lista blanca.
 const EDITOR_VIEWS = ['clasica','fichas','consola'];
+// Rubro del presupuesto (v241): QUÉ se cotiza. Es ortogonal al modo (normal /
+// estimativo / riesgo, que dice CÓMO): un cerco también se cotiza por foto.
+// Lista blanca porque decide el título del documento y qué secciones salen.
+const RUBROS = ['arbolado','jardineria'];
+// Cómo se cobra un trabajo (tarjeta del ítem, v241). Sin unidad ('') es el
+// precio cerrado "a ojo" de siempre; con unidad, el precio es POR unidad y el
+// total es precio × cantidad. Se lee siempre con itemUnidad(), que filtra.
+const ITEM_UNIDADES = ['m','m2','jornada'];
 const NOTE_TIPOS = ['visita'];   // sin tipo = nota común
 // Unidades de las tarifas propias (ver "Mis servicios" en js/clients.js). La
 // unidad decide el texto de la cantidad en el diálogo y en la factura, así que
@@ -8098,6 +8156,7 @@ function sanitizeStateObj(raw) {
   s.pdfTheme = sanEnum(raw.pdfTheme, PDF_THEMES, 'clasico');
   s.pdfFont  = sanEnum(raw.pdfFont,  PDF_FONTS,  'auto');
   s.vistaEditor = sanEnum(raw.vistaEditor, EDITOR_VIEWS, 'clasica');
+  s.rubro = sanEnum(raw.rubro, RUBROS, 'arbolado');
   s.accentColor = (typeof safeColor === 'function') ? safeColor(raw.accentColor) : '#064e3b';
   s.currency = sanEnum(raw.currency, ['ARS','USD','EUR'], 'ARS');
   if (!Array.isArray(s.items))     s.items = [];
@@ -10000,8 +10059,43 @@ function itemTotalCents(item) {
   // (no tienen sentido en este dominio y podrían colarse por un valor tipeado
   // o un import manipulado). Los inputs ya llevan min="0"/min="1".
   const price = Math.max(0, moneyToCents(item.price));
+  // Trabajo cobrado por metro / m² / jornada: precio unitario × cantidad (que
+  // puede tener decimales: 12,5 m). Redondeo al centavo, como todo lo demás.
+  if (itemUnidad(item)) return Math.round(price * itemCant(item));
   const qty   = (item.type === 'service') ? Math.max(1, parseInt(item.qty) || 1) : 1;
   return price * qty;
+}
+
+// ─── RUBRO Y COBRO POR UNIDAD (v241) ─────────
+// ¿El presupuesto (S o un snapshot) es de jardinería? El modo riesgo nunca lo
+// es: el informe ISA evalúa un árbol.
+function esJardineria(st) {
+  const x = st || S;
+  return !!x && x.rubro === 'jardineria' && !x.isRisk;
+}
+// Textos de cada unidad: `uno`/`varios` para la cantidad ("1 jornada" /
+// "3 jornadas"), `por` para el precio ("$ 3.000 por metro").
+const ITEM_UNIDAD_TXT = {
+  m:       { uno: 'm',       varios: 'm',        por: 'por metro',   chip: 'Por metro' },
+  m2:      { uno: 'm²',      varios: 'm²',       por: 'por m²',      chip: 'Por m²' },
+  jornada: { uno: 'jornada', varios: 'jornadas', por: 'por jornada', chip: 'Por jornada' },
+};
+// Unidad válida de un ítem de trabajo, o '' (precio cerrado). Solo los ítems
+// 'tree' la llevan: el servicio ya tiene su cantidad, la nota no suma.
+function itemUnidad(item) {
+  return (item && item.type === 'tree' && ITEM_UNIDADES.indexOf(item.unidad) >= 0) ? item.unidad : '';
+}
+// Cantidad de un trabajo con unidad: positiva, hasta 2 decimales; acepta coma.
+function itemCant(item) {
+  const q = parseFloat(String(item && item.qty != null ? item.qty : '').replace(',', '.'));
+  return (q > 0 && isFinite(q)) ? Math.round(q * 100) / 100 : 1;
+}
+// "40 m", "12,5 m²", "1 jornada", "3 jornadas".
+function itemCantTxt(item) {
+  const u = ITEM_UNIDAD_TXT[itemUnidad(item)];
+  if (!u) return '';
+  const q = itemCant(item);
+  return q.toLocaleString('es-AR', { maximumFractionDigits: 2 }) + ' ' + (q === 1 ? u.uno : u.varios);
 }
 
 function itemTotal(item) {
@@ -10117,8 +10211,11 @@ function dupItem(idx) {
 function _normEspecie(s) {
   return String(s || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ');
 }
-function ultimoPrecioEspecie(species) {
+function ultimoPrecioEspecie(species, unidad) {
   const k = _normEspecie(species);
+  // Solo compara precios cobrados de la MISMA forma: un precio por metro no
+  // sirve de referencia para un precio cerrado, ni al revés.
+  const uni = unidad || '';
   if (!k) return null;
   let mejor = null, mejorFecha = '';
   for (const e of getH()) {
@@ -10129,7 +10226,7 @@ function ultimoPrecioEspecie(species) {
     if (mejor && fecha <= mejorFecha) continue;
     for (const arr of [snap.items, snap.itemsB]) {
       if (!Array.isArray(arr)) continue;
-      const it = arr.find(x => x && x.type === 'tree' && _normEspecie(x.species) === k &&
+      const it = arr.find(x => x && x.type === 'tree' && _normEspecie(x.species) === k && itemUnidad(x) === uni &&
         moneyToCents((x._basePrice !== undefined && x._basePrice !== '') ? x._basePrice : x.price) > 0);
       if (!it) continue;
       // El precio de base (sin el recargo por viáticos de aquel trabajo).
@@ -10147,14 +10244,16 @@ function precioSugSync(card, idx) {
   const sf = card && card.querySelector('.sp-f');
   const pf = card && card.querySelector('.pr-f');
   if (!box || !sf || !pf) return;
-  const u = moneyToCents(pf.value) > 0 ? null : ultimoPrecioEspecie(sf.value);
+  const uni = itemUnidad(activeItemsArr()[idx]);
+  const u = moneyToCents(pf.value) > 0 ? null : ultimoPrecioEspecie(sf.value, uni);
   if (!u) { box.hidden = true; box.innerHTML = ''; return; }
   const desc = u.desc ? ' · ' + (u.desc.length > 40 ? u.desc.slice(0, 40) + '…' : u.desc) : '';
   // Con recargo por viáticos en ESTE presupuesto, el campo es el precio
   // ajustado: se propone la base de aquella vez con el recargo de hoy.
   const sur = Number(S.surcharge) || 0;
   const val = sur > 0 ? roundMoney((moneyToCents(u.price) / 100) * (1 + sur / 100)) : moneyToCents(u.price) / 100;
-  box.innerHTML = `<span class="pr-sug-tx">Última vez: <b>${esc(fmtM(val, S.currency || 'ARS'))}</b>${sur > 0 ? ' (con +' + sur + '%)' : ''}${u.num ? ' · ' + esc(u.num) : ''}${esc(desc)}</span>`
+  const por = uni ? ' ' + ITEM_UNIDAD_TXT[uni].por : '';
+  box.innerHTML = `<span class="pr-sug-tx">Última vez: <b>${esc(fmtM(val, S.currency || 'ARS'))}</b>${por}${sur > 0 ? ' (con +' + sur + '%)' : ''}${u.num ? ' · ' + esc(u.num) : ''}${esc(desc)}</span>`
     + `<button type="button" class="pr-sug-btn">Usar</button>`;
   box.hidden = false;
   box.querySelector('.pr-sug-btn').onclick = () => {
@@ -10165,6 +10264,48 @@ function precioSugSync(card, idx) {
 }
 
 function setItemField(idx, f, v) { const arr=activeItemsArr(); if(arr[idx]) arr[idx][f]=v; sched(); }
+
+// Cambia cómo se cobra un trabajo ('' = a ojo). Al pasar a una unidad la
+// cantidad arranca en 1, así el total no cambia hasta que se carguen los metros.
+function setItemUnidad(idx, u) {
+  const it = activeItemsArr()[idx];
+  if (!it || it.type !== 'tree') return;
+  if (ITEM_UNIDADES.indexOf(u) >= 0) {
+    if (it.unidad !== u) it.qty = 1;
+    it.unidad = u;
+  } else {
+    delete it.unidad;
+    it.qty = 1;
+  }
+  renderItems();
+  updateTotalsBar();
+  sched();
+}
+
+// Cambia el rubro del presupuesto abierto (selector de arriba del editor).
+function setRubro(r) {
+  S.rubro = sanEnum(r, RUBROS, 'arbolado');
+  rubroSync();
+  renderItems();
+  if (typeof renderEstItems === 'function') renderEstItems();
+  sched();
+}
+
+// Refleja el rubro en el editor: botón activo, selector oculto en riesgo y la
+// clase .is-jardineria en el panel, que esconde lo que en jardinería no va
+// (plan de trabajo, criterios) y cambia "+ Árbol / Trabajo" por "+ Trabajo".
+// Solo clases: no escribe en S.
+function rubroSync() {
+  const jard = esJardineria();
+  const panel = document.getElementById('panel-editor');
+  if (panel) panel.classList.toggle('is-jardineria', jard);
+  const sw = document.getElementById('rubro-switch');
+  if (sw) sw.hidden = !!S.isRisk;
+  RUBROS.forEach(r => {
+    const b = document.getElementById('rubro-btn-' + r);
+    if (b) { const on = (r === 'jardineria') === jard; b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); }
+  });
+}
 
 // Completa el placeholder [especie] del "Trabajo a realizar" de UNA tarjeta
 // con la especie de esa misma tarjeta. Escribe en el textarea y dispara
@@ -10198,6 +10339,7 @@ function renderItems() {
   const arr  = activeItemsArr();
   const cnt  = document.getElementById('items-count'); if(cnt) cnt.textContent = arr.length;
   itemsVacioSync();
+  rubroSync();
   list.innerHTML = '';
 
   arr.forEach((item, idx) => {
@@ -10208,7 +10350,8 @@ function renderItems() {
     const photoRefs = itemPhotoRefs(item);
 
     let bc='ib-svc', bl='Servicio';
-    if(item.type==='tree'){ bc='ib-tree'; bl=icon('tree')+' Árbol / Trabajo'; }
+    const jard = esJardineria();
+    if(item.type==='tree'){ bc='ib-tree'; bl=jard ? icon('leaf')+' Trabajo' : icon('tree')+' Árbol / Trabajo'; }
     else if(item.type==='note'){ bc='ib-note'; bl='Nota'; }
 
     let inner = `<span class="drag-h" title="Arrastrar para ordenar">⠿</span><span class="ibadge ${bc}">${bl}</span>`;
@@ -10223,20 +10366,38 @@ function renderItems() {
       // qué se le hace → cuánto sale (v227; antes el precio iba antes del
       // trabajo). El precio lleva debajo la sugerencia del último precio
       // cobrado por esa especie (precioSugSync), que se usa con un toque.
+      // Cobro por unidad (v241): el selector se ve en jardinería, o si el
+      // ítem ya tiene unidad (así nunca queda un multiplicador escondido).
+      const uni = itemUnidad(item);
+      const uTxt = ITEM_UNIDAD_TXT[uni];
+      const cobroH = (jard || uni) ? `
+        <div class="cobro-row">
+          <div class="isub">Cobro</div>
+          <div class="cobro-seg" role="group" aria-label="Cómo se cobra">
+            <button type="button" class="cobro-b${uni ? '' : ' on'}" data-u="" aria-pressed="${!uni}">A ojo</button>
+            ${ITEM_UNIDADES.map(k => `<button type="button" class="cobro-b${uni === k ? ' on' : ''}" data-u="${k}" aria-pressed="${uni === k}">${ITEM_UNIDAD_TXT[k].chip}</button>`).join('')}
+          </div>
+        </div>` : '';
+      const cantH = uni ? `
+          <div><div class="isub">Cantidad (${uTxt.varios})</div>
+          <input class="ii cant-f" type="text" inputmode="decimal" placeholder="1" value="${esc(String(item.qty == null ? '' : item.qty))}"></div>` : '';
       inner += `
         <div class="mb8">
-          <div class="isub">Especie/s</div>
-          <input class="ii sp-f" type="text" placeholder="Ej: Eucaliptus, Ciprés..." value="${esc(item.species||'')}">
+          <div class="isub">${jard ? 'Planta / Sector' : 'Especie/s'}</div>
+          <input class="ii sp-f" type="text" placeholder="${jard ? 'Ej: Cerco de jazmín amarillo, terreno, césped...' : 'Ej: Eucaliptus, Ciprés...'}" value="${esc(item.species||'')}">
         </div>
         <div class="isub mb-row">
           <span>Trabajo a realizar</span>
           <button type="button" class="phrase-btn phrase-btn-mini" onclick="openPhrasesModal('desc','desc-${item.id}')" title="Insertar frase guardada">${icon('pencil')}</button>
         </div>
-        <textarea id="desc-${item.id}" class="ita ds-f" placeholder="Poda de altura, extracción, despeje de ramas...">${esc(item.desc||'')}</textarea>
+        <textarea id="desc-${item.id}" class="ita ds-f" placeholder="${jard ? 'Poda de cerco, desmalezado, limpieza de terreno...' : 'Poda de altura, extracción, despeje de ramas...'}">${esc(item.desc||'')}</textarea>
+        ${cobroH}
         <div class="item-grid-2" style="margin-top:8px;margin-bottom:${hasSurcharge?'4px':'0'}">
-          <div><div class="isub">Precio${hasSurcharge?' (ajustado)':''}</div>
+          ${cantH}
+          <div><div class="isub">Precio${uni ? ' ' + uTxt.por : ''}${hasSurcharge?' (ajustado)':''}</div>
           <input class="ii pr-f" type="number" min="0" placeholder="0" inputmode="decimal" value="${esc(String(item.price||''))}"></div>
         </div>
+        ${uni ? `<div class="qty-preview cobro-prev"></div>` : ''}
         <div class="pr-sug" hidden></div>
         ${adjBadge}`;
 
@@ -10330,6 +10491,17 @@ function renderItems() {
       _refreshQtyPreview(card, idx);
     });
 
+    // Cobro por unidad: elegir la unidad re-dibuja la tarjeta (cambian los
+    // campos); la cantidad se guarda tal cual se tipea y se lee con itemCant.
+    card.querySelectorAll('.cobro-b').forEach(b => b.addEventListener('click', () => setItemUnidad(idx, b.dataset.u)));
+    const cf = card.querySelector('.cant-f');
+    if(cf) cf.addEventListener('input', ()=>{
+      setItemField(idx,'qty',cf.value);
+      updateTotalsBar();
+      _refreshQtyPreview(card, idx);
+    });
+    if(item.type==='tree' && itemUnidad(item)) _refreshQtyPreview(card, idx);
+
     const sqf = card.querySelector('.showqty-f');
     if(sqf) sqf.addEventListener('change', ()=>setItemField(idx,'showQty', sqf.checked));
 
@@ -10393,7 +10565,15 @@ function renderItems() {
 
 // Actualiza el preview "3 × $X = $Y" en el card sin re-renderizar todo
 function _refreshQtyPreview(card, idx) {
-  const item = activeItemsArr()[idx]; if(!item||item.type!=='service') return;
+  const item = activeItemsArr()[idx]; if(!item) return;
+  if (itemUnidad(item)) {
+    const span = card.querySelector('.cobro-prev');
+    if (span) span.textContent = moneyToCents(item.price) > 0
+      ? `${itemCantTxt(item)} × ${fmtM(item.price, S.currency||'ARS')} = ${fmtM(itemTotal(item), S.currency||'ARS')}`
+      : '';
+    return;
+  }
+  if(item.type!=='service') return;
   const qty      = parseInt(item.qty) || 1;
   const hasPrice = item.price !== '' && moneyToCents(item.price) > 0;
   const total    = itemTotal(item);
@@ -11302,6 +11482,8 @@ function restoreUI() {
   sv('est-observations', S.estObservations);
   sv('doc-title',         S.docTitle);
   sv('doc-title-est',     S.docTitleEst);
+  sv('doc-title-jard',    S.docTitleJard);
+  sv('doc-title-est-jard', S.docTitleEstJard);
   sv('doc-title-risk',    S.docTitleRisk);
   sv('doc-title-risk-editor', S.docTitleRisk);
   sv('doc-est-banner',    S.docEstBanner);
@@ -11410,6 +11592,8 @@ function syncFromUI() {
   S.estObservations   = gv('est-observations');
   S.docTitle          = gv('doc-title')         || S.docTitle;
   S.docTitleEst       = gv('doc-title-est')     || S.docTitleEst;
+  S.docTitleJard      = gv('doc-title-jard')    || S.docTitleJard;
+  S.docTitleEstJard   = gv('doc-title-est-jard') || S.docTitleEstJard;
   const riskTitleSettings = gv('doc-title-risk');
   const riskTitleEditor = gv('doc-title-risk-editor');
   S.docTitleRisk = (document.activeElement && document.activeElement.id === 'doc-title-risk-editor')
@@ -12019,6 +12203,11 @@ function applyMode(mode) {
 
   // Chips de servicios rápidos: solo en modo normal
   if (typeof renderQuickServices === 'function') renderQuickServices();
+
+  // Rubro: el selector se oculta en riesgo y, en un presupuesto de jardinería,
+  // las tarjetas cambian de etiquetas al entrar o salir de riesgo (el informe
+  // ISA es de un árbol), así que se re-dibujan. renderItems llama a rubroSync.
+  if (S.rubro === 'jardineria') renderItems(); else rubroSync();
 
   updateTotalsBar();
   // Shell del editor: la numeración y el progreso se calculan sobre las
@@ -15277,8 +15466,10 @@ function _resumenDelDia(hoy) {
   const porMoneda = {};
   hoy.forEach(e => {
     const snap = e.snapshot || {};
-    (snap.items || []).forEach(it => {
-      if (it && it.type === 'tree') arboles += Math.max(1, parseInt(it.qty) || 1);
+    // Un trabajo de jardinería no es un árbol, y en un ítem cobrado por metro
+    // la cantidad son metros: ninguno de los dos suma al conteo de árboles.
+    if (!esJardineria(snap)) (snap.items || []).forEach(it => {
+      if (it && it.type === 'tree') arboles += itemUnidad(it) ? 1 : Math.max(1, parseInt(it.qty) || 1);
     });
     const cur = e.currency || 'ARS';
     porMoneda[cur] = (porMoneda[cur] || 0) + (parseFloat(e.total) || 0);
@@ -16335,6 +16526,9 @@ function resetToNewQuote() {
   S.workPlanOverride=false; S.workPlanCustom=''; S.workPlanCustomTitle='';
   S.isEstimative = false;
   S.isRisk = false;
+  // El rubro es por trabajo y casi nunca se mezcla: cada presupuesto nuevo
+  // arranca en arbolado (lo más frecuente) y se cambia con un toque.
+  S.rubro = 'arbolado';
   // Resetear escenarios A/B a defaults
   S.scenariosEnabled = false;
   S.scenarioLabelA = DEF.scenarioLabelA;
@@ -18302,6 +18496,26 @@ function _ofrecerMarcarEnviado(quoteNumber) {
 // Construye el HTML del <tbody> de la tabla de ítems para una lista
 // específica. Se usa tanto para el modo normal como para los dos
 // bloques de escenarios A/B.
+// Celda de precio de un trabajo: cerrado ("a ojo") o, si se cobra por
+// unidad, el desglose "40 m × $ 3.000" encima del total. Con unidad el
+// desglose sale SIEMPRE: es lo que el cliente necesita para entender el total.
+function _trabajoPrecioCellHTML(item, cur) {
+  if (item.price === '' || item.price == null) return '—';
+  if (!itemUnidad(item)) return fmtMDoc(item.price, cur);
+  return `<span class="qty-breakdown">${esc(itemCantTxt(item))} × ${fmtMDoc(item.price, cur)}</span><strong>${fmtMDoc(itemTotal(item), cur)}</strong>`;
+}
+
+// Título del documento según modo y rubro. El override de un trabajo sin
+// presupuesto (_docTrabajo) gana, como siempre.
+function _docTituloHTML(est) {
+  if (!est && _docTrabajo && _docTrabajo.titulo) return esc(_docTrabajo.titulo);
+  const jard = esJardineria();
+  const t = est
+    ? (jard ? (S.docTitleEstJard || DEF.docTitleEstJard) : (S.docTitleEst || DEF.docTitleEst))
+    : (jard ? (S.docTitleJard || DEF.docTitleJard) : (S.docTitle || DEF.docTitle));
+  return esc(t);
+}
+
 function _buildItemsRowsHTML(arr, color, cur) {
   if (!arr || !arr.length) {
     return `<tr><td colspan="4" style="text-align:center;color:#94a3b8;padding:18px;font-style:italic">Sin ítems agregados</td></tr>`;
@@ -18310,7 +18524,7 @@ function _buildItemsRowsHTML(arr, color, cur) {
   arr.forEach(item => {
     if(item.type==='tree'){
       n++;
-      const p = item.price!==''?fmtMDoc(item.price,cur):'—';
+      const p = _trabajoPrecioCellHTML(item, cur);
       rows+=`<tr>
         <td class="td-n">${n}</td>
         <td class="td-sp" style="color:${color}">${esc(item.species||'Sin especificar')}</td>
@@ -18358,7 +18572,7 @@ function _buildSceneTableHTML(arr, label, color, cur) {
       <table class="ptable">
         <thead><tr>
           <th style="width:18pt">#</th>
-          <th style="width:100pt">Especie/s</th>
+          <th style="width:100pt">${esJardineria() ? 'Planta / Sector' : 'Especie/s'}</th>
           <th>Trabajo a realizar</th>
           <th class="thr">Valor</th>
         </tr></thead>
@@ -18715,6 +18929,9 @@ function buildDoc() {
   // vigencia (no vence) y la colaboración además se queda solo con su detalle
   // (ver `doc.secciones` en TRABAJO_CFG). Sin override, sale el orden completo.
   let _orden = sanitizeSectionOrder(S.docSectionOrder);
+  // Jardinería no lleva plan de trabajo ni "Cómo Trabajamos" (pedido del
+  // usuario): son argumentario del trabajo en altura.
+  if (esJardineria()) _orden = _orden.filter(id => id !== 'plan' && id !== 'criteria');
   if (_docTrabajo) {
     _orden = _orden.filter(id => id !== 'validity'
       && (!_docTrabajo.secciones || _docTrabajo.secciones.includes(id)));
@@ -18741,7 +18958,7 @@ function buildDoc() {
         <tr><td>
 
     <div class="ptitle-bar">
-      <div class="ptitle" style="color:${color};border-color:${color}">${esc((_docTrabajo && _docTrabajo.titulo) || S.docTitle || 'Presupuesto de Servicio de Poda en Altura y Extracción de Árboles')}</div>
+      <div class="ptitle" style="color:${color};border-color:${color}">${_docTituloHTML(false)}</div>
       <div class="pgrid">
         <div>
           <div class="pgrid-lbl">${esc((_docTrabajo && _docTrabajo.quien) || 'Cliente')}</div>
@@ -18833,7 +19050,7 @@ function buildRiskDoc() {
     S.items.forEach(item => {
       if (item.type === 'tree') {
         n++;
-        const p = item.price !== '' ? fmtMDoc(item.price, cur) : '—';
+        const p = _trabajoPrecioCellHTML(item, cur);
         rows += `<tr>
           <td class="td-n">${n}</td>
           <td class="td-sp" style="color:${color}">${esc(item.species||'Sin especificar')}</td>
@@ -19166,7 +19383,7 @@ function buildEstDoc() {
     </div>
 
     <div class="ptitle-bar">
-      <div class="ptitle" style="color:${color};border-color:${color}">${esc(S.docTitleEst||'Presupuesto Estimativo de Servicio de Poda y Extracción de Árboles')}</div>
+      <div class="ptitle" style="color:${color};border-color:${color}">${_docTituloHTML(true)}</div>
       <div class="pgrid">
         <div>
           <div class="pgrid-lbl">Cliente</div>
@@ -19199,7 +19416,7 @@ function buildEstDoc() {
 
     ${totalsHtml}
 
-    ${_buildWorkPlanHTML(color)}
+    ${esJardineria() ? '' : _buildWorkPlanHTML(color)}
 
     <div class="pest-disclaimer">
       <div class="pest-disclaimer-title">Importante</div>
@@ -19217,7 +19434,7 @@ function buildEstDoc() {
       <div class="pobs-txt" style="border-color:${color}60">${esc(S.estObservations).replace(/\n/g,'<br>')}</div>
     </div>` : ''}
 
-    ${workItems.length > 0 ? `
+    ${workItems.length > 0 && !esJardineria() ? `
     <div class="pest-factors">
       <div class="pest-factors-t" style="color:${color};border-color:${color}">Para estimar el costo se consideran</div>
       <div class="pest-factors-grid">
