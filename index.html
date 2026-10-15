@@ -3094,6 +3094,25 @@ input[type=number]{-moz-appearance:textfield}
 
 /* Nivel de riesgo calculado */
 .risk-level-pending { font-size: 9.5pt; color: var(--muted); font-style: italic; }
+/* v243: informe con la matriz anterior, residual y bloques que solo existen
+   con la ISA (.risk-isa, se ocultan con [hidden] — las cards tienen display
+   propio y le ganarían a la regla del navegador). */
+#section-risk-analysis [hidden] { display: none !important; }
+.risk-legacy {
+  display: flex; flex-direction: column; gap: 8px; align-items: flex-start;
+  margin-bottom: 12px; padding: 10px 12px; border-radius: 10px;
+  border: 1px solid #f59e0b; background: #fffbeb; color: #78350f; font-size: 13px; line-height: 1.4;
+}
+.risk-sub { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 14px 0 6px; }
+.risk-level-sub { font-size: 12.5px; color: var(--muted); margin-top: 6px; line-height: 1.4; }
+.risk-level-sub strong { color: var(--text); }
+.risk-res-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.risk-res-arrow { font-size: 18px; color: var(--muted); }
+#risk-tecnicas .cobro-b { min-height: 34px; font-size: 12.5px; }
+/* Las opciones de la evaluación llevan su definición: en el celular el texto
+   se parte en renglones en vez de estirar la grilla fuera de la tarjeta. */
+#section-risk-analysis .fg-grid > .fg { min-width: 0; }
+#section-risk-analysis .csel-label { white-space: normal; line-height: 1.3; }
 .risk-level-badge {
   display: inline-flex;
   align-items: center;
@@ -3183,11 +3202,44 @@ input[type=number]{-moz-appearance:textfield}
   border-radius: 0 5px 5px 0;
 }
 
-/* Separador entre informe y propuesta de trabajo en el PDF */
+/* Informe de riesgo v243: alcance, fotos por defecto, método, residual,
+   limitaciones. Todo con el margen de página del documento (--page-x). */
+.prisk-data-row.prisk-full { grid-column: 1 / -1; }
+.prisk-defect-photos {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 7px;
+}
+.prisk-defect-photos .pphoto img { max-height: 55mm; }
+.prisk-metodo { font-size: 8pt; color: var(--muted); line-height: 1.45; margin: -2px 0 10px; }
+.prisk-result-sub { font-size: 8.5pt; color: var(--text-2); margin-top: 2px; }
+.prisk-significa {
+  font-size: 9pt; color: #1e293b; line-height: 1.45; margin-top: 8px;
+  padding: 7px 12px; background: #f8fafc; border-radius: 5px;
+}
+.prisk-res-row { display: flex; align-items: stretch; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+.prisk-res-pill {
+  flex: 1 1 0; min-width: 140pt; display: flex; align-items: center; gap: 10px;
+  border: 1.5pt solid; border-radius: 7px; padding: 8px 12px;
+}
+.prisk-res-pill .pdf-ic-dot { width: 14pt; height: 14pt; flex: none; }
+.prisk-res-level { font-size: 13pt; font-weight: 800; letter-spacing: .02em; }
+.prisk-res-arrow { align-self: center; font-size: 16pt; color: var(--muted); }
+.prisk-reinsp { font-size: 9pt; color: #1e293b; line-height: 1.45; margin-top: 10px; }
+.prisk-obs { margin-top: 12pt; }
+.prisk-limits { padding: 4pt var(--page-x, 18mm) 6pt; font-size: 7.8pt; color: var(--muted); line-height: 1.45; }
+.prisk-limits-t { font-size: 7.5pt; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 3px; }
+.prisk-limits p { margin: 0 0 4px; }
+.prisk-limits .prisk-limits-esp { color: #1e293b; }
+@media print {
+  .prisk-defect, .prisk-res-row, .prisk-result { break-inside: avoid; page-break-inside: avoid; }
+}
+
+/* Separador entre informe y propuesta de trabajo en el PDF. Con el mismo
+   margen lateral que el resto del documento: sin él, la línea iba de borde a
+   borde de la hoja. */
 .prisk-section-divider {
   border-top: 1.5pt solid;
   text-align: center;
-  margin: 18pt 0 14pt;
+  margin: 18pt var(--page-x, 18mm) 14pt;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3986,6 +4038,43 @@ input[type=number]{-moz-appearance:textfield}
           </button>
         <div id="section-risk-analysis" style="display:none">
 
+          <!-- Informe hecho con la matriz anterior (v1): se ve igual que cuando
+               se entregó; pasarlo a la ISA es decisión del usuario. -->
+          <div class="risk-legacy" id="risk-legacy" hidden>
+            <div><strong>Este informe usa la matriz anterior de la app</strong>, que daba niveles de riesgo más altos que la metodología de la ISA. Se muestra tal como se entregó.</div>
+            <button type="button" class="btn btn-s btn-sm" onclick="riskPasarAIsa()">Pasar a la metodología ISA</button>
+          </div>
+
+          <!-- Alcance de la inspección -->
+          <div class="section-card risk-isa">
+            <div class="section-title"><svg class="ic"><use href="#i-file"></use></svg> Alcance de la Inspección</div>
+            <div class="fg-grid">
+              <div class="fg">
+                <label>Nivel de evaluación</label>
+                <select id="risk-nivel">
+                  <option value="">— Seleccionar —</option>
+                  <option value="1">Nivel 1 — Limitada</option>
+                  <option value="2">Nivel 2 — Básica (desde el suelo)</option>
+                  <option value="3">Nivel 3 — Avanzada (aérea o instrumental)</option>
+                </select>
+              </div>
+              <div class="fg">
+                <label>Plazo que cubre la evaluación</label>
+                <select id="risk-plazo">
+                  <option value="6">6 meses</option>
+                  <option value="12">1 año</option>
+                  <option value="24">2 años</option>
+                  <option value="36">3 años</option>
+                </select>
+              </div>
+              <div class="fg fg-full">
+                <label id="risk-tec-lbl">Técnicas usadas</label>
+                <div class="cobro-seg" id="risk-tecnicas" role="group" aria-labelledby="risk-tec-lbl"></div>
+                <div class="hint">La fecha de la inspección es la de emisión. Quién evalúa y el descargo general se cargan una vez en Empresa → Textos del PDF.</div>
+              </div>
+            </div>
+          </div>
+
           <!-- Datos del árbol -->
           <div class="section-card">
             <div class="section-title"><svg class="ic"><use href="#i-tree"></use></svg> Árbol Evaluado</div>
@@ -3994,27 +4083,14 @@ input[type=number]{-moz-appearance:textfield}
               <div class="fg"><label>Altura estimada (m)</label><input id="risk-height" type="number" step="0.5" min="0" placeholder="Ej: 18" inputmode="decimal"></div>
               <div class="fg"><label>DAP — Diám. a 1,30 m (cm)</label><input id="risk-dap" type="number" step="1" min="0" placeholder="Ej: 45" inputmode="numeric"></div>
               <div class="fg"><label>Ubicación en el predio</label><input id="risk-location" type="text" placeholder="Ej: Jardín trasero, próximo a medianera"></div>
-            </div>
-          </div>
-
-          <!-- Defectos -->
-          <div class="section-card">
-            <div class="section-title">⚠️ Defectos Detectados</div>
-            <div id="risk-defects-list"></div>
-            <button class="btn btn-s btn-sm" style="margin-top:10px" onclick="addRiskDefect()">+ Agregar defecto</button>
-          </div>
-
-          <!-- Factores ambientales -->
-          <div class="section-card">
-            <div class="section-title"><svg class="ic"><use href="#i-wind"></use></svg> Factores Ambientales y del Sitio</div>
-            <div class="fg-grid">
               <div class="fg">
-                <label>Exposición al viento</label>
-                <select id="risk-wind">
+                <label>Vitalidad</label>
+                <select id="risk-vitalidad">
                   <option value="">— Seleccionar —</option>
-                  <option value="bajo">Bajo</option>
-                  <option value="moderado">Moderado</option>
-                  <option value="alto">Alto</option>
+                  <option value="buena">Buena — follaje denso y de color normal</option>
+                  <option value="regular">Regular — copa algo rala o secos puntuales</option>
+                  <option value="pobre">Pobre — copa rala, decaimiento evidente</option>
+                  <option value="muerto">Árbol muerto</option>
                 </select>
               </div>
               <div class="fg">
@@ -4027,6 +4103,33 @@ input[type=number]{-moz-appearance:textfield}
                   <option value="severa">Severa</option>
                 </select>
               </div>
+            </div>
+          </div>
+
+          <!-- Defectos -->
+          <div class="section-card">
+            <div class="section-title">⚠️ Defectos Detectados</div>
+            <div id="risk-defects-list"></div>
+            <button class="btn btn-s btn-sm" style="margin-top:10px" onclick="addRiskDefect()">+ Agregar defecto</button>
+          </div>
+
+          <!-- Sitio y blancos -->
+          <div class="section-card">
+            <div class="section-title"><svg class="ic"><use href="#i-wind"></use></svg> Sitio y Blancos</div>
+            <div class="fg-grid">
+              <div class="fg fg-full">
+                <label>Qué hay en la zona de caída (blancos)</label>
+                <input id="risk-target" type="text" placeholder="Ej: Vivienda a 4 m (ocupación constante), patio de juegos, vereda">
+              </div>
+              <div class="fg">
+                <label>Exposición al viento</label>
+                <select id="risk-wind">
+                  <option value="">— Seleccionar —</option>
+                  <option value="bajo">Bajo</option>
+                  <option value="moderado">Moderado</option>
+                  <option value="alto">Alto</option>
+                </select>
+              </div>
               <div class="fg">
                 <label>Condición del suelo</label>
                 <select id="risk-soil">
@@ -4037,62 +4140,83 @@ input[type=number]{-moz-appearance:textfield}
                   <option value="erosionado">Erosionado</option>
                 </select>
               </div>
-              <div class="fg">
+              <div class="fg fg-full">
                 <label>Intervenciones previas</label>
                 <input id="risk-prior" type="text" placeholder="Ej: Podado hace 5 años, tocón remanente">
               </div>
             </div>
           </div>
 
-          <!-- Evaluación ISA Basic -->
+          <!-- Evaluación (opciones según la matriz: riskOptsSync) -->
           <div class="section-card">
-            <div class="section-title"><svg class="ic"><use href="#i-chart"></use></svg> Evaluación de Riesgo (Método ISA Basic)</div>
+            <div class="section-title"><svg class="ic"><use href="#i-chart"></use></svg> <span id="risk-eval-title">Evaluación de Riesgo (metodología ISA)</span></div>
             <div class="fg-grid">
-              <div class="fg">
-                <label>Probabilidad de falla</label>
-                <select id="risk-fail-prob">
-                  <option value="">— Seleccionar —</option>
-                  <option value="improbable">Improbable — No hay indicadores de falla</option>
-                  <option value="posible">Posible — Defectos presentes pero estables</option>
-                  <option value="probable">Probable — Defectos activos, deterioro visible</option>
-                  <option value="inminente">Inminente — Falla esperada sin intervención</option>
-                </select>
+              <div class="fg fg-full">
+                <label>Probabilidad de falla <span class="risk-plazo-txt"></span></label>
+                <select id="risk-fail-prob"></select>
               </div>
-              <div class="fg">
+              <div class="fg fg-full">
                 <label>Probabilidad de impacto</label>
-                <select id="risk-impact-prob">
-                  <option value="">— Seleccionar —</option>
-                  <option value="baja">Baja — Zona raramente ocupada</option>
-                  <option value="media">Media — Zona con uso ocasional</option>
-                  <option value="alta">Alta — Zona de uso frecuente o permanente</option>
-                </select>
+                <select id="risk-impact-prob"></select>
               </div>
               <div class="fg fg-full">
                 <label>Consecuencias potenciales</label>
-                <select id="risk-consequences">
-                  <option value="">— Seleccionar —</option>
-                  <option value="insignificantes">Insignificantes — Daño mínimo</option>
-                  <option value="menores">Menores — Lesiones leves o daños menores</option>
-                  <option value="significativas">Significativas — Lesiones moderadas o daños mayores</option>
-                  <option value="severas">Severas — Lesiones graves o pérdida de bienes</option>
-                  <option value="catastroficas">Catastróficas — Muerte o pérdida total</option>
-                </select>
+                <select id="risk-consequences"></select>
               </div>
             </div>
             <!-- Resultado calculado automáticamente -->
             <div id="risk-level-display" style="margin-top:14px"></div>
           </div>
 
-          <!-- Mitigación y observaciones -->
+          <!-- Mitigación y riesgo residual -->
           <div class="section-card">
-            <div class="section-title"><svg class="ic"><use href="#i-wrench"></use></svg> Objetivos de Mitigación</div>
+            <div class="section-title"><svg class="ic"><use href="#i-wrench"></use></svg> Mitigación y Riesgo Residual</div>
             <div class="fg">
               <label>¿Qué se propone hacer y por qué reduce el riesgo?</label>
-              <textarea id="risk-mitigation" rows="4" placeholder="Ej: Se propone la extracción controlada del árbol mediante técnicas de rigging para neutralizar el riesgo de caída sobre la estructura edilicia. La poda de alivio no es viable dado el grado de deterioro estructural detectado."></textarea>
+              <textarea id="risk-mitigation" rows="4" placeholder="Ej: Reducción del codominante sobre la vivienda y retiro de la madera muerta. Baja la carga sobre la unión con corteza incluida y elimina las ramas que pueden caer sobre el techo."></textarea>
             </div>
-            <div class="fg" style="margin-top:10px">
-              <label>Observaciones adicionales del informe</label>
+            <div class="risk-isa">
+              <div class="risk-sub">Después del trabajo propuesto</div>
+              <div class="fg-grid">
+                <div class="fg fg-full">
+                  <label>Probabilidad de falla</label>
+                  <select id="risk-res-fail"></select>
+                </div>
+                <div class="fg">
+                  <label>Probabilidad de impacto</label>
+                  <select id="risk-res-impact"></select>
+                </div>
+                <div class="fg">
+                  <label>Consecuencias</label>
+                  <select id="risk-res-cons"></select>
+                </div>
+              </div>
+              <div id="risk-residual-display" style="margin-top:10px"></div>
+              <div class="fg" style="margin-top:10px">
+                <label>Reinspección recomendada</label>
+                <select id="risk-reinsp">
+                  <option value="">— Sin indicar —</option>
+                  <option value="3">En 3 meses</option>
+                  <option value="6">En 6 meses</option>
+                  <option value="12">En 1 año</option>
+                  <option value="24">En 2 años</option>
+                  <option value="36">En 3 años</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Observaciones y limitaciones -->
+          <div class="section-card">
+            <div class="section-title"><svg class="ic"><use href="#i-file"></use></svg> Observaciones y Limitaciones</div>
+            <div class="fg">
+              <label>Observaciones del informe</label>
               <textarea id="risk-observations" rows="3" placeholder="Notas técnicas, referencias, condiciones del relevamiento…"></textarea>
+            </div>
+            <div class="fg risk-isa" style="margin-top:10px">
+              <label>Limitaciones de esta inspección</label>
+              <textarea id="risk-limitaciones" rows="2" placeholder="Ej: El cuello de raíz estaba cubierto por contrapiso; no se pudo revisar la copa del lado de la medianera."></textarea>
+              <div class="hint">Lo que no se pudo ver. El descargo general sale siempre debajo (se edita en Empresa → Textos del PDF).</div>
             </div>
           </div>
 
@@ -4506,6 +4630,14 @@ input[type=number]{-moz-appearance:textfield}
 
           <div class="fg"><label>Título — Informe de Riesgo</label>
             <textarea class="ta-line" rows="1" id="doc-title-risk" placeholder="Informe Técnico de Riesgo Arbóreo y Propuesta de Trabajo"></textarea></div>
+
+          <div class="fg"><label>Informe de riesgo — Quién evalúa</label>
+            <textarea id="co-evaluador" rows="2" placeholder="Ej: Julio B. — Podador y trepador, 12 años de oficio. Curso de trepa y poda en altura."></textarea>
+            <div class="hint">Sale en el alcance de cada informe de riesgo. Poné tu experiencia y tus cursos. Si lo dejás vacío, no aparece.</div></div>
+
+          <div class="fg"><label>Informe de riesgo — Limitaciones (descargo general)</label>
+            <textarea id="doc-risk-limits" rows="5"></textarea>
+            <div class="hint">Sale al final de cada informe de riesgo, debajo de las limitaciones propias de esa inspección. Te protege: deja claro qué abarca la evaluación y que no es una garantía.</div></div>
 
           <div class="fg"><label>Banner estimativo (subtítulo en el encabezado)</label>
             <textarea class="ta-line" rows="1" id="doc-est-banner" placeholder="Presupuesto Estimativo — Basado en fotos y/o videos"></textarea></div>
@@ -5687,31 +5819,53 @@ const DEF = {
   // Risk mode
   isRisk: false,
   riskData: {
+    // Con qué matriz se calcula el nivel (ver RISK_MATRIX_ISA / riskMetodo):
+    // 'isa2' = la de la ISA (manual de buenas prácticas, 2ª ed.); 'v1' = la
+    // matriz propia anterior a la v243, que inflaba el nivel. Un informe ya
+    // entregado conserva la suya: no puede cambiarle el resultado al reabrirlo.
+    metodo: 'isa2',
     // Árbol evaluado
     species: '',
     height: '',
     dap: '',
     location: '',
-    // Defectos (array de objetos)
+    vitalidad: '',         // 'buena'|'regular'|'pobre'|'muerto'
+    // Alcance de la inspección (v243)
+    nivel: '',             // '1'|'2'|'3' — niveles de evaluación de la ISA
+    tecnicas: [],          // claves de RISK_TECNICAS
+    plazo: '12',           // meses que cubre la evaluación (RISK_PLAZOS)
+    // Defectos (array de { type, location, desc, altura, orient, photos })
     defects: [],
     // Factores ambientales
     windExposure: '',      // 'bajo'|'moderado'|'alto'
     inclination: '',       // 'ninguna'|'leve'|'moderada'|'severa'
     soilCondition: '',     // 'normal'|'compactado'|'saturado'|'erosionado'
     priorInterventions: '',
-    // Evaluación ISA Basic
+    target: '',            // qué hay en la zona de caída (blancos)
+    // Evaluación
     failureProbability: '', // 'improbable'|'posible'|'probable'|'inminente'
-    impactProbability:  '', // 'baja'|'media'|'alta'
-    consequences:       '', // 'insignificantes'|'menores'|'significativas'|'severas'|'catastroficas'
-    // Mitigación
+    impactProbability:  '', // isa2: 'muybaja'|'baja'|'media'|'alta' · v1: 'baja'|'media'|'alta'
+    consequences:       '', // 'insignificantes'|'menores'|'significativas'|'severas' (+ 'catastroficas' en v1)
+    // Mitigación y riesgo residual (lo que queda después del trabajo propuesto;
+    // impacto y consecuencias vacíos = iguales que ahora)
     mitigationGoals: '',
-    // Observaciones del informe
+    resFailure: '', resImpact: '', resConsequences: '',
+    reinsp: '',            // meses hasta la próxima inspección (RISK_REINSP)
+    // Observaciones y limitaciones de ESTA inspección (el descargo general es
+    // config del negocio: S.docRiskLimits)
     riskObservations: '',
+    limitaciones: '',
   },
   // Textos editables del documento
   docTitle:        'Presupuesto de Servicio de Poda en Altura y Extracción de Árboles',
   docTitleEst:     'Presupuesto Estimativo de Servicio de Poda y Extracción de Árboles',
   docTitleRisk:    'Informe Técnico de Riesgo Arbóreo y Propuesta de Trabajo',
+  // Informe de riesgo (v243). Config del negocio: quién evalúa (experiencia,
+  // cursos — sin credencial TRAQ el informe NO la nombra) y el descargo
+  // general que sale en todos los informes. Las limitaciones puntuales de cada
+  // inspección van en riskData.limitaciones.
+  coEvaluador:     '',
+  docRiskLimits:   'Esta evaluación refleja las condiciones del árbol visibles y accesibles en la fecha de la inspección, con las técnicas indicadas. Es una opinión técnica: no hay forma de garantizar que un árbol, o una parte de él, no vaya a fallar, sobre todo ante tormentas o vientos excepcionales. El nivel de riesgo vale para el plazo indicado; las condiciones pueden cambiar antes por el clima, obras cerca de las raíces, podas o el avance de los defectos. Ante cambios visibles en el árbol corresponde una nueva evaluación.',
   // Títulos de los presupuestos de JARDINERÍA (v241). Config del negocio,
   // como los de arriba; el rubro de cada presupuesto (S.rubro) elige cuál sale.
   docTitleJard:    'Presupuesto de Servicio de Jardinería',
@@ -5781,6 +5935,7 @@ const CFG_GLOBAL_FIELDS = [
   'vistaEditor',
   // Textos editables del PDF (Empresa → Textos del PDF)
   'docTitle','docTitleEst','docTitleRisk','docEstBanner','docDisclaimer',
+  'coEvaluador','docRiskLimits',
   'docTitleJard','docTitleEstJard',
   'docDisclaimerSvc','docCriteria','docGreeting','docCriteriaTitle',
   'docCriteriaIntro','workPlanTitle','workPlan','docDiscountLabel',
@@ -6217,18 +6372,44 @@ function fmtM(v,c){ return sym(c)+' '+roundMoney(v).toLocaleString('es-AR',{maxi
 // puede leerse como evasivo.
 function fmtMDoc(v,c){ return sym(c)+' '+roundMoney(v).toLocaleString('es-AR',{maximumFractionDigits:0}); }
 
-// ─── CÁLCULO DE NIVEL DE RIESGO (matriz ISA Basic) ───────────────────────────
-// Probabilidad de falla × Probabilidad de impacto → Probabilidad de daño
-// Probabilidad de daño × Consecuencias → Nivel de riesgo
+// ─── CÁLCULO DEL NIVEL DE RIESGO ─────────────────────────────────────────────
+// Dos pasos, como la ISA: (1) probabilidad de falla × probabilidad de impacto
+// → probabilidad combinada; (2) probabilidad combinada × consecuencias → nivel.
+//
+// MATRIZ ISA (riskData.metodo 'isa2', v243): matrices 1 y 2 del manual de buenas
+// prácticas de la ISA "Tree Risk Assessment", 2ª ed. El paso 1 funciona como una
+// multiplicación: para que haya daño la parte tiene que fallar Y tiene que haber
+// alguien o algo abajo, así que si una de las dos es poco probable el resultado
+// es improbable. Una falla improbable da SIEMPRE riesgo bajo.
+//
+// MATRIZ v1 (informes anteriores a la v243): era propia, con 3 niveles de
+// impacto y "catastróficas", y daba más riesgo que la ISA en 26 de las 48
+// combinaciones comparables (nunca menos). Se conserva SOLO para que un informe
+// ya entregado no cambie de nivel al reabrirlo; el editor ofrece pasarlo a la
+// ISA (riskPasarAIsa). Ver test/riesgo-isa.test.cjs.
+const RISK_MATRIX_ISA = {
+  combinada: {
+    improbable: { muybaja:'improbable', baja:'improbable', media:'improbable', alta:'improbable' },
+    posible:    { muybaja:'improbable', baja:'improbable', media:'improbable', alta:'algo'       },
+    probable:   { muybaja:'improbable', baja:'improbable', media:'algo',       alta:'probable'   },
+    inminente:  { muybaja:'improbable', baja:'algo',       media:'probable',   alta:'muy'        },
+  },
+  riesgo: {
+    improbable: { insignificantes:'bajo', menores:'bajo',     significativas:'bajo',     severas:'bajo'     },
+    algo:       { insignificantes:'bajo', menores:'bajo',     significativas:'moderado', severas:'moderado' },
+    probable:   { insignificantes:'bajo', menores:'moderado', significativas:'alto',     severas:'alto'     },
+    muy:        { insignificantes:'bajo', menores:'moderado', significativas:'alto',     severas:'extremo'  },
+  },
+};
 const RISK_MATRIX = {
-  // [failureProbability][impactProbability] → damageProbability
+  // v1 — [failureProbability][impactProbability] → damageProbability
   damageProbability: {
     improbable: { baja:'baja', media:'baja',   alta:'media'  },
     posible:    { baja:'baja', media:'media',  alta:'media'  },
     probable:   { baja:'media',media:'media',  alta:'alta'   },
     inminente:  { baja:'media',media:'alta',   alta:'alta'   },
   },
-  // [damageProbability][consequences] → riskLevel
+  // v1 — [damageProbability][consequences] → riskLevel
   riskLevel: {
     baja:  { insignificantes:'bajo',  menores:'bajo',     significativas:'bajo',     severas:'moderado',  catastroficas:'alto'   },
     media: { insignificantes:'bajo',  menores:'moderado', significativas:'moderado', severas:'alto',      catastroficas:'alto'   },
@@ -6236,25 +6417,165 @@ const RISK_MATRIX = {
   }
 };
 
-function calcRiskLevel(fp, ip, cons) {
-  if (!fp || !ip || !cons) return null;
-  const dp = RISK_MATRIX.damageProbability[fp]?.[ip];
-  if (!dp) return null;
-  return RISK_MATRIX.riskLevel[dp]?.[cons] || null;
+// Qué matriz usa un riskData. Sin `metodo` (informe anterior a la v243): si ya
+// tenía la evaluación cargada es 'v1' (se calculó y se entregó con esa); si no,
+// todavía no se evaluó nada y arranca con la ISA.
+function riskMetodo(rd) {
+  if (!rd || typeof rd !== 'object') return 'isa2';
+  if (rd.metodo === 'isa2' || rd.metodo === 'v1') return rd.metodo;
+  return (rd.failureProbability || rd.impactProbability || rd.consequences) ? 'v1' : 'isa2';
 }
 
-// Labels para el PDF
+// Probabilidad combinada de la ISA (paso 1), o null si falta un dato.
+function riskCombinada(fp, ip) {
+  return (RISK_MATRIX_ISA.combinada[fp] || {})[ip] || null;
+}
+
+function calcRiskLevel(fp, ip, cons, metodo) {
+  if (!fp || !ip || !cons) return null;
+  if (metodo === 'v1') {
+    const dp = RISK_MATRIX.damageProbability[fp]?.[ip];
+    if (!dp) return null;
+    return RISK_MATRIX.riskLevel[dp]?.[cons] || null;
+  }
+  const comb = riskCombinada(fp, ip);
+  return comb ? ((RISK_MATRIX_ISA.riesgo[comb] || {})[cons] || null) : null;
+}
+
+// Todo lo que se deriva de la evaluación, en un solo lugar (editor, estado de
+// la ficha y documento leen de acá). El residual es el riesgo que queda después
+// del trabajo propuesto: falla obligatoria; impacto y consecuencias vacíos =
+// iguales que ahora (podar baja la falla; mover el blanco baja el impacto).
+function riskEval(rd) {
+  rd = rd || {};
+  const metodo = riskMetodo(rd);
+  const nivel = calcRiskLevel(rd.failureProbability, rd.impactProbability, rd.consequences, metodo);
+  const out = { metodo, nivel, combinada: null, residual: null, resCombinada: null };
+  if (metodo !== 'isa2') return out;
+  out.combinada = riskCombinada(rd.failureProbability, rd.impactProbability);
+  if (rd.resFailure) {
+    const ip = rd.resImpact || rd.impactProbability;
+    const co = rd.resConsequences || rd.consequences;
+    out.residual = calcRiskLevel(rd.resFailure, ip, co, 'isa2');
+    out.resCombinada = riskCombinada(rd.resFailure, ip);
+  }
+  return out;
+}
+
+// Labels para el documento (sirven a las dos matrices: las claves nuevas
+// —muybaja, combinada— no chocan con las viejas).
 const RISK_LABELS = {
   failureProbability: { improbable:'Improbable', posible:'Posible', probable:'Probable', inminente:'Inminente' },
-  impactProbability:  { baja:'Baja', media:'Media', alta:'Alta' },
+  impactProbability:  { muybaja:'Muy baja', baja:'Baja', media:'Media', alta:'Alta' },
   consequences:       { insignificantes:'Insignificantes', menores:'Menores', significativas:'Significativas', severas:'Severas', catastroficas:'Catastróficas' },
+  combinada:          { improbable:'Improbable', algo:'Algo probable', probable:'Probable', muy:'Muy probable' },
   windExposure:       { bajo:'Bajo', moderado:'Moderado', alto:'Alto' },
   inclination:        { ninguna:'Ninguna', leve:'Leve', moderada:'Moderada', severa:'Severa' },
   soilCondition:      { normal:'Normal', compactado:'Compactado', saturado:'Saturado/Anegado', erosionado:'Erosionado' },
+  vitalidad:          { buena:'Buena', regular:'Regular', pobre:'Pobre', muerto:'Árbol muerto' },
+  nivel:              { '1':'Nivel 1 — Limitada', '2':'Nivel 2 — Básica', '3':'Nivel 3 — Avanzada' },
   riskLevel:          { bajo:'BAJO', moderado:'MODERADO', alto:'ALTO', extremo:'EXTREMO' },
 };
 
 const RISK_COLORS = { bajo:'#16a34a', moderado:'#d97706', alto:'#dc2626', extremo:'#7c3aed' };
+
+// Opciones de los desplegables de la evaluación, según la matriz. Las de la ISA
+// llevan su definición (la falla se juzga dentro del plazo y con el clima
+// habitual; el impacto, por cuánto se ocupa la zona de caída). Las v1 son las
+// de antes, tal cual, para poder reabrir un informe viejo sin cambiarle nada.
+const RISK_OPTS = {
+  isa2: {
+    failureProbability: [
+      ['improbable', 'Improbable — No se espera que falle con el clima habitual, ni siquiera con muchas tormentas'],
+      ['posible',    'Posible — Podría fallar, pero es poco probable con el clima habitual'],
+      ['probable',   'Probable — Se espera que falle con el clima habitual dentro del plazo'],
+      ['inminente',  'Inminente — La falla ya empezó o es muy probable en lo inmediato'],
+    ],
+    impactProbability: [
+      ['muybaja', 'Muy baja — Zona casi nunca ocupada, o blanco protegido'],
+      ['baja',    'Baja — Ocupación ocasional'],
+      ['media',   'Media — Ocupación frecuente'],
+      ['alta',    'Alta — Ocupación constante (vivienda, paso continuo, auto estacionado)'],
+    ],
+    consequences: [
+      ['insignificantes', 'Insignificantes — Daño material menor, sin lesiones'],
+      ['menores',         'Menores — Daño reparable o lesiones leves'],
+      ['significativas',  'Significativas — Daño importante o lesiones que requieren atención médica'],
+      ['severas',         'Severas — Lesiones graves o muerte, o daño grave a una vivienda'],
+    ],
+  },
+  v1: {
+    failureProbability: [
+      ['improbable', 'Improbable — No hay indicadores de falla'],
+      ['posible',    'Posible — Defectos presentes pero estables'],
+      ['probable',   'Probable — Defectos activos, deterioro visible'],
+      ['inminente',  'Inminente — Falla esperada sin intervención'],
+    ],
+    impactProbability: [
+      ['baja',  'Baja — Zona raramente ocupada'],
+      ['media', 'Media — Zona con uso ocasional'],
+      ['alta',  'Alta — Zona de uso frecuente o permanente'],
+    ],
+    consequences: [
+      ['insignificantes', 'Insignificantes — Daño mínimo'],
+      ['menores',         'Menores — Lesiones leves o daños menores'],
+      ['significativas',  'Significativas — Lesiones moderadas o daños mayores'],
+      ['severas',         'Severas — Lesiones graves o pérdida de bienes'],
+      ['catastroficas',   'Catastróficas — Muerte o pérdida total'],
+    ],
+  },
+};
+
+// Qué significa cada nivel, en palabras para el cliente. Son textos NUESTROS
+// (la ISA da los niveles para priorizar, no estas frases): por eso el documento
+// los presenta como recomendación y no como parte del método.
+const RISK_SIGNIFICA = {
+  bajo:     'Riesgo aceptable. No hace falta intervenir por seguridad; alcanza con el control periódico.',
+  moderado: 'Conviene reducirlo con un trabajo planificado. No es urgente.',
+  alto:     'Conviene reducirlo pronto con el trabajo propuesto.',
+  extremo:  'Requiere acción inmediata: restringir el paso debajo del árbol y mitigar cuanto antes.',
+};
+
+// Alcance de la inspección. "Inspección aérea con trepa" es lo que lleva una
+// evaluación al Nivel 3 (avanzada) de la ISA.
+const RISK_TECNICAS = [
+  ['suelo',       'Inspección visual 360° desde el suelo'],
+  ['binoculares', 'Binoculares'],
+  ['aerea',       'Inspección aérea con trepa'],
+  ['mazo',        'Sondeo con mazo'],
+  ['sonda',       'Sondeo de cavidades con varilla'],
+  ['cuello',      'Revisión del cuello de raíz'],
+];
+const RISK_PLAZOS = ['6','12','24','36'];
+const RISK_REINSP = ['3','6','12','24','36'];
+const RISK_ORIENT = ['N','NE','E','SE','S','SO','O','NO'];
+
+// Tipos de defecto, en el orden del desplegable. 'inclinacion' ya no se ofrece
+// (la inclinación es un dato del árbol, no un defecto suelto) pero se sigue
+// mostrando en los informes que la tienen.
+const RISK_DEFECT_TYPES = [
+  ['caries',      'Caries / Pudrición'],
+  ['crack',       'Grieta / Crack'],
+  ['inclusion',   'Inclusión de corteza'],
+  ['codomin',     'Horqueta codominante'],
+  ['desmoche',    'Rebrotes de desmoche (anclaje débil)'],
+  ['colgada',     'Rama colgada o suelta'],
+  ['muerto',      'Madera muerta / Ramas secas'],
+  ['hongos',      'Cuerpos fructíferos (hongos)'],
+  ['herida',      'Herida / Cicatriz abierta'],
+  ['raiz',        'Daño en raíces'],
+  ['placa',       'Levantamiento de la placa radicular'],
+  ['inclinacion', 'Inclinación pronunciada'],
+  ['otro',        'Otro'],
+];
+const RISK_DEFECT_OCULTOS = ['inclinacion'];
+const RISK_DEFECT_LOC = [
+  ['base',     'Base / Raíces'],
+  ['fuste',    'Fuste'],
+  ['copa',     'Copa'],
+  ['multiple', 'Múltiples zonas'],
+];
+function _riskOptLabel(list, v) { const o = list.find(x => x[0] === v); return o ? o[1] : (v || ''); }
 
 // ─── LOCAL STORAGE ────────────────────────────
 function loadLS() {
@@ -6329,10 +6650,15 @@ function normalizeRiskData() {
     S.riskData = JSON.parse(JSON.stringify(DEF.riskData));
     return;
   }
+  // La matriz se decide ANTES del merge: DEF trae metodo:'isa2' y, mezclado
+  // primero, convertiría un informe viejo ya evaluado en uno ISA y le cambiaría
+  // el nivel que se le entregó al cliente.
+  const metodo = riskMetodo(S.riskData);
   // Merge no destructivo: las claves existentes ganan, las que faltan
   // vienen del default.
-  S.riskData = Object.assign({}, DEF.riskData, S.riskData);
+  S.riskData = Object.assign({}, DEF.riskData, S.riskData, { metodo });
   if (!Array.isArray(S.riskData.defects)) S.riskData.defects = [];
+  if (!Array.isArray(S.riskData.tecnicas)) S.riskData.tecnicas = [];
 }
 
 function saveLS() {
@@ -8194,7 +8520,55 @@ function sanitizeStateObj(raw) {
   s.versionDeNum   = sanStr(raw.versionDeNum, 60);
   s.versionDeFecha = sanISODate(raw.versionDeFecha);
   s.versionEnDoc   = (raw.versionEnDoc === undefined) ? true : sanBool(raw.versionEnDoc);
+  // Informe de riesgo: los defectos llevan refs de foto (terminan en un src) y
+  // un defecto que no es objeto rompía la lista entera del editor.
+  if (raw.riskData !== undefined) s.riskData = sanitizeRiskData(raw.riskData);
+  if (raw.coEvaluador !== undefined)   s.coEvaluador   = sanStr(raw.coEvaluador, 400);
+  if (raw.docRiskLimits !== undefined) s.docRiskLimits = sanStr(raw.docRiskLimits, 2000);
   return s;
+}
+
+// riskData de un estado o snapshot. Solo pasan las claves conocidas; los
+// desplegables, por lista blanca (las claves viejas de la matriz v1 incluidas,
+// para que un informe entregado se siga viendo igual). `metodo` se conserva
+// solo si viene: sin él, riskMetodo() lo deduce de lo cargado.
+const _RISK_ENUMS = {
+  failureProbability: ['improbable','posible','probable','inminente'],
+  impactProbability:  ['muybaja','baja','media','alta'],
+  consequences:       ['insignificantes','menores','significativas','severas','catastroficas'],
+  windExposure:       ['bajo','moderado','alto'],
+  inclination:        ['ninguna','leve','moderada','severa'],
+  soilCondition:      ['normal','compactado','saturado','erosionado'],
+  vitalidad:          ['buena','regular','pobre','muerto'],
+  nivel:              ['1','2','3'],
+};
+function sanitizeRiskData(raw) {
+  const r = (raw && typeof raw === 'object' && !Array.isArray(raw)) ? raw : {};
+  const o = {};
+  if (r.metodo === 'isa2' || r.metodo === 'v1') o.metodo = r.metodo;
+  ['species','location','priorInterventions','target'].forEach(k => { o[k] = sanStr(r[k], 300); });
+  ['height','dap'].forEach(k => { o[k] = sanStr(typeof r[k] === 'number' ? String(r[k]) : r[k], 20); });
+  ['mitigationGoals','riskObservations','limitaciones'].forEach(k => { o[k] = sanStr(r[k], 3000); });
+  Object.keys(_RISK_ENUMS).forEach(k => { o[k] = sanEnum(r[k], _RISK_ENUMS[k], ''); });
+  o.resFailure      = sanEnum(r.resFailure, _RISK_ENUMS.failureProbability, '');
+  o.resImpact       = sanEnum(r.resImpact, _RISK_ENUMS.impactProbability, '');
+  o.resConsequences = sanEnum(r.resConsequences, _RISK_ENUMS.consequences, '');
+  o.plazo  = sanEnum(r.plazo, RISK_PLAZOS, '12');
+  o.reinsp = sanEnum(r.reinsp, RISK_REINSP, '');
+  const tec = RISK_TECNICAS.map(t => t[0]);
+  o.tecnicas = _sanToArray(r.tecnicas).filter((t, i, a) => tec.indexOf(t) >= 0 && a.indexOf(t) === i);
+  const tipos = RISK_DEFECT_TYPES.map(t => t[0]), locs = RISK_DEFECT_LOC.map(t => t[0]);
+  o.defects = _sanToArray(r.defects).slice(0, 40)
+    .filter(d => d && typeof d === 'object' && !Array.isArray(d))
+    .map(d => ({
+      type:     sanEnum(d.type, tipos, ''),
+      location: sanEnum(d.location, locs, ''),
+      desc:     sanStr(d.desc, 2000),
+      altura:   sanStr(typeof d.altura === 'number' ? String(d.altura) : d.altura, 10),
+      orient:   sanEnum(d.orient, RISK_ORIENT, ''),
+      photos:   sanPhotoRefs(d.photos),
+    }));
+  return o;
 }
 
 // Lista de referencias de foto (ver js/photos.js): un id corto 'p_...' o un
@@ -8623,6 +8997,22 @@ function dispoPhotoRefs(state){
   return (st && Array.isArray(st.dispoPhotos)) ? st.dispoPhotos.filter(Boolean) : [];
 }
 
+// ─── FOTOS DE LOS DEFECTOS DEL INFORME DE RIESGO (v243) ─────────────
+// Cuelgan de cada defecto (riskData.defects[i].photos): la foto de la cavidad o
+// la grieta tomada en altura va pegada a SU defecto en el documento. Mismo
+// formato de ref y mismo almacén que las de los ítems; por eso collectPhotoIds
+// y migrateInlinePhotosToIDB las recorren aparte (si no, el backup viaja sin
+// ellas y en el equipo nuevo quedan rotas).
+function riskDefectList(state){
+  const rd = state && state.riskData;
+  return (rd && Array.isArray(rd.defects)) ? rd.defects.filter(d => d && typeof d === 'object') : [];
+}
+function riskDefectPhotoRefs(state){
+  const out = [];
+  riskDefectList(state).forEach(d => { if (Array.isArray(d.photos)) d.photos.forEach(r => { if (r) out.push(r); }); });
+  return out;
+}
+
 // ─── UI COMPARTIDA DE FOTOS (normal / estimativo / riesgo) ─────────
 // HTML del botón "📷 Foto/s ✓ (N)" para la barra de acciones de un ítem.
 function photoBtnHTML(refs){
@@ -8696,6 +9086,7 @@ function collectPhotoIds(obj, set){
   // Las del lugar de disposición no cuelgan de ningún ítem: si no se suman
   // acá, el backup viaja sin ellas y en el equipo nuevo quedan rotas.
   dispoPhotoRefs(obj).forEach(ref => { if (photoIsId(ref)) set.add(ref); });
+  riskDefectPhotoRefs(obj).forEach(ref => { if (photoIsId(ref)) set.add(ref); });
 }
 
 // Construye el mapa {id: dataURL} de las fotos referenciadas por los estados
@@ -8750,6 +9141,19 @@ function migrateInlinePhotosToIDB(state){
       return ref;
     });
   }
+  // Las de los defectos del informe de riesgo: mismo tratamiento.
+  riskDefectList(state).forEach(d => {
+    if (!Array.isArray(d.photos)) return;
+    d.photos = d.photos.map(ref => {
+      if (typeof ref === 'string' && ref.indexOf('data:image/') === 0) {
+        const id = newPhotoId();
+        photoCache.set(id, ref);
+        toWrite.push([id, ref]);
+        return id;
+      }
+      return ref;
+    });
+  });
   if (toWrite.length) {
     openPhotoDB().then(db => {
       const tx = db.transaction(PHOTO_STORE, 'readwrite');
@@ -8773,6 +9177,11 @@ function migrateInlinePhotosToIDB(state){
           const di = state.dispoPhotos.indexOf(id);
           if (di >= 0) state.dispoPhotos[di] = v;
         }
+        riskDefectList(state).forEach(d => {
+          if (!Array.isArray(d.photos)) return;
+          const fi = d.photos.indexOf(id);
+          if (fi >= 0) d.photos[fi] = v;
+        });
       });
     });
   }
@@ -11497,6 +11906,8 @@ function restoreUI() {
   sv('doc-title-est-jard', S.docTitleEstJard);
   sv('doc-title-risk',    S.docTitleRisk);
   sv('doc-title-risk-editor', S.docTitleRisk);
+  sv('co-evaluador',      S.coEvaluador || '');
+  sv('doc-risk-limits',   S.docRiskLimits || '');
   sv('doc-est-banner',    S.docEstBanner);
   sv('doc-disclaimer',    S.docDisclaimer);
   sv('doc-disclaimer-svc',S.docDisclaimerSvc);
@@ -11534,10 +11945,18 @@ function restoreUI() {
   _applyExpiryStrike(!_se);
   // riskData
   const rd = S.riskData || {};
+  // Las opciones de la evaluación dependen de la matriz del informe: se
+  // cargan ANTES de poner los valores (un <select> descarta un value que no
+  // está entre sus opciones).
+  riskOptsSync();
   sv('risk-species',       rd.species||'');
   sv('risk-height',        rd.height||'');
   sv('risk-dap',           rd.dap||'');
   sv('risk-location',      rd.location||'');
+  sv('risk-vitalidad',     rd.vitalidad||'');
+  sv('risk-nivel',         rd.nivel||'');
+  sv('risk-plazo',         rd.plazo||'12');
+  sv('risk-target',        rd.target||'');
   sv('risk-wind',          rd.windExposure||'');
   sv('risk-inclination',   rd.inclination||'');
   sv('risk-soil',          rd.soilCondition||'');
@@ -11545,8 +11964,14 @@ function restoreUI() {
   sv('risk-fail-prob',     rd.failureProbability||'');
   sv('risk-impact-prob',   rd.impactProbability||'');
   sv('risk-consequences',  rd.consequences||'');
+  sv('risk-res-fail',      rd.resFailure||'');
+  sv('risk-res-impact',    rd.resImpact||'');
+  sv('risk-res-cons',      rd.resConsequences||'');
+  sv('risk-reinsp',        rd.reinsp||'');
   sv('risk-mitigation',    rd.mitigationGoals||'');
   sv('risk-observations',  rd.riskObservations||'');
+  sv('risk-limitaciones',  rd.limitaciones||'');
+  riskTecnicasRender();
   updateRiskLevelDisplay();
   // Escenarios A/B
   sc('scenarios-toggle', !!S.scenariosEnabled);
@@ -11621,12 +12046,21 @@ function syncFromUI() {
   S.docCriteriaIntro  = gv('doc-criteria-intro') || S.docCriteriaIntro;
   S.docDiscountLabel  = gv('doc-discount-label') || S.docDiscountLabel;
   S.docDiscountNote   = gv('doc-discount-note');
+  S.coEvaluador       = gv('co-evaluador');
+  S.docRiskLimits     = gv('doc-risk-limits');
   // riskData
-  if (!S.riskData) S.riskData = {};
+  if (!S.riskData) normalizeRiskData();
+  // Sin opciones todavía (antes del primer restoreUI) los desplegables de la
+  // evaluación leerían '' y borrarían lo cargado.
+  { const fp = document.getElementById('risk-fail-prob'); if (fp && !fp.options.length) riskOptsSync(); }
   S.riskData.species             = gv('risk-species');
   S.riskData.height              = gv('risk-height');
   S.riskData.dap                 = gv('risk-dap');
   S.riskData.location            = gv('risk-location');
+  S.riskData.vitalidad           = gv('risk-vitalidad');
+  S.riskData.nivel               = gv('risk-nivel');
+  S.riskData.plazo               = gv('risk-plazo') || '12';
+  S.riskData.target              = gv('risk-target');
   S.riskData.windExposure        = gv('risk-wind');
   S.riskData.inclination         = gv('risk-inclination');
   S.riskData.soilCondition       = gv('risk-soil');
@@ -11634,8 +12068,13 @@ function syncFromUI() {
   S.riskData.failureProbability  = gv('risk-fail-prob');
   S.riskData.impactProbability   = gv('risk-impact-prob');
   S.riskData.consequences        = gv('risk-consequences');
+  S.riskData.resFailure          = gv('risk-res-fail');
+  S.riskData.resImpact           = gv('risk-res-impact');
+  S.riskData.resConsequences     = gv('risk-res-cons');
+  S.riskData.reinsp              = gv('risk-reinsp');
   S.riskData.mitigationGoals     = gv('risk-mitigation');
   S.riskData.riskObservations    = gv('risk-observations');
+  S.riskData.limitaciones        = gv('risk-limitaciones');
   updateRiskLevelDisplay();
   // Escenarios A/B (labels editables; el toggle se sincroniza vía
   // toggleScenarios() porque tiene efectos colaterales — render, dragSrc)
@@ -12023,8 +12462,7 @@ function _esecEstado(key) {
     case 'items':      return items((activeItemsArr() || []).length);
     case 'est-items':  return items((S.estItems || []).length);
     case 'risk': {
-      const rd = S.riskData || {};
-      const lvl = calcRiskLevel(rd.failureProbability, rd.impactProbability, rd.consequences);
+      const lvl = riskEval(S.riskData).nivel;
       return lvl ? { txt:'Riesgo ' + (RISK_LABELS.riskLevel[lvl] || lvl), done:true }
                  : { txt:'Pendiente', done:false };
     }
@@ -12226,11 +12664,107 @@ function applyMode(mode) {
   editorShellSync();
 }
 
+// ─── RIESGO: MATRIZ, ALCANCE Y OPCIONES (v243) ─────
+function riskPlazoTxt(m) {
+  const n = parseInt(m, 10);
+  if (!n) return '';
+  return n % 12 === 0 ? (n === 12 ? '1 año' : (n / 12) + ' años') : n + ' meses';
+}
+
+// Carga las opciones de la evaluación según la matriz del informe (ISA o la
+// anterior) y muestra/oculta lo que solo existe con la ISA (alcance, residual,
+// limitaciones). Conserva el valor elegido si sigue existiendo. Solo toca el
+// DOM: no escribe en S.
+function riskOptsSync() {
+  const rd = S.riskData || {};
+  const metodo = riskMetodo(rd);
+  const isa = metodo === 'isa2';
+  const o = RISK_OPTS[metodo] || RISK_OPTS.isa2;
+  // Sin opciones todavía (antes del primer restoreUI) el valor vigente es el
+  // de S: leer el del <select> vacío borraría lo cargado.
+  const fill = (id, list, first, sVal) => {
+    const sel = document.getElementById(id); if (!sel) return;
+    const v = sel.options.length ? sel.value : (sVal || '');
+    sel.innerHTML = `<option value="">${esc(first)}</option>` +
+      list.map(([k, l]) => `<option value="${k}">${esc(l)}</option>`).join('');
+    sel.value = v;
+    if (sel._cselBtn) syncCsel(sel);
+  };
+  fill('risk-fail-prob',    o.failureProbability, '— Seleccionar —', rd.failureProbability);
+  fill('risk-impact-prob',  o.impactProbability,  '— Seleccionar —', rd.impactProbability);
+  fill('risk-consequences', o.consequences,       '— Seleccionar —', rd.consequences);
+  fill('risk-res-fail',   RISK_OPTS.isa2.failureProbability, '— Seleccionar —', rd.resFailure);
+  fill('risk-res-impact', RISK_OPTS.isa2.impactProbability,  '— Igual que ahora —', rd.resImpact);
+  fill('risk-res-cons',   RISK_OPTS.isa2.consequences,       '— Igual que ahora —', rd.resConsequences);
+  const leg = document.getElementById('risk-legacy');
+  if (leg) leg.hidden = isa;
+  document.querySelectorAll('#section-risk-analysis .risk-isa').forEach(el => { el.hidden = !isa; });
+  const t = document.getElementById('risk-eval-title');
+  if (t) t.textContent = isa ? 'Evaluación de Riesgo (metodología ISA)' : 'Evaluación de Riesgo (matriz anterior)';
+  const pz = isa ? riskPlazoTxt(rd.plazo || '12') : '';
+  document.querySelectorAll('.risk-plazo-txt').forEach(el => { el.textContent = pz ? `(en ${pz})` : ''; });
+}
+
+// Chips de "Técnicas usadas" (selección múltiple).
+function riskTecnicasRender() {
+  const cont = document.getElementById('risk-tecnicas');
+  if (!cont) return;
+  const sel = (S.riskData && Array.isArray(S.riskData.tecnicas)) ? S.riskData.tecnicas : [];
+  cont.innerHTML = RISK_TECNICAS.map(([k, l]) => {
+    const on = sel.indexOf(k) >= 0;
+    return `<button type="button" class="cobro-b${on ? ' on' : ''}" aria-pressed="${on}" onclick="riskTecToggle('${k}')">${esc(l)}</button>`;
+  }).join('');
+}
+
+function riskTecToggle(k) {
+  if (!RISK_TECNICAS.some(t => t[0] === k)) return;
+  if (!S.riskData) normalizeRiskData();
+  const arr = Array.isArray(S.riskData.tecnicas) ? S.riskData.tecnicas : (S.riskData.tecnicas = []);
+  const i = arr.indexOf(k);
+  if (i >= 0) arr.splice(i, 1); else arr.push(k);
+  // La inspección aérea es lo que hace "avanzada" a una evaluación (Nivel 3
+  // de la ISA): si el nivel quedó vacío o más bajo, se ajusta solo.
+  if (k === 'aerea' && i < 0 && S.riskData.nivel !== '3') {
+    S.riskData.nivel = '3';
+    sv('risk-nivel', '3');
+    const ns = document.getElementById('risk-nivel'); if (ns && ns._cselBtn) syncCsel(ns);
+    toast('Con inspección aérea la evaluación es de Nivel 3 (avanzada)', 'info', 2600);
+  }
+  riskTecnicasRender();
+  sched();
+}
+
+// Un informe hecho con la matriz anterior pasa a la de la ISA. Las opciones
+// de impacto se corren un escalón (la "Media" vieja era uso ocasional, que en
+// la ISA es "Baja"); la "Alta" vieja juntaba frecuente y constante, así que se
+// vacía para que el usuario elija. "Catastróficas" no existe en la ISA: pasa a
+// "Severas", que ya incluye la muerte.
+function riskPasarAIsa() {
+  const rd = S.riskData; if (!rd) return;
+  const mapI = { baja:'muybaja', media:'baja', alta:'' };
+  rd.impactProbability = mapI[rd.impactProbability] !== undefined ? mapI[rd.impactProbability] : '';
+  if (rd.consequences === 'catastroficas') rd.consequences = 'severas';
+  rd.metodo = 'isa2';
+  riskOptsSync();
+  sv('risk-fail-prob', rd.failureProbability || '');
+  sv('risk-impact-prob', rd.impactProbability || '');
+  sv('risk-consequences', rd.consequences || '');
+  refreshCustomSelects(document.getElementById('section-risk-analysis'));
+  riskTecnicasRender();
+  updateRiskLevelDisplay();
+  sched();
+  if (typeof editorShellSync === 'function') editorShellSync();
+  toast(rd.impactProbability
+    ? 'Listo: el informe usa la matriz de la ISA. Revisá los tres campos de la evaluación.'
+    : 'Listo: el informe usa la matriz de la ISA. Elegí de nuevo la probabilidad de impacto: ahora tiene 4 niveles.',
+    'ok', 6000);
+}
+
 // ─── RIESGO: DEFECTOS ────────────────────────
 function addRiskDefect() {
-  if (!S.riskData) S.riskData = {};
-  if (!S.riskData.defects) S.riskData.defects = [];
-  S.riskData.defects.push({ type:'', desc:'', location:'' });
+  if (!S.riskData) normalizeRiskData();
+  if (!Array.isArray(S.riskData.defects)) S.riskData.defects = [];
+  S.riskData.defects.push({ type:'', location:'', desc:'', altura:'', orient:'', photos:[] });
   renderRiskDefects();
   sched();
 }
@@ -12243,20 +12777,42 @@ function removeRiskDefect(idx) {
 }
 
 function syncDefect(idx, field, value) {
-  if (!S.riskData || !S.riskData.defects) return;
+  if (!S.riskData || !S.riskData.defects || !S.riskData.defects[idx]) return;
   S.riskData.defects[idx][field] = value;
   sched();
+}
+
+// Foto(s) de un defecto: la cavidad o la grieta vista en altura.
+function pickRiskDefectPhoto(idx) {
+  _pickPhotos(ref => {
+    const d = S.riskData && S.riskData.defects && S.riskData.defects[idx];
+    if (!d) return false;
+    if (!Array.isArray(d.photos)) d.photos = [];
+    d.photos.push(ref);
+    return true;
+  }, renderRiskDefects, 'al defecto');
+}
+
+function removeRiskDefectPhoto(idx, pi) {
+  const d = S.riskData && S.riskData.defects && S.riskData.defects[idx];
+  if (!d || !Array.isArray(d.photos) || pi < 0 || pi >= d.photos.length) return;
+  d.photos.splice(pi, 1);
 }
 
 function renderRiskDefects() {
   const container = document.getElementById('risk-defects-list');
   if (!container) return;
-  const defects = (S.riskData && S.riskData.defects) || [];
+  const defects = riskDefectList(S);
   if (!defects.length) {
     container.innerHTML = `<div class="risk-defect-empty">Sin defectos registrados. Usá el botón para agregar.</div>`;
     return;
   }
-  container.innerHTML = defects.map((d, i) => `
+  const opts = (list, v, ocultos) => list
+    .filter(([k]) => !(ocultos && ocultos.indexOf(k) >= 0 && k !== v))
+    .map(([k, l]) => `<option value="${k}"${k === v ? ' selected' : ''}>${esc(l)}</option>`).join('');
+  container.innerHTML = defects.map((d, i) => {
+    const refs = Array.isArray(d.photos) ? d.photos.filter(Boolean) : [];
+    return `
     <div class="risk-defect-row" data-idx="${i}">
       <div class="risk-defect-header">
         <span class="risk-defect-num">Defecto ${i+1}</span>
@@ -12267,54 +12823,78 @@ function renderRiskDefects() {
           <label>Tipo de defecto</label>
           <select onchange="syncDefect(${i},'type',this.value)">
             <option value="">— Seleccionar —</option>
-            <option value="caries"       ${d.type==='caries'?'selected':''}>Caries / Pudrición</option>
-            <option value="crack"        ${d.type==='crack'?'selected':''}>Grieta / Crack</option>
-            <option value="inclusion"    ${d.type==='inclusion'?'selected':''}>Inclusión de corteza</option>
-            <option value="codomin"      ${d.type==='codomin'?'selected':''}>Horqueta codominante</option>
-            <option value="raiz"         ${d.type==='raiz'?'selected':''}>Daño en raíces</option>
-            <option value="inclinacion"  ${d.type==='inclinacion'?'selected':''}>Inclinación pronunciada</option>
-            <option value="muerto"       ${d.type==='muerto'?'selected':''}>Madera muerta / Ramas secas</option>
-            <option value="hongos"       ${d.type==='hongos'?'selected':''}>Cuerpos fructíferos (hongos)</option>
-            <option value="herida"       ${d.type==='herida'?'selected':''}>Herida / Cicatriz abierta</option>
-            <option value="otro"         ${d.type==='otro'?'selected':''}>Otro</option>
+            ${opts(RISK_DEFECT_TYPES, d.type, RISK_DEFECT_OCULTOS)}
           </select>
         </div>
         <div class="fg">
           <label>Ubicación en el árbol</label>
           <select onchange="syncDefect(${i},'location',this.value)">
             <option value="">— Seleccionar —</option>
-            <option value="base"   ${d.location==='base'?'selected':''}>Base / Raíces</option>
-            <option value="fuste"  ${d.location==='fuste'?'selected':''}>Fuste</option>
-            <option value="copa"   ${d.location==='copa'?'selected':''}>Copa</option>
-            <option value="multiple" ${d.location==='multiple'?'selected':''}>Múltiples zonas</option>
+            ${opts(RISK_DEFECT_LOC, d.location)}
+          </select>
+        </div>
+        <div class="fg">
+          <label>Altura (m)</label>
+          <input type="text" inputmode="decimal" placeholder="Ej: 9" value="${esc(d.altura || '')}" oninput="syncDefect(${i},'altura',this.value)">
+        </div>
+        <div class="fg">
+          <label>Orientación</label>
+          <select onchange="syncDefect(${i},'orient',this.value)">
+            <option value="">—</option>
+            ${RISK_ORIENT.map(k => `<option value="${k}"${k === d.orient ? ' selected' : ''}>${k}</option>`).join('')}
           </select>
         </div>
         <div class="fg fg-full">
           <label>Descripción</label>
-          <textarea rows="2" placeholder="Detalle del defecto observado…" onchange="syncDefect(${i},'desc',this.value)">${esc(d.desc||'')}</textarea>
+          <textarea rows="2" placeholder="Detalle del defecto observado…" oninput="syncDefect(${i},'desc',this.value)">${esc(d.desc||'')}</textarea>
+        </div>
+        <div class="fg fg-full">
+          <button type="button" class="btn btn-g btn-sm" onclick="pickRiskDefectPhoto(${i})">${refs.length ? `${icon('camera')} Fotos ✓ (${refs.length})` : `${icon('camera')} Foto del defecto`}</button>
+          ${photoGalleryHTML(refs)}
         </div>
       </div>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
+  container.querySelectorAll('.risk-defect-row').forEach(row => {
+    const i = parseInt(row.dataset.idx, 10);
+    wireItemPhotoGallery(row, pi => removeRiskDefectPhoto(i, pi), renderRiskDefects);
+  });
+  if (typeof enhanceSelects === 'function') enhanceSelects(container);
 }
 
 // ─── RIESGO: NIVEL CALCULADO ─────────────────
+function _riskBadgeHTML(level, txt) {
+  const color = RISK_COLORS[level] || '#374151';
+  const label = RISK_LABELS.riskLevel[level] || String(level).toUpperCase();
+  return `<div class="risk-level-badge" style="background:${color}20;border:2px solid ${color};color:${color}">
+      <span class="risk-level-icon"><span class="ic-dot lvl-${level==='extremo'||level==='alto'||level==='moderado'?level:'bajo'}"></span></span>
+      <span class="risk-level-text">${txt}: <strong>${label}</strong></span>
+    </div>`;
+}
+
 function updateRiskLevelDisplay() {
   const el = document.getElementById('risk-level-display');
   if (!el) return;
   const rd = S.riskData || {};
-  const level = calcRiskLevel(rd.failureProbability, rd.impactProbability, rd.consequences);
-  if (!level) {
+  const ev = riskEval(rd);
+  const isa = ev.metodo === 'isa2';
+  document.querySelectorAll('.risk-plazo-txt').forEach(x => {
+    const pz = isa ? riskPlazoTxt(rd.plazo || '12') : '';
+    x.textContent = pz ? `(en ${pz})` : '';
+  });
+  if (!ev.nivel) {
     el.innerHTML = `<span class="risk-level-pending">Completar los tres campos de evaluación para calcular el nivel de riesgo</span>`;
-    return;
+  } else {
+    el.innerHTML = _riskBadgeHTML(ev.nivel, 'Nivel de Riesgo') +
+      (ev.combinada ? `<div class="risk-level-sub">Probabilidad de falla e impacto: <strong>${esc(RISK_LABELS.combinada[ev.combinada])}</strong></div>` : '') +
+      (isa ? `<div class="risk-level-sub">${esc(RISK_SIGNIFICA[ev.nivel] || '')}</div>` : '');
   }
-  const label = RISK_LABELS.riskLevel[level] || level.toUpperCase();
-  const color = RISK_COLORS[level] || '#374151';
-  el.innerHTML = `
-    <div class="risk-level-badge" style="background:${color}20;border:2px solid ${color};color:${color}">
-      <span class="risk-level-icon"><span class="ic-dot lvl-${level==='extremo'||level==='alto'||level==='moderado'?level:'bajo'}"></span></span>
-      <span class="risk-level-text">Nivel de Riesgo: <strong>${label}</strong></span>
-    </div>`;
+  const res = document.getElementById('risk-residual-display');
+  if (!res) return;
+  if (!isa || !ev.nivel) { res.innerHTML = ''; return; }
+  res.innerHTML = ev.residual
+    ? `<div class="risk-res-row">${_riskBadgeHTML(ev.nivel, 'Hoy')}<span class="risk-res-arrow" aria-hidden="true">→</span>${_riskBadgeHTML(ev.residual, 'Después del trabajo')}</div>`
+    : `<span class="risk-level-pending">Elegí la probabilidad de falla después del trabajo para mostrar el riesgo residual.</span>`;
 }
 
 // ─── DATES ───────────────────────────────────
@@ -13185,6 +13765,7 @@ function duplicarQuote(id) {
     });
     sinFoto(S.items); sinFoto(S.itemsB); sinFoto(S.estItems);
     S.dispoPhotos = [];
+    sinFoto(riskDefectList(S));
   });
   const m = document.getElementById('main');
   if (m) m.scrollTop = 0;
@@ -19020,38 +19601,139 @@ function buildRiskDoc() {
   if(S.coCuit)     contacts.push(`CUIT: ${esc(S.coCuit)}`);
 
   // ── Nivel de riesgo calculado ──
-  const riskLevel   = calcRiskLevel(rd.failureProbability, rd.impactProbability, rd.consequences);
+  // riskEval decide la matriz: un informe anterior a la v243 ('v1') sale con
+  // la suya y con su encabezado de siempre, para que no cambie lo entregado.
+  const ev          = riskEval(rd);
+  const isa         = ev.metodo === 'isa2';
+  const riskLevel   = ev.nivel;
   const riskLabel   = riskLevel ? (RISK_LABELS.riskLevel[riskLevel] || riskLevel.toUpperCase()) : '—';
   const riskColor   = riskLevel ? (RISK_COLORS[riskLevel] || color) : '#94a3b8';
+  const plazoTxt    = riskPlazoTxt(rd.plazo || '12');
   // Círculo SVG relleno con el color del nivel (reemplaza el emoji 🟢🟡🟠🔴).
   // Mantiene el código de color, que es información relevante en la
   // evaluación, pero con un acabado formal y nítido en el PDF.
-  const riskIcon    = `<svg class="pdf-ic-dot" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="${riskColor}" stroke="rgba(0,0,0,.12)" stroke-width="1"/></svg>`;
+  const dotSvg = c => `<svg class="pdf-ic-dot" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="${c}" stroke="rgba(0,0,0,.12)" stroke-width="1"/></svg>`;
+  const riskIcon    = dotSvg(riskColor);
 
-  // ── Defectos ──
-  const defects = rd.defects || [];
-  const DEFECT_TYPES = {
-    caries:'Caries / Pudrición', crack:'Grieta / Crack', inclusion:'Inclusión de corteza',
-    codomin:'Horqueta codominante', raiz:'Daño en raíces', inclinacion:'Inclinación pronunciada',
-    muerto:'Madera muerta / Ramas secas', hongos:'Cuerpos fructíferos (hongos)',
-    herida:'Herida / Cicatriz abierta', otro:'Otro'
-  };
-  const DEFECT_LOC = { base:'Base / Raíces', fuste:'Fuste', copa:'Copa', multiple:'Múltiples zonas' };
+  // Secciones numeradas solo si salen (el alcance no existe en un informe v1).
+  // Los bloques se arman en otro orden que el de la hoja, así que el número se
+  // pone al final, recorriendo el documento ya armado (_numerar).
+  const SEC_MARK = '\u0001SEC';
+  const secT = t => `<div class="psec-t" style="color:${color};border-color:${color}">${SEC_MARK}. ${t}</div>`;
+  const _numerar = html => { let n = 0; return html.split(SEC_MARK).reduce((acc, part, i) => i ? acc + (++n) + part : part, ''); };
 
-  const defectsHtml = defects.length ? defects.map((d, i) => `
+  // ── Defectos (con altura, orientación y sus fotos) ──
+  const defects = riskDefectList(S);
+  const defectsHtml = defects.length ? defects.map((d, i) => {
+    const extra = [];
+    if (d.location) extra.push(esc(_riskOptLabel(RISK_DEFECT_LOC, d.location)));
+    if (d.altura)   extra.push(`a ${esc(d.altura)} m`);
+    if (d.orient)   extra.push(`orientación ${esc(d.orient)}`);
+    const fotos = (Array.isArray(d.photos) ? d.photos : [])
+      .map(ref => safeImgSrc(getPhotoData(ref))).filter(Boolean);
+    return `
     <div class="prisk-defect">
       <div class="prisk-defect-header" style="color:${color}">
-        ${i+1}. ${esc(DEFECT_TYPES[d.type] || d.type || 'Sin tipo')}
-        ${d.location ? `<span class="prisk-defect-loc">· ${esc(DEFECT_LOC[d.location]||d.location)}</span>` : ''}
+        ${i+1}. ${esc(_riskOptLabel(RISK_DEFECT_TYPES, d.type) || 'Sin tipo')}
+        ${extra.length ? `<span class="prisk-defect-loc">· ${extra.join(' · ')}</span>` : ''}
       </div>
       ${d.desc ? `<div class="prisk-defect-desc">${esc(d.desc).replace(/\n/g,'<br>')}</div>` : ''}
-    </div>`).join('')
+      ${fotos.length ? `<div class="prisk-defect-photos">${fotos.map(src =>
+        `<figure class="pphoto"><img src="${src}" alt="Defecto ${i+1}"></figure>`).join('')}</div>` : ''}
+    </div>`;
+  }).join('')
   : `<div class="prisk-none">No se registraron defectos estructurales.</div>`;
 
   // ── Fila de dato arbóreo ──
-  const dataRow = (label, value) => value
-    ? `<div class="prisk-data-row"><span class="prisk-data-lbl">${label}</span><span class="prisk-data-val">${esc(value)}</span></div>`
+  const dataRow = (label, value, full) => value
+    ? `<div class="prisk-data-row${full ? ' prisk-full' : ''}"><span class="prisk-data-lbl">${label}</span><span class="prisk-data-val">${esc(value).replace(/\n/g,'<br>')}</span></div>`
     : '';
+
+  // ── Alcance de la inspección (solo ISA) ──
+  const tecTxt = (Array.isArray(rd.tecnicas) ? rd.tecnicas : [])
+    .map(k => _riskOptLabel(RISK_TECNICAS, k)).filter(Boolean).join(' · ');
+  const alcanceH = isa ? `
+    <div class="psec">
+      ${secT('Alcance de la Inspección')}
+      <div class="prisk-data-grid">
+        ${dataRow('Fecha de inspección', fmtD(S.dateIssue))}
+        ${dataRow('Nivel de evaluación', RISK_LABELS.nivel[rd.nivel] || '')}
+        ${dataRow('Plazo que cubre la evaluación', plazoTxt)}
+        ${dataRow('Técnicas usadas', tecTxt, true)}
+        ${dataRow('Evaluador', S.coEvaluador || '', true)}
+      </div>
+    </div>` : '';
+
+  // ── Evaluación ──
+  const evalHint = isa
+    ? { f:`Que el árbol o una parte falle en ${plazoTxt}, con el clima habitual de la zona`,
+        i:'Que la falla alcance a personas o bienes, según cuánto se ocupa la zona de caída',
+        c:'Gravedad del daño si la falla ocurriera' }
+    : { f:'Posibilidad de que el árbol o parte de él falle',
+        i:'Probabilidad de que la falla afecte a personas o bienes',
+        c:'Gravedad del daño si la falla ocurriera' };
+  const evalH = `
+    <div class="psec">
+      ${secT(isa ? 'Evaluación de Riesgo' : 'Evaluación de Riesgo (Método ISA Basic)')}
+      ${isa ? `<div class="prisk-metodo">Basada en la metodología de evaluación de riesgo de la ISA (International Society of Arboriculture), <em>Best Management Practices: Tree Risk Assessment</em>, 2ª ed. El nivel resulta de combinar la probabilidad de falla con la de impacto, y ese resultado con las consecuencias.</div>` : ''}
+
+      <div class="prisk-eval-grid">
+        <div class="prisk-eval-cell">
+          <div class="prisk-eval-label">Probabilidad de falla</div>
+          <div class="prisk-eval-value" style="color:${color}">${esc(RISK_LABELS.failureProbability[rd.failureProbability]||rd.failureProbability||'—')}</div>
+          <div class="prisk-eval-hint">${evalHint.f}</div>
+        </div>
+        <div class="prisk-eval-cell">
+          <div class="prisk-eval-label">Probabilidad de impacto</div>
+          <div class="prisk-eval-value" style="color:${color}">${esc(RISK_LABELS.impactProbability[rd.impactProbability]||rd.impactProbability||'—')}</div>
+          <div class="prisk-eval-hint">${evalHint.i}</div>
+        </div>
+        <div class="prisk-eval-cell">
+          <div class="prisk-eval-label">Consecuencias potenciales</div>
+          <div class="prisk-eval-value" style="color:${color}">${esc(RISK_LABELS.consequences[rd.consequences]||rd.consequences||'—')}</div>
+          <div class="prisk-eval-hint">${evalHint.c}</div>
+        </div>
+      </div>
+
+      <!-- Resultado del nivel de riesgo -->
+      <div class="prisk-result" style="border-color:${riskColor};background:${riskColor}12">
+        <div class="prisk-result-icon">${riskIcon}</div>
+        <div class="prisk-result-body">
+          <div class="prisk-result-lbl">Nivel de Riesgo Resultante</div>
+          <div class="prisk-result-level" style="color:${riskColor}">${riskLabel}</div>
+          ${isa && ev.combinada ? `<div class="prisk-result-sub">Probabilidad de falla e impacto: <strong>${esc(RISK_LABELS.combinada[ev.combinada])}</strong></div>` : ''}
+        </div>
+      </div>
+      ${isa && riskLevel ? `<div class="prisk-significa"><strong>Qué significa:</strong> ${esc(RISK_SIGNIFICA[riskLevel] || '')}</div>` : ''}
+    </div>`;
+
+  // ── Mitigación, riesgo residual y reinspección ──
+  const resColor = ev.residual ? (RISK_COLORS[ev.residual] || color) : '';
+  const pill = (lvl, c, lbl) => `<div class="prisk-res-pill" style="border-color:${c};background:${c}12">
+      ${dotSvg(c)}<div><div class="prisk-result-lbl">${lbl}</div><div class="prisk-res-level" style="color:${c}">${RISK_LABELS.riskLevel[lvl] || ''}</div></div></div>`;
+  const residualH = (isa && riskLevel && ev.residual) ? `
+      <div class="prisk-res-row">
+        ${pill(riskLevel, riskColor, 'Riesgo actual')}
+        <span class="prisk-res-arrow" aria-hidden="true">→</span>
+        ${pill(ev.residual, resColor, 'Riesgo residual, después del trabajo')}
+      </div>` : '';
+  const reinspH = (isa && rd.reinsp) ? `<div class="prisk-reinsp"><strong>Reinspección recomendada:</strong> en ${esc(riskPlazoTxt(rd.reinsp))}, o antes si hay un temporal fuerte, obras cerca de las raíces o cambios visibles en el árbol.</div>` : '';
+  const mitigH = (rd.mitigationGoals || residualH || reinspH) ? `
+    <div class="psec">
+      ${secT(isa ? 'Mitigación y Riesgo Residual' : 'Objetivos de Mitigación')}
+      ${rd.mitigationGoals ? `<div class="prisk-mitigation">${esc(rd.mitigationGoals).replace(/\n/g,'<br>')}</div>` : ''}
+      ${residualH}
+      ${reinspH}
+    </div>` : '';
+
+  // ── Limitaciones (solo ISA): las de esta inspección + el descargo general ──
+  const limGen = (S.docRiskLimits || '').trim();
+  const limH = (isa && (rd.limitaciones || limGen)) ? `
+    <div class="prisk-limits">
+      <div class="prisk-limits-t">Limitaciones</div>
+      ${rd.limitaciones ? `<p class="prisk-limits-esp">${esc(rd.limitaciones).replace(/\n/g,'<br>')}</p>` : ''}
+      ${limGen ? `<p>${esc(limGen).replace(/\n/g,'<br>')}</p>` : ''}
+    </div>` : '';
 
   // ── Ítems del presupuesto ──
   let rows = ''; let n = 0;
@@ -19115,7 +19797,7 @@ function buildRiskDoc() {
   const doc = document.getElementById('doc-a4'); if (!doc) return;
   // Wrapper-table pattern (ver buildDoc): el <thead> con el header se repite
   // nativamente en cada página impresa. <tbody> tiene el resto del informe.
-  doc.innerHTML = `
+  doc.innerHTML = _numerar(`
     <table class="pdoc pdoc-theme-${theme}${S.pdfCompact ? ' pdoc-compact' : ''}${S.pdfFont && S.pdfFont!=='auto' ? ' pdoc-font-'+S.pdfFont : ''}" style="--pdoc-accent:${color}">
       <thead>
         <tr><td>
@@ -19146,78 +19828,49 @@ function buildRiskDoc() {
 
     ${_buildDurationHTML()}
 
-    <!-- ══ SECCIÓN 1: DATOS DEL ÁRBOL ══ -->
+    ${alcanceH}
+
+    <!-- ══ ÁRBOL EVALUADO ══ -->
     <div class="psec">
-      <div class="psec-t" style="color:${color};border-color:${color}">1. Árbol Evaluado</div>
+      ${secT('Árbol Evaluado')}
       <div class="prisk-data-grid">
         ${dataRow('Especie', rd.species)}
         ${dataRow('Altura estimada', rd.height ? rd.height + ' m' : '')}
         ${dataRow('DAP (Diám. a 1,30 m)', rd.dap ? rd.dap + ' cm' : '')}
         ${dataRow('Ubicación en el predio', rd.location)}
+        ${dataRow('Vitalidad', RISK_LABELS.vitalidad[rd.vitalidad] || '')}
+        ${dataRow('Inclinación del árbol', RISK_LABELS.inclination[rd.inclination]||rd.inclination)}
       </div>
     </div>
 
-    <!-- ══ SECCIÓN 2: DEFECTOS ══ -->
+    <!-- ══ DEFECTOS ══ -->
     <div class="psec">
-      <div class="psec-t" style="color:${color};border-color:${color}">2. Defectos Detectados</div>
+      ${secT('Defectos Detectados')}
       <div class="prisk-defects-list">${defectsHtml}</div>
     </div>
 
-    <!-- ══ SECCIÓN 3: FACTORES AMBIENTALES ══ -->
+    <!-- ══ SITIO Y BLANCOS ══ -->
     <div class="psec">
-      <div class="psec-t" style="color:${color};border-color:${color}">3. Factores Ambientales y del Sitio</div>
+      ${secT(isa ? 'Sitio y Blancos' : 'Factores Ambientales y del Sitio')}
       <div class="prisk-data-grid">
+        ${dataRow('Blancos en la zona de caída', rd.target, true)}
         ${dataRow('Exposición al viento', RISK_LABELS.windExposure[rd.windExposure]||rd.windExposure)}
-        ${dataRow('Inclinación del árbol', RISK_LABELS.inclination[rd.inclination]||rd.inclination)}
         ${dataRow('Condición del suelo', RISK_LABELS.soilCondition[rd.soilCondition]||rd.soilCondition)}
         ${dataRow('Intervenciones previas', rd.priorInterventions)}
       </div>
     </div>
 
-    <!-- ══ SECCIÓN 4: EVALUACIÓN DE RIESGO ══ -->
-    <div class="psec">
-      <div class="psec-t" style="color:${color};border-color:${color}">4. Evaluación de Riesgo (Método ISA Basic)</div>
+    ${evalH}
 
-      <div class="prisk-eval-grid">
-        <div class="prisk-eval-cell">
-          <div class="prisk-eval-label">Probabilidad de falla</div>
-          <div class="prisk-eval-value" style="color:${color}">${esc(RISK_LABELS.failureProbability[rd.failureProbability]||rd.failureProbability||'—')}</div>
-          <div class="prisk-eval-hint">Posibilidad de que el árbol o parte de él falle</div>
-        </div>
-        <div class="prisk-eval-cell">
-          <div class="prisk-eval-label">Probabilidad de impacto</div>
-          <div class="prisk-eval-value" style="color:${color}">${esc(RISK_LABELS.impactProbability[rd.impactProbability]||rd.impactProbability||'—')}</div>
-          <div class="prisk-eval-hint">Probabilidad de que la falla afecte a personas o bienes</div>
-        </div>
-        <div class="prisk-eval-cell">
-          <div class="prisk-eval-label">Consecuencias potenciales</div>
-          <div class="prisk-eval-value" style="color:${color}">${esc(RISK_LABELS.consequences[rd.consequences]||rd.consequences||'—')}</div>
-          <div class="prisk-eval-hint">Gravedad del daño si la falla ocurriera</div>
-        </div>
-      </div>
-
-      <!-- Resultado del nivel de riesgo -->
-      <div class="prisk-result" style="border-color:${riskColor};background:${riskColor}12">
-        <div class="prisk-result-icon">${riskIcon}</div>
-        <div class="prisk-result-body">
-          <div class="prisk-result-lbl">Nivel de Riesgo Resultante</div>
-          <div class="prisk-result-level" style="color:${riskColor}">${riskLabel}</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ══ SECCIÓN 5: OBJETIVOS DE MITIGACIÓN ══ -->
-    ${rd.mitigationGoals ? `
-    <div class="psec">
-      <div class="psec-t" style="color:${color};border-color:${color}">5. Objetivos de Mitigación</div>
-      <div class="prisk-mitigation">${esc(rd.mitigationGoals).replace(/\n/g,'<br>')}</div>
-    </div>` : ''}
+    ${mitigH}
 
     ${rd.riskObservations ? `
-    <div class="pobs">
+    <div class="pobs prisk-obs">
       <div class="pobs-t" style="color:${color};border-color:${color}">Observaciones del Informe</div>
       <div class="pobs-txt" style="border-color:${color}60">${esc(rd.riskObservations).replace(/\n/g,'<br>')}</div>
     </div>` : ''}
+
+    ${limH}
 
     <!-- ══ SEPARADOR ══ -->
     <div class="prisk-section-divider" style="border-color:${color}">
@@ -19282,7 +19935,7 @@ function buildRiskDoc() {
 
         </td></tr>
       </tbody>
-    </table>`;
+    </table>`);
 }
 
 // ─── BUILD EST DOC ────────────────────────────────────────────────────────────
