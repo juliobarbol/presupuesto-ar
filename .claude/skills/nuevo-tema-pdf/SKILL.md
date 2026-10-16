@@ -89,8 +89,12 @@ Requiere estado propio:
 1. **`DEF`**: agregá el campo (ej. `pdfCompact:false`). Se persiste solo (todo `S` se guarda).
 2. **Handler** junto a `applyPdfTheme`: `function applyPdfX(on){ S.pdfX = !!on; sched(); }`.
 3. **`restoreUI`**: sincronizá el control (`document.getElementById('...').checked = !!S.pdfX`).
-4. **Las 3 funciones de build** (`buildDoc`, `buildEstDoc`, `buildRiskDoc`): agregá la
-   clase a `class="pdoc pdoc-theme-${theme}${S.pdfX ? ' pdoc-clase' : ''}"`.
+4. **`_pdocAttrs(theme, color)`** (`js/pdf.js`): es el ÚNICO lugar que arma la
+   clase y el style de la `<table class="pdoc">` de los 4 documentos (normal,
+   estimativo, riesgo, recibo). Sumá ahí `+ (S.pdfX ? ' pdoc-clase' : '')`. Desde
+   la v244 (color de detalle `pdoc-det`) ya no se toca cada build por separado.
+   Si el modificador es config del negocio, va también a `CFG_GLOBAL_FIELDS` y a
+   `sanitizeStateObj`/`migrateSanitizeStored` con su lista blanca.
 5. **UI**: un checkbox/toggle con `onchange="applyPdfX(this.checked)"`.
 6. **CSS**: `.pdoc.pdoc-clase { ...sobreescribir tokens... }` + selectores puntuales.
 

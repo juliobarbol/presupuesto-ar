@@ -2357,6 +2357,23 @@ input[type=number]{-moz-appearance:textfield}
    lo único que el usuario mira antes de decidir. */
 #nv-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2000;align-items:center;justify-content:center}
 #nv-overlay.open{display:flex}
+/* Máquina de estilo (v244). Misma caja que "Nueva versión". */
+#estilo-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2000;align-items:center;justify-content:center}
+#estilo-overlay.open{display:flex}
+#estilo-box{background:var(--card);border-radius:var(--radius-box);padding:22px;width:420px;max-width:92vw;max-height:92vh;overflow-y:auto;overscroll-behavior:contain;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+#estilo-box h4{font-family:var(--font-display);font-size:17px;margin-bottom:4px;color:var(--text)}
+.estilo-reels{display:grid;gap:5px}
+.estilo-reel{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 11px;border:1px solid var(--border);border-radius:var(--radius-field);background:var(--surface-2);font-size:13px;min-width:0}
+.estilo-reel-l{color:var(--muted);flex:none}
+.estilo-reel-v{font-weight:700;color:var(--muted);display:flex;align-items:center;gap:6px;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.estilo-reel.listo .estilo-reel-v{color:var(--accent-fg)}
+.estilo-dot{width:14px;height:14px;border-radius:50%;flex:none;border:1px solid rgba(0,0,0,.15)}
+.estilo-acc{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.estilo-deshacer{margin-top:12px;background:none;border:none;padding:6px 0;color:var(--muted);font-family:var(--font-text);font-size:12.5px;text-decoration:underline;cursor:pointer}
+.estilo-fabrica{font-size:12.5px;line-height:1.5;color:var(--text-2);background:var(--surface-2);border-left:3px solid #d97706;border-radius:var(--radius-field);padding:8px 11px;margin-bottom:8px}
+.cpreset-igual{background:conic-gradient(var(--cp-main,#064e3b) 0 50%,#fff 0 100%)}
+.mpreset svg{width:30px;height:30px;display:block}
+.mpreset .mpreset-none{width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--muted)}
 #nv-box{background:var(--card);border-radius:var(--radius-box);padding:22px;width:420px;max-width:92vw;max-height:92vh;overflow-y:auto;overscroll-behavior:contain;box-shadow:0 20px 60px rgba(0,0,0,.25)}
 #nv-box h4{font-family:var(--font-display);font-size:17px;margin-bottom:4px;color:var(--text)}
 .nv-sub{font-size:12.5px;color:var(--muted);line-height:1.5;margin-bottom:16px}
@@ -2623,6 +2640,8 @@ input[type=number]{-moz-appearance:textfield}
      del documento via --page-x. */
   .ph{padding:16px var(--page-x) 12px;display:flex;align-items:flex-start;gap:18px;position:relative;background:#fff}
   .ph-logo{max-height:54px;max-width:115px;object-fit:contain}
+  /* Monograma con las iniciales (v244, _monoSVG): ocupa el lugar del logo. */
+  .ph-mono{width:50px;height:50px;flex:none;display:block}
   /* Si no hay logo, ph-co ocupa todo el espacio (sin placeholder feo) */
   .ph-co{flex:1;min-width:0}
   .ph-name{font-family:'DM Serif Display',serif;font-size:17pt;line-height:1.1;margin-bottom:2px}
@@ -3351,6 +3370,7 @@ input[type=number]{-moz-appearance:textfield}
   padding: 4px;
   border-radius: 4px;
 }
+.pdoc.pdoc-theme-lateral .ph-band-mono { width: 52px; height: 52px; display: block; }
 .pdoc.pdoc-theme-lateral .ph-co { padding: 16px 0; }
 /* Correr el inicio izquierdo de cada sección del cuerpo para que el texto
    no quede encima de la banda full-height. Sólo se toca el padding/margin
@@ -3427,6 +3447,28 @@ input[type=number]{-moz-appearance:textfield}
 .pdoc.pdoc-theme-elegante .ph-sub,
 .pdoc.pdoc-theme-elegante .ph-contact { font-family: Georgia, 'Times New Roman', serif; font-style: italic; }
 .pdoc.pdoc-theme-elegante .ph-badge-num { font-size: calc(var(--fs-h2) + 4pt); }
+
+/* ══ COLOR DE DETALLE (S.accentColor2, v244) ════════════════════════════════
+   Segundo color para las LÍNEAS del documento (filete del encabezado, bordes
+   de títulos y del total, numeración del plan, pie). Ortogonal al tema, como
+   la tipografía. La clase .pdoc-det solo se pone cuando hay un detalle
+   distinto del principal (_pdocAttrs), así que sin él nada cambia. Lleva
+   !important porque los temas pintan esos bordes con style inline. */
+.pdoc.pdoc-det .ph { border-top-color: var(--pdoc-det) !important; border-bottom-color: var(--pdoc-det) !important; }
+.pdoc.pdoc-det .ptitle,
+.pdoc.pdoc-det .psec-t,
+.pdoc.pdoc-det .pobs-t,
+.pdoc.pdoc-det .pcond-t,
+.pdoc.pdoc-det .pnotes-t,
+.pdoc.pdoc-det .pest-factors-t,
+.pdoc.pdoc-det .ptotal-box,
+.pdoc.pdoc-det .pfoot,
+.pdoc.pdoc-det .prisk-section-divider { border-color: var(--pdoc-det) !important; }
+.pdoc.pdoc-det .pobs-txt { border-color: color-mix(in srgb, var(--pdoc-det) 45%, #fff) !important; }
+.pdoc.pdoc-det .pplan-box,
+.pdoc.pdoc-det .pest-header-bar { border-left-color: var(--pdoc-det) !important; }
+.pdoc.pdoc-det .pplan-list li::before { color: var(--pdoc-det); opacity: 1; }
+.pdoc.pdoc-det.pdoc-theme-minimalista .ph-badge { border-left-color: var(--pdoc-det) !important; }
 
 /* ──────────────────────────────────────────────────────────────────────────
    SELECTOR DE TIPOGRAFÍA (S.pdfFont) — ORTOGONAL al tema.
@@ -4615,6 +4657,14 @@ input[type=number]{-moz-appearance:textfield}
           <div class="st" style="margin-top:24px">Textos del documento</div>
           <p class="hint" style="margin-bottom:14px">Estos textos aparecen impresos en el PDF. Podés editarlos y quedan guardados para todos los presupuestos futuros.</p>
 
+          <!-- Juegos de textos (v244): redacciones completas para arrancar. El
+               Original son los textos de fábrica hasta la v243. Ver TEXTOS_JUEGOS. -->
+          <div class="fg">
+            <label>Juego de textos</label>
+            <div class="nv-chips" id="textos-juegos" role="group" aria-label="Juego de textos"></div>
+            <div class="hint" id="textos-juegos-hint">Cambia de una vez el título, el plan de trabajo, los criterios, los avisos y el saludo. Después podés retocar cualquiera.</div>
+          </div>
+
           <div class="fg"><label>Título — Presupuesto normal</label>
             <textarea class="ta-line" rows="1" id="doc-title" placeholder="Presupuesto de Servicio de Poda..."></textarea></div>
 
@@ -4704,6 +4754,16 @@ input[type=number]{-moz-appearance:textfield}
         </div>
         <p class="hint" style="margin-bottom:16px"><b>Clásica</b>: todo desplegado en una sola lista, como siempre. <b>Fichas</b>: las secciones se plegan y arriba ves cuántas llevás completas. <b>Etapas</b>: el presupuesto partido en Datos · Trabajos · Cierre, una pantalla por vez. Es solo la forma de cargar los datos — el presupuesto y el PDF salen igual.</p>
 
+        <!-- Estilo propio (v244): para que dos colegas que le cotizan al mismo
+             cliente no le manden el mismo PDF. La máquina (estiloAbrir) sortea
+             diseño, colores, tipografía y monograma. Ver estiloAzar. -->
+        <div class="estilo-propio" id="estilo-propio">
+          <div class="st">Tu estilo</div>
+          <div class="estilo-fabrica" id="estilo-fabrica" hidden>Tus presupuestos tienen el diseño de fábrica: salen iguales a los de cualquier colega que use la app.</div>
+          <p class="hint" style="margin-bottom:10px">Combiná diseño, colores, tipografía, monograma y textos para que tus presupuestos se distingan. Si no sabés por dónde empezar, que la app tire los dados.</p>
+          <button type="button" class="btn btn-p btn-sm" onclick="estiloAbrir({ tirar:true })">🎲 Sorprendeme</button>
+        </div>
+
         <div class="st">Color del documento</div>
         <div class="cpresets" id="color-presets">
           <div class="cpreset active" data-color="#064e3b" style="background:#064e3b" title="Verde oscuro" onclick="selectColor(this)"></div>
@@ -4732,6 +4792,10 @@ input[type=number]{-moz-appearance:textfield}
             <input type="text" id="cpk-hex" class="cpk-hex" maxlength="7" inputmode="latin" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Código de color hexadecimal">
           </div>
         </div>
+
+        <div class="st">Color de detalle</div>
+        <div class="cpresets" id="color2-presets" role="group" aria-label="Color de detalle"></div>
+        <p class="hint" style="margin-bottom:16px">Un segundo color para las líneas del documento: el filete del encabezado, los títulos, el recuadro del total y la numeración del plan.</p>
 
         <div class="st">Diseño del documento</div>
         <div class="theme-presets" id="theme-presets">
@@ -4822,6 +4886,10 @@ input[type=number]{-moz-appearance:textfield}
           </button>
         </div>
         <p class="hint" style="margin-bottom:16px">Cambia las fuentes del presupuesto. «Según diseño» usa la tipografía propia de cada diseño.</p>
+
+        <div class="st">Monograma</div>
+        <div class="font-presets" id="mono-presets" role="group" aria-label="Monograma"></div>
+        <p class="hint" id="mono-hint" style="margin-bottom:16px">Una marca con las iniciales de tu negocio en el encabezado, para cuando no tenés logo.</p>
 
         <div class="st">Numeración</div>
         <div class="r2">
@@ -5245,6 +5313,27 @@ input[type=number]{-moz-appearance:textfield}
      hacer el trabajo, o tantear cuánto salió ahora. Este diálogo arma la
      segunda versión — copia el presupuesto, actualiza los precios el % que se
      le diga y deja el original marcado como reemplazado. -->
+<!-- Máquina de estilo (v244): sortea diseño, colores, tipografía, monograma y
+     (si siguen de fábrica) los textos. Ver estiloAbrir / estiloTirar. -->
+<div id="estilo-overlay" role="presentation" onclick="if(event.target===this)estiloCerrar()">
+  <div id="estilo-box" role="dialog" aria-modal="true" aria-labelledby="estilo-title">
+    <h4 id="estilo-title">Tu estilo</h4>
+    <p class="nv-sub" id="estilo-sub">La app lo eligió al azar para que tus presupuestos no salgan iguales a los de otro colega. Podés cambiar cualquier cosa en Empresa → Estilo y en Textos del PDF.</p>
+    <div class="estilo-reels" id="estilo-reels"></div>
+    <label class="fu-chk" id="estilo-textos-row" style="margin-top:12px">
+      <input type="checkbox" id="estilo-textos" onchange="estiloTextosToggle(this.checked)">
+      Cambiar también los textos que siguen de fábrica
+    </label>
+    <div class="estilo-acc">
+      <button type="button" class="btn btn-p" onclick="estiloCerrar()">Me gusta</button>
+      <button type="button" class="btn btn-g" onclick="estiloTirar()">🎲 Tirar de nuevo</button>
+      <button type="button" class="btn btn-g" onclick="estiloVer()">Ver cómo queda</button>
+      <button type="button" class="btn btn-g" onclick="estiloPersonalizar()">Personalizar</button>
+    </div>
+    <button type="button" class="estilo-deshacer" id="estilo-deshacer" onclick="estiloDeshacer()">Dejar como estaba</button>
+  </div>
+</div>
+
 <div id="nv-overlay" role="presentation" onclick="if(event.target===this)nvClose()">
   <div id="nv-box" role="dialog" aria-modal="true" aria-labelledby="nv-title">
     <h4 id="nv-title">Nueva versión</h4>
@@ -5732,6 +5821,7 @@ const LS = {
   VER_PCT:        'pq_ver_pct',     // último % de actualización usado al armar una versión (preferencia del dispositivo, no va al backup)
   HIST_AVISOS:    'pq_hist_avisos', // avisos del Historial desplegados ('1') o plegados (preferencia del dispositivo, no va al backup)
   MAPA_VISTA:     'pq_mapa_vista',  // última vista del mapa {lat,lng,z} (preferencia del dispositivo, no va al backup)
+  ESTILO_OFERTA:  'pq_estilo_oferta', // ya se ofreció armar un estilo propio a quien tenía el de fábrica (del dispositivo, no va al backup)
 };
 
 // Notificaciones push (avisos de seguimiento con la app cerrada). Ambos se
@@ -5739,6 +5829,74 @@ const LS = {
 // están vacíos, toda la función queda inerte y la sección no aparece en la UI.
 const PUSH_WORKER_URL = 'https://presupuesto-push.juliobarribolbo.workers.dev';
 const PUSH_VAPID_KEY  = 'BBlrB43TWc5wHAHPhY0kcMwt4g9f1tBejOZ5W5zWc6OU273X9DCvunkB4Cu9zkdXEWom3IRqPi7fxa9Au0vAWiE';
+
+// ─── JUEGOS DE TEXTOS DEL DOCUMENTO (v244) ───────────────────
+// Cuatro redacciones completas de los textos que traía la app de fábrica. El
+// problema que resuelven: colegas de la misma zona usan la app, le cotizan a
+// los mismos clientes, y con los textos de fábrica los PDF salían con los
+// mismos párrafos palabra por palabra — para el cliente, la misma empresa o
+// una copia. Por eso:
+//   - 'directo', 'tecnico' y 'cercano' son los que ofrece la app: DEF arranca
+//     con 'directo' y la máquina de estilo (estiloAzar) sortea entre los tres.
+//   - 'original' son los textos de fábrica hasta la v243. Se conservan, pero
+//     SOLO se usan si alguien los elige a mano (pedido del dueño): la máquina
+//     nunca los sortea (TEXTOS_JUEGOS_AZAR).
+// Un texto es "de fábrica" si coincide exacto con el de algún juego
+// (textoEsDeFabrica): eso es lo único que la máquina se permite reemplazar.
+// Lo que el usuario escribió no se toca nunca.
+const TEXTOS_CAMPOS = ['docTitle','docTitleEst','docDisclaimer','docDisclaimerSvc',
+  'workPlanTitle','workPlan','docCriteriaTitle','docCriteriaIntro','docCriteria','docGreeting'];
+const TEXTOS_JUEGOS = {
+  directo: { label:'Directo', t:{
+    docTitle:         'Presupuesto de Poda y Extracción de Árboles',
+    docTitleEst:      'Presupuesto Estimativo de Poda y Extracción',
+    docDisclaimer:    'Este valor se calculó a partir de las fotos y videos que nos enviaste. Puede ajustarse cuando veamos el lugar, porque hay detalles que solo se aprecian en persona.',
+    docDisclaimerSvc: 'Los servicios de terceros (camión, volquete, chipeadora) están cotizados a valores de hoy. Si la fecha del trabajo se demora, se vuelven a consultar antes de empezar.',
+    workPlanTitle:    'Qué incluye el trabajo',
+    workPlan:         'Personal con experiencia en trabajo en altura y técnicas de trepa.\nEquipo de seguridad completo: arnés, cuerdas, casco y protección.\nCortes hechos a conciencia, respetando la forma y la sanidad del árbol.\nRetiro de ramas, troncos y restos: el lugar queda limpio.\nCuidado de techos, cercos, cables y plantas cercanas durante el trabajo.',
+    docCriteriaTitle: 'Qué tenemos en cuenta para cotizar',
+    docCriteriaIntro: 'El precio de cada trabajo depende de las condiciones del lugar y del árbol. Estos son los puntos que evaluamos:',
+    docCriteria:      'Acceso | Si se puede trepar, si hace falta hidroelevador y cuánto espacio hay para maniobrar.\nCantidad de material | Cuánta rama y madera sale y cómo se baja sin dañar nada.\nEntorno | Casas, techos, cables o veredas cerca obligan a bajar todo con cuerdas y por partes.\nEl árbol | Su especie, su estado sanitario y si tiene ramas secas o partes debilitadas.',
+    docGreeting:      'Quedo a disposición para cualquier consulta.',
+  }},
+  tecnico: { label:'Técnico', t:{
+    docTitle:         'Propuesta de Trabajo de Arboricultura',
+    docTitleEst:      'Propuesta Estimativa de Trabajo de Arboricultura',
+    docDisclaimer:    'Cotización preliminar elaborada sobre material fotográfico. El importe definitivo se confirmará tras el relevamiento en el lugar, donde se evalúan aspectos no visibles en imágenes.',
+    docDisclaimerSvc: 'Los servicios complementarios (transporte, contenedores) se cotizan con valores vigentes a la fecha de emisión y podrán actualizarse si el inicio de los trabajos se posterga.',
+    workPlanTitle:    'Alcance del servicio',
+    workPlan:         'Ejecución a cargo de operarios especializados en trabajo en altura.\nPoda según buenas prácticas de arboricultura, con cortes limpios en el cuello de la rama.\nDescenso controlado de ramas y troncos mediante sistemas de cuerdas.\nRetiro y disposición de residuos verdes al finalizar la jornada.\nSeñalización y resguardo del área de trabajo.',
+    docCriteriaTitle: 'Criterios de evaluación',
+    docCriteriaIntro: 'La cotización surge del relevamiento de cada caso. Se consideran los siguientes factores:',
+    docCriteria:      'Accesibilidad | Condiciones de ingreso del personal y del equipo al ejemplar.\nVolumen de biomasa | Cantidad de material a extraer, trozar y retirar.\nBlancos y obstáculos | Construcciones, tendidos eléctricos y tránsito en la zona de caída.\nCondición del ejemplar | Especie, vitalidad y defectos estructurales observados.',
+    docGreeting:      'Atentamente,',
+  }},
+  cercano: { label:'Cercano', t:{
+    docTitle:         'Presupuesto para tus árboles',
+    docTitleEst:      'Presupuesto estimado para tus árboles',
+    docDisclaimer:    'Te paso un valor aproximado según las fotos que me mandaste. Cuando vaya a ver los árboles te lo confirmo, porque hay cosas que solo se ven en el lugar.',
+    docDisclaimerSvc: 'Lo que cobran otros (camión, volquete) está consultado hoy. Si el trabajo se hace más adelante, lo vuelvo a consultar antes de empezar.',
+    workPlanTitle:    'Así lo hacemos',
+    workPlan:         'Trabajamos con equipo propio y gente que sabe trepar.\nUsamos arnés, cuerdas y todos los elementos de seguridad.\nCortamos pensando en que el árbol siga sano y lindo.\nNos llevamos todo: ramas, troncos y hojas.\nCuidamos tu casa, tus plantas y lo que haya alrededor.',
+    docCriteriaTitle: 'Por qué cada trabajo cuesta distinto',
+    docCriteriaIntro: 'No hay dos árboles iguales. Para darte un precio justo miramos:',
+    docCriteria:      'Cómo se llega | Si hay lugar para trabajar cómodo o hay que ingeniárselas.\nCuánto hay que bajar | La cantidad de ramas y madera que hay que sacar y llevarse.\nQué hay abajo | Techos, cables, autos o plantas que hay que cuidar.\nQué árbol es | Cada especie y cada estado piden una forma distinta de trabajar.',
+    docGreeting:      '¡Gracias por la consulta!',
+  }},
+  original: { label:'Original', t:{
+    docTitle:         'Presupuesto de Servicio de Poda en Altura y Extracción de Árboles',
+    docTitleEst:      'Presupuesto Estimativo de Servicio de Poda y Extracción de Árboles',
+    docDisclaimer:    'Este presupuesto es estimativo y se basa en las fotos y/o videos enviados. El valor final puede ajustarse luego de una inspección presencial, ya que hay aspectos que solo pueden evaluarse en el lugar.',
+    docDisclaimerSvc: 'Los costos de servicios adicionales (camión, volquetes, etc.) son valores consultados con los proveedores al momento de la emisión de este presupuesto. En caso de demorar la confirmación de fecha, dichos valores serán consultados nuevamente antes de iniciar el trabajo.',
+    workPlanTitle:    'Plan de Trabajo',
+    workPlan:         'Trabajo realizado por personal capacitado en trepa y poda en altura.\nEquipo y herramientas profesionales (cuerdas, arnés, motosierra).\nCortes técnicos que cuidan la salud y la estructura del árbol.\nLimpieza y retiro ordenado de todo el material generado.\nMedidas de seguridad para personas, propiedad e instalaciones.',
+    docCriteriaTitle: 'Cómo Trabajamos',
+    docCriteriaIntro: 'Cada trabajo es evaluado en función de sus condiciones reales. El costo refleja la complejidad técnica de cada situación:',
+    docCriteria:      'Altura y Acceso | Evaluamos las condiciones de ingreso al árbol y la zona de trabajo antes de operar.\nVolumen de Material | Planificamos el retiro ordenado para no comprometer el espacio ni la propiedad.\nRiesgos Presentes | Identificamos proximidad a edificaciones, cercos o instalaciones y aplicamos las medidas de seguridad correspondientes.\nEstado y Especie del Árbol | La especie y condición sanitaria del ejemplar determinan la técnica y el tiempo necesario.',
+    docGreeting:      'Saludos,',
+  }},
+};
+const TEXTOS_JUEGOS_AZAR = ['directo','tecnico','cercano'];
 
 const DEF = {
   _schemaVersion: APP_SCHEMA_VERSION,
@@ -5810,7 +5968,12 @@ const DEF = {
   coAliasPago:'', coAliasTitular:'', coCbu:'', coBanco:'',
   coTechNotes:'', coFooter:'',
   showTechNotes:true, showFooter:true,
-  accentColor:'#064e3b', pdfTheme:'clasico', pdfCompact:false, pdfFont:'auto', customColors:[], pushEnabled:false, validityDays:30, showExpiry:true,
+  accentColor:'#064e3b', pdfTheme:'clasico', pdfCompact:false, pdfFont:'auto', customColors:[],
+  // Estilo propio (v244): color de DETALLE (líneas, viñetas, bordes; '' = igual
+  // al principal) y monograma con las iniciales del negocio para quien no tiene
+  // logo ('ninguno' o una forma de PDF_MONOS). Config del negocio: van en
+  // CFG_GLOBAL_FIELDS. Ver estiloAzar.
+  accentColor2:'', pdfMono:'ninguno', pushEnabled:false, validityDays:30, showExpiry:true,
   numPrefix:'2026-', numNext:1,
   // Estimative mode
   isEstimative: false,
@@ -5857,8 +6020,8 @@ const DEF = {
     limitaciones: '',
   },
   // Textos editables del documento
-  docTitle:        'Presupuesto de Servicio de Poda en Altura y Extracción de Árboles',
-  docTitleEst:     'Presupuesto Estimativo de Servicio de Poda y Extracción de Árboles',
+  docTitle: TEXTOS_JUEGOS.directo.t.docTitle,
+  docTitleEst: TEXTOS_JUEGOS.directo.t.docTitleEst,
   docTitleRisk:    'Informe Técnico de Riesgo Arbóreo y Propuesta de Trabajo',
   // Informe de riesgo (v243). Config del negocio: quién evalúa (experiencia,
   // cursos — sin credencial TRAQ el informe NO la nombra) y el descargo
@@ -5871,20 +6034,20 @@ const DEF = {
   docTitleJard:    'Presupuesto de Servicio de Jardinería',
   docTitleEstJard: 'Presupuesto Estimativo de Servicio de Jardinería',
   docEstBanner:    'Presupuesto Estimativo — Basado en fotos y/o videos',
-  docDisclaimer:   'Este presupuesto es estimativo y se basa en las fotos y/o videos enviados. El valor final puede ajustarse luego de una inspección presencial, ya que hay aspectos que solo pueden evaluarse en el lugar.',
-  docDisclaimerSvc:'Los costos de servicios adicionales (camión, volquetes, etc.) son valores consultados con los proveedores al momento de la emisión de este presupuesto. En caso de demorar la confirmación de fecha, dichos valores serán consultados nuevamente antes de iniciar el trabajo.',
+  docDisclaimer: TEXTOS_JUEGOS.directo.t.docDisclaimer,
+  docDisclaimerSvc: TEXTOS_JUEGOS.directo.t.docDisclaimerSvc,
   // Formato "Subtítulo | descripción" por línea (el subtítulo es opcional).
   // Alimenta la grilla "Cómo Trabajamos" del presupuesto normal y los factores
   // del estimativo. Ver parseCriteria().
-  docCriteria:     'Altura y Acceso | Evaluamos las condiciones de ingreso al árbol y la zona de trabajo antes de operar.\nVolumen de Material | Planificamos el retiro ordenado para no comprometer el espacio ni la propiedad.\nRiesgos Presentes | Identificamos proximidad a edificaciones, cercos o instalaciones y aplicamos las medidas de seguridad correspondientes.\nEstado y Especie del Árbol | La especie y condición sanitaria del ejemplar determinan la técnica y el tiempo necesario.',
-  docGreeting:     'Saludos,',
-  docCriteriaTitle:  'Cómo Trabajamos',
-  docCriteriaIntro:  'Cada trabajo es evaluado en función de sus condiciones reales. El costo refleja la complejidad técnica de cada situación:',
+  docCriteria: TEXTOS_JUEGOS.directo.t.docCriteria,
+  docGreeting: TEXTOS_JUEGOS.directo.t.docGreeting,
+  docCriteriaTitle: TEXTOS_JUEGOS.directo.t.docCriteriaTitle,
+  docCriteriaIntro: TEXTOS_JUEGOS.directo.t.docCriteriaIntro,
   // Sección "Plan de Trabajo / Lo que incluye": va antes del precio y encuadra
   // el importe como valor (qué recibe el cliente) en lugar de un gasto. Bullets
   // editables, uno por línea. Sugeridos por defecto, el usuario ajusta/borra.
-  workPlanTitle:     'Plan de Trabajo',
-  workPlan:          'Trabajo realizado por personal capacitado en trepa y poda en altura.\nEquipo y herramientas profesionales (cuerdas, arnés, motosierra).\nCortes técnicos que cuidan la salud y la estructura del árbol.\nLimpieza y retiro ordenado de todo el material generado.\nMedidas de seguridad para personas, propiedad e instalaciones.',
+  workPlanTitle: TEXTOS_JUEGOS.directo.t.workPlanTitle,
+  workPlan: TEXTOS_JUEGOS.directo.t.workPlan,
   // Override del plan de trabajo SOLO para el presupuesto actual (no toca el
   // default global de arriba). Se activa con un toggle en el Editor. Útil para
   // detallar cosas exclusivas de ese trabajo. Se resetea en cada presupuesto
@@ -5931,7 +6094,7 @@ const CFG_GLOBAL_FIELDS = [
   'coName','coOwner','coSubtitle','coCuit','coWhatsapp','coCity','coEmail',
   'coAliasPago','coAliasTitular','coCbu','coBanco','coTechNotes','coFooter','logo',
   // Diseño del documento y de la app
-  'accentColor','customColors','pdfTheme','pdfCompact','pdfFont','themeMode',
+  'accentColor','accentColor2','pdfMono','customColors','pdfTheme','pdfCompact','pdfFont','themeMode',
   'vistaEditor',
   // Textos editables del PDF (Empresa → Textos del PDF)
   'docTitle','docTitleEst','docTitleRisk','docEstBanner','docDisclaimer',
@@ -6602,7 +6765,9 @@ function migrateState(raw) {
   // al nuevo default para que conserve el look con subtítulos. Si lo
   // personalizó, se respeta tal cual (parseCriteria maneja líneas sin "|").
   const OLD_CRITERIA_DEFAULT = 'La altura del árbol y el acceso al sitio.\nEl volumen de material a extraer: ramas, troncos y restos vegetales.\nLa proximidad a estructuras sensibles: edificaciones, tendido eléctrico u otras instalaciones.\nLa especie, el estado fitosanitario y la complejidad estructural del árbol.';
-  if (next.docCriteria === OLD_CRITERIA_DEFAULT) next.docCriteria = DEF.docCriteria;
+  // Ese usuario tenía los textos de fábrica de entonces: va al juego 'original'
+  // (el de su época), no al default actual, que es de otra redacción.
+  if (next.docCriteria === OLD_CRITERIA_DEFAULT) next.docCriteria = TEXTOS_JUEGOS.original.t.docCriteria;
   // Campos POR PRESUPUESTO agregados después del lanzamiento: si el snapshot
   // es anterior a que existieran, van al default. Sin esto, Object.assign(S,
   // snapshot) deja el valor del presupuesto abierto antes (p.ej. la ubicación
@@ -8349,6 +8514,13 @@ const SAN_ID_RE = /^[\w-]{1,40}$/;
 // Listas blancas de los enums que van a parar a un atributo HTML.
 const PDF_THEMES = ['clasico','profesional','calido','minimalista','lateral','tecnico','elegante'];
 const PDF_FONTS  = ['auto','dm','plex','lora-inter','inter'];
+// Monograma del encabezado (v244): forma que se dibuja con las iniciales del
+// negocio cuando no hay logo. Se interpola en una clase y en el SVG.
+const PDF_MONOS  = ['ninguno','circulo','escudo','hoja','rombo','sello'];
+// Color de detalle: '' (= igual al principal) o un hex. Nunca el fallback de
+// safeColor: un valor basura tiene que volver a "sin color de detalle", no
+// pintar los detalles de verde.
+function sanColor2(c) { return (typeof c === 'string' && /^#[0-9a-f]{3}([0-9a-f]{3})?$/i.test(c)) ? c : ''; }
 // Vistas del editor (S.vistaEditor). Va a un atributo del DOM
 // (#panel-editor[data-vista]), así que no puede entrar sin lista blanca.
 const EDITOR_VIEWS = ['clasica','fichas','consola'];
@@ -8492,6 +8664,8 @@ function sanitizeStateObj(raw) {
   const s = Object.assign({}, raw);
   s.pdfTheme = sanEnum(raw.pdfTheme, PDF_THEMES, 'clasico');
   s.pdfFont  = sanEnum(raw.pdfFont,  PDF_FONTS,  'auto');
+  s.pdfMono  = sanEnum(raw.pdfMono,  PDF_MONOS,  'ninguno');
+  s.accentColor2 = sanColor2(raw.accentColor2);
   s.vistaEditor = sanEnum(raw.vistaEditor, EDITOR_VIEWS, 'clasica');
   s.rubro = sanEnum(raw.rubro, RUBROS, 'arbolado');
   s.accentColor = (typeof safeColor === 'function') ? safeColor(raw.accentColor) : '#064e3b';
@@ -8817,8 +8991,12 @@ function migrateSanitizeStored() {
   // La vista del editor también: va a un atributo del DOM y un valor basura
   // tiene que caer a 'clasica' (la vista conocida-buena).
   const vista = sanEnum(S.vistaEditor, EDITOR_VIEWS, 'clasica');
-  if (tema !== S.pdfTheme || fuente !== S.pdfFont || color !== S.accentColor || vista !== S.vistaEditor) {
+  const mono = sanEnum(S.pdfMono, PDF_MONOS, 'ninguno');
+  const color2 = sanColor2(S.accentColor2);
+  if (tema !== S.pdfTheme || fuente !== S.pdfFont || color !== S.accentColor || vista !== S.vistaEditor
+      || mono !== S.pdfMono || color2 !== S.accentColor2) {
     S.pdfTheme = tema; S.pdfFont = fuente; S.accentColor = color; S.vistaEditor = vista;
+    S.pdfMono = mono; S.accentColor2 = color2;
     arreglados++;
     try { localStorage.setItem(LS.STATE, JSON.stringify(S)); } catch(_){}
   }
@@ -11923,7 +12101,10 @@ function restoreUI() {
   // color
   applyAccent(S.accentColor);
   renderCustomColors();
-  document.querySelectorAll('.cpreset').forEach(el=>el.classList.toggle('active', String(el.dataset.color||'').toLowerCase()===String(S.accentColor).toLowerCase()));
+  document.querySelectorAll('#color-presets .cpreset').forEach(el=>el.classList.toggle('active', String(el.dataset.color||'').toLowerCase()===String(S.accentColor).toLowerCase()));
+  // Estilo propio: color de detalle, monograma, aviso de fábrica y juegos de
+  // textos (v244).
+  estiloUISync(false);
   _cpkInit();
   const _hx = document.getElementById('cpk-hex'); if(_hx) _hx.value = S.accentColor;
   const _pv = document.getElementById('cpk-preview'); if(_pv) _pv.style.background = S.accentColor;
@@ -12106,6 +12287,9 @@ function switchSubtab(name) {
   document.querySelectorAll('.subtab-btn').forEach((b,i)=>b.classList.toggle('active', names[i]===name));
   document.querySelectorAll('.subpanel').forEach(p=>p.classList.remove('active'));
   const p = document.getElementById('subpanel-'+name); if(p) p.classList.add('active');
+  // Los monogramas de muestra usan el nombre y el logo actuales, que pudieron
+  // cambiar en "Mi negocio".
+  if (name === 'estilo') estiloUISync(false);
   // Al entrar a "datos", solo actualizamos los CONTADORES de los headers.
   // Las listas se renderizan al abrir cada sección colapsable (lazy).
   if (name === 'datos') {
@@ -13061,8 +13245,11 @@ function _setAccentColor(c, reposition) {
   applyAccent(c);
   const hx = document.getElementById('cpk-hex'); if(hx && hx.value.toLowerCase() !== c) hx.value = c;
   const pv = document.getElementById('cpk-preview'); if(pv) pv.style.background = c;
-  document.querySelectorAll('.cpreset').forEach(el=>el.classList.toggle('active', String(el.dataset.color).toLowerCase()===c.toLowerCase()));
+  document.querySelectorAll('#color-presets .cpreset').forEach(el=>el.classList.toggle('active', String(el.dataset.color).toLowerCase()===c.toLowerCase()));
   if (reposition) _cpkSetFromHex(c);
+  // El color de detalle "igual al principal" y los monogramas de muestra se
+  // pintan con el principal (v244).
+  if (typeof estiloUISync === 'function') estiloUISync(false);
   sched();
 }
 
@@ -13235,6 +13422,346 @@ function applyPdfFont(font) {
   sched();
 }
 
+// ─── ESTILO PROPIO (v244) ─────────────────────
+// Colegas de la misma zona usan la app y le cotizan a los mismos clientes: con
+// todo de fábrica, los PDF salían iguales salvo el nombre de arriba. Tres
+// piezas para que eso no pase:
+//   1. Más ejes de diseño ortogonales al tema: color de DETALLE
+//      (S.accentColor2) y MONOGRAMA con las iniciales (S.pdfMono).
+//   2. Juegos de textos (TEXTOS_JUEGOS): redacciones completas, y los de
+//      fábrica de antes ('original') solo si se eligen a mano.
+//   3. La MÁQUINA (estiloSortear/estiloAbrir): sortea diseño, colores,
+//      tipografía, monograma y, si siguen de fábrica, los textos. Corre sola
+//      la primera vez que se abre la app (estiloPrimeraVez) y se le ofrece UNA
+//      vez a quien ya la tenía con el diseño de fábrica (estiloOfrecer).
+// Regla: la máquina nunca pisa un texto que el usuario escribió
+// (textoEsDeFabrica) y lo que cambia se puede deshacer ("Dejar como estaba").
+const ESTILO_COLORES = [['#064e3b','Verde oscuro'],['#1e3a5f','Azul marino'],['#3b0764','Púrpura'],['#7c2d12','Rojo oscuro'],
+  ['#713f12','Marrón'],['#164e63','Cian oscuro'],['#1c1917','Negro'],['#0369a1','Azul']];
+const ESTILO_DETALLES = [['','Igual al principal'],['#b08d3c','Dorado'],['#c2410c','Terracota'],['#65a30d','Verde hoja'],
+  ['#0891b2','Celeste'],['#94a3b8','Gris'],['#be123c','Bordó']];
+const ESTILO_TEMA_LBL = { clasico:'Clásico', profesional:'Profesional', calido:'Cálido', minimalista:'Minimalista',
+  lateral:'Lateral', tecnico:'Técnico', elegante:'Elegante' };
+const ESTILO_FUENTE_LBL = { auto:'Según diseño', dm:'Clásico', plex:'IBM Plex', 'lora-inter':'Lora + Inter', inter:'Inter' };
+const ESTILO_MONO_LBL = { ninguno:'Sin monograma', circulo:'Círculo', escudo:'Escudo', hoja:'Hoja', rombo:'Rombo', sello:'Sello' };
+const ESTILO_CAMPOS = ['pdfTheme','accentColor','accentColor2','pdfFont','pdfMono'];
+
+// ¿El diseño es el de fábrica? (lo que tiene cualquiera que nunca entró a Estilo)
+function estiloEsDeFabrica(s) {
+  s = s || S;
+  return (s.pdfTheme || 'clasico') === 'clasico'
+    && String(s.accentColor || '#064e3b').toLowerCase() === '#064e3b'
+    && (s.pdfFont || 'auto') === 'auto'
+    && !s.accentColor2
+    && (s.pdfMono || 'ninguno') === 'ninguno';
+}
+
+// Un texto es "de fábrica" si coincide exacto con el de algún juego. Vacío no
+// cuenta: un saludo borrado a propósito es una decisión del usuario.
+function textoEsDeFabrica(campo, v) {
+  if (typeof v !== 'string' || !v) return false;
+  return Object.keys(TEXTOS_JUEGOS).some(k => TEXTOS_JUEGOS[k].t[campo] === v);
+}
+function textosHayDeFabrica() { return TEXTOS_CAMPOS.some(c => textoEsDeFabrica(c, S[c])); }
+// Juego al que corresponden TODOS los textos actuales ('' si están mezclados o
+// retocados).
+function textosJuegoActual() {
+  return Object.keys(TEXTOS_JUEGOS).find(k => TEXTOS_CAMPOS.every(c => S[c] === TEXTOS_JUEGOS[k].t[c])) || '';
+}
+
+// Copia del estilo y los textos actuales, para "Dejar como estaba" / Deshacer.
+function _estiloFoto() {
+  const f = {};
+  ESTILO_CAMPOS.concat(TEXTOS_CAMPOS).forEach(k => { f[k] = S[k]; });
+  return f;
+}
+function _estiloRestaurar(f) {
+  if (!f) return;
+  ESTILO_CAMPOS.concat(TEXTOS_CAMPOS).forEach(k => { if (k in f) S[k] = f[k]; });
+  estiloUISync(true);
+  sched();
+}
+
+// Lleva los textos de S a los campos de Empresa → Textos del PDF. Hace falta
+// cada vez que se cambian desde código: syncFromUI (vista previa, guardado)
+// lee de esos campos y, si quedaran los viejos, los volvería a escribir en S.
+function _textosAlUI() {
+  sv('doc-title', S.docTitle);
+  sv('doc-title-est', S.docTitleEst);
+  sv('doc-disclaimer', S.docDisclaimer);
+  sv('doc-disclaimer-svc', S.docDisclaimerSvc);
+  sv('doc-work-plan-title', S.workPlanTitle);
+  sv('doc-greeting', S.docGreeting);
+  sv('doc-criteria-title', S.docCriteriaTitle);
+  sv('doc-criteria-intro', S.docCriteriaIntro);
+  if (typeof renderLineList === 'function') {
+    renderLineList('doc-work-plan-list');
+    renderLineList('doc-criteria-list');
+  }
+}
+
+// Aplica un juego de textos. Con `soloFabrica`, únicamente reemplaza los que
+// siguen de fábrica (lo que usa la máquina); sin él, todos (elección a mano).
+function _aplicarTextos(key, soloFabrica) {
+  const j = TEXTOS_JUEGOS[key];
+  if (!j) return;
+  TEXTOS_CAMPOS.forEach(c => {
+    if (!soloFabrica || textoEsDeFabrica(c, S[c])) S[c] = j.t[c];
+  });
+  _textosAlUI();
+  textosJuegosSync();
+}
+
+// Chips de Empresa → Textos del PDF. El Original va último y con aclaración.
+function textosJuegosSync() {
+  const host = document.getElementById('textos-juegos');
+  if (!host) return;
+  const act = textosJuegoActual();
+  host.innerHTML = Object.keys(TEXTOS_JUEGOS).map(k =>
+    `<button type="button" class="nv-chip${k === act ? ' is-active' : ''}" data-juego="${k}" aria-pressed="${k === act}">${esc(TEXTOS_JUEGOS[k].label)}${k === 'original' ? ' (los de antes)' : ''}</button>`
+  ).join('');
+  host.querySelectorAll('[data-juego]').forEach(b => { b.onclick = () => elegirJuegoTextos(b.dataset.juego); });
+}
+
+// Elección a mano de un juego. Si había textos escritos por el usuario,
+// confirma antes de reemplazarlos; siempre deja "Deshacer".
+async function elegirJuegoTextos(key) {
+  if (!TEXTOS_JUEGOS[key]) return;
+  syncFromUI();
+  const propios = TEXTOS_CAMPOS.some(c => S[c] && !textoEsDeFabrica(c, S[c]));
+  if (propios) {
+    const ok = await confirmDlg('¿Reemplazar tus textos?',
+      `Los textos del documento que escribiste se reemplazan por el juego «${TEXTOS_JUEGOS[key].label}». Después podés retocarlos.`,
+      'Reemplazar', 'btn-p');
+    if (!ok) return;
+  }
+  const antes = _estiloFoto();
+  _aplicarTextos(key, false);
+  sched();
+  toastAccion(`Textos: juego «${TEXTOS_JUEGOS[key].label}».`, [{ label:'Deshacer', fn:() => _estiloRestaurar(antes) }]);
+}
+
+// ── Controles de Estilo ──
+function applyColor2(c) {
+  S.accentColor2 = sanColor2(c);
+  estiloUISync(false);
+  sched();
+}
+function applyPdfMono(m) {
+  S.pdfMono = sanEnum(m, PDF_MONOS, 'ninguno');
+  estiloUISync(false);
+  sched();
+}
+
+// Repinta todo lo de Estilo que depende de estos campos. `todo` además
+// reposiciona los controles que ya existían (tema, color, tipografía) y los
+// textos: hace falta cuando el cambio vino de la máquina o de un Deshacer.
+function estiloUISync(todo) {
+  if (todo) {
+    document.querySelectorAll('.tpreset').forEach(el => el.classList.toggle('active', el.dataset.theme === S.pdfTheme));
+    document.querySelectorAll('.fpreset[data-font]').forEach(el => el.classList.toggle('active', el.dataset.font === (S.pdfFont || 'auto')));
+    // Lo mismo que _setAccentColor, sin su sched() (y sin volver a llamar acá):
+    // solo repintar.
+    const c = safeColor(S.accentColor);
+    applyAccent(c);
+    const hx = document.getElementById('cpk-hex'); if (hx) hx.value = c;
+    const pv = document.getElementById('cpk-preview'); if (pv) pv.style.background = c;
+    document.querySelectorAll('#color-presets .cpreset').forEach(el => el.classList.toggle('active', String(el.dataset.color || '').toLowerCase() === c.toLowerCase()));
+    if (typeof _cpkSetFromHex === 'function') _cpkSetFromHex(c);
+    _textosAlUI();
+  }
+  const det = sanColor2(S.accentColor2);
+  const h2 = document.getElementById('color2-presets');
+  if (h2) {
+    h2.style.setProperty('--cp-main', safeColor(S.accentColor));
+    h2.innerHTML = ESTILO_DETALLES.map(([c, n]) => c
+      ? `<button type="button" class="cpreset${det.toLowerCase() === c ? ' active' : ''}" style="background:${c}" title="${n}" aria-label="${n}" data-color2="${c}"></button>`
+      : `<button type="button" class="cpreset cpreset-igual${!det ? ' active' : ''}" title="${n}" aria-label="${n}" data-color2=""></button>`
+    ).join('');
+    h2.querySelectorAll('[data-color2]').forEach(b => { b.onclick = () => applyColor2(b.dataset.color2); });
+  }
+  const hm = document.getElementById('mono-presets');
+  if (hm) {
+    const nombre = S.coName || 'Mi negocio';
+    const col = safeColor(S.accentColor);
+    hm.innerHTML = PDF_MONOS.map(m => `<button type="button" class="fpreset mpreset${(S.pdfMono || 'ninguno') === m ? ' active' : ''}" data-mono="${m}">`
+      + (m === 'ninguno' ? '<span class="mpreset-none">—</span>' : _monoSVG(m, nombre, col, '#ffffff', ''))
+      + `<span class="fpreset-label">${ESTILO_MONO_LBL[m]}</span></button>`).join('');
+    hm.querySelectorAll('[data-mono]').forEach(b => { b.onclick = () => applyPdfMono(b.dataset.mono); });
+  }
+  const mh = document.getElementById('mono-hint');
+  if (mh) mh.textContent = S.logo
+    ? 'Tenés un logo cargado: el documento usa el logo. El monograma sale si lo quitás.'
+    : (S.coName ? 'Una marca con las iniciales de tu negocio en el encabezado, para cuando no tenés logo.'
+                : 'Una marca con las iniciales de tu negocio. Cargá el nombre en Mi negocio para verla.');
+  const fab = document.getElementById('estilo-fabrica');
+  if (fab) fab.hidden = !estiloEsDeFabrica();
+  textosJuegosSync();
+}
+
+// ── La máquina ──
+function _azar(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+// Sortea un estilo. Nunca sale el de fábrica (el monograma siempre tiene
+// forma) y el juego de textos nunca es el 'original' (TEXTOS_JUEGOS_AZAR).
+function estiloSortear(conTextos) {
+  const r = {
+    pdfTheme:     _azar(PDF_THEMES),
+    accentColor:  _azar(ESTILO_COLORES)[0],
+    accentColor2: _azar(ESTILO_DETALLES)[0],
+    pdfFont:      _azar(PDF_FONTS),
+    pdfMono:      _azar(PDF_MONOS.filter(m => m !== 'ninguno')),
+  };
+  if (conTextos) r.juego = _azar(TEXTOS_JUEGOS_AZAR);
+  return r;
+}
+function _estiloAplicar(r) {
+  ESTILO_CAMPOS.forEach(k => { if (k in r) S[k] = r[k]; });
+  if (r.juego) _aplicarTextos(r.juego, true);
+  estiloUISync(true);
+  sched();
+}
+
+let _estiloPrevio = null;
+let _estiloTimers = [];
+const _ESTILO_REELS = [
+  ['pdfTheme',     'Diseño',     () => PDF_THEMES.map(t => ESTILO_TEMA_LBL[t])],
+  ['accentColor',  'Color',      () => ESTILO_COLORES.map(c => c[1])],
+  ['accentColor2', 'Detalle',    () => ESTILO_DETALLES.map(c => c[1])],
+  ['pdfFont',      'Tipografía', () => PDF_FONTS.map(f => ESTILO_FUENTE_LBL[f])],
+  ['pdfMono',      'Monograma',  () => PDF_MONOS.map(m => ESTILO_MONO_LBL[m])],
+  ['textos',       'Textos',     () => Object.keys(TEXTOS_JUEGOS).map(k => TEXTOS_JUEGOS[k].label)],
+];
+function _estiloValorReel(k) {
+  const dot = c => `<span class="estilo-dot" style="background:${safeColor(c)}"></span>`;
+  if (k === 'pdfTheme') return esc(ESTILO_TEMA_LBL[S.pdfTheme] || S.pdfTheme);
+  if (k === 'accentColor') {
+    const c = safeColor(S.accentColor), n = (ESTILO_COLORES.find(x => x[0] === c.toLowerCase()) || [c, 'Propio'])[1];
+    return dot(c) + esc(n);
+  }
+  if (k === 'accentColor2') {
+    const c = sanColor2(S.accentColor2);
+    if (!c) return 'Igual al principal';
+    return dot(c) + esc((ESTILO_DETALLES.find(x => x[0] === c.toLowerCase()) || [c, 'Propio'])[1]);
+  }
+  if (k === 'pdfFont') return esc(ESTILO_FUENTE_LBL[S.pdfFont || 'auto'] || S.pdfFont);
+  if (k === 'pdfMono') return esc(ESTILO_MONO_LBL[S.pdfMono || 'ninguno']) + (S.logo ? ' (usás tu logo)' : '');
+  const j = textosJuegoActual();
+  return j ? esc(TEXTOS_JUEGOS[j].label) : 'Los tuyos';
+}
+// Dibuja los rodillos: giran mostrando opciones y frenan de a uno en el valor
+// que quedó en S. Sin animación si el sistema pide movimiento reducido.
+function _estiloReels(animar) {
+  const host = document.getElementById('estilo-reels');
+  if (!host) return;
+  _estiloTimers.forEach(t => clearInterval(t));
+  _estiloTimers = [];
+  const quieto = !animar || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+  host.innerHTML = _ESTILO_REELS.map(([k, l]) =>
+    `<div class="estilo-reel${quieto ? ' listo' : ''}" data-k="${k}"><span class="estilo-reel-l">${l}</span><span class="estilo-reel-v">${quieto ? _estiloValorReel(k) : '…'}</span></div>`
+  ).join('');
+  if (quieto) return;
+  [...host.children].forEach((row, i) => {
+    const [k, , opciones] = _ESTILO_REELS[i];
+    const v = row.querySelector('.estilo-reel-v');
+    const lista = opciones();
+    const t = setInterval(() => { v.textContent = _azar(lista); }, 70);
+    _estiloTimers.push(t);
+    setTimeout(() => {
+      clearInterval(t);
+      v.innerHTML = _estiloValorReel(k);
+      row.classList.add('listo');
+    }, 420 + i * 200);
+  });
+}
+
+// Abre la máquina. opts.tirar: sortea al abrir (Sorprendeme, oferta); sin él
+// muestra lo que ya hay (el "Ver" del aviso de la primera vez). opts.textos:
+// arranca con "cambiar también los textos" tildado.
+function estiloAbrir(opts) {
+  opts = opts || {};
+  try { syncFromUI(); } catch (_) {}
+  _estiloPrevio = _estiloFoto();
+  const hayFab = textosHayDeFabrica();
+  const row = document.getElementById('estilo-textos-row');
+  const chk = document.getElementById('estilo-textos');
+  if (row) row.style.display = hayFab ? '' : 'none';
+  if (chk) chk.checked = hayFab && !!opts.textos;
+  const tit = document.getElementById('estilo-title');
+  if (tit) tit.textContent = opts.tirar ? 'Armando tu estilo…' : 'Tu estilo';
+  const ov = document.getElementById('estilo-overlay');
+  if (ov) ov.classList.add('open');
+  if (opts.tirar) estiloTirar(); else _estiloReels(true);
+}
+function estiloTirar() {
+  const chk = document.getElementById('estilo-textos');
+  const r = estiloSortear(!!(chk && chk.checked));
+  _estiloAplicar(r);
+  _estiloReels(true);
+  const tit = document.getElementById('estilo-title');
+  if (tit) setTimeout(() => { tit.textContent = 'Tu estilo'; }, 420 + _ESTILO_REELS.length * 200);
+}
+// Tildar = sortear un juego para los textos de fábrica; destildar = volver a
+// los textos que había al abrir.
+function estiloTextosToggle(on) {
+  if (on) _aplicarTextos(_azar(TEXTOS_JUEGOS_AZAR), true);
+  else if (_estiloPrevio) { TEXTOS_CAMPOS.forEach(c => { S[c] = _estiloPrevio[c]; }); _textosAlUI(); textosJuegosSync(); }
+  sched();
+  const v = document.querySelector('#estilo-reels [data-k="textos"] .estilo-reel-v');
+  if (v) v.innerHTML = _estiloValorReel('textos');
+}
+function estiloCerrar() {
+  _estiloTimers.forEach(t => clearInterval(t));
+  _estiloTimers = [];
+  const ov = document.getElementById('estilo-overlay');
+  if (ov) ov.classList.remove('open');
+}
+function estiloDeshacer() {
+  const f = _estiloPrevio;
+  estiloCerrar();
+  if (!f) return;
+  _estiloRestaurar(f);
+  toast('Volvió el estilo que tenías.', 'info');
+}
+function estiloVer() {
+  estiloCerrar();
+  previewCurrent();
+}
+function estiloPersonalizar() {
+  estiloCerrar();
+  switchTab('empresa');
+  switchSubtab('estilo');
+  const el = document.getElementById('estilo-propio');
+  if (el && el.scrollIntoView) el.scrollIntoView({ block:'start' });
+}
+
+// Primera vez que se abre la app (desde maybeShowWelcome): la máquina elige
+// sola, y cuando se cierra la bienvenida sale el aviso de que todo se cambia.
+// Solo con el diseño de fábrica y sin presupuestos: un dispositivo que ya tiene
+// datos (o que restauró un backup) conserva lo suyo.
+function estiloPrimeraVez() {
+  try { localStorage.setItem(LS.ESTILO_OFERTA, '1'); } catch (_) {}
+  const h = (typeof getH === 'function') ? getH() : [];
+  if (h.length || !estiloEsDeFabrica()) return false;
+  _estiloAplicar(estiloSortear(true));
+  saveLS();
+  colaAviso(() => toastAccion('🎲 Tus presupuestos ya tienen un estilo propio, elegido al azar para que no salgan iguales a los de otro colega. Podés cambiarlo cuando quieras.',
+    [{ label:'Ver', fn:() => estiloAbrir({}) }, { label:'Personalizar', fn:estiloPersonalizar }], 14000));
+  return true;
+}
+
+// A quien ya usaba la app con el diseño de fábrica, se le ofrece UNA vez armar
+// uno propio. No se cambia nada sin que acepte, y lo personalizado no se toca.
+function estiloOfrecer() {
+  let visto;
+  try { visto = localStorage.getItem(LS.ESTILO_OFERTA); } catch (_) { visto = '1'; }
+  if (visto) return false;
+  try { localStorage.setItem(LS.ESTILO_OFERTA, '1'); } catch (_) {}
+  if (!estiloEsDeFabrica()) return false;
+  colaAviso(() => toastAccion('Tus presupuestos tienen el diseño de fábrica: salen iguales a los de cualquier colega que use la app.',
+    [{ label:'Armar uno propio', fn:() => estiloAbrir({ tirar:true, textos:true }) }], 15000));
+  return true;
+}
+
 // ─── LOGO ────────────────────────────────────
 function handleLogoUpload(e) {
   const f = e.target.files[0]; if(!f) return;
@@ -13361,9 +13888,14 @@ function closeModalOutside(e){ if(e.target.id==='moverlay') closeModal(); }
 function maybeShowWelcome() {
   let seen;
   try { seen = localStorage.getItem(LS.ONBOARDED); } catch(_) { seen = '1'; }
-  if (seen) return;
+  // Ya la conocía: a lo sumo, la oferta única de armar un estilo propio.
+  if (seen) { estiloOfrecer(); return; }
   try { localStorage.setItem(LS.ONBOARDED, '1'); } catch(_) {}
   openModal('welcome');
+  // Primera vez: la máquina de estilo elige diseño y textos (v244). Va DESPUÉS
+  // de abrir la bienvenida: su aviso sale por colaAviso, que espera a que la
+  // bienvenida se cierre — si se encolara antes, saldría debajo de ella.
+  estiloPrimeraVez();
 }
 
 // Botón "Configurar mi negocio": cierra la bienvenida y lleva al usuario
@@ -19203,10 +19735,55 @@ function _buildSceneBlockHTML(arr, label, color, cur, includeDisc) {
 // badgeLabel: texto de la etiqueta del número (ej. 'Presupuesto N°').
 // badgeDate: string de fecha opcional (null = no mostrar).
 // showPlaceholder: true en Risk/Est docs para mostrar recuadro LOGO si no hay logo.
+// Atributos de la <table class="pdoc"> que envuelve los 4 documentos (normal,
+// riesgo, estimativo, recibo): tema, densidad, tipografía, color principal y,
+// si hay, el color de DETALLE (v244). El detalle es una clase aparte
+// (`pdoc-det` + --pdoc-det) que solo existe cuando el usuario eligió uno: sin
+// él el documento sale exactamente como antes.
+function _pdocAttrs(theme, color) {
+  const det = sanColor2(S.accentColor2);
+  const cls = 'pdoc pdoc-theme-' + theme
+    + (S.pdfCompact ? ' pdoc-compact' : '')
+    + (S.pdfFont && S.pdfFont !== 'auto' ? ' pdoc-font-' + S.pdfFont : '')
+    + (det && det.toLowerCase() !== String(color).toLowerCase() ? ' pdoc-det' : '');
+  return `class="${cls}" style="--pdoc-accent:${color}${det ? ';--pdoc-det:' + det : ''}"`;
+}
+
+// Iniciales del negocio para el monograma: primera letra de las dos primeras
+// palabras ("Arbolado Norte" → "AN"). Sin nombre no hay monograma: un círculo
+// con una "P" inventada no identifica a nadie.
+function _monoIniciales(nombre) {
+  const w = String(nombre || '').trim().split(/\s+/).filter(Boolean);
+  if (!w.length) return '';
+  return (w[0].charAt(0) + (w[1] ? w[1].charAt(0) : '')).toUpperCase();
+}
+
+// Monograma del encabezado (v244): para el que no tiene logo, una marca propia
+// con las iniciales dentro de una forma (PDF_MONOS). `fill` es el color de la
+// forma y `ink` el de las letras (en la banda del tema Lateral van invertidos).
+// SVG inline: sale igual en la vista previa, la impresión y la imagen.
+function _monoSVG(forma, nombre, fill, ink, cls) {
+  const f = sanEnum(forma, PDF_MONOS, 'ninguno');
+  const ini = _monoIniciales(nombre);
+  if (f === 'ninguno' || !ini) return '';
+  const fl = safeColor(fill), ik = safeColor(ink);
+  const formas = {
+    circulo: `<circle cx="50" cy="50" r="46" fill="${fl}"/>`,
+    escudo:  `<path d="M50 4 L90 16 V48 C90 72 72 88 50 96 C28 88 10 72 10 48 V16 Z" fill="${fl}"/>`,
+    hoja:    `<path d="M50 4 C82 18 96 44 88 70 C80 92 58 98 50 96 C42 98 20 92 12 70 C4 44 18 18 50 4 Z" fill="${fl}"/>`,
+    rombo:   `<path d="M50 3 L97 50 L50 97 L3 50 Z" fill="${fl}"/>`,
+    sello:   `<circle cx="50" cy="50" r="47" fill="none" stroke="${fl}" stroke-width="3"/><circle cx="50" cy="50" r="40" fill="${fl}"/>`,
+  };
+  const fs = ini.length > 1 ? 36 : 44;
+  return `<svg class="${cls || 'ph-mono'}" viewBox="0 0 100 100" aria-hidden="true">${formas[f]}`
+    + `<text x="50" y="50" text-anchor="middle" dominant-baseline="central" font-family="'DM Serif Display',Georgia,serif" font-size="${fs}" fill="${ik}">${esc(ini)}</text></svg>`;
+}
+
 function _buildDocHeader(theme, S, color, contacts, badgeLabel, badgeDate, showPlaceholder) {
+  const monoHTML = S.logo ? '' : _monoSVG(S.pdfMono, S.coName, color, '#ffffff');
   const logoHTML = S.logo
     ? `<img src="${safeImgSrc(S.logo)}" class="ph-logo" alt="Logo">`
-    : (showPlaceholder
+    : monoHTML ? monoHTML : (showPlaceholder
       ? `<div style="width:60px;height:60px;background:#f8faf9;border:1px dashed #cbd5e1;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:8pt;color:#94a3b8">LOGO</div>`
       : ``);
   const contactsHTML = contacts.map(c => `<span class="ph-contact">${c}</span>`).join('');
@@ -19256,9 +19833,12 @@ function _buildDocHeader(theme, S, color, contacts, badgeLabel, badgeDate, showP
     // bien sobre el color) o, si no hay logo, la inicial del emisor en blanco.
     const dateHTML = badgeDate ? `<div class="ph-badge-date" style="color:rgba(255,255,255,.7)">${badgeDate}</div>` : '';
     const initial  = esc(((S.coName || 'P').trim().charAt(0) || 'P').toUpperCase());
+    // Con monograma elegido, va en la banda invertido (forma blanca, letras del
+    // color) en lugar de la inicial suelta.
+    const bandMono = _monoSVG(S.pdfMono, S.coName, '#ffffff', color, 'ph-band-mono');
     const bandInner = S.logo
       ? `<img src="${safeImgSrc(S.logo)}" class="ph-band-logo" alt="Logo">`
-      : `<span class="ph-band-initial">${initial}</span>`;
+      : (bandMono || `<span class="ph-band-initial">${initial}</span>`);
     return `
     <div class="ph">
       <div class="ph-band" style="background:${color}">${bandInner}</div>
@@ -19540,7 +20120,7 @@ function buildDoc() {
   // position:fixed, que no se renderiza correctamente en muchos navegadores
   // móviles). El <tbody> tiene el resto del contenido del presupuesto.
   doc.innerHTML = `
-    <table class="pdoc pdoc-theme-${theme}${S.pdfCompact ? ' pdoc-compact' : ''}${S.pdfFont && S.pdfFont!=='auto' ? ' pdoc-font-'+S.pdfFont : ''}" style="--pdoc-accent:${color}">
+    <table ${_pdocAttrs(theme, color)}>
       <thead>
         <tr><td>
           ${_buildDocHeader(theme, S, color, contacts, (_docTrabajo && _docTrabajo.badge) || 'Presupuesto N°', null, false)}
@@ -19798,7 +20378,7 @@ function buildRiskDoc() {
   // Wrapper-table pattern (ver buildDoc): el <thead> con el header se repite
   // nativamente en cada página impresa. <tbody> tiene el resto del informe.
   doc.innerHTML = _numerar(`
-    <table class="pdoc pdoc-theme-${theme}${S.pdfCompact ? ' pdoc-compact' : ''}${S.pdfFont && S.pdfFont!=='auto' ? ' pdoc-font-'+S.pdfFont : ''}" style="--pdoc-accent:${color}">
+    <table ${_pdocAttrs(theme, color)}>
       <thead>
         <tr><td>
           <!-- ══ ENCABEZADO ══ -->
@@ -20029,7 +20609,7 @@ function buildEstDoc() {
   // Wrapper-table pattern (ver buildDoc): el <thead> con el header se repite
   // nativamente en cada página impresa. <tbody> tiene el resto del documento.
   doc.innerHTML = `
-    <table class="pdoc pdoc-theme-${theme}${S.pdfCompact ? ' pdoc-compact' : ''}${S.pdfFont && S.pdfFont!=='auto' ? ' pdoc-font-'+S.pdfFont : ''}" style="--pdoc-accent:${color}">
+    <table ${_pdocAttrs(theme, color)}>
       <thead>
         <tr><td>
           ${_buildDocHeader(theme, S, color, contacts, 'Presupuesto Estimativo N°', `Fecha: ${fmtD(S.dateIssue)}`, true)}
@@ -20162,7 +20742,7 @@ function buildReciboDoc(r) {
   const theme = S.pdfTheme || 'clasico';
   const doc = document.getElementById('doc-a4'); if(!doc) return;
   doc.innerHTML = `
-    <table class="pdoc pdoc-theme-${theme}${S.pdfCompact ? ' pdoc-compact' : ''}${S.pdfFont && S.pdfFont!=='auto' ? ' pdoc-font-'+S.pdfFont : ''}" style="--pdoc-accent:${color}">
+    <table ${_pdocAttrs(theme, color)}>
       <thead>
         <tr><td>
           ${_buildDocHeader(theme, S, color, contacts, 'Recibo N°', null, false)}
@@ -24386,6 +24966,7 @@ const NAV_OVERLAYS = {
   'note-edit-overlay':    () => calCloseNoteEdit(),
   'clima-overlay':        () => closeClimaDetail(),
   'nv-overlay':           () => nvClose(),
+  'estilo-overlay':       () => estiloCerrar(),
   'colab-overlay':        () => colabClose(),
   'agenda-overlay':       () => closeAgendaDlg(),
   'phrases-overlay':      () => closePhrasesModal(),
@@ -24507,7 +25088,8 @@ function navSalirInit() {
 // nunca sobre campos ni sobre las tiras que se arrastran de costado. Se cierra
 // con la misma función que la ✕ (NAV_OVERLAYS), así "Atrás" queda en orden.
 const NAV_HOJAS = ['clima-overlay', 'notif-overlay', 'notes-overlay', 'day-alert-overlay',
-  'phrases-overlay', 'moverlay', 'agenda-overlay', 'note-edit-overlay', 'nv-overlay', 'colab-overlay'];
+  'phrases-overlay', 'moverlay', 'agenda-overlay', 'note-edit-overlay', 'nv-overlay', 'colab-overlay',
+  'estilo-overlay'];
 const NAV_HOJA_BLOCK = 'input,textarea,select,[contenteditable="true"],.agenda-clima-strip,' +
   '.csel-pop,.cal-pop,.cpk-sv,.cpk-hue,.agc-swipe,[draggable="true"]';
 const NAV_HOJA_UMBRAL = 110;
