@@ -408,7 +408,7 @@ const RESET = `
         nvSetPct(20);
         const viejo = document.getElementById('nv-prev-old').textContent;
         const nuevo = document.getElementById('nv-prev-new').textContent;
-        const chipOn = document.querySelectorAll('.nv-chip.is-active').length;
+        const chipOn = document.querySelectorAll('#nv-chips .nv-chip.is-active').length;
         nvConfirm();
         const cerrado = !document.getElementById('nv-overlay').classList.contains('open');
         return {
