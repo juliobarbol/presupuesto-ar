@@ -52,6 +52,9 @@ async function nuevaPagina(browser, antesDeCargar) {
       localStorage.clear();
       localStorage.setItem('pq_onboarded', '1');
       localStorage.setItem('pq_last_backup', '2099-01-01');
+      // La oferta única de estilo propio (v244) usa la misma cola de avisos;
+      // acá no es lo que se prueba.
+      localStorage.setItem('pq_estilo_oferta', '1');
       if (pre) Object.keys(pre).forEach(k => localStorage.setItem(k, pre[k]));
     } catch (_) {}
   }, antesDeCargar || null);
