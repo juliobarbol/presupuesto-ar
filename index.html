@@ -2362,8 +2362,8 @@ input[type=number]{-moz-appearance:textfield}
 #estilo-overlay.open{display:flex}
 #estilo-box{background:var(--card);border-radius:var(--radius-box);padding:22px;width:420px;max-width:92vw;max-height:92vh;overflow-y:auto;overscroll-behavior:contain;box-shadow:0 20px 60px rgba(0,0,0,.25)}
 #estilo-box h4{font-family:var(--font-display);font-size:17px;margin-bottom:4px;color:var(--text)}
-.estilo-reels{display:grid;gap:5px}
-.estilo-reel{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 11px;border:1px solid var(--border);border-radius:var(--radius-field);background:var(--surface-2);font-size:13px;min-width:0}
+.estilo-reels{display:grid;gap:4px}
+.estilo-reel{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:6px 11px;border:1px solid var(--border);border-radius:var(--radius-field);background:var(--surface-2);font-size:13px;min-width:0}
 .estilo-reel-l{color:var(--muted);flex:none}
 .estilo-reel-v{font-weight:700;color:var(--muted);display:flex;align-items:center;gap:6px;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 .estilo-reel.listo .estilo-reel-v{color:var(--accent-fg)}
@@ -3464,11 +3464,128 @@ input[type=number]{-moz-appearance:textfield}
 .pdoc.pdoc-det .ptotal-box,
 .pdoc.pdoc-det .pfoot,
 .pdoc.pdoc-det .prisk-section-divider { border-color: var(--pdoc-det) !important; }
-.pdoc.pdoc-det .pobs-txt { border-color: color-mix(in srgb, var(--pdoc-det) 45%, #fff) !important; }
+.pdoc.pdoc-det .pobs-txt { border-color: var(--pdoc-det-soft) !important; }
 .pdoc.pdoc-det .pplan-box,
 .pdoc.pdoc-det .pest-header-bar { border-left-color: var(--pdoc-det) !important; }
 .pdoc.pdoc-det .pplan-list li::before { color: var(--pdoc-det); opacity: 1; }
 .pdoc.pdoc-det.pdoc-theme-minimalista .ph-badge { border-left-color: var(--pdoc-det) !important; }
+
+/* ══ ELEMENTOS DEL DOCUMENTO (v245) ══════════════════════════════════════════
+   Encabezado, títulos de sección, tabla, total y pie: cada uno es una clase
+   pdoc-<eje>-<valor> sobre la tabla (_pdocAttrs), ortogonal al tema, y solo
+   existe si el usuario eligió algo distinto de "Según diseño". Los temas pintan
+   colores y bordes con style inline, por eso los !important. Los tonos claros
+   (--pdoc-tint1/2, --pdoc-line) vienen calculados de _pdocAttrs. */
+
+/* Encabezado centrado */
+.pdoc.pdoc-hd-centrado .ph { flex-direction: column; align-items: center; text-align: center; gap: 8px; }
+.pdoc.pdoc-hd-centrado .ph-contacts { justify-content: center; }
+.pdoc.pdoc-hd-centrado .ph-badge { position: static !important; align-self: center !important; text-align: center !important; margin: 0 !important; border-left: none !important; padding-left: 0 !important; }
+/* Encabezado en banda de color */
+.pdoc.pdoc-hd-banda .ph { background: var(--pdoc-accent) !important; border: none !important; }
+.pdoc.pdoc-det.pdoc-hd-banda .ph { box-shadow: inset 0 -3pt 0 var(--pdoc-det); }
+.pdoc.pdoc-hd-banda .ph-name,
+.pdoc.pdoc-hd-banda .ph-sub,
+.pdoc.pdoc-hd-banda .ph-contact,
+.pdoc.pdoc-hd-banda .ph-badge-lbl,
+.pdoc.pdoc-hd-banda .ph-badge-num,
+.pdoc.pdoc-hd-banda .ph-badge-date { color: #fff !important; }
+.pdoc.pdoc-hd-banda .ph-sub,
+.pdoc.pdoc-hd-banda .ph-contact,
+.pdoc.pdoc-hd-banda .ph-badge-lbl,
+.pdoc.pdoc-hd-banda .ph-badge-date { opacity: .85; }
+.pdoc.pdoc-hd-banda .ph-badge { background: rgba(255,255,255,.14) !important; border: none !important; padding: 6pt 9pt !important; border-radius: var(--r-sm); }
+.pdoc.pdoc-hd-banda .ph-logo { background: #fff; padding: 4px; border-radius: 4px; }
+
+/* Títulos de sección */
+.pdoc.pdoc-tit-subrayado .psec-t,
+.pdoc.pdoc-tit-subrayado .pobs-t,
+.pdoc.pdoc-tit-subrayado .pcond-t,
+.pdoc.pdoc-tit-subrayado .pcrit-t,
+.pdoc.pdoc-tit-subrayado .pnotes-t,
+.pdoc.pdoc-tit-subrayado .pplan-t,
+.pdoc.pdoc-tit-subrayado .pdispo-t,
+.pdoc.pdoc-tit-subrayado .pest-factors-t,
+.pdoc.pdoc-tit-subrayado .pest-services-t,
+.pdoc.pdoc-tit-subrayado .pphotos-t { color: var(--pdoc-accent) !important; border: none !important; border-bottom: 1.25pt solid var(--pdoc-det, var(--pdoc-accent)) !important; padding-bottom: 4px !important; }
+.pdoc.pdoc-tit-pildora .psec-t,
+.pdoc.pdoc-tit-pildora .pobs-t,
+.pdoc.pdoc-tit-pildora .pcond-t,
+.pdoc.pdoc-tit-pildora .pcrit-t,
+.pdoc.pdoc-tit-pildora .pnotes-t,
+.pdoc.pdoc-tit-pildora .pplan-t,
+.pdoc.pdoc-tit-pildora .pdispo-t,
+.pdoc.pdoc-tit-pildora .pest-factors-t,
+.pdoc.pdoc-tit-pildora .pest-services-t,
+.pdoc.pdoc-tit-pildora .pphotos-t { display: inline-block; background: var(--pdoc-accent) !important; color: #fff !important; border: none !important; padding: 3pt 11pt !important; border-radius: 999px; }
+.pdoc.pdoc-tit-pildora .psec-t span,
+.pdoc.pdoc-tit-pildora .pobs-t span,
+.pdoc.pdoc-tit-pildora .pcond-t span,
+.pdoc.pdoc-tit-pildora .pcrit-t span,
+.pdoc.pdoc-tit-pildora .pnotes-t span,
+.pdoc.pdoc-tit-pildora .pplan-t span,
+.pdoc.pdoc-tit-pildora .pdispo-t span,
+.pdoc.pdoc-tit-pildora .pest-factors-t span,
+.pdoc.pdoc-tit-pildora .pest-services-t span,
+.pdoc.pdoc-tit-pildora .pphotos-t span { color: #fff !important; }
+.pdoc.pdoc-tit-numerado { counter-reset: pqsec; }
+.pdoc.pdoc-tit-numerado .psec-t::before,
+.pdoc.pdoc-tit-numerado .pobs-t::before,
+.pdoc.pdoc-tit-numerado .pcond-t::before,
+.pdoc.pdoc-tit-numerado .pcrit-t::before,
+.pdoc.pdoc-tit-numerado .pnotes-t::before,
+.pdoc.pdoc-tit-numerado .pplan-t::before,
+.pdoc.pdoc-tit-numerado .pdispo-t::before,
+.pdoc.pdoc-tit-numerado .pest-factors-t::before,
+.pdoc.pdoc-tit-numerado .pest-services-t::before,
+.pdoc.pdoc-tit-numerado .pphotos-t::before { counter-increment: pqsec; content: counter(pqsec, decimal-leading-zero); color: var(--pdoc-det, var(--pdoc-accent)); font-weight: 700; margin-right: 7pt; }
+.pdoc.pdoc-tit-costado .psec-t,
+.pdoc.pdoc-tit-costado .pobs-t,
+.pdoc.pdoc-tit-costado .pcond-t,
+.pdoc.pdoc-tit-costado .pcrit-t,
+.pdoc.pdoc-tit-costado .pnotes-t,
+.pdoc.pdoc-tit-costado .pplan-t,
+.pdoc.pdoc-tit-costado .pdispo-t,
+.pdoc.pdoc-tit-costado .pest-factors-t,
+.pdoc.pdoc-tit-costado .pest-services-t,
+.pdoc.pdoc-tit-costado .pphotos-t { color: var(--pdoc-accent) !important; border: none !important; border-left: 3pt solid var(--pdoc-det, var(--pdoc-accent)) !important; padding: 1pt 0 1pt 7pt !important; }
+.pdoc.pdoc-tit-versalitas .psec-t,
+.pdoc.pdoc-tit-versalitas .pobs-t,
+.pdoc.pdoc-tit-versalitas .pcond-t,
+.pdoc.pdoc-tit-versalitas .pcrit-t,
+.pdoc.pdoc-tit-versalitas .pnotes-t,
+.pdoc.pdoc-tit-versalitas .pplan-t,
+.pdoc.pdoc-tit-versalitas .pdispo-t,
+.pdoc.pdoc-tit-versalitas .pest-factors-t,
+.pdoc.pdoc-tit-versalitas .pest-services-t,
+.pdoc.pdoc-tit-versalitas .pphotos-t { text-transform: uppercase; letter-spacing: .16em !important; font-size: 8pt !important; font-weight: 700; color: var(--pdoc-accent) !important; border: none !important; border-bottom: .75pt solid var(--pdoc-det, var(--pdoc-accent)) !important; padding-bottom: 3pt !important; }
+
+/* Tabla de trabajos */
+.pdoc.pdoc-tb-lineas .ptable thead th { background: transparent !important; border-bottom: 1.5pt solid var(--pdoc-accent) !important; }
+.pdoc.pdoc-tb-lineas .ptable tbody tr td { background: transparent !important; }
+.pdoc.pdoc-tb-cebra .ptable thead th { background: var(--pdoc-accent) !important; color: #fff !important; border-bottom: none !important; }
+.pdoc.pdoc-tb-cebra .ptable tbody td { border-bottom: none !important; background: #fff !important; }
+.pdoc.pdoc-tb-cebra .ptable tbody tr:nth-child(even) td { background: var(--pdoc-tint1) !important; }
+.pdoc.pdoc-tb-grilla .ptable th,
+.pdoc.pdoc-tb-grilla .ptable td { border: .75pt solid var(--pdoc-line) !important; }
+.pdoc.pdoc-tb-grilla .ptable thead th { background: var(--pdoc-tint2) !important; color: var(--pdoc-accent) !important; }
+.pdoc.pdoc-tb-grilla .ptable tbody tr td { background: #fff !important; }
+
+/* Total */
+.pdoc.pdoc-to-banda .ptotals { align-items: stretch; }
+.pdoc.pdoc-to-banda .ptotal-box { background: var(--pdoc-accent) !important; border: none !important; border-radius: var(--r-sm); display: flex; justify-content: space-between; align-items: baseline; gap: 16px; }
+.pdoc.pdoc-to-banda .ptotal-lbl,
+.pdoc.pdoc-to-banda .ptotal-amt { color: #fff !important; opacity: 1; }
+.pdoc.pdoc-to-grande .ptotal-box { background: transparent !important; border: none !important; border-top: 2pt solid var(--pdoc-det, var(--pdoc-accent)) !important; border-radius: 0; text-align: right; padding: 8px 0 0 !important; }
+.pdoc.pdoc-to-grande .ptotal-amt { font-size: 34pt; }
+
+/* Pie (_pieDoc) */
+.pdoc .pfoot.pfoot-franja { background: var(--pdoc-accent); border: none !important; gap: 12px; }
+.pdoc .pfoot.pfoot-franja .pfoot-l,
+.pdoc .pfoot.pfoot-franja .pfoot-r { color: #fff !important; }
+.pdoc .pfoot.pfoot-franja .pfoot-r { opacity: .9; text-align: right; }
+.pdoc .pfoot.pfoot-eslogan { flex-direction: column; align-items: center; text-align: center; gap: 3px; }
+.pdoc .pfoot-esl { font-family: 'DM Serif Display', Georgia, serif; font-style: italic; font-size: 12pt; line-height: 1.25; }
 
 /* ──────────────────────────────────────────────────────────────────────────
    SELECTOR DE TIPOGRAFÍA (S.pdfFont) — ORTOGONAL al tema.
@@ -4891,6 +5008,19 @@ input[type=number]{-moz-appearance:textfield}
         <div class="font-presets" id="mono-presets" role="group" aria-label="Monograma"></div>
         <p class="hint" id="mono-hint" style="margin-bottom:16px">Una marca con las iniciales de tu negocio en el encabezado, para cuando no tenés logo.</p>
 
+        <!-- Elementos del documento (v245): se combinan con cualquier diseño.
+             Los chips los arma estiloUISync desde ESTILO_ELEMENTOS. -->
+        <div class="st">Elementos del documento</div>
+        <p class="hint" style="margin-bottom:12px">Se combinan con cualquier diseño. «Según diseño» deja lo que trae el diseño elegido.</p>
+        <div class="fg"><label>Encabezado</label><div class="nv-chips" id="el-pdfEncabezado" role="group" aria-label="Encabezado"></div><div class="hint" id="el-hint-pdfEncabezado"></div></div>
+        <div class="fg"><label>Títulos de sección</label><div class="nv-chips" id="el-pdfTitulos" role="group" aria-label="Títulos de sección"></div><div class="hint" id="el-hint-pdfTitulos"></div></div>
+        <div class="fg"><label>Tabla de trabajos</label><div class="nv-chips" id="el-pdfTabla" role="group" aria-label="Tabla de trabajos"></div><div class="hint" id="el-hint-pdfTabla"></div></div>
+        <div class="fg"><label>Total</label><div class="nv-chips" id="el-pdfTotal" role="group" aria-label="Total"></div><div class="hint" id="el-hint-pdfTotal"></div></div>
+        <div class="fg"><label>Pie del documento</label><div class="nv-chips" id="el-pdfPie" role="group" aria-label="Pie del documento"></div><div class="hint" id="el-hint-pdfPie"></div></div>
+        <div class="fg" style="margin-bottom:16px"><label for="co-eslogan">Eslogan</label>
+          <input type="text" id="co-eslogan" maxlength="120" placeholder="Ej: Más de 15 años trabajando en altura en Zona Norte" oninput="estiloEsloganInput()">
+          <div class="hint">Una frase corta que te identifique. Sale en el pie «Con eslogan».</div></div>
+
         <div class="st">Numeración</div>
         <div class="r2">
           <div class="fg"><label>Prefijo</label><input type="text" id="num-prefix" value="2026-" oninput="updateNumPreview()"></div>
@@ -5973,7 +6103,12 @@ const DEF = {
   // al principal) y monograma con las iniciales del negocio para quien no tiene
   // logo ('ninguno' o una forma de PDF_MONOS). Config del negocio: van en
   // CFG_GLOBAL_FIELDS. Ver estiloAzar.
-  accentColor2:'', pdfMono:'ninguno', pushEnabled:false, validityDays:30, showExpiry:true,
+  accentColor2:'', pdfMono:'ninguno',
+  // Estilo propio, Etapa 2 (v245): elementos del documento que se combinan con
+  // cualquier tema. 'auto' = lo que trae el diseño elegido (como siempre).
+  // Listas blancas PDF_ENCABEZADOS/PDF_TITULOS/PDF_TABLAS/PDF_TOTALES/PDF_PIES.
+  // coEslogan es la frase propia que sale en el pie "Con eslogan".
+  pdfEncabezado:'auto', pdfTitulos:'auto', pdfTabla:'auto', pdfTotal:'auto', pdfPie:'auto', coEslogan:'', pushEnabled:false, validityDays:30, showExpiry:true,
   numPrefix:'2026-', numNext:1,
   // Estimative mode
   isEstimative: false,
@@ -6095,6 +6230,7 @@ const CFG_GLOBAL_FIELDS = [
   'coAliasPago','coAliasTitular','coCbu','coBanco','coTechNotes','coFooter','logo',
   // Diseño del documento y de la app
   'accentColor','accentColor2','pdfMono','customColors','pdfTheme','pdfCompact','pdfFont','themeMode',
+  'pdfEncabezado','pdfTitulos','pdfTabla','pdfTotal','pdfPie','coEslogan',
   'vistaEditor',
   // Textos editables del PDF (Empresa → Textos del PDF)
   'docTitle','docTitleEst','docTitleRisk','docEstBanner','docDisclaimer',
@@ -8517,6 +8653,12 @@ const PDF_FONTS  = ['auto','dm','plex','lora-inter','inter'];
 // Monograma del encabezado (v244): forma que se dibuja con las iniciales del
 // negocio cuando no hay logo. Se interpola en una clase y en el SVG.
 const PDF_MONOS  = ['ninguno','circulo','escudo','hoja','rombo','sello'];
+// Elementos del documento (v245). Todos se interpolan en clases de la tabla.
+const PDF_ENCABEZADOS = ['auto','centrado','banda'];
+const PDF_TITULOS     = ['auto','subrayado','pildora','numerado','costado','versalitas'];
+const PDF_TABLAS      = ['auto','lineas','cebra','grilla'];
+const PDF_TOTALES     = ['auto','banda','grande'];
+const PDF_PIES        = ['auto','franja','eslogan'];
 // Color de detalle: '' (= igual al principal) o un hex. Nunca el fallback de
 // safeColor: un valor basura tiene que volver a "sin color de detalle", no
 // pintar los detalles de verde.
@@ -8666,6 +8808,12 @@ function sanitizeStateObj(raw) {
   s.pdfFont  = sanEnum(raw.pdfFont,  PDF_FONTS,  'auto');
   s.pdfMono  = sanEnum(raw.pdfMono,  PDF_MONOS,  'ninguno');
   s.accentColor2 = sanColor2(raw.accentColor2);
+  s.pdfEncabezado = sanEnum(raw.pdfEncabezado, PDF_ENCABEZADOS, 'auto');
+  s.pdfTitulos    = sanEnum(raw.pdfTitulos,    PDF_TITULOS,     'auto');
+  s.pdfTabla      = sanEnum(raw.pdfTabla,      PDF_TABLAS,      'auto');
+  s.pdfTotal      = sanEnum(raw.pdfTotal,      PDF_TOTALES,     'auto');
+  s.pdfPie        = sanEnum(raw.pdfPie,        PDF_PIES,        'auto');
+  s.coEslogan     = sanStr(raw.coEslogan, 120);
   s.vistaEditor = sanEnum(raw.vistaEditor, EDITOR_VIEWS, 'clasica');
   s.rubro = sanEnum(raw.rubro, RUBROS, 'arbolado');
   s.accentColor = (typeof safeColor === 'function') ? safeColor(raw.accentColor) : '#064e3b';
@@ -8993,8 +9141,12 @@ function migrateSanitizeStored() {
   const vista = sanEnum(S.vistaEditor, EDITOR_VIEWS, 'clasica');
   const mono = sanEnum(S.pdfMono, PDF_MONOS, 'ninguno');
   const color2 = sanColor2(S.accentColor2);
+  // Elementos del documento (v245): cada uno a su lista blanca.
+  const elems = { pdfEncabezado: PDF_ENCABEZADOS, pdfTitulos: PDF_TITULOS, pdfTabla: PDF_TABLAS, pdfTotal: PDF_TOTALES, pdfPie: PDF_PIES };
+  let elemMal = false;
+  Object.keys(elems).forEach(k => { const v = sanEnum(S[k], elems[k], 'auto'); if (v !== S[k]) { S[k] = v; elemMal = true; } });
   if (tema !== S.pdfTheme || fuente !== S.pdfFont || color !== S.accentColor || vista !== S.vistaEditor
-      || mono !== S.pdfMono || color2 !== S.accentColor2) {
+      || mono !== S.pdfMono || color2 !== S.accentColor2 || elemMal) {
     S.pdfTheme = tema; S.pdfFont = fuente; S.accentColor = color; S.vistaEditor = vista;
     S.pdfMono = mono; S.accentColor2 = color2;
     arreglados++;
@@ -12072,6 +12224,7 @@ function restoreUI() {
   sv('co-banco', S.coBanco);
   sv('co-tech-notes', S.coTechNotes);
   sv('co-footer', S.coFooter);
+  sv('co-eslogan', S.coEslogan || '');
   sc('show-tech-notes', S.showTechNotes);
   sc('show-footer', S.showFooter);
   sv('validity-days', S.validityDays);
@@ -12202,6 +12355,7 @@ function syncFromUI() {
   S.coBanco           = gv('co-banco');
   S.coTechNotes       = gv('co-tech-notes');
   S.coFooter          = gv('co-footer');
+  if (document.getElementById('co-eslogan')) S.coEslogan = gv('co-eslogan').slice(0, 120);
   S.showTechNotes     = gc('show-tech-notes');
   S.showFooter        = gc('show-footer');
   const di = gv('date-issue'); if (di) S.dateIssue = di;
@@ -13444,7 +13598,24 @@ const ESTILO_TEMA_LBL = { clasico:'Clásico', profesional:'Profesional', calido:
   lateral:'Lateral', tecnico:'Técnico', elegante:'Elegante' };
 const ESTILO_FUENTE_LBL = { auto:'Según diseño', dm:'Clásico', plex:'IBM Plex', 'lora-inter':'Lora + Inter', inter:'Inter' };
 const ESTILO_MONO_LBL = { ninguno:'Sin monograma', circulo:'Círculo', escudo:'Escudo', hoja:'Hoja', rombo:'Rombo', sello:'Sello' };
-const ESTILO_CAMPOS = ['pdfTheme','accentColor','accentColor2','pdfFont','pdfMono'];
+// Elementos del documento (v245): un eje por fila de chips en Estilo. `fuerte`
+// marca las opciones que cargan la hoja de color; la máquina combina como
+// mucho ESTILO_MAX_FUERTES para que el documento no salga recargado.
+const ESTILO_ELEMENTOS = [
+  { k:'pdfEncabezado', titulo:'Encabezado', opts:PDF_ENCABEZADOS, fuerte:['banda'],
+    lbl:{ auto:'Según diseño', centrado:'Centrado', banda:'Banda de color' } },
+  { k:'pdfTitulos', titulo:'Títulos', opts:PDF_TITULOS, fuerte:['pildora'],
+    lbl:{ auto:'Según diseño', subrayado:'Subrayado', pildora:'Píldora', numerado:'Numerados', costado:'Línea al costado', versalitas:'Versalitas' } },
+  { k:'pdfTabla', titulo:'Tabla', opts:PDF_TABLAS, fuerte:['cebra'],
+    lbl:{ auto:'Según diseño', lineas:'Solo líneas', cebra:'Filas alternadas', grilla:'Con bordes' } },
+  { k:'pdfTotal', titulo:'Total', opts:PDF_TOTALES, fuerte:['banda'],
+    lbl:{ auto:'Según diseño', banda:'En banda', grande:'Número grande' } },
+  { k:'pdfPie', titulo:'Pie', opts:PDF_PIES, fuerte:['franja'],
+    lbl:{ auto:'Según diseño', franja:'Franja con contacto', eslogan:'Con eslogan' } },
+];
+const ESTILO_MAX_FUERTES = 2;
+const ESTILO_CAMPOS = ['pdfTheme','accentColor','accentColor2','pdfFont','pdfMono']
+  .concat(ESTILO_ELEMENTOS.map(e => e.k));
 
 // ¿El diseño es el de fábrica? (lo que tiene cualquiera que nunca entró a Estilo)
 function estiloEsDeFabrica(s) {
@@ -13453,7 +13624,8 @@ function estiloEsDeFabrica(s) {
     && String(s.accentColor || '#064e3b').toLowerCase() === '#064e3b'
     && (s.pdfFont || 'auto') === 'auto'
     && !s.accentColor2
-    && (s.pdfMono || 'ninguno') === 'ninguno';
+    && (s.pdfMono || 'ninguno') === 'ninguno'
+    && ESTILO_ELEMENTOS.every(e => (s[e.k] || 'auto') === 'auto');
 }
 
 // Un texto es "de fábrica" si coincide exacto con el de algún juego. Vacío no
@@ -13552,6 +13724,19 @@ function applyPdfMono(m) {
   estiloUISync(false);
   sched();
 }
+function applyElemento(k, v) {
+  const e = ESTILO_ELEMENTOS.find(x => x.k === k);
+  if (!e) return;
+  S[k] = sanEnum(v, e.opts, 'auto');
+  estiloUISync(false);
+  sched();
+}
+// El aviso "sin eslogan sale el pie de siempre" depende de lo que se escribe.
+function estiloEsloganInput() {
+  S.coEslogan = gv('co-eslogan').slice(0, 120);
+  estiloUISync(false);
+  sched();
+}
 
 // Repinta todo lo de Estilo que depende de estos campos. `todo` además
 // reposiciona los controles que ya existían (tema, color, tipografía) y los
@@ -13594,6 +13779,21 @@ function estiloUISync(todo) {
     ? 'Tenés un logo cargado: el documento usa el logo. El monograma sale si lo quitás.'
     : (S.coName ? 'Una marca con las iniciales de tu negocio en el encabezado, para cuando no tenés logo.'
                 : 'Una marca con las iniciales de tu negocio. Cargá el nombre en Mi negocio para verla.');
+  ESTILO_ELEMENTOS.forEach(e => {
+    const host = document.getElementById('el-' + e.k);
+    if (!host) return;
+    const act = sanEnum(S[e.k], e.opts, 'auto');
+    host.innerHTML = e.opts.map(o => `<button type="button" class="nv-chip${o === act ? ' is-active' : ''}" data-el="${o}" aria-pressed="${o === act}">${esc(e.lbl[o])}</button>`).join('');
+    host.querySelectorAll('[data-el]').forEach(b => { b.onclick = () => applyElemento(e.k, b.dataset.el); });
+  });
+  const pista = (k, txt) => { const h = document.getElementById('el-hint-' + k); if (h) { h.textContent = txt; h.hidden = !txt; } };
+  pista('pdfEncabezado', S.pdfTheme === 'lateral' && S.pdfEncabezado !== 'auto'
+    ? 'El diseño Lateral tiene su propio encabezado: esta opción se aplica con los otros diseños.' : '');
+  pista('pdfTitulos', S.pdfTitulos === 'numerado' ? 'El informe de riesgo ya numera sus secciones: ahí salen como siempre.' : '');
+  pista('pdfTabla', '');
+  pista('pdfTotal', '');
+  pista('pdfPie', S.pdfPie === 'eslogan' && !(S.coEslogan || '').trim() ? 'Escribí tu eslogan acá abajo; mientras tanto sale el pie de siempre.'
+    : (S.pdfPie !== 'auto' && S.showFooter === false ? 'El pie está apagado en Textos del PDF → Visibilidad.' : ''));
   const fab = document.getElementById('estilo-fabrica');
   if (fab) fab.hidden = !estiloEsDeFabrica();
   textosJuegosSync();
@@ -13611,8 +13811,23 @@ function estiloSortear(conTextos) {
     pdfFont:      _azar(PDF_FONTS),
     pdfMono:      _azar(PDF_MONOS.filter(m => m !== 'ninguno')),
   };
+  // Elementos: al azar, con a lo sumo ESTILO_MAX_FUERTES de los que cargan
+  // color. El tema Lateral trae su encabezado, y el pie con eslogan solo si
+  // hay una frase escrita.
+  for (let i = 0; i < 50; i++) {
+    ESTILO_ELEMENTOS.forEach(e => {
+      let opts = e.opts;
+      if (e.k === 'pdfEncabezado' && r.pdfTheme === 'lateral') opts = ['auto'];
+      if (e.k === 'pdfPie' && !(S.coEslogan || '').trim()) opts = opts.filter(o => o !== 'eslogan');
+      r[e.k] = _azar(opts);
+    });
+    if (estiloFuertes(r) <= ESTILO_MAX_FUERTES) break;
+  }
   if (conTextos) r.juego = _azar(TEXTOS_JUEGOS_AZAR);
   return r;
+}
+function estiloFuertes(r) {
+  return ESTILO_ELEMENTOS.filter(e => e.fuerte.includes(r[e.k])).length;
 }
 function _estiloAplicar(r) {
   ESTILO_CAMPOS.forEach(k => { if (k in r) S[k] = r[k]; });
@@ -13621,6 +13836,8 @@ function _estiloAplicar(r) {
   sched();
 }
 
+// Los rodillos frenan de a uno cada ESTILO_REEL_PASO ms (11 rodillos: < 2 s).
+const ESTILO_REEL_PASO = 130;
 let _estiloPrevio = null;
 let _estiloTimers = [];
 const _ESTILO_REELS = [
@@ -13629,6 +13846,7 @@ const _ESTILO_REELS = [
   ['accentColor2', 'Detalle',    () => ESTILO_DETALLES.map(c => c[1])],
   ['pdfFont',      'Tipografía', () => PDF_FONTS.map(f => ESTILO_FUENTE_LBL[f])],
   ['pdfMono',      'Monograma',  () => PDF_MONOS.map(m => ESTILO_MONO_LBL[m])],
+  ...ESTILO_ELEMENTOS.map(e => [e.k, e.titulo, () => e.opts.map(o => e.lbl[o])]),
   ['textos',       'Textos',     () => Object.keys(TEXTOS_JUEGOS).map(k => TEXTOS_JUEGOS[k].label)],
 ];
 function _estiloValorReel(k) {
@@ -13645,6 +13863,8 @@ function _estiloValorReel(k) {
   }
   if (k === 'pdfFont') return esc(ESTILO_FUENTE_LBL[S.pdfFont || 'auto'] || S.pdfFont);
   if (k === 'pdfMono') return esc(ESTILO_MONO_LBL[S.pdfMono || 'ninguno']) + (S.logo ? ' (usás tu logo)' : '');
+  const el = ESTILO_ELEMENTOS.find(e => e.k === k);
+  if (el) return esc(el.lbl[sanEnum(S[k], el.opts, 'auto')]);
   const j = textosJuegoActual();
   return j ? esc(TEXTOS_JUEGOS[j].label) : 'Los tuyos';
 }
@@ -13670,7 +13890,7 @@ function _estiloReels(animar) {
       clearInterval(t);
       v.innerHTML = _estiloValorReel(k);
       row.classList.add('listo');
-    }, 420 + i * 200);
+    }, 420 + i * ESTILO_REEL_PASO);
   });
 }
 
@@ -13698,7 +13918,7 @@ function estiloTirar() {
   _estiloAplicar(r);
   _estiloReels(true);
   const tit = document.getElementById('estilo-title');
-  if (tit) setTimeout(() => { tit.textContent = 'Tu estilo'; }, 420 + _ESTILO_REELS.length * 200);
+  if (tit) setTimeout(() => { tit.textContent = 'Tu estilo'; }, 420 + _ESTILO_REELS.length * ESTILO_REEL_PASO);
 }
 // Tildar = sortear un juego para los textos de fábrica; destildar = volver a
 // los textos que había al abrir.
@@ -19742,11 +19962,30 @@ function _buildSceneBlockHTML(arr, label, color, cur, includeDisc) {
 // él el documento sale exactamente como antes.
 function _pdocAttrs(theme, color) {
   const det = sanColor2(S.accentColor2);
+  // Elementos del documento (v245): cada uno es una clase pdoc-<eje>-<valor>,
+  // solo si no es 'auto'. Dos excepciones: el tema Lateral ya tiene su propio
+  // encabezado (banda vertical), y el informe de riesgo ya numera sus
+  // secciones (sumarle "Numerados" daría "01 1. Árbol evaluado").
+  const hd  = theme === 'lateral' ? 'auto' : _pdocEncabezado();
+  const tit = sanEnum(S.pdfTitulos, PDF_TITULOS, 'auto');
+  const tb  = sanEnum(S.pdfTabla,   PDF_TABLAS,  'auto');
+  const to  = sanEnum(S.pdfTotal,   PDF_TOTALES, 'auto');
   const cls = 'pdoc pdoc-theme-' + theme
     + (S.pdfCompact ? ' pdoc-compact' : '')
     + (S.pdfFont && S.pdfFont !== 'auto' ? ' pdoc-font-' + S.pdfFont : '')
-    + (det && det.toLowerCase() !== String(color).toLowerCase() ? ' pdoc-det' : '');
-  return `class="${cls}" style="--pdoc-accent:${color}${det ? ';--pdoc-det:' + det : ''}"`;
+    + (det && det.toLowerCase() !== String(color).toLowerCase() ? ' pdoc-det' : '')
+    + (hd  !== 'auto' ? ' pdoc-hd-' + hd : '')
+    + (tit !== 'auto' && !(tit === 'numerado' && S.isRisk) ? ' pdoc-tit-' + tit : '')
+    + (tb  !== 'auto' ? ' pdoc-tb-' + tb : '')
+    + (to  !== 'auto' ? ' pdoc-to-' + to : '');
+  // Tonos claros del principal (y del detalle), calculados acá y no con
+  // color-mix(): "Compartir imagen" pasa por html2canvas, que no lo entiende.
+  const rgb = _hexToRgb(color) || [6, 78, 59];
+  const rgbD = det ? (_hexToRgb(det) || rgb) : rgb;
+  const tono = (c, p) => _mixWhite(c[0], c[1], c[2], 1 - p);
+  const vars = `--pdoc-accent:${color};--pdoc-tint1:${tono(rgb, .07)};--pdoc-tint2:${tono(rgb, .12)};--pdoc-line:${tono(rgb, .3)}`
+    + (det ? `;--pdoc-det:${det};--pdoc-det-soft:${tono(rgbD, .45)}` : '');
+  return `class="${cls}" style="${vars}"`;
 }
 
 // Iniciales del negocio para el monograma: primera letra de las dos primeras
@@ -19779,8 +20018,45 @@ function _monoSVG(forma, nombre, fill, ink, cls) {
     + `<text x="50" y="50" text-anchor="middle" dominant-baseline="central" font-family="'DM Serif Display',Georgia,serif" font-size="${fs}" fill="${ik}">${esc(ini)}</text></svg>`;
 }
 
+// Pie del documento (v245). `orig` es el pie de siempre de cada documento
+// (sale tal cual con "Según diseño"); `derecha` el dato de la punta derecha
+// (número · fecha · tipo) que llevan el estimativo y el riesgo.
+//   franja  → banda del color con la firma y los datos de contacto.
+//   eslogan → la frase del negocio (S.coEslogan) arriba de la firma; sin
+//             eslogan escrito cae al pie de siempre (no hay frase que mostrar).
+// Respeta "Mostrar pie de página" (S.showFooter) como siempre.
+function _pieDoc(color, orig, derecha) {
+  if (!S.showFooter) return '';
+  const pie = sanEnum(S.pdfPie, PDF_PIES, 'auto');
+  const esl = (S.coEslogan || '').trim();
+  const firma = esc(S.coFooter || '');
+  if (pie === 'franja') {
+    const datos = [S.coWhatsapp ? 'WhatsApp ' + S.coWhatsapp : '', S.coEmail, S.coCity]
+      .map(x => String(x || '').trim()).filter(Boolean).map(esc).join(' · ');
+    return `<div class="pfoot pfoot-franja">
+      <span class="pfoot-l">${firma || esc(S.coName || '')}</span>
+      <span class="pfoot-r">${datos || esc(derecha || '')}</span>
+    </div>`;
+  }
+  if (pie === 'eslogan' && esl) {
+    return `<div class="pfoot pfoot-eslogan">
+      <span class="pfoot-esl" style="color:${safeColor(color)}">${esc(esl)}</span>
+      ${firma ? `<span class="pfoot-l">${firma}</span>` : ''}
+      ${derecha ? `<span class="pfoot-r">${esc(derecha)}</span>` : ''}
+    </div>`;
+  }
+  return orig;
+}
+
+// Encabezado elegido (v245), validado. Lo usan _pdocAttrs (la clase) y
+// _buildDocHeader (el monograma va invertido sobre la banda de color).
+function _pdocEncabezado() { return sanEnum(S.pdfEncabezado, PDF_ENCABEZADOS, 'auto'); }
+
 function _buildDocHeader(theme, S, color, contacts, badgeLabel, badgeDate, showPlaceholder) {
-  const monoHTML = S.logo ? '' : _monoSVG(S.pdfMono, S.coName, color, '#ffffff');
+  // Sobre el encabezado en banda, el monograma va blanco con letras del color:
+  // del color de la banda no se vería.
+  const enBanda = theme !== 'lateral' && _pdocEncabezado() === 'banda';
+  const monoHTML = S.logo ? '' : _monoSVG(S.pdfMono, S.coName, enBanda ? '#ffffff' : color, enBanda ? color : '#ffffff');
   const logoHTML = S.logo
     ? `<img src="${safeImgSrc(S.logo)}" class="ph-logo" alt="Logo">`
     : monoHTML ? monoHTML : (showPlaceholder
@@ -20154,9 +20430,9 @@ function buildDoc() {
 
     ${sigH}
 
-    ${S.showFooter?`<div class="pfoot">
+    ${_pieDoc(color, `<div class="pfoot">
       <span class="pfoot-l">${esc(S.coFooter)}</span>
-    </div>`:''}
+    </div>`)}
 
         </td></tr>
       </tbody>
@@ -20508,10 +20784,10 @@ function buildRiskDoc() {
 
     ${sigH}
 
-    ${S.showFooter ? `<div class="pfoot" style="border-color:${color}30">
+    ${_pieDoc(color, `<div class="pfoot" style="border-color:${color}30">
       <span class="pfoot-l" style="color:${color}">${esc(S.coFooter)}</span>
       <span class="pfoot-r">${esc(S.quoteNumber||'')} · ${fmtD(S.dateIssue)} · Informe de Riesgo</span>
-    </div>` : ''}
+    </div>`, `${S.quoteNumber||''} · ${fmtD(S.dateIssue)} · Informe de Riesgo`)}
 
         </td></tr>
       </tbody>
@@ -20702,10 +20978,10 @@ function buildEstDoc() {
       <span class="pest-greeting-name">${esc(S.coOwner||S.coName)}</span>
     </div>
 
-    ${S.showFooter?`<div class="pfoot" style="border-color:${color}30">
+    ${_pieDoc(color, `<div class="pfoot" style="border-color:${color}30">
       <span class="pfoot-l" style="color:${color}">${esc(S.coFooter)}</span>
       <span class="pfoot-r">${esc(S.quoteNumber||'')} · ${fmtD(S.dateIssue)} · Estimativo</span>
-    </div>`:''}
+    </div>`, `${S.quoteNumber||''} · ${fmtD(S.dateIssue)} · Estimativo`)}
 
         </td></tr>
       </tbody>
@@ -20786,9 +21062,9 @@ function buildReciboDoc(r) {
 
     <div class="precibo-legal">Documento no fiscal — comprobante de pago. No reemplaza a la factura.</div>
 
-    ${S.showFooter?`<div class="pfoot">
+    ${_pieDoc(color, `<div class="pfoot">
       <span class="pfoot-l">${esc(S.coFooter)}</span>
-    </div>`:''}
+    </div>`)}
 
         </td></tr>
       </tbody>

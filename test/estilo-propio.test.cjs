@@ -247,20 +247,118 @@ const toastsTxt = page => page.evaluate(() =>
     {
       const r = await page.evaluate(async () => {
         S.pdfTheme = 'elegante'; S.accentColor = '#3b0764'; S.accentColor2 = ''; S.pdfFont = 'inter'; S.pdfMono = 'rombo';
+        S.pdfEncabezado = 'centrado'; S.pdfTitulos = 'auto'; S.pdfTabla = 'grilla'; S.pdfTotal = 'auto'; S.pdfPie = 'auto';
         estiloUISync(true);
         estiloAbrir({ tirar: true });
         const abierto = document.getElementById('estilo-overlay').classList.contains('open');
-        await new Promise(res => setTimeout(res, 1800));
+        await new Promise(res => setTimeout(res, 2400));
         const listos = document.querySelectorAll('#estilo-reels .estilo-reel.listo').length;
         const cambio = S.pdfMono !== 'rombo' || S.pdfTheme !== 'elegante' || S.accentColor !== '#3b0764';
         estiloDeshacer();
-        return { abierto, listos, cambio, vuelta: [S.pdfTheme, S.accentColor, S.accentColor2, S.pdfFont, S.pdfMono],
+        return { abierto, listos, total: _ESTILO_REELS.length, cambio,
+          vuelta: [S.pdfTheme, S.accentColor, S.accentColor2, S.pdfFont, S.pdfMono, S.pdfEncabezado, S.pdfTabla],
           cerrado: !document.getElementById('estilo-overlay').classList.contains('open'),
           nav: typeof NAV_OVERLAYS['estilo-overlay'] === 'function' };
       });
-      check('I1 La máquina abre y los rodillos frenan en el valor sorteado', r.abierto && r.listos === 6, JSON.stringify(r));
-      check('I2 "Dejar como estaba" vuelve al estilo anterior y cierra', r.cambio && r.cerrado && JSON.stringify(r.vuelta) === '["elegante","#3b0764","","inter","rombo"]', JSON.stringify(r.vuelta));
+      check('I1 La máquina abre y los rodillos frenan en el valor sorteado', r.abierto && r.total === 11 && r.listos === 11, JSON.stringify(r));
+      check('I2 "Dejar como estaba" vuelve al estilo anterior y cierra', r.cambio && r.cerrado && JSON.stringify(r.vuelta) === '["elegante","#3b0764","","inter","rombo","centrado","grilla"]', JSON.stringify(r.vuelta));
       check('I3 La ventana se cierra con "Atrás" (NAV_OVERLAYS)', r.nav);
+    }
+
+    // ── J. Elementos del documento (v245) ─────────────────────────────────
+    {
+      const r = await page.evaluate(() => {
+        const doc = () => document.getElementById('doc-a4');
+        const tabla = () => doc().querySelector('table.pdoc');
+        const base = () => {
+          S.isEstimative = false; S.isRisk = false; S.logo = ''; S.coName = 'Arbolado Norte';
+          S.pdfTheme = 'clasico'; S.accentColor = '#1e3a5f'; S.accentColor2 = ''; S.pdfMono = 'escudo';
+          S.pdfEncabezado = 'auto'; S.pdfTitulos = 'auto'; S.pdfTabla = 'auto'; S.pdfTotal = 'auto'; S.pdfPie = 'auto';
+          S.showFooter = true; S.coFooter = 'Julián Pérez'; S.coEslogan = ''; S.coWhatsapp = '11 5555-0142'; S.coCity = 'San Isidro'; S.coEmail = '';
+          S.items = [{ id: 1, type: 'tree', species: 'Fresno', price: '100000', qty: 1 }, { id: 2, type: 'tree', species: 'Tilo', price: '50000', qty: 1 }];
+        };
+        const out = {};
+        base(); buildDoc();
+        out.autoSinClases = !/pdoc-(hd|tit|tb|to)-/.test(tabla().className) && !doc().querySelector('.pfoot-franja, .pfoot-eslogan');
+        out.tintes = /--pdoc-tint1:\s*rgb\(/.test(tabla().getAttribute('style'));
+        S.pdfEncabezado = 'banda'; S.pdfTitulos = 'pildora'; S.pdfTabla = 'cebra'; S.pdfTotal = 'banda'; S.pdfPie = 'franja';
+        buildDoc();
+        const cls = tabla().className;
+        out.clases = ['pdoc-hd-banda','pdoc-tit-pildora','pdoc-tb-cebra','pdoc-to-banda'].every(c => cls.includes(c));
+        out.bandaFondo = getComputedStyle(doc().querySelector('.ph')).backgroundColor;
+        const mono = doc().querySelector('svg.ph-mono');
+        out.monoInvertido = !!mono && mono.querySelector('path').getAttribute('fill') === '#ffffff';
+        out.pildora = getComputedStyle(doc().querySelector('.psec-t')).backgroundColor;
+        out.cebraTh = getComputedStyle(doc().querySelector('.ptable thead th')).backgroundColor;
+        out.totalBanda = getComputedStyle(doc().querySelector('.ptotal-box')).backgroundColor;
+        const pie = doc().querySelector('.pfoot.pfoot-franja');
+        out.franja = !!pie && /Julián Pérez/.test(pie.textContent) && /WhatsApp 11 5555-0142 · San Isidro/.test(pie.textContent);
+        S.pdfPie = 'eslogan'; buildDoc();
+        out.esloganSinTexto = !doc().querySelector('.pfoot-eslogan') && !!doc().querySelector('.pfoot');
+        S.coEslogan = 'Tu árbol en <b>buenas</b> manos'; buildDoc();
+        const esl = doc().querySelector('.pfoot-eslogan .pfoot-esl');
+        out.eslogan = !!esl && esl.textContent === 'Tu árbol en <b>buenas</b> manos' && !esl.querySelector('b');
+        S.showFooter = false; buildDoc();
+        out.pieApagado = !doc().querySelector('.pfoot');
+        S.showFooter = true;
+        S.pdfTheme = 'lateral'; buildDoc();
+        out.lateralSinHd = !tabla().className.includes('pdoc-hd-');
+        S.pdfTheme = 'clasico'; S.pdfTitulos = 'numerado'; S.isRisk = true; buildDoc();
+        out.riesgoSinNumerar = !tabla().className.includes('pdoc-tit-numerado');
+        S.isRisk = false; buildDoc();
+        out.numerado = tabla().className.includes('pdoc-tit-numerado') && /counter\(pqsec/.test(getComputedStyle(doc().querySelector('.psec-t'), '::before').content);
+        S.isEstimative = true; S.pdfPie = 'franja'; buildDoc();
+        out.estimativo = tabla().className.includes('pdoc-tit-numerado') && !!doc().querySelector('.pfoot-franja');
+        S.isEstimative = false;
+        // Sorteo: nunca más de 2 elementos "fuertes", Lateral sin encabezado
+        // propio, y el pie con eslogan solo si hay frase.
+        S.coEslogan = '';
+        let malos = 0, vistos = new Set();
+        for (let i = 0; i < 400; i++) {
+          const x = estiloSortear(false);
+          ESTILO_ELEMENTOS.forEach(e => vistos.add(e.k + ':' + x[e.k]));
+          if (estiloFuertes(x) > ESTILO_MAX_FUERTES || (x.pdfTheme === 'lateral' && x.pdfEncabezado !== 'auto') || x.pdfPie === 'eslogan') malos++;
+        }
+        out.sorteo = malos === 0;
+        out.variedad = vistos.size;
+        S.coEslogan = 'Algo';
+        let conEsl = 0;
+        for (let i = 0; i < 300; i++) if (estiloSortear(false).pdfPie === 'eslogan') conEsl++;
+        out.conEslogan = conEsl > 0;
+        // Fábrica, sanitización y config global
+        base();
+        S.accentColor = '#064e3b'; S.pdfMono = 'ninguno'; S.pdfFont = 'auto';
+        out.fabrica = estiloEsDeFabrica();
+        S.pdfTabla = 'lineas';
+        out.yaNoFabrica = !estiloEsDeFabrica();
+        const san = sanitizeStateObj({ pdfEncabezado: 'x', pdfTitulos: '"><img>', pdfTabla: 1, pdfTotal: null, pdfPie: 'franja', coEslogan: 'a'.repeat(500) });
+        out.san = [san.pdfEncabezado, san.pdfTitulos, san.pdfTabla, san.pdfTotal, san.pdfPie, san.coEslogan.length];
+        out.cfg = ['pdfEncabezado','pdfTitulos','pdfTabla','pdfTotal','pdfPie','coEslogan'].every(k => CFG_GLOBAL_FIELDS.includes(k));
+        // Controles de Estilo
+        estiloUISync(false);
+        out.chips = ESTILO_ELEMENTOS.every(e => document.querySelectorAll('#el-' + e.k + ' [data-el]').length === e.opts.length);
+        document.querySelector('#el-pdfTotal [data-el="grande"]').click();
+        out.chipAplica = S.pdfTotal === 'grande' && document.querySelector('#el-pdfTotal .is-active').dataset.el === 'grande';
+        base();
+        return out;
+      });
+      check('J1 "Según diseño" en todo: el documento no cambia', r.autoSinClases, JSON.stringify(r));
+      check('J2 Los tonos claros se calculan (sin color-mix, por html2canvas)', r.tintes);
+      check('J3 Cada elemento elegido pone su clase en el documento', r.clases);
+      check('J4 Encabezado en banda: fondo del color y monograma invertido', r.bandaFondo === 'rgb(30, 58, 95)' && r.monoInvertido, r.bandaFondo);
+      check('J5 Títulos en píldora, tabla cebra y total en banda se pintan', r.pildora === 'rgb(30, 58, 95)' && r.cebraTh === 'rgb(30, 58, 95)' && r.totalBanda === 'rgb(30, 58, 95)',
+        [r.pildora, r.cebraTh, r.totalBanda].join(' / '));
+      check('J6 Pie en franja con la firma y los datos de contacto', r.franja);
+      check('J7 Pie con eslogan: escapado, y sin frase cae al pie de siempre', r.eslogan && r.esloganSinTexto);
+      check('J8 "Mostrar pie de página" apagado sigue mandando', r.pieApagado);
+      check('J9 Lateral conserva su encabezado; el riesgo no se numera dos veces', r.lateralSinHd && r.riesgoSinNumerar);
+      check('J10 Numerados cuenta las secciones, también en el estimativo', r.numerado && r.estimativo);
+      check('J11 Sorteo: a lo sumo 2 elementos fuertes, Lateral sin encabezado, eslogan solo con frase', r.sorteo && r.conEslogan, 'variedad=' + r.variedad);
+      check('J12 El sorteo recorre todas las opciones', r.variedad >= 18, 'variedad=' + r.variedad);
+      check('J13 Con un elemento elegido ya no es el diseño de fábrica', r.fabrica && r.yaNoFabrica);
+      check('J14 Basura de un backup cae a "Según diseño"; eslogan acotado', JSON.stringify(r.san) === '["auto","auto","auto","auto","franja",120]', JSON.stringify(r.san));
+      check('J15 Son config del negocio (CFG_GLOBAL_FIELDS)', r.cfg);
+      check('J16 Chips de Estilo: todas las opciones y aplican al tocar', r.chips && r.chipAplica);
     }
     await page.close();
 
@@ -272,6 +370,7 @@ const toastsTxt = page => page.evaluate(() =>
         localStorage.setItem('pq_onboarded', '1');
         localStorage.setItem(LS.STATE, JSON.stringify(Object.assign({}, S, {
           pdfTheme: 'clasico', accentColor: '#064e3b', pdfFont: 'auto', pdfMono: 'ninguno', accentColor2: '',
+          pdfEncabezado: 'auto', pdfTitulos: 'auto', pdfTabla: 'auto', pdfTotal: 'auto', pdfPie: 'auto',
           docTitle: TEXTOS_JUEGOS.original.t.docTitle })));
       });
       await espera(1500);
