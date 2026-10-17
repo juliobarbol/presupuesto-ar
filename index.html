@@ -3606,13 +3606,15 @@ input[type=number]{-moz-appearance:textfield}
 .pdoc.pdoc-fondo-hojas,
 .pdoc.pdoc-fondo-curvas,
 .pdoc.pdoc-fondo-veta { background-image: var(--pdoc-fondo); background-repeat: repeat; }
-.pdoc.pdoc-fondo-marca { background-image: var(--pdoc-fondo); background-repeat: no-repeat; background-position: center 170px; background-size: 62% auto; }
+.pdoc.pdoc-fondo-marca,
+.pdoc.pdoc-fondo-logo { background-image: var(--pdoc-fondo); background-repeat: no-repeat; background-position: center 170px; background-size: 62% auto; }
 .pdoc.pdoc-theme-lateral.pdoc-fondo-hojas,
 .pdoc.pdoc-theme-lateral.pdoc-fondo-curvas,
 .pdoc.pdoc-theme-lateral.pdoc-fondo-veta {
   background: linear-gradient(to right, var(--pdoc-accent, #1f6feb) 0, var(--pdoc-accent, #1f6feb) var(--band-w), transparent var(--band-w)) no-repeat, var(--pdoc-fondo) repeat;
 }
-.pdoc.pdoc-theme-lateral.pdoc-fondo-marca {
+.pdoc.pdoc-theme-lateral.pdoc-fondo-marca,
+.pdoc.pdoc-theme-lateral.pdoc-fondo-logo {
   background: linear-gradient(to right, var(--pdoc-accent, #1f6feb) 0, var(--pdoc-accent, #1f6feb) var(--band-w), transparent var(--band-w)) no-repeat, var(--pdoc-fondo) no-repeat center 170px / 55% auto;
 }
 
@@ -5068,7 +5070,7 @@ input[type=number]{-moz-appearance:textfield}
         <div class="fg"><label>Títulos de sección</label><div class="nv-chips" id="el-pdfTitulos" role="group" aria-label="Títulos de sección"></div><div class="hint" id="el-hint-pdfTitulos"></div></div>
         <div class="fg"><label>Tabla de trabajos</label><div class="nv-chips" id="el-pdfTabla" role="group" aria-label="Tabla de trabajos"></div><div class="hint" id="el-hint-pdfTabla"></div></div>
         <div class="fg"><label>Total</label><div class="nv-chips" id="el-pdfTotal" role="group" aria-label="Total"></div><div class="hint" id="el-hint-pdfTotal"></div></div>
-        <div class="fg"><label>Fondo</label><div class="nv-chips" id="el-pdfFondo" role="group" aria-label="Fondo"></div><div class="hint" id="el-hint-pdfFondo">Un dibujo muy suave del color principal detrás de la hoja. La marca de agua son tus iniciales en grande, detrás de la primera hoja.</div></div>
+        <div class="fg"><label>Fondo</label><div class="nv-chips" id="el-pdfFondo" role="group" aria-label="Fondo"></div><div class="hint" id="el-hint-pdfFondo"></div></div>
         <div class="fg"><label>Pie del documento</label><div class="nv-chips" id="el-pdfPie" role="group" aria-label="Pie del documento"></div><div class="hint" id="el-hint-pdfPie"></div></div>
         <div class="fg" style="margin-bottom:16px"><label for="co-eslogan">Eslogan</label>
           <input type="text" id="co-eslogan" maxlength="120" placeholder="Ej: Más de 15 años trabajando en altura en Zona Norte" oninput="estiloEsloganInput()">
@@ -8715,8 +8717,9 @@ const PDF_TITULOS     = ['auto','subrayado','pildora','numerado','costado','vers
 const PDF_TABLAS      = ['auto','lineas','cebra','grilla'];
 const PDF_TOTALES     = ['auto','banda','grande'];
 const PDF_PIES        = ['auto','franja','eslogan'];
-// Fondo (v246): 'auto' = liso. 'marca' = marca de agua con el monograma.
-const PDF_FONDOS      = ['auto','hojas','curvas','veta','marca'];
+// Fondo (v246): 'auto' = liso. 'marca' = marca de agua con el monograma;
+// 'logo' = marca de agua con el logo cargado (v248).
+const PDF_FONDOS      = ['auto','hojas','curvas','veta','marca','logo'];
 // Color de detalle: '' (= igual al principal) o un hex. Nunca el fallback de
 // safeColor: un valor basura tiene que volver a "sin color de detalle", no
 // pintar los detalles de verde.
@@ -13722,8 +13725,8 @@ const ESTILO_ELEMENTOS = [
   { k:'pdfPie', titulo:'Pie', opts:PDF_PIES, fuerte:['franja'],
     lbl:{ auto:'Según diseño', franja:'Franja con contacto', eslogan:'Con eslogan' } },
   // Fondo (v246): cualquier dibujo carga la hoja, así que todos son "fuertes".
-  { k:'pdfFondo', titulo:'Fondo', opts:PDF_FONDOS, fuerte:['hojas','curvas','veta','marca'],
-    lbl:{ auto:'Liso', hojas:'Hojas', curvas:'Curvas de nivel', veta:'Veta de madera', marca:'Marca de agua' } },
+  { k:'pdfFondo', titulo:'Fondo', opts:PDF_FONDOS, fuerte:['hojas','curvas','veta','marca','logo'],
+    lbl:{ auto:'Liso', hojas:'Hojas', curvas:'Curvas de nivel', veta:'Veta de madera', marca:'Marca con iniciales', logo:'Marca con el logo' } },
 ];
 const ESTILO_MAX_FUERTES = 2;
 const ESTILO_CAMPOS = ['pdfTheme','accentColor','accentColor2','pdfFont','pdfMono']
@@ -13899,7 +13902,7 @@ function estiloUISync(todo) {
     const host = document.getElementById('el-' + e.k);
     if (!host) return;
     const act = sanEnum(S[e.k], e.opts, 'auto');
-    host.innerHTML = e.opts.map(o => `<button type="button" class="nv-chip${o === act ? ' is-active' : ''}" data-el="${o}" aria-pressed="${o === act}">${esc(e.lbl[o])}</button>`).join('');
+    host.innerHTML = e.opts.filter(o => o !== 'logo' || S.logo || o === act).map(o => `<button type="button" class="nv-chip${o === act ? ' is-active' : ''}" data-el="${o}" aria-pressed="${o === act}">${esc(e.lbl[o])}</button>`).join('');
     host.querySelectorAll('[data-el]').forEach(b => { b.onclick = () => applyElemento(e.k, b.dataset.el); });
   });
   const pista = (k, txt) => { const h = document.getElementById('el-hint-' + k); if (h) { h.textContent = txt; h.hidden = !txt; } };
@@ -13909,7 +13912,9 @@ function estiloUISync(todo) {
   pista('pdfTabla', '');
   pista('pdfFondo', S.pdfFondo === 'marca' && !(S.coName || '').trim()
     ? 'La marca de agua usa las iniciales del negocio: cargá el nombre en Mi negocio para que aparezca.'
-    : 'Un dibujo muy suave del color principal detrás de la hoja. La marca de agua son tus iniciales en grande, detrás de la primera hoja.');
+    : S.pdfFondo === 'logo' && !S.logo
+    ? 'Para la marca con el logo, cargá tu logo en Mi negocio (mejor un PNG con fondo transparente).'
+    : 'Un dibujo muy suave del color principal detrás de la hoja. Las marcas de agua (con tus iniciales o con tu logo) salen en grande, detrás de la primera hoja.');
   pista('pdfTotal', '');
   pista('pdfPie', S.pdfPie === 'eslogan' && !(S.coEslogan || '').trim() ? 'Escribí tu eslogan acá abajo; mientras tanto sale el pie de siempre.'
     : (S.pdfPie !== 'auto' && S.showFooter === false ? 'El pie está apagado en Textos del PDF → Visibilidad.' : ''));
@@ -13942,7 +13947,7 @@ function estiloSortear(conTextos) {
       // Fondo: la mitad de las veces liso (un dibujo en cada tirada cansa), y
       // la marca de agua solo si hay nombre del que sacar las iniciales.
       if (e.k === 'pdfFondo') {
-        const dibujos = opts.filter(o => o !== 'auto' && (o !== 'marca' || (S.coName || '').trim()));
+        const dibujos = opts.filter(o => o !== 'auto' && (o !== 'marca' || (S.coName || '').trim()) && (o !== 'logo' || S.logo));
         r[e.k] = Math.random() < .5 ? 'auto' : _azar(dibujos);
         return;
       }
@@ -20359,6 +20364,15 @@ function _fondoURL(color) {
     }
     p += `<ellipse cx="84" cy="210" rx="9" ry="24" fill="none" stroke="${c}" stroke-width="1"/>`;
     svg = `<svg xmlns="http://www.w3.org/2000/svg" width="168" height="420"><g stroke-opacity=".14">${p}</g></svg>`;
+  } else if (tipo === 'logo') {
+    // El logo del negocio (PNG/JPG ya achicado por compressLogoDataUrl, hasta
+    // 900×500) dentro de un SVG con la opacidad en el <image>: así sirve igual
+    // de fondo que los demás dibujos. Sin logo cargado queda liso. Se escapa
+    // aunque safeImgSrc ya exige data:image/: un logo de un backup ajeno no
+    // puede romper el SVG.
+    const src = safeImgSrc(S.logo);
+    if (!src) return null;
+    svg = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400"><image href="${esc(src)}" x="0" y="0" width="400" height="400" preserveAspectRatio="xMidYMid meet" opacity=".07"/></svg>`;
   } else if (tipo === 'marca') {
     const forma = (S.pdfMono && S.pdfMono !== 'ninguno') ? S.pdfMono : 'circulo';
     const mono = _monoSVG(forma, S.coName, c, '#ffffff', '');

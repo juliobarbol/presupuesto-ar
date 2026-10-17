@@ -339,7 +339,8 @@ const toastsTxt = page => page.evaluate(() =>
         out.cfg = ['pdfEncabezado','pdfTitulos','pdfTabla','pdfTotal','pdfPie','coEslogan'].every(k => CFG_GLOBAL_FIELDS.includes(k));
         // Controles de Estilo
         estiloUISync(false);
-        out.chips = ESTILO_ELEMENTOS.every(e => document.querySelectorAll('#el-' + e.k + ' [data-el]').length === e.opts.length);
+        // 'Marca con el logo' solo se ofrece con logo cargado.
+        out.chips = ESTILO_ELEMENTOS.every(e => document.querySelectorAll('#el-' + e.k + ' [data-el]').length === e.opts.filter(o => o !== 'logo' || S.logo || S[e.k] === 'logo').length);
         document.querySelector('#el-pdfTotal [data-el="grande"]').click();
         out.chipAplica = S.pdfTotal === 'grande' && document.querySelector('#el-pdfTotal .is-active').dataset.el === 'grande';
         base();
@@ -393,6 +394,28 @@ const toastsTxt = page => page.evaluate(() =>
         out.marcaEscapada = valido(svgDe()) && !/<script/i.test(svgDe());
         S.coName = ''; buildDoc();
         out.marcaSinNombre = !/pdoc-fondo-/.test(tabla().className);
+        // Marca con el logo (v248): con logo, un <image> semitransparente; sin
+        // logo, liso. Un logo ajeno con comillas no rompe el SVG.
+        const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+        S.coName = 'Arbolado Norte'; S.pdfFondo = 'logo'; S.logo = PNG; buildDoc();
+        out.logo = tabla().classList.contains('pdoc-fondo-logo') && valido(svgDe()) && /<image[^>]+opacity=".07"/.test(svgDe())
+          && svgDe().includes(PNG) && /data:image\/svg\+xml/.test(getComputedStyle(tabla()).backgroundImage);
+        S.logo = 'data:image/png;base64,AAA"/><script>alert(1)</script>'; buildDoc();
+        out.logoEscapado = valido(svgDe()) && !/<script/i.test(svgDe());
+        S.logo = ''; buildDoc();
+        out.logoSinLogo = !/pdoc-fondo-/.test(tabla().className);
+        estiloUISync(false);
+        out.chipLogoOculto = !document.querySelector('#el-pdfFondo [data-el="logo"]') || S.pdfFondo === 'logo';
+        S.pdfFondo = 'auto'; estiloUISync(false);
+        out.chipLogoOcultoBien = !document.querySelector('#el-pdfFondo [data-el="logo"]');
+        S.logo = PNG; estiloUISync(false);
+        out.chipLogoVisible = !!document.querySelector('#el-pdfFondo [data-el="logo"]');
+        let logoSinLogo = 0; S.logo = '';
+        for (let i = 0; i < 300; i++) if (estiloSortear(false).pdfFondo === 'logo') logoSinLogo++;
+        S.logo = PNG; let logoCon = 0;
+        for (let i = 0; i < 300; i++) if (estiloSortear(false).pdfFondo === 'logo') logoCon++;
+        out.logoSorteo = logoSinLogo === 0 && logoCon > 0;
+        S.logo = '';
         S.coName = 'Arbolado Norte'; S.pdfTheme = 'lateral'; S.pdfFondo = 'hojas'; buildDoc();
         const bg = getComputedStyle(tabla()).backgroundImage;
         out.lateral = /linear-gradient/.test(bg) && /data:image\/svg\+xml/.test(bg);
@@ -414,7 +437,7 @@ const toastsTxt = page => page.evaluate(() =>
         for (let i = 0; i < 400; i++) if (estiloSortear(false).pdfFondo === 'marca') conMarca++;
         out.sorteo = { marcaSinNombre, fondos: [...fondos].sort(), fuertes, conMarca };
         estiloUISync(false);
-        out.chips = document.querySelectorAll('#el-pdfFondo [data-el]').length === 5;
+        out.chips = document.querySelectorAll('#el-pdfFondo [data-el]').length === 5;  // sin logo: 'logo' oculto
         S.pdfFondo = 'auto';
         return out;
       });
@@ -430,6 +453,9 @@ const toastsTxt = page => page.evaluate(() =>
         r.sorteo.marcaSinNombre === 0 && r.sorteo.conMarca > 0 && r.sorteo.fuertes === 0
         && JSON.stringify(r.sorteo.fondos) === '["auto","curvas","hojas","veta"]', JSON.stringify(r.sorteo));
       check('K10 Chips de Fondo en Estilo', r.chips);
+      check('K11 Marca con el logo: SVG con el logo semitransparente, escapado; sin logo, liso', r.logo && r.logoEscapado && r.logoSinLogo, JSON.stringify(r));
+      check('K12 El botón "Marca con el logo" aparece solo con logo cargado', r.chipLogoOcultoBien && r.chipLogoVisible);
+      check('K13 La máquina usa el logo solo si hay logo', r.logoSorteo);
     }
 
     // ── L. Mis estilos (v247) ─────────────────────────────────────────────
