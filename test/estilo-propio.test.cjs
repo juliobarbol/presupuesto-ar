@@ -420,6 +420,12 @@ const toastsTxt = page => page.evaluate(() =>
         out.transl = ['.pgrid', '.pplan-box', '.ppago-rows'].every(q => /rgba\(\d+, ?\d+, ?\d+, ?0\.4\)/.test(bgDe(q)));
         // (el total ya traía su propio fondo con alfa en el style: se mira que no sea el 0.4 nuevo)
         out.translFuertes = !/0\.4\)/.test(bgDe('.psec-t')) && !/0\.4\)/.test(bgDe('.ptotal-box'));
+        // Los recuadros con solo la raya izquierda (plan) reciben el filo que les
+        // falta para no "desaparecer"; el de cliente (borde completo) no se toca.
+        const plan = doc().querySelector('.pplan-box'), grid = doc().querySelector('.pgrid');
+        out.filo = /1px solid/.test(plan.style.getPropertyValue('border-top')) && /1px solid/.test(plan.style.getPropertyValue('border-bottom'))
+          && !plan.style.getPropertyValue('border-left') && getComputedStyle(plan).borderLeftWidth !== '1px'
+          && !grid.style.getPropertyValue('border-top');
         S.pdfFondo = 'auto'; buildDoc();
         out.translSinFondo = !doc().querySelector('.pgrid').style.getPropertyValue('background-color');
         out.translSan = sanitizeStateObj({ pdfTransl: 'si' }).pdfTransl === false && sanitizeStateObj({ pdfTransl: true }).pdfTransl === true
@@ -473,6 +479,7 @@ const toastsTxt = page => page.evaluate(() =>
       check('K13 La máquina usa el logo solo si hay logo', r.logoSorteo);
       check('K14 Recuadros translúcidos: los claros dejan ver el fondo; los fuertes quedan sólidos', r.translApagado && r.transl && r.translFuertes, JSON.stringify([r.translApagado, r.transl, r.translFuertes]));
       check('K15 Sin fondo no se tocan; se valida y se guarda en Mis estilos', r.translSinFondo && r.translSan);
+      check('K16 Recuadros con solo raya izquierda: se completa el filo (no desaparecen); la raya queda', r.filo);
     }
 
     // ── L. Mis estilos (v247) ─────────────────────────────────────────────

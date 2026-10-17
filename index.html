@@ -20418,6 +20418,7 @@ function _fondoURL(color) {
 // la vista previa y "Compartir imagen"; rgba() lo entiende html2canvas.
 const ESTILO_TRANSL_ALFA = 0.4;
 const ESTILO_TRANSL_CLARO = 190;   // canal mínimo para considerar "claro" un fondo
+const ESTILO_TRANSL_FILO = 20;     // cuánto más oscuro que el relleno es el filo que completa el recuadro
 function _docTranslucido() {
   const doc = document.getElementById('doc-a4');
   const t = doc && doc.querySelector('table.pdoc');
@@ -20430,6 +20431,20 @@ function _docTranslucido() {
     const r = +m[1], g = +m[2], b = +m[3], a = m[4] === undefined ? 1 : +m[4];
     if (a < 0.99 || Math.min(r, g, b) < ESTILO_TRANSL_CLARO) return;
     el.style.setProperty('background-color', `rgba(${r},${g},${b},${ESTILO_TRANSL_ALFA})`, 'important');
+    // Recuadros que solo tienen la raya de color a la izquierda (plan,
+    // criterios, cómo pagar, vigencia): su relleno casi blanco era lo único
+    // que los dibujaba, y translúcido el recuadro "desaparecía" (reporte del
+    // dueño: "el plan de trabajo quedó totalmente transparente", mientras el
+    // de cliente, que tiene borde completo, se veía bien). Se completan los
+    // lados que faltan con un filo de su mismo tono, un poco más oscuro —el
+    // mismo gris del borde del recuadro de cliente—. La raya de color no se toca.
+    const cs = getComputedStyle(el);
+    const tieneBorde = ['Top', 'Right', 'Bottom', 'Left'].some(l => cs['border' + l + 'Style'] !== 'none');
+    if (!tieneBorde) return;
+    const filo = `1px solid rgb(${Math.max(0, r - ESTILO_TRANSL_FILO)},${Math.max(0, g - ESTILO_TRANSL_FILO)},${Math.max(0, b - ESTILO_TRANSL_FILO)})`;
+    ['Top', 'Right', 'Bottom', 'Left'].forEach(l => {
+      if (cs['border' + l + 'Style'] === 'none') el.style.setProperty('border-' + l.toLowerCase(), filo, 'important');
+    });
   });
 }
 
