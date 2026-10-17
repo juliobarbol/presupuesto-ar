@@ -3579,6 +3579,23 @@ input[type=number]{-moz-appearance:textfield}
 .pdoc.pdoc-to-grande .ptotal-box { background: transparent !important; border: none !important; border-top: 2pt solid var(--pdoc-det, var(--pdoc-accent)) !important; border-radius: 0; text-align: right; padding: 8px 0 0 !important; }
 .pdoc.pdoc-to-grande .ptotal-amt { font-size: 34pt; }
 
+/* Fondo (v246, _fondoURL): el dibujo viene en --pdoc-fondo. Los mosaicos
+   cubren todas las hojas; la marca de agua sale una vez, detrás del cuerpo de
+   la primera. El tema Lateral pinta su banda con un background propio: ahí se
+   apilan las dos capas (la banda arriba) para que el fondo no la tape. */
+.pdoc.pdoc-fondo-hojas,
+.pdoc.pdoc-fondo-curvas,
+.pdoc.pdoc-fondo-veta { background-image: var(--pdoc-fondo); background-repeat: repeat; }
+.pdoc.pdoc-fondo-marca { background-image: var(--pdoc-fondo); background-repeat: no-repeat; background-position: center 170px; background-size: 62% auto; }
+.pdoc.pdoc-theme-lateral.pdoc-fondo-hojas,
+.pdoc.pdoc-theme-lateral.pdoc-fondo-curvas,
+.pdoc.pdoc-theme-lateral.pdoc-fondo-veta {
+  background: linear-gradient(to right, var(--pdoc-accent, #1f6feb) 0, var(--pdoc-accent, #1f6feb) var(--band-w), transparent var(--band-w)) no-repeat, var(--pdoc-fondo) repeat;
+}
+.pdoc.pdoc-theme-lateral.pdoc-fondo-marca {
+  background: linear-gradient(to right, var(--pdoc-accent, #1f6feb) 0, var(--pdoc-accent, #1f6feb) var(--band-w), transparent var(--band-w)) no-repeat, var(--pdoc-fondo) no-repeat center 170px / 55% auto;
+}
+
 /* Pie (_pieDoc) */
 .pdoc .pfoot.pfoot-franja { background: var(--pdoc-accent); border: none !important; gap: 12px; }
 .pdoc .pfoot.pfoot-franja .pfoot-l,
@@ -5016,6 +5033,7 @@ input[type=number]{-moz-appearance:textfield}
         <div class="fg"><label>Títulos de sección</label><div class="nv-chips" id="el-pdfTitulos" role="group" aria-label="Títulos de sección"></div><div class="hint" id="el-hint-pdfTitulos"></div></div>
         <div class="fg"><label>Tabla de trabajos</label><div class="nv-chips" id="el-pdfTabla" role="group" aria-label="Tabla de trabajos"></div><div class="hint" id="el-hint-pdfTabla"></div></div>
         <div class="fg"><label>Total</label><div class="nv-chips" id="el-pdfTotal" role="group" aria-label="Total"></div><div class="hint" id="el-hint-pdfTotal"></div></div>
+        <div class="fg"><label>Fondo</label><div class="nv-chips" id="el-pdfFondo" role="group" aria-label="Fondo"></div><div class="hint" id="el-hint-pdfFondo">Un dibujo muy suave del color principal detrás de la hoja. La marca de agua son tus iniciales en grande, detrás de la primera hoja.</div></div>
         <div class="fg"><label>Pie del documento</label><div class="nv-chips" id="el-pdfPie" role="group" aria-label="Pie del documento"></div><div class="hint" id="el-hint-pdfPie"></div></div>
         <div class="fg" style="margin-bottom:16px"><label for="co-eslogan">Eslogan</label>
           <input type="text" id="co-eslogan" maxlength="120" placeholder="Ej: Más de 15 años trabajando en altura en Zona Norte" oninput="estiloEsloganInput()">
@@ -6108,7 +6126,9 @@ const DEF = {
   // cualquier tema. 'auto' = lo que trae el diseño elegido (como siempre).
   // Listas blancas PDF_ENCABEZADOS/PDF_TITULOS/PDF_TABLAS/PDF_TOTALES/PDF_PIES.
   // coEslogan es la frase propia que sale en el pie "Con eslogan".
-  pdfEncabezado:'auto', pdfTitulos:'auto', pdfTabla:'auto', pdfTotal:'auto', pdfPie:'auto', coEslogan:'', pushEnabled:false, validityDays:30, showExpiry:true,
+  pdfEncabezado:'auto', pdfTitulos:'auto', pdfTabla:'auto', pdfTotal:'auto', pdfPie:'auto', coEslogan:'',
+  // Fondo del documento (v246): 'auto' = liso, como siempre. Ver _fondoURL.
+  pdfFondo:'auto', pushEnabled:false, validityDays:30, showExpiry:true,
   numPrefix:'2026-', numNext:1,
   // Estimative mode
   isEstimative: false,
@@ -6230,7 +6250,7 @@ const CFG_GLOBAL_FIELDS = [
   'coAliasPago','coAliasTitular','coCbu','coBanco','coTechNotes','coFooter','logo',
   // Diseño del documento y de la app
   'accentColor','accentColor2','pdfMono','customColors','pdfTheme','pdfCompact','pdfFont','themeMode',
-  'pdfEncabezado','pdfTitulos','pdfTabla','pdfTotal','pdfPie','coEslogan',
+  'pdfEncabezado','pdfTitulos','pdfTabla','pdfTotal','pdfPie','coEslogan','pdfFondo',
   'vistaEditor',
   // Textos editables del PDF (Empresa → Textos del PDF)
   'docTitle','docTitleEst','docTitleRisk','docEstBanner','docDisclaimer',
@@ -8659,6 +8679,8 @@ const PDF_TITULOS     = ['auto','subrayado','pildora','numerado','costado','vers
 const PDF_TABLAS      = ['auto','lineas','cebra','grilla'];
 const PDF_TOTALES     = ['auto','banda','grande'];
 const PDF_PIES        = ['auto','franja','eslogan'];
+// Fondo (v246): 'auto' = liso. 'marca' = marca de agua con el monograma.
+const PDF_FONDOS      = ['auto','hojas','curvas','veta','marca'];
 // Color de detalle: '' (= igual al principal) o un hex. Nunca el fallback de
 // safeColor: un valor basura tiene que volver a "sin color de detalle", no
 // pintar los detalles de verde.
@@ -8813,6 +8835,7 @@ function sanitizeStateObj(raw) {
   s.pdfTabla      = sanEnum(raw.pdfTabla,      PDF_TABLAS,      'auto');
   s.pdfTotal      = sanEnum(raw.pdfTotal,      PDF_TOTALES,     'auto');
   s.pdfPie        = sanEnum(raw.pdfPie,        PDF_PIES,        'auto');
+  s.pdfFondo      = sanEnum(raw.pdfFondo,      PDF_FONDOS,      'auto');
   s.coEslogan     = sanStr(raw.coEslogan, 120);
   s.vistaEditor = sanEnum(raw.vistaEditor, EDITOR_VIEWS, 'clasica');
   s.rubro = sanEnum(raw.rubro, RUBROS, 'arbolado');
@@ -9142,7 +9165,7 @@ function migrateSanitizeStored() {
   const mono = sanEnum(S.pdfMono, PDF_MONOS, 'ninguno');
   const color2 = sanColor2(S.accentColor2);
   // Elementos del documento (v245): cada uno a su lista blanca.
-  const elems = { pdfEncabezado: PDF_ENCABEZADOS, pdfTitulos: PDF_TITULOS, pdfTabla: PDF_TABLAS, pdfTotal: PDF_TOTALES, pdfPie: PDF_PIES };
+  const elems = { pdfEncabezado: PDF_ENCABEZADOS, pdfTitulos: PDF_TITULOS, pdfTabla: PDF_TABLAS, pdfTotal: PDF_TOTALES, pdfPie: PDF_PIES, pdfFondo: PDF_FONDOS };
   let elemMal = false;
   Object.keys(elems).forEach(k => { const v = sanEnum(S[k], elems[k], 'auto'); if (v !== S[k]) { S[k] = v; elemMal = true; } });
   if (tema !== S.pdfTheme || fuente !== S.pdfFont || color !== S.accentColor || vista !== S.vistaEditor
@@ -13612,6 +13635,9 @@ const ESTILO_ELEMENTOS = [
     lbl:{ auto:'Según diseño', banda:'En banda', grande:'Número grande' } },
   { k:'pdfPie', titulo:'Pie', opts:PDF_PIES, fuerte:['franja'],
     lbl:{ auto:'Según diseño', franja:'Franja con contacto', eslogan:'Con eslogan' } },
+  // Fondo (v246): cualquier dibujo carga la hoja, así que todos son "fuertes".
+  { k:'pdfFondo', titulo:'Fondo', opts:PDF_FONDOS, fuerte:['hojas','curvas','veta','marca'],
+    lbl:{ auto:'Liso', hojas:'Hojas', curvas:'Curvas de nivel', veta:'Veta de madera', marca:'Marca de agua' } },
 ];
 const ESTILO_MAX_FUERTES = 2;
 const ESTILO_CAMPOS = ['pdfTheme','accentColor','accentColor2','pdfFont','pdfMono']
@@ -13791,6 +13817,9 @@ function estiloUISync(todo) {
     ? 'El diseño Lateral tiene su propio encabezado: esta opción se aplica con los otros diseños.' : '');
   pista('pdfTitulos', S.pdfTitulos === 'numerado' ? 'El informe de riesgo ya numera sus secciones: ahí salen como siempre.' : '');
   pista('pdfTabla', '');
+  pista('pdfFondo', S.pdfFondo === 'marca' && !(S.coName || '').trim()
+    ? 'La marca de agua usa las iniciales del negocio: cargá el nombre en Mi negocio para que aparezca.'
+    : 'Un dibujo muy suave del color principal detrás de la hoja. La marca de agua son tus iniciales en grande, detrás de la primera hoja.');
   pista('pdfTotal', '');
   pista('pdfPie', S.pdfPie === 'eslogan' && !(S.coEslogan || '').trim() ? 'Escribí tu eslogan acá abajo; mientras tanto sale el pie de siempre.'
     : (S.pdfPie !== 'auto' && S.showFooter === false ? 'El pie está apagado en Textos del PDF → Visibilidad.' : ''));
@@ -13819,6 +13848,13 @@ function estiloSortear(conTextos) {
       let opts = e.opts;
       if (e.k === 'pdfEncabezado' && r.pdfTheme === 'lateral') opts = ['auto'];
       if (e.k === 'pdfPie' && !(S.coEslogan || '').trim()) opts = opts.filter(o => o !== 'eslogan');
+      // Fondo: la mitad de las veces liso (un dibujo en cada tirada cansa), y
+      // la marca de agua solo si hay nombre del que sacar las iniciales.
+      if (e.k === 'pdfFondo') {
+        const dibujos = opts.filter(o => o !== 'auto' && (o !== 'marca' || (S.coName || '').trim()));
+        r[e.k] = Math.random() < .5 ? 'auto' : _azar(dibujos);
+        return;
+      }
       r[e.k] = _azar(opts);
     });
     if (estiloFuertes(r) <= ESTILO_MAX_FUERTES) break;
@@ -19978,6 +20014,7 @@ function _pdocAttrs(theme, color) {
     + (tit !== 'auto' && !(tit === 'numerado' && S.isRisk) ? ' pdoc-tit-' + tit : '')
     + (tb  !== 'auto' ? ' pdoc-tb-' + tb : '')
     + (to  !== 'auto' ? ' pdoc-to-' + to : '');
+  const fondo = _fondoURL(color);
   // Tonos claros del principal (y del detalle), calculados acá y no con
   // color-mix(): "Compartir imagen" pasa por html2canvas, que no lo entiende.
   const rgb = _hexToRgb(color) || [6, 78, 59];
@@ -19985,7 +20022,7 @@ function _pdocAttrs(theme, color) {
   const tono = (c, p) => _mixWhite(c[0], c[1], c[2], 1 - p);
   const vars = `--pdoc-accent:${color};--pdoc-tint1:${tono(rgb, .07)};--pdoc-tint2:${tono(rgb, .12)};--pdoc-line:${tono(rgb, .3)}`
     + (det ? `;--pdoc-det:${det};--pdoc-det-soft:${tono(rgbD, .45)}` : '');
-  return `class="${cls}" style="${vars}"`;
+  return `class="${cls}${fondo ? ' pdoc-fondo-' + fondo.tipo : ''}" style="${vars}${fondo ? ';--pdoc-fondo:' + fondo.url : ''}"`;
 }
 
 // Iniciales del negocio para el monograma: primera letra de las dos primeras
@@ -20014,7 +20051,10 @@ function _monoSVG(forma, nombre, fill, ink, cls) {
     sello:   `<circle cx="50" cy="50" r="47" fill="none" stroke="${fl}" stroke-width="3"/><circle cx="50" cy="50" r="40" fill="${fl}"/>`,
   };
   const fs = ini.length > 1 ? 36 : 44;
-  return `<svg class="${cls || 'ph-mono'}" viewBox="0 0 100 100" aria-hidden="true">${formas[f]}`
+  // width/height como ATRIBUTOS (no solo por CSS): html2canvas ("Compartir
+  // imagen") dibuja el SVG como imagen y, sin tamaño propio, no lo dibuja.
+  const lado = cls === 'ph-band-mono' ? 52 : 50;
+  return `<svg class="${cls || 'ph-mono'}" width="${lado}" height="${lado}" viewBox="0 0 100 100" aria-hidden="true">${formas[f]}`
     + `<text x="50" y="50" text-anchor="middle" dominant-baseline="central" font-family="'DM Serif Display',Georgia,serif" font-size="${fs}" fill="${ik}">${esc(ini)}</text></svg>`;
 }
 
@@ -20046,6 +20086,50 @@ function _pieDoc(color, orig, derecha) {
     </div>`;
   }
   return orig;
+}
+
+// Fondo del documento (v246): un dibujo muy suave del color principal detrás de
+// la hoja. Devuelve {tipo, url} o null (liso). La transparencia va DENTRO del
+// SVG porque CSS no deja bajarle la opacidad a un background-image. Va como
+// data URI con encodeURIComponent y comillas dobles adentro: el resultado se
+// mete en un style="…" y no puede llevar ni comillas dobles ni saltos.
+//   hojas/curvas/veta → mosaico que cubre todas las hojas.
+//   marca → el monograma grande y casi transparente, una vez, detrás de la
+//           primera hoja (repetirlo por página dependería de cómo pagina cada
+//           navegador). Sin nombre del negocio no hay iniciales: queda liso.
+function _fondoURL(color) {
+  const tipo = sanEnum(S.pdfFondo, PDF_FONDOS, 'auto');
+  if (tipo === 'auto') return null;
+  const c = safeColor(color);
+  let svg = '';
+  if (tipo === 'hojas') {
+    const hoja = (x, y, r) => `<path transform="translate(${x} ${y}) rotate(${r})" d="M0 -14 C9 -8 10 6 0 14 C-10 6 -9 -8 0 -14 Z M0 -12 V12" fill="none" stroke="${c}" stroke-width="1.2"/>`;
+    svg = `<svg xmlns="http://www.w3.org/2000/svg" width="150" height="150"><g stroke-opacity=".10">${hoja(30, 30, -30)}${hoja(105, 62, 40)}${hoja(58, 115, 10)}${hoja(132, 134, -60)}</g></svg>`;
+  } else if (tipo === 'curvas') {
+    let p = '';
+    for (let i = 0; i < 9; i++) {
+      const y = 20 + i * 26;
+      p += `<path d="M-10 ${y} C 60 ${y - 18}, 120 ${y + 22}, 200 ${y - 6} S 330 ${y + 14}, 430 ${y}" fill="none" stroke="${c}" stroke-width="1"/>`;
+    }
+    svg = `<svg xmlns="http://www.w3.org/2000/svg" width="420" height="234"><g stroke-opacity=".12">${p}</g></svg>`;
+  } else if (tipo === 'veta') {
+    let p = '';
+    for (let i = 0; i < 7; i++) {
+      const x = 12 + i * 24;
+      p += `<path d="M${x} 0 C ${x + 14} 70, ${x - 12} 140, ${x + 6} 210 S ${x - 8} 350, ${x} 420" fill="none" stroke="${c}" stroke-width="1.1"/>`;
+    }
+    p += `<ellipse cx="84" cy="210" rx="9" ry="24" fill="none" stroke="${c}" stroke-width="1"/>`;
+    svg = `<svg xmlns="http://www.w3.org/2000/svg" width="168" height="420"><g stroke-opacity=".14">${p}</g></svg>`;
+  } else if (tipo === 'marca') {
+    const forma = (S.pdfMono && S.pdfMono !== 'ninguno') ? S.pdfMono : 'circulo';
+    const mono = _monoSVG(forma, S.coName, c, '#ffffff', '');
+    if (!mono) return null;
+    svg = mono.replace(/^<svg class="[^"]*" width="\d+" height="\d+" /, '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" ')
+      .replace('aria-hidden="true">', 'aria-hidden="true"><g opacity=".06">').replace('</svg>', '</g></svg>');
+  }
+  // encodeURIComponent deja pasar la comilla simple (la tipografía del
+  // monograma la usa) y cortaría el url('…').
+  return { tipo, url: `url('data:image/svg+xml,${encodeURIComponent(svg).replace(/'/g, '%27')}')` };
 }
 
 // Encabezado elegido (v245), validado. Lo usan _pdocAttrs (la clase) y

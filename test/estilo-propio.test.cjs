@@ -251,7 +251,7 @@ const toastsTxt = page => page.evaluate(() =>
         estiloUISync(true);
         estiloAbrir({ tirar: true });
         const abierto = document.getElementById('estilo-overlay').classList.contains('open');
-        await new Promise(res => setTimeout(res, 2400));
+        await new Promise(res => setTimeout(res, 2600));
         const listos = document.querySelectorAll('#estilo-reels .estilo-reel.listo').length;
         const cambio = S.pdfMono !== 'rombo' || S.pdfTheme !== 'elegante' || S.accentColor !== '#3b0764';
         estiloDeshacer();
@@ -260,7 +260,7 @@ const toastsTxt = page => page.evaluate(() =>
           cerrado: !document.getElementById('estilo-overlay').classList.contains('open'),
           nav: typeof NAV_OVERLAYS['estilo-overlay'] === 'function' };
       });
-      check('I1 La máquina abre y los rodillos frenan en el valor sorteado', r.abierto && r.total === 11 && r.listos === 11, JSON.stringify(r));
+      check('I1 La máquina abre y los rodillos frenan en el valor sorteado', r.abierto && r.total === 12 && r.listos === 12, JSON.stringify(r));
       check('I2 "Dejar como estaba" vuelve al estilo anterior y cierra', r.cambio && r.cerrado && JSON.stringify(r.vuelta) === '["elegante","#3b0764","","inter","rombo","centrado","grilla"]', JSON.stringify(r.vuelta));
       check('I3 La ventana se cierra con "Atrás" (NAV_OVERLAYS)', r.nav);
     }
@@ -273,7 +273,7 @@ const toastsTxt = page => page.evaluate(() =>
         const base = () => {
           S.isEstimative = false; S.isRisk = false; S.logo = ''; S.coName = 'Arbolado Norte';
           S.pdfTheme = 'clasico'; S.accentColor = '#1e3a5f'; S.accentColor2 = ''; S.pdfMono = 'escudo';
-          S.pdfEncabezado = 'auto'; S.pdfTitulos = 'auto'; S.pdfTabla = 'auto'; S.pdfTotal = 'auto'; S.pdfPie = 'auto';
+          S.pdfEncabezado = 'auto'; S.pdfTitulos = 'auto'; S.pdfTabla = 'auto'; S.pdfTotal = 'auto'; S.pdfPie = 'auto'; S.pdfFondo = 'auto';
           S.showFooter = true; S.coFooter = 'Julián Pérez'; S.coEslogan = ''; S.coWhatsapp = '11 5555-0142'; S.coCity = 'San Isidro'; S.coEmail = '';
           S.items = [{ id: 1, type: 'tree', species: 'Fresno', price: '100000', qty: 1 }, { id: 2, type: 'tree', species: 'Tilo', price: '50000', qty: 1 }];
         };
@@ -360,6 +360,74 @@ const toastsTxt = page => page.evaluate(() =>
       check('J15 Son config del negocio (CFG_GLOBAL_FIELDS)', r.cfg);
       check('J16 Chips de Estilo: todas las opciones y aplican al tocar', r.chips && r.chipAplica);
     }
+
+    // ── K. Fondos y marca de agua (v246) ──────────────────────────────────
+    {
+      const r = await page.evaluate(() => {
+        const doc = () => document.getElementById('doc-a4');
+        const tabla = () => doc().querySelector('table.pdoc');
+        const svgDe = () => {
+          const m = (tabla().getAttribute('style') || '').match(/--pdoc-fondo:url\('data:image\/svg\+xml,([^']*)'\)/);
+          return m ? decodeURIComponent(m[1]) : null;
+        };
+        const valido = svg => !!svg && !new DOMParser().parseFromString(svg, 'image/svg+xml').querySelector('parsererror');
+        Object.assign(S, { isEstimative: false, isRisk: false, logo: '', coName: 'Arbolado Norte', pdfTheme: 'clasico',
+          accentColor: '#1e3a5f', accentColor2: '', pdfMono: 'escudo', pdfEncabezado: 'auto', pdfTitulos: 'auto',
+          pdfTabla: 'auto', pdfTotal: 'auto', pdfPie: 'auto', pdfFondo: 'auto',
+          items: [{ id: 1, type: 'tree', species: 'Fresno', price: '100000', qty: 1 }] });
+        const out = {};
+        buildDoc();
+        out.liso = !/pdoc-fondo-/.test(tabla().className) && !/--pdoc-fondo/.test(tabla().getAttribute('style'));
+        out.tipos = {};
+        ['hojas', 'curvas', 'veta', 'marca'].forEach(t => {
+          S.pdfFondo = t; buildDoc();
+          out.tipos[t] = tabla().classList.contains('pdoc-fondo-' + t) && valido(svgDe())
+            && /data:image\/svg\+xml/.test(getComputedStyle(tabla()).backgroundImage);
+        });
+        S.pdfFondo = 'marca'; S.pdfMono = 'ninguno'; buildDoc();
+        out.marcaSinForma = valido(svgDe()) && /<circle/.test(svgDe());
+        S.coName = '<script>alert(1)</script> Sur'; S.pdfMono = 'rombo'; buildDoc();
+        out.marcaEscapada = valido(svgDe()) && !/<script/i.test(svgDe());
+        S.coName = ''; buildDoc();
+        out.marcaSinNombre = !/pdoc-fondo-/.test(tabla().className);
+        S.coName = 'Arbolado Norte'; S.pdfTheme = 'lateral'; S.pdfFondo = 'hojas'; buildDoc();
+        const bg = getComputedStyle(tabla()).backgroundImage;
+        out.lateral = /linear-gradient/.test(bg) && /data:image\/svg\+xml/.test(bg);
+        S.pdfTheme = 'clasico'; S.pdfFondo = 'auto'; S.pdfMono = 'escudo'; buildDoc();
+        const mono = doc().querySelector('svg.ph-mono');
+        out.monoTam = !!mono && mono.getAttribute('width') === '50' && mono.getAttribute('height') === '50';
+        out.san = sanitizeStateObj({ pdfFondo: 'url(x)' }).pdfFondo;
+        out.cfg = CFG_GLOBAL_FIELDS.includes('pdfFondo');
+        S.coName = '';
+        let marcaSinNombre = 0, fondos = new Set(), fuertes = 0;
+        for (let i = 0; i < 400; i++) {
+          const x = estiloSortear(false);
+          fondos.add(x.pdfFondo);
+          if (x.pdfFondo === 'marca') marcaSinNombre++;
+          if (estiloFuertes(x) > ESTILO_MAX_FUERTES) fuertes++;
+        }
+        S.coName = 'Arbolado Norte';
+        let conMarca = 0;
+        for (let i = 0; i < 400; i++) if (estiloSortear(false).pdfFondo === 'marca') conMarca++;
+        out.sorteo = { marcaSinNombre, fondos: [...fondos].sort(), fuertes, conMarca };
+        estiloUISync(false);
+        out.chips = document.querySelectorAll('#el-pdfFondo [data-el]').length === 5;
+        S.pdfFondo = 'auto';
+        return out;
+      });
+      check('K1 Liso: el documento no lleva fondo', r.liso, JSON.stringify(r));
+      check('K2 Hojas, curvas, veta y marca: clase, SVG válido y se pinta', Object.values(r.tipos).every(Boolean), JSON.stringify(r.tipos));
+      check('K3 Marca de agua sin forma elegida usa el círculo', r.marcaSinForma);
+      check('K4 El nombre se escapa dentro de la marca de agua', r.marcaEscapada);
+      check('K5 Sin nombre del negocio no hay marca de agua (queda liso)', r.marcaSinNombre);
+      check('K6 Lateral: la banda y el fondo conviven (dos capas)', r.lateral);
+      check('K7 El monograma tiene tamaño propio (html2canvas lo dibuja)', r.monoTam);
+      check('K8 Basura de un backup cae a liso; es config del negocio', r.san === 'auto' && r.cfg);
+      check('K9 Sorteo: marca solo con nombre, salen todos los fondos, nunca más de 2 fuertes',
+        r.sorteo.marcaSinNombre === 0 && r.sorteo.conMarca > 0 && r.sorteo.fuertes === 0
+        && JSON.stringify(r.sorteo.fondos) === '["auto","curvas","hojas","veta"]', JSON.stringify(r.sorteo));
+      check('K10 Chips de Fondo en Estilo', r.chips);
+    }
     await page.close();
 
     // ── H. Usuarios que ya tenían la app ──────────────────────────────────
@@ -370,7 +438,7 @@ const toastsTxt = page => page.evaluate(() =>
         localStorage.setItem('pq_onboarded', '1');
         localStorage.setItem(LS.STATE, JSON.stringify(Object.assign({}, S, {
           pdfTheme: 'clasico', accentColor: '#064e3b', pdfFont: 'auto', pdfMono: 'ninguno', accentColor2: '',
-          pdfEncabezado: 'auto', pdfTitulos: 'auto', pdfTabla: 'auto', pdfTotal: 'auto', pdfPie: 'auto',
+          pdfEncabezado: 'auto', pdfTitulos: 'auto', pdfTabla: 'auto', pdfTotal: 'auto', pdfPie: 'auto', pdfFondo: 'auto',
           docTitle: TEXTOS_JUEGOS.original.t.docTitle })));
       });
       await espera(1500);
