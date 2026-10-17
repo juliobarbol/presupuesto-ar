@@ -187,6 +187,9 @@ const toastsTxt = page => page.evaluate(() =>
         S.isEstimative = false; S.isRisk = false;
         S.coName = 'Arbolado Norte'; S.logo = ''; S.pdfTheme = 'clasico';
         S.pdfMono = 'escudo'; S.accentColor = '#1e3a5f'; S.accentColor2 = '#b08d3c';
+        // Elementos en "Según diseño": la primera apertura pudo sortear, p. ej., un
+        // encabezado en banda, que saca el filete a propósito.
+        S.pdfEncabezado = 'auto'; S.pdfTitulos = 'auto'; S.pdfTabla = 'auto'; S.pdfTotal = 'auto'; S.pdfPie = 'auto'; S.pdfFondo = 'auto'; S.pdfFont = 'auto';
         S.items = [{ id: 1, type: 'tree', species: 'Fresno', price: '100000', qty: 1 }];
         noSync = true; restoreUI(); noSync = false;
         buildDoc();
