@@ -2370,6 +2370,26 @@ input[type=number]{-moz-appearance:textfield}
 .estilo-dot{width:14px;height:14px;border-radius:50%;flex:none;border:1px solid rgba(0,0,0,.15)}
 .estilo-acc{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
 .estilo-deshacer{margin-top:12px;background:none;border:none;padding:6px 0;color:var(--muted);font-family:var(--font-text);font-size:12.5px;text-decoration:underline;cursor:pointer}
+.eg{margin-top:16px;display:grid;gap:8px}
+.eg-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.eg-tit{font-weight:700;font-size:14px;color:var(--text)}
+.eg-form{display:flex;gap:6px;flex-wrap:wrap}
+.eg-form[hidden]{display:none}
+.eg-form input{flex:1 1 160px;min-width:0;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-field);font-family:var(--font-text);font-size:13px;color:var(--text);background:var(--card);outline:none;-webkit-appearance:none;appearance:none}
+.eg-form input:focus{border-color:var(--accent-fg);box-shadow:0 0 0 3px rgba(var(--accent-rgb),.1)}
+.eg-lista{display:grid;gap:6px}
+.eg-item{display:flex;align-items:center;gap:10px;padding:8px 6px 8px 10px;border:1px solid var(--border);border-radius:var(--radius-field);background:var(--card);min-width:0}
+.eg-item.is-uso{border-color:var(--accent-fg);box-shadow:inset 3px 0 0 var(--accent-fg)}
+.eg-item.is-auto{border-style:dashed}
+.eg-sw{width:30px;height:30px;border-radius:50%;flex:none;position:relative;overflow:hidden;border:1px solid rgba(0,0,0,.15)}
+.eg-sw span{position:absolute;right:0;bottom:0;width:50%;height:50%}
+.eg-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.eg-txt b{font-size:13.5px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.eg-txt span{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.eg-uso{font-size:12px;font-weight:700;color:var(--accent-fg);flex:none;padding:0 4px}
+.eg-del{background:none;border:none;color:var(--muted);font-size:15px;cursor:pointer;flex:none;min-width:38px;min-height:38px;border-radius:var(--radius-field)}
+.eg-del:hover{color:var(--text);background:var(--surface-2)}
+.eg-vacio{font-size:12.5px;color:var(--muted);padding:4px 0}
 .estilo-fabrica{font-size:12.5px;line-height:1.5;color:var(--text-2);background:var(--surface-2);border-left:3px solid #d97706;border-radius:var(--radius-field);padding:8px 11px;margin-bottom:8px}
 .cpreset-igual{background:conic-gradient(var(--cp-main,#064e3b) 0 50%,#fff 0 100%)}
 .mpreset svg{width:30px;height:30px;display:block}
@@ -4896,6 +4916,21 @@ input[type=number]{-moz-appearance:textfield}
           <div class="estilo-fabrica" id="estilo-fabrica" hidden>Tus presupuestos tienen el diseño de fábrica: salen iguales a los de cualquier colega que use la app.</div>
           <p class="hint" style="margin-bottom:10px">Combiná diseño, colores, tipografía, monograma y textos para que tus presupuestos se distingan. Si no sabés por dónde empezar, que la app tire los dados.</p>
           <button type="button" class="btn btn-p btn-sm" onclick="estiloAbrir({ tirar:true })">🎲 Sorprendeme</button>
+          <!-- Mis estilos (v247): guardar el estilo con nombre para poder probar
+               otros sin perderlo. Ver getEstilos / estiloGuardar / estiloUsar. -->
+          <div class="eg" id="estilos-guardados">
+            <div class="eg-head">
+              <span class="eg-tit">Mis estilos</span>
+              <button type="button" class="btn btn-g btn-sm" id="eg-guardar-btn" onclick="estiloGuardarAbrir()">Guardar el actual</button>
+            </div>
+            <div class="eg-form" id="eg-form" hidden>
+              <input type="text" id="eg-nombre" maxlength="40" placeholder="Nombre, ej: El de siempre" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();estiloGuardar();}">
+              <button type="button" class="btn btn-p btn-sm" onclick="estiloGuardar()">Guardar</button>
+              <button type="button" class="btn btn-g btn-sm" onclick="estiloGuardarCerrar()">Cancelar</button>
+            </div>
+            <div class="eg-lista" id="eg-lista"></div>
+            <p class="hint" style="margin:0">Guardá el estilo que te gusta antes de probar otros y recuperalo con un toque. Se guarda todo: diseño, colores, monograma, elementos, fondo, eslogan y textos. Cuando la máquina o «Usar» cambian el estilo, el que tenías queda solo como «El anterior».</p>
+          </div>
         </div>
 
         <div class="st">Color del documento</div>
@@ -5970,6 +6005,7 @@ const LS = {
   HIST_AVISOS:    'pq_hist_avisos', // avisos del Historial desplegados ('1') o plegados (preferencia del dispositivo, no va al backup)
   MAPA_VISTA:     'pq_mapa_vista',  // última vista del mapa {lat,lng,z} (preferencia del dispositivo, no va al backup)
   ESTILO_OFERTA:  'pq_estilo_oferta', // ya se ofreció armar un estilo propio a quien tenía el de fábrica (del dispositivo, no va al backup)
+  ESTILOS:        'pq_estilos',     // "Mis estilos": estilos guardados con nombre (VA al backup; ver sanitizeEstilos)
 };
 
 // Notificaciones push (avisos de seguimiento con la app cerrada). Ambos se
@@ -9148,6 +9184,7 @@ function migrateSanitizeStored() {
   pasada(LS.HISTORY,   sanitizeHistory,  v => { try { localStorage.setItem(LS.HISTORY, v); } catch(_){} });
   pasada(LS.NOTES,     sanitizeNotes,    v => { try { localStorage.setItem(LS.NOTES, v); } catch(_){} });
   pasada(LS.NOTIF_LOG, sanitizeNotifLog, v => { try { localStorage.setItem(LS.NOTIF_LOG, v); } catch(_){} });
+  pasada(LS.ESTILOS,   sanitizeEstilos,  v => { try { localStorage.setItem(LS.ESTILOS, v); } catch(_){} });
   if (typeof FACT_KEY !== 'undefined') {
     pasada(FACT_KEY,   sanitizeFacturas, v => { try { localStorage.setItem(FACT_KEY, v); } catch(_){} });
   }
@@ -9183,6 +9220,54 @@ function migrateSanitizeStored() {
 // Normaliza el objeto ENTERO en memoria y devuelve una copia limpia, o null si
 // no es un backup reconocible. Nada se escribe todavía: esa es justamente la
 // idea (ver applyBackupObject, que restaura en dos fases).
+// ─── MIS ESTILOS (v247) ──────────────────────────────────────
+// Estilos guardados con nombre (Empresa → Estilo → Mis estilos). Viajan en el
+// backup, así que un archivo ajeno puede traer cualquier cosa: cada campo pasa
+// por su lista blanca, igual que en sanitizeStateObj. `textos` son los del
+// juego de textos (TEXTOS_CAMPOS). El id va a un data-id: se valida, no se
+// escapa. Hasta ESTILO_MAX_GUARDADOS con nombre + el automático ("El anterior").
+const ESTILO_MAX_GUARDADOS = 12;
+const ESTILO_ID_RE = /^[a-z0-9_-]{1,24}$/i;
+function sanitizeEstiloDatos(d) {
+  d = (d && typeof d === 'object' && !Array.isArray(d)) ? d : {};
+  const o = {
+    pdfTheme:      sanEnum(d.pdfTheme, PDF_THEMES, 'clasico'),
+    accentColor:   safeColor(d.accentColor),
+    accentColor2:  sanColor2(d.accentColor2),
+    pdfFont:       sanEnum(d.pdfFont, PDF_FONTS, 'auto'),
+    pdfMono:       sanEnum(d.pdfMono, PDF_MONOS, 'ninguno'),
+    pdfEncabezado: sanEnum(d.pdfEncabezado, PDF_ENCABEZADOS, 'auto'),
+    pdfTitulos:    sanEnum(d.pdfTitulos, PDF_TITULOS, 'auto'),
+    pdfTabla:      sanEnum(d.pdfTabla, PDF_TABLAS, 'auto'),
+    pdfTotal:      sanEnum(d.pdfTotal, PDF_TOTALES, 'auto'),
+    pdfPie:        sanEnum(d.pdfPie, PDF_PIES, 'auto'),
+    pdfFondo:      sanEnum(d.pdfFondo, PDF_FONDOS, 'auto'),
+    pdfCompact:    d.pdfCompact === true,
+    coEslogan:     sanStr(d.coEslogan, 120),
+    textos:        {},
+  };
+  const t = (d.textos && typeof d.textos === 'object' && !Array.isArray(d.textos)) ? d.textos : {};
+  TEXTOS_CAMPOS.forEach(c => { if (typeof t[c] === 'string') o.textos[c] = sanStr(t[c], 3000); });
+  return o;
+}
+function sanitizeEstilos(arr) {
+  if (!Array.isArray(arr)) return [];
+  const out = [], ids = new Set();
+  let manuales = 0, auto = false;
+  for (const e of arr) {
+    if (!e || typeof e !== 'object' || Array.isArray(e)) continue;
+    const id = (typeof e.id === 'string' && ESTILO_ID_RE.test(e.id)) ? e.id : '';
+    const nombre = sanStr(e.nombre, 40).trim();
+    if (!id || ids.has(id) || !nombre) continue;
+    const esAuto = e.auto === true;
+    if (esAuto ? auto : manuales >= ESTILO_MAX_GUARDADOS) continue;
+    if (esAuto) auto = true; else manuales++;
+    ids.add(id);
+    out.push({ id, nombre, auto: esAuto, creado: sanISODate(e.creado) || '', datos: sanitizeEstiloDatos(e.datos) });
+  }
+  return out;
+}
+
 function sanitizeBackup(d) {
   if (!d || typeof d !== 'object' || Array.isArray(d)) return null;
   const b = {};
@@ -9204,6 +9289,7 @@ function sanitizeBackup(d) {
   if (d.reciboSeq != null) b.reciboSeq = Math.max(0, Math.round(sanNum(d.reciboSeq)));
   if (d.notes !== undefined)    b.notes    = sanitizeNotes(d.notes);
   if (d.notifLog !== undefined) b.notifLog = sanitizeNotifLog(d.notifLog);
+  if (d.estilos !== undefined)  b.estilos  = sanitizeEstilos(d.estilos);
   if (d.followup !== undefined) { const f = sanitizeFollowup(d.followup); if (f) b.followup = f; }
   // El id de calendario de Google es un email-like acotado; si no pinta como
   // tal, se ignora (peor caso: se crea un calendario nuevo).
@@ -13668,14 +13754,16 @@ function textosJuegoActual() {
 }
 
 // Copia del estilo y los textos actuales, para "Dejar como estaba" / Deshacer.
+// Incluye el modo compacto y el eslogan, que también son parte de "cómo sale".
+const ESTILO_FOTO_CAMPOS = ESTILO_CAMPOS.concat(['pdfCompact', 'coEslogan'], TEXTOS_CAMPOS);
 function _estiloFoto() {
   const f = {};
-  ESTILO_CAMPOS.concat(TEXTOS_CAMPOS).forEach(k => { f[k] = S[k]; });
+  ESTILO_FOTO_CAMPOS.forEach(k => { f[k] = S[k]; });
   return f;
 }
 function _estiloRestaurar(f) {
   if (!f) return;
-  ESTILO_CAMPOS.concat(TEXTOS_CAMPOS).forEach(k => { if (k in f) S[k] = f[k]; });
+  ESTILO_FOTO_CAMPOS.forEach(k => { if (k in f) S[k] = f[k]; });
   estiloUISync(true);
   sched();
 }
@@ -13779,6 +13867,8 @@ function estiloUISync(todo) {
     const pv = document.getElementById('cpk-preview'); if (pv) pv.style.background = c;
     document.querySelectorAll('#color-presets .cpreset').forEach(el => el.classList.toggle('active', String(el.dataset.color || '').toLowerCase() === c.toLowerCase()));
     if (typeof _cpkSetFromHex === 'function') _cpkSetFromHex(c);
+    const cmp = document.getElementById('pdf-compact'); if (cmp) cmp.checked = !!S.pdfCompact;
+    sv('co-eslogan', S.coEslogan || '');
     _textosAlUI();
   }
   const det = sanColor2(S.accentColor2);
@@ -13826,6 +13916,7 @@ function estiloUISync(todo) {
   const fab = document.getElementById('estilo-fabrica');
   if (fab) fab.hidden = !estiloEsDeFabrica();
   textosJuegosSync();
+  estilosGuardadosRender();
 }
 
 // ── La máquina ──
@@ -13946,7 +14037,10 @@ function estiloAbrir(opts) {
   if (tit) tit.textContent = opts.tirar ? 'Armando tu estilo…' : 'Tu estilo';
   const ov = document.getElementById('estilo-overlay');
   if (ov) ov.classList.add('open');
-  if (opts.tirar) estiloTirar(); else _estiloReels(true);
+  // Antes de sortear, lo que había queda como "El anterior" (si no estaba ya
+  // guardado): probar no puede costar el estilo que te gustaba.
+  if (opts.tirar) { _estiloGuardarAnterior(_estiloDatosActuales()); estiloTirar(); }
+  else _estiloReels(true);
 }
 function estiloTirar() {
   const chk = document.getElementById('estilo-textos');
@@ -13988,6 +14082,147 @@ function estiloPersonalizar() {
   switchSubtab('estilo');
   const el = document.getElementById('estilo-propio');
   if (el && el.scrollIntoView) el.scrollIntoView({ block:'start' });
+}
+
+// ── Mis estilos (v247) ──
+// "Quiero probar otras opciones sin tener que acordarme después de cómo era la
+// que me gustaba" (pedido del dueño). Los estilos viven en LS.ESTILOS, fuera
+// de S: S se copia entero en cada presupuesto del historial y no tiene sentido
+// cargar ahí la lista. Un estilo guarda TODO lo de ESTILO_FOTO_CAMPOS (diseño,
+// colores, monograma, elementos, fondo, compacto, eslogan y textos).
+// "El anterior" (auto:true, id ESTILO_ANTERIOR_ID) es la red de seguridad: lo
+// llenan la máquina y "Usar" con lo que había, salvo que ya estuviera guardado.
+const ESTILO_ANTERIOR_ID = 'anterior';
+function getEstilos() {
+  try { return sanitizeEstilos(JSON.parse(localStorage.getItem(LS.ESTILOS) || '[]')); } catch (_) { return []; }
+}
+function setEstilos(arr) { safeSetLS(LS.ESTILOS, JSON.stringify(sanitizeEstilos(arr))); }
+function _estiloDatosActuales() {
+  const d = {};
+  ESTILO_CAMPOS.forEach(k => { d[k] = S[k]; });
+  d.pdfCompact = !!S.pdfCompact;
+  d.coEslogan = S.coEslogan || '';
+  d.textos = {};
+  TEXTOS_CAMPOS.forEach(c => { d.textos[c] = S[c]; });
+  return sanitizeEstiloDatos(d);
+}
+// Mismos datos = mismo estilo (sanitizeEstiloDatos arma siempre el mismo orden).
+function _estiloIgual(a, b) { return JSON.stringify(a) === JSON.stringify(b); }
+function _estiloAplicarDatos(d) {
+  d = sanitizeEstiloDatos(d);
+  ESTILO_CAMPOS.forEach(k => { S[k] = d[k]; });
+  S.pdfCompact = d.pdfCompact;
+  S.coEslogan = d.coEslogan;
+  TEXTOS_CAMPOS.forEach(c => { if (typeof d.textos[c] === 'string') S[c] = d.textos[c]; });
+  estiloUISync(true);
+  sched();
+}
+function _estiloGuardarAnterior(datos) {
+  const lista = getEstilos();
+  const sinAuto = lista.filter(e => !e.auto);
+  if (sinAuto.some(e => _estiloIgual(e.datos, datos))) return;
+  setEstilos(sinAuto.concat([{ id: ESTILO_ANTERIOR_ID, nombre: 'El anterior', auto: true, creado: today(), datos }]));
+}
+function _estiloResumen(d) {
+  // "Según diseño" no le dice nada a quien lee la lista: la tipografía va
+  // solo si es una elegida.
+  const partes = [ESTILO_TEMA_LBL[d.pdfTheme], d.pdfFont !== 'auto' ? ESTILO_FUENTE_LBL[d.pdfFont] : ''];
+  if (d.pdfMono !== 'ninguno') partes.push('monograma ' + ESTILO_MONO_LBL[d.pdfMono].toLowerCase());
+  if (d.pdfFondo !== 'auto') partes.push('fondo ' + ESTILO_ELEMENTOS.find(e => e.k === 'pdfFondo').lbl[d.pdfFondo].toLowerCase());
+  return partes.filter(Boolean).join(' · ');
+}
+function estilosGuardadosRender() {
+  const host = document.getElementById('eg-lista');
+  if (!host) return;
+  const lista = getEstilos();
+  const actual = _estiloDatosActuales();
+  // El automático va último: es la red de seguridad, no uno de "mis" estilos.
+  const orden = lista.filter(e => !e.auto).concat(lista.filter(e => e.auto));
+  host.innerHTML = orden.length ? orden.map(e => {
+    const d = e.datos, uso = _estiloIgual(d, actual);
+    const det = d.accentColor2 || d.accentColor;
+    return `<div class="eg-item${uso ? ' is-uso' : ''}${e.auto ? ' is-auto' : ''}" data-id="${e.id}">
+      <span class="eg-sw" style="background:${safeColor(d.accentColor)}"><span style="background:${safeColor(det)}"></span></span>
+      <div class="eg-txt"><b>${esc(e.nombre)}</b><span>${esc(e.auto ? 'Se guardó solo antes del último cambio' : _estiloResumen(d))}</span></div>
+      ${uso ? '<span class="eg-uso">En uso</span>' : '<button type="button" class="btn btn-g btn-sm" data-eg="usar">Usar</button>'}
+      <button type="button" class="eg-del" data-eg="borrar" aria-label="Borrar ${esc(e.nombre)}" title="Borrar">✕</button>
+    </div>`;
+  }).join('') : '<div class="eg-vacio">Todavía no guardaste ningún estilo.</div>';
+  host.onclick = ev => {
+    const b = ev.target.closest('[data-eg]');
+    const it = b && b.closest('.eg-item');
+    if (!it) return;
+    if (b.dataset.eg === 'usar') estiloUsar(it.dataset.id);
+    else estiloBorrar(it.dataset.id);
+  };
+}
+function estiloGuardarAbrir() {
+  const f = document.getElementById('eg-form');
+  if (!f) return;
+  f.hidden = false;
+  const inp = document.getElementById('eg-nombre');
+  if (inp) { inp.value = ''; inp.focus(); }
+}
+function estiloGuardarCerrar() {
+  const f = document.getElementById('eg-form');
+  if (f) f.hidden = true;
+}
+async function estiloGuardar() {
+  try { syncFromUI(); } catch (_) {}
+  const inp = document.getElementById('eg-nombre');
+  const nombre = (inp ? inp.value : '').replace(/\s+/g, ' ').trim().slice(0, 40);
+  if (!nombre) { toast('Ponele un nombre al estilo.', 'info'); if (inp) inp.focus(); return; }
+  const datos = _estiloDatosActuales();
+  let lista = getEstilos();
+  const manuales = lista.filter(e => !e.auto);
+  const igual = manuales.find(e => _estiloIgual(e.datos, datos));
+  const mismoNombre = manuales.find(e => e.nombre.toLowerCase() === nombre.toLowerCase());
+  if (igual && (!mismoNombre || mismoNombre === igual)) {
+    estiloGuardarCerrar();
+    toast(`Este estilo ya está guardado como «${igual.nombre}».`, 'info');
+    return;
+  }
+  if (mismoNombre) {
+    const ok = await confirmDlg('¿Reemplazar el estilo?', `Ya tenés un estilo llamado «${mismoNombre.nombre}». Se reemplaza por el actual.`, 'Reemplazar', 'btn-p');
+    if (!ok) return;
+    lista = lista.map(e => e === mismoNombre ? Object.assign({}, e, { datos, creado: today() }) : e);
+  } else {
+    if (manuales.length >= ESTILO_MAX_GUARDADOS) {
+      toast(`Ya tenés ${ESTILO_MAX_GUARDADOS} estilos guardados: borrá alguno para guardar otro.`, 'info', 6000);
+      return;
+    }
+    const id = 'e' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+    lista = lista.concat([{ id, nombre, auto: false, creado: today(), datos }]);
+  }
+  // Si "El anterior" quedó igual al que se acaba de guardar, sobra.
+  lista = lista.filter(e => !(e.auto && _estiloIgual(e.datos, datos)));
+  setEstilos(lista);
+  estiloGuardarCerrar();
+  estilosGuardadosRender();
+  toast(`Estilo «${nombre}» guardado.`, 'ok');
+}
+function estiloUsar(id) {
+  try { syncFromUI(); } catch (_) {}
+  const e = getEstilos().find(x => x.id === id);
+  if (!e) return;
+  const antes = _estiloDatosActuales();
+  const destino = e.datos;          // tomarlo ANTES de pisar "El anterior"
+  _estiloGuardarAnterior(antes);
+  _estiloAplicarDatos(destino);
+  toastAccion(`Estilo «${e.auto ? 'El anterior' : e.nombre}» aplicado.`, [{ label: 'Deshacer', fn: () => _estiloAplicarDatos(antes) }]);
+}
+function estiloBorrar(id) {
+  const lista = getEstilos();
+  const i = lista.findIndex(x => x.id === id);
+  if (i < 0) return;
+  const e = lista[i];
+  setEstilos(lista.slice(0, i).concat(lista.slice(i + 1)));
+  estilosGuardadosRender();
+  toastAccion(`Estilo «${e.nombre}» borrado.`, [{ label: 'Deshacer', fn: () => {
+    const l = getEstilos();
+    setEstilos(l.slice(0, i).concat([e], l.slice(i)));
+    estilosGuardadosRender();
+  } }]);
 }
 
 // Primera vez que se abre la app (desde maybeShowWelcome): la máquina elige
@@ -18021,6 +18256,8 @@ function buildBackupObject() {
     // "Deshacer"): viaja en el backup para no perder el historial al cambiar de
     // dispositivo. Es opcional; un backup viejo sin esto no rompe nada.
     notifLog: (typeof getNotifLog === 'function') ? getNotifLog() : [],
+    // "Mis estilos" (v247): los estilos que el usuario guardó con nombre.
+    estilos: (typeof getEstilos === 'function') ? getEstilos() : [],
     // Config de seguimiento comercial: días, estados que disparan y las TRES
     // plantillas de WhatsApp que el usuario redactó (envío, seguimiento y
     // recontacto). Sin esto, al cambiar de teléfono los mensajes con los que le
@@ -18040,11 +18277,11 @@ function buildBackupObject() {
 // VA AL BACKUP (datos y configuración del usuario):
 //   pq_s (estado) · pq_h (historial) · pq_clients · pq_species · pq_services
 //   pq_services_pinned · pq_mis_servicios · pq_frases_* (+ pq_phrases_seeded) · pq_facturas
-//   pq_tope_anual · pq_recibo_seq · pq_agenda_notes · pq_notif_log
+//   pq_tope_anual · pq_recibo_seq · pq_agenda_notes · pq_notif_log · pq_estilos
 //   pq_followup · pq_gcal_id · fotos (IndexedDB, vía buildPhotoMap)
 //
 // NO VA (preferencias de UI, caches y estado propio del dispositivo):
-//   pq_theme · pq_cal_view · pq_hist_avisos · pq_onboarded · pq_last_backup
+//   pq_theme · pq_cal_view · pq_hist_avisos · pq_onboarded · pq_last_backup · pq_estilo_oferta
 //   pq_day_alert_seen · pq_notif_seen (qué avisos ya viste acá) · pq_clima + pq_clima_warn (cache
 //   del pronóstico, se rebaja solo) · pq_push_device_id (identifica ESTE
 //   equipo) · pq_gdrive_* y pq_gcal_on/last/email (conexión de este equipo)
@@ -18373,6 +18610,8 @@ function applyBackupObject(raw) {
     if (d.gcalId) { try { localStorage.setItem(LS.GCAL_ID, d.gcalId); } catch(_){} }
     // Bitácora del centro de notificaciones (opcional en backups viejos).
     if (Array.isArray(d.notifLog)) { try { localStorage.setItem(LS.NOTIF_LOG, JSON.stringify(d.notifLog.slice(0, NOTIF_CAP))); } catch(_){} }
+    // Mis estilos (opcional en backups viejos: sin la clave, quedan los de acá).
+    if (Array.isArray(d.estilos)) { try { localStorage.setItem(LS.ESTILOS, JSON.stringify(sanitizeEstilos(d.estilos))); } catch(_){} }
     // Config de seguimiento + plantillas de WhatsApp (opcional en backups
     // viejos → se deja intacto lo que haya en el dispositivo).
     if (d.followup && typeof setFollowupCfg === 'function') setFollowupCfg(d.followup);

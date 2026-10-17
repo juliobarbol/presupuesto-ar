@@ -431,6 +431,115 @@ const toastsTxt = page => page.evaluate(() =>
         && JSON.stringify(r.sorteo.fondos) === '["auto","curvas","hojas","veta"]', JSON.stringify(r.sorteo));
       check('K10 Chips de Fondo en Estilo', r.chips);
     }
+
+    // ── L. Mis estilos (v247) ─────────────────────────────────────────────
+    {
+      const r = await page.evaluate(async () => {
+        const out = {};
+        const items = () => [...document.querySelectorAll('#eg-lista .eg-item')];
+        localStorage.removeItem(LS.ESTILOS);
+        switchSubtab('estilo');
+        estiloUISync(false);
+        out.vacio = !!document.querySelector('#eg-lista .eg-vacio');
+        // Un estilo "que me gusta", con textos y eslogan propios.
+        Object.assign(S, { pdfTheme: 'elegante', accentColor: '#3b0764', accentColor2: '#b08d3c', pdfFont: 'plex', pdfMono: 'sello',
+          pdfEncabezado: 'centrado', pdfTitulos: 'versalitas', pdfTabla: 'grilla', pdfTotal: 'grande', pdfPie: 'eslogan', pdfFondo: 'curvas',
+          pdfCompact: true, coEslogan: 'Poda segura desde 2005', docGreeting: 'Un abrazo, Julio' });
+        estiloUISync(true);
+        const foto = JSON.stringify(_estiloDatosActuales());
+        estiloGuardarAbrir();
+        document.getElementById('eg-nombre').value = '  El de   siempre ';
+        await estiloGuardar();
+        out.guardado = getEstilos().length === 1 && getEstilos()[0].nombre === 'El de siempre';
+        out.enUso = items().length === 1 && items()[0].classList.contains('is-uso') && !items()[0].querySelector('[data-eg="usar"]');
+        // Guardar otra vez lo mismo no duplica.
+        estiloGuardarAbrir(); document.getElementById('eg-nombre').value = 'Otro nombre';
+        await estiloGuardar();
+        out.sinDuplicar = getEstilos().length === 1;
+        // La máquina cambia todo; como el estilo estaba guardado, no hace falta "El anterior".
+        estiloAbrir({ tirar: true, textos: true });
+        estiloCerrar();
+        out.sinAnteriorSiEstabaGuardado = !getEstilos().some(e => e.auto);
+        out.cambio = JSON.stringify(_estiloDatosActuales()) !== foto;
+        const sorteado = JSON.stringify(_estiloDatosActuales());
+        // Usar el guardado: vuelve EXACTO (textos, eslogan, compacto incluidos)
+        // y lo sorteado queda como "El anterior".
+        estiloUsar(getEstilos()[0].id);
+        syncFromUI();
+        out.vuelve = JSON.stringify(_estiloDatosActuales()) === foto && S.docGreeting === 'Un abrazo, Julio'
+          && document.getElementById('co-eslogan').value === 'Poda segura desde 2005' && document.getElementById('pdf-compact').checked === true;
+        const auto = getEstilos().find(e => e.auto);
+        out.anterior = !!auto && JSON.stringify(auto.datos) === sorteado && items().length === 2 && items()[1].classList.contains('is-auto');
+        // "Usar" El anterior vuelve a lo sorteado (y lo de antes queda guardado igual).
+        estiloUsar('anterior');
+        out.ida = JSON.stringify(_estiloDatosActuales()) === sorteado;
+        estiloUsar(getEstilos().find(e => !e.auto).id);
+        // Un estilo nuevo sin guardar + máquina → "El anterior" lo rescata.
+        S.pdfTheme = 'tecnico'; S.accentColor = '#0369a1'; estiloUISync(true);
+        const sinGuardar = JSON.stringify(_estiloDatosActuales());
+        estiloAbrir({ tirar: true }); estiloCerrar();
+        const a2 = getEstilos().find(e => e.auto);
+        out.rescata = !!a2 && JSON.stringify(a2.datos) === sinGuardar && getEstilos().filter(e => e.auto).length === 1;
+        // Mismo nombre, otro estilo: pide confirmación y reemplaza.
+        estiloGuardarAbrir(); document.getElementById('eg-nombre').value = 'el de siempre';
+        const p = estiloGuardar();
+        await new Promise(res => setTimeout(res, 100));
+        out.confirma = document.getElementById('confirm-overlay').classList.contains('open');
+        document.getElementById('confirm-ok').click();
+        await p;
+        const m = getEstilos().filter(e => !e.auto);
+        out.reemplaza = m.length === 1 && JSON.stringify(m[0].datos) === JSON.stringify(_estiloDatosActuales());
+        // Borrar y deshacer.
+        const antesBorrar = JSON.stringify(getEstilos());
+        estiloBorrar(m[0].id);
+        out.borrado = !getEstilos().some(e => e.id === m[0].id);
+        const t = [...document.querySelectorAll('#toast-container .toast')].pop();
+        t.querySelector('.toast-btn').click();
+        out.deshecho = JSON.stringify(getEstilos()) === antesBorrar;
+        // Tope de 12 con nombre.
+        const doce = []; for (let i = 0; i < 12; i++) doce.push({ id: 'x' + i, nombre: 'E' + i, datos: { pdfTheme: 'clasico' } });
+        setEstilos(doce);
+        S.accentColor = '#1c1917'; estiloUISync(true);
+        estiloGuardarAbrir(); document.getElementById('eg-nombre').value = 'El 13';
+        await estiloGuardar();
+        out.tope = getEstilos().filter(e => !e.auto).length === 12;
+        // Datos ajenos: ids, nombres, campos y duplicados.
+        const raro = sanitizeEstilos([
+          { id: 'ok1', nombre: '<img src=x onerror=alert(1)>', datos: { pdfTheme: 'x', accentColor: 'red', accentColor2: 'url(x)', pdfFondo: '"><svg>', pdfCompact: 'si', textos: { docTitle: 7, docGreeting: 'Hola' } } },
+          { id: 'ok1', nombre: 'Duplicado', datos: {} },
+          { id: '"><b>', nombre: 'Id malo', datos: {} },
+          { id: 'ok2', nombre: '   ', datos: {} },
+          { id: 'a1', nombre: 'A1', auto: true, datos: {} }, { id: 'a2', nombre: 'A2', auto: true, datos: {} },
+          'basura', null,
+        ]);
+        out.san = raro.map(e => e.id).join(',') === 'ok1,a1'
+          && raro[0].datos.pdfTheme === 'clasico' && raro[0].datos.accentColor === '#064e3b' && raro[0].datos.accentColor2 === ''
+          && raro[0].datos.pdfFondo === 'auto' && raro[0].datos.pdfCompact === false
+          && !('docTitle' in raro[0].datos.textos) && raro[0].datos.textos.docGreeting === 'Hola';
+        setEstilos(raro);
+        estiloUISync(false);
+        out.escapado = !document.querySelector('#eg-lista img') && /&lt;img|<img/.test(document.getElementById('eg-lista').textContent);
+        // Backup: sale, se valida y se aplica.
+        const bk = buildBackupObject();
+        out.backup = Array.isArray(bk.estilos) && bk.estilos.length === 2;
+        const sb = sanitizeBackup({ estilos: [{ id: 'z', nombre: 'Del colega', datos: { pdfTheme: 'lateral' } }, { id: 'bad id', nombre: 'x' }] });
+        out.sanBackup = sb.estilos.length === 1 && sb.estilos[0].datos.pdfTheme === 'lateral';
+        localStorage.removeItem(LS.ESTILOS);
+        estiloUISync(false);
+        return out;
+      });
+      check('L1 Sin estilos guardados, la lista lo dice', r.vacio, JSON.stringify(r));
+      check('L2 "Guardar el actual" guarda con nombre y lo marca "En uso"', r.guardado && r.enUso);
+      check('L3 Guardar dos veces el mismo estilo no lo duplica', r.sinDuplicar);
+      check('L4 "Usar" vuelve exacto: diseño, elementos, fondo, compacto, eslogan y textos', r.cambio && r.vuelve);
+      check('L5 Lo que había queda como "El anterior" (y no si ya estaba guardado)', r.sinAnteriorSiEstabaGuardado && r.anterior && r.ida);
+      check('L6 La máquina rescata un estilo sin guardar en "El anterior" (uno solo)', r.rescata);
+      check('L7 Mismo nombre: confirma y reemplaza', r.confirma && r.reemplaza);
+      check('L8 Borrar deja Deshacer', r.borrado && r.deshecho);
+      check('L9 Tope de 12 estilos con nombre', r.tope);
+      check('L10 Datos ajenos: ids, nombres, campos y duplicados validados; nombre escapado', r.san && r.escapado);
+      check('L11 Viajan en el backup y se validan al importar', r.backup && r.sanBackup);
+    }
     await page.close();
 
     // ── H. Usuarios que ya tenían la app ──────────────────────────────────
