@@ -5071,6 +5071,8 @@ input[type=number]{-moz-appearance:textfield}
         <div class="fg"><label>Tabla de trabajos</label><div class="nv-chips" id="el-pdfTabla" role="group" aria-label="Tabla de trabajos"></div><div class="hint" id="el-hint-pdfTabla"></div></div>
         <div class="fg"><label>Total</label><div class="nv-chips" id="el-pdfTotal" role="group" aria-label="Total"></div><div class="hint" id="el-hint-pdfTotal"></div></div>
         <div class="fg"><label>Fondo</label><div class="nv-chips" id="el-pdfFondo" role="group" aria-label="Fondo"></div><div class="hint" id="el-hint-pdfFondo"></div></div>
+        <div class="trow"><span class="tlabel">Recuadros translúcidos <span style="color:var(--muted);font-weight:400">· dejan ver un poco el fondo</span></span><label class="tgl"><input type="checkbox" id="pdf-transl" onchange="applyPdfTransl(this.checked)"><span class="tgl-sl"></span></label></div>
+        <p class="hint" id="pdf-transl-hint" style="margin-bottom:14px"></p>
         <div class="fg"><label>Pie del documento</label><div class="nv-chips" id="el-pdfPie" role="group" aria-label="Pie del documento"></div><div class="hint" id="el-hint-pdfPie"></div></div>
         <div class="fg" style="margin-bottom:16px"><label for="co-eslogan">Eslogan</label>
           <input type="text" id="co-eslogan" maxlength="120" placeholder="Ej: Más de 15 años trabajando en altura en Zona Norte" oninput="estiloEsloganInput()">
@@ -6166,7 +6168,9 @@ const DEF = {
   // coEslogan es la frase propia que sale en el pie "Con eslogan".
   pdfEncabezado:'auto', pdfTitulos:'auto', pdfTabla:'auto', pdfTotal:'auto', pdfPie:'auto', coEslogan:'',
   // Fondo del documento (v246): 'auto' = liso, como siempre. Ver _fondoURL.
-  pdfFondo:'auto', pushEnabled:false, validityDays:30, showExpiry:true,
+  pdfFondo:'auto',
+  // Recuadros translúcidos (v249): dejan ver un poco el fondo. Ver _docTranslucido.
+  pdfTransl:false, pushEnabled:false, validityDays:30, showExpiry:true,
   numPrefix:'2026-', numNext:1,
   // Estimative mode
   isEstimative: false,
@@ -6288,7 +6292,7 @@ const CFG_GLOBAL_FIELDS = [
   'coAliasPago','coAliasTitular','coCbu','coBanco','coTechNotes','coFooter','logo',
   // Diseño del documento y de la app
   'accentColor','accentColor2','pdfMono','customColors','pdfTheme','pdfCompact','pdfFont','themeMode',
-  'pdfEncabezado','pdfTitulos','pdfTabla','pdfTotal','pdfPie','coEslogan','pdfFondo',
+  'pdfEncabezado','pdfTitulos','pdfTabla','pdfTotal','pdfPie','coEslogan','pdfFondo','pdfTransl',
   'vistaEditor',
   // Textos editables del PDF (Empresa → Textos del PDF)
   'docTitle','docTitleEst','docTitleRisk','docEstBanner','docDisclaimer',
@@ -8875,6 +8879,7 @@ function sanitizeStateObj(raw) {
   s.pdfTotal      = sanEnum(raw.pdfTotal,      PDF_TOTALES,     'auto');
   s.pdfPie        = sanEnum(raw.pdfPie,        PDF_PIES,        'auto');
   s.pdfFondo      = sanEnum(raw.pdfFondo,      PDF_FONDOS,      'auto');
+  s.pdfTransl     = raw.pdfTransl === true;
   s.coEslogan     = sanStr(raw.coEslogan, 120);
   s.vistaEditor = sanEnum(raw.vistaEditor, EDITOR_VIEWS, 'clasica');
   s.rubro = sanEnum(raw.rubro, RUBROS, 'arbolado');
@@ -9246,6 +9251,7 @@ function sanitizeEstiloDatos(d) {
     pdfPie:        sanEnum(d.pdfPie, PDF_PIES, 'auto'),
     pdfFondo:      sanEnum(d.pdfFondo, PDF_FONDOS, 'auto'),
     pdfCompact:    d.pdfCompact === true,
+    pdfTransl:     d.pdfTransl === true,
     coEslogan:     sanStr(d.coEslogan, 120),
     textos:        {},
   };
@@ -12378,6 +12384,7 @@ function restoreUI() {
   const _thm = S.pdfTheme || 'clasico';
   document.querySelectorAll('.tpreset').forEach(el=>el.classList.toggle('active', el.dataset.theme===_thm));
   const _cmp = document.getElementById('pdf-compact'); if(_cmp) _cmp.checked = !!S.pdfCompact;
+  const _trl = document.getElementById('pdf-transl'); if(_trl) _trl.checked = !!S.pdfTransl;
   // pdf font
   const _fnt = S.pdfFont || 'auto';
   document.querySelectorAll('.fpreset').forEach(el=>el.classList.toggle('active', el.dataset.font===_fnt));
@@ -13758,7 +13765,7 @@ function textosJuegoActual() {
 
 // Copia del estilo y los textos actuales, para "Dejar como estaba" / Deshacer.
 // Incluye el modo compacto y el eslogan, que también son parte de "cómo sale".
-const ESTILO_FOTO_CAMPOS = ESTILO_CAMPOS.concat(['pdfCompact', 'coEslogan'], TEXTOS_CAMPOS);
+const ESTILO_FOTO_CAMPOS = ESTILO_CAMPOS.concat(['pdfCompact', 'pdfTransl', 'coEslogan'], TEXTOS_CAMPOS);
 function _estiloFoto() {
   const f = {};
   ESTILO_FOTO_CAMPOS.forEach(k => { f[k] = S[k]; });
@@ -13836,6 +13843,11 @@ function applyColor2(c) {
   estiloUISync(false);
   sched();
 }
+// Recuadros translúcidos (v249): ver _docTranslucido.
+function applyPdfTransl(on) {
+  S.pdfTransl = !!on;
+  sched();
+}
 function applyPdfMono(m) {
   S.pdfMono = sanEnum(m, PDF_MONOS, 'ninguno');
   estiloUISync(false);
@@ -13871,6 +13883,7 @@ function estiloUISync(todo) {
     document.querySelectorAll('#color-presets .cpreset').forEach(el => el.classList.toggle('active', String(el.dataset.color || '').toLowerCase() === c.toLowerCase()));
     if (typeof _cpkSetFromHex === 'function') _cpkSetFromHex(c);
     const cmp = document.getElementById('pdf-compact'); if (cmp) cmp.checked = !!S.pdfCompact;
+    const trl = document.getElementById('pdf-transl'); if (trl) trl.checked = !!S.pdfTransl;
     sv('co-eslogan', S.coEslogan || '');
     _textosAlUI();
   }
@@ -13910,6 +13923,10 @@ function estiloUISync(todo) {
     ? 'El diseño Lateral tiene su propio encabezado: esta opción se aplica con los otros diseños.' : '');
   pista('pdfTitulos', S.pdfTitulos === 'numerado' ? 'El informe de riesgo ya numera sus secciones: ahí salen como siempre.' : '');
   pista('pdfTabla', '');
+  const ht = document.getElementById('pdf-transl-hint');
+  if (ht) ht.textContent = (S.pdfFondo || 'auto') === 'auto'
+    ? 'Se nota cuando hay un fondo o una marca de agua.'
+    : 'Los recuadros claros (cliente, plan, criterios, cómo pagar y vigencia) dejan ver un poco el fondo. Los de color fuerte quedan como están.';
   pista('pdfFondo', S.pdfFondo === 'marca' && !(S.coName || '').trim()
     ? 'La marca de agua usa las iniciales del negocio: cargá el nombre en Mi negocio para que aparezca.'
     : S.pdfFondo === 'logo' && !S.logo
@@ -14106,6 +14123,7 @@ function _estiloDatosActuales() {
   const d = {};
   ESTILO_CAMPOS.forEach(k => { d[k] = S[k]; });
   d.pdfCompact = !!S.pdfCompact;
+  d.pdfTransl = !!S.pdfTransl;
   d.coEslogan = S.coEslogan || '';
   d.textos = {};
   TEXTOS_CAMPOS.forEach(c => { d.textos[c] = S[c]; });
@@ -14117,6 +14135,7 @@ function _estiloAplicarDatos(d) {
   d = sanitizeEstiloDatos(d);
   ESTILO_CAMPOS.forEach(k => { S[k] = d[k]; });
   S.pdfCompact = d.pdfCompact;
+  S.pdfTransl = d.pdfTransl;
   S.coEslogan = d.coEslogan;
   TEXTOS_CAMPOS.forEach(c => { if (typeof d.textos[c] === 'string') S[c] = d.textos[c]; });
   estiloUISync(true);
@@ -20385,6 +20404,35 @@ function _fondoURL(color) {
   return { tipo, url: `url('data:image/svg+xml,${encodeURIComponent(svg).replace(/'/g, '%27')}')` };
 }
 
+// Recuadros translúcidos (v249). Pedido del dueño con la marca de agua del
+// logo puesta: "las partes que son totalmente opacas y no dejan traslucir el
+// logo, que sean un poco transparentes — no del todo". Cada tema pinta sus
+// recuadros con su propio tono (y algunos con !important), así que en vez de
+// una regla CSS por tema se hace DESPUÉS de armar el documento: cada elemento
+// del cuerpo con fondo sólido y CLARO pasa a ese mismo color con alfa
+// ESTILO_TRANSL_ALFA (inline + important, le gana a todo). Los fondos fuertes
+// del color principal (total en banda, píldoras, cebra) quedan sólidos: si se
+// lavaran, el diseño perdería carácter. Solo con un fondo puesto (sin fondo no
+// hay nada que dejar ver) y solo en el <tbody>: el encabezado se repite en
+// cada hoja y no tiene marca detrás. Inline, viaja en el innerHTML que copian
+// la vista previa y "Compartir imagen"; rgba() lo entiende html2canvas.
+const ESTILO_TRANSL_ALFA = 0.4;
+const ESTILO_TRANSL_CLARO = 190;   // canal mínimo para considerar "claro" un fondo
+function _docTranslucido() {
+  const doc = document.getElementById('doc-a4');
+  const t = doc && doc.querySelector('table.pdoc');
+  if (!t || !S.pdfTransl || !/\bpdoc-fondo-/.test(t.className)) return;
+  const cuerpo = t.querySelector(':scope > tbody');
+  if (!cuerpo) return;
+  cuerpo.querySelectorAll('*').forEach(el => {
+    const m = getComputedStyle(el).backgroundColor.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)$/);
+    if (!m) return;
+    const r = +m[1], g = +m[2], b = +m[3], a = m[4] === undefined ? 1 : +m[4];
+    if (a < 0.99 || Math.min(r, g, b) < ESTILO_TRANSL_CLARO) return;
+    el.style.setProperty('background-color', `rgba(${r},${g},${b},${ESTILO_TRANSL_ALFA})`, 'important');
+  });
+}
+
 // Encabezado elegido (v245), validado. Lo usan _pdocAttrs (la clase) y
 // _buildDocHeader (el monograma va invertido sobre la banda de color).
 function _pdocEncabezado() { return sanEnum(S.pdfEncabezado, PDF_ENCABEZADOS, 'auto'); }
@@ -20611,8 +20659,8 @@ function parseCriteria(text){
 }
 
 function buildDoc() {
-  if (S.isRisk)       { buildRiskDoc(); return; }
-  if (S.isEstimative) { buildEstDoc(); return; }
+  if (S.isRisk)       { buildRiskDoc(); _docTranslucido(); return; }
+  if (S.isEstimative) { buildEstDoc(); _docTranslucido(); return; }
   if (S.clientName) saveClientToDB(S.clientName, S.clientContact, S.workAddress, S.workMapLink);
   // Guardar especies vistas en ambos escenarios
   (S.items||[]).forEach(it=>{ if(it.type==='tree'&&it.species) saveSpeciesToDB(it.species); });
@@ -20774,6 +20822,7 @@ function buildDoc() {
         </td></tr>
       </tbody>
     </table>`;
+  _docTranslucido();
 }
 
 // ─── BUILD RISK DOC ──────────────────────────────────────────────────────────
@@ -21406,6 +21455,7 @@ function buildReciboDoc(r) {
         </td></tr>
       </tbody>
     </table>`;
+  _docTranslucido();
 }
 
 // ===== js/facturacion.js =====

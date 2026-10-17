@@ -410,6 +410,21 @@ const toastsTxt = page => page.evaluate(() =>
         out.chipLogoOcultoBien = !document.querySelector('#el-pdfFondo [data-el="logo"]');
         S.logo = PNG; estiloUISync(false);
         out.chipLogoVisible = !!document.querySelector('#el-pdfFondo [data-el="logo"]');
+        // Recuadros translúcidos (v249): con fondo, los recuadros claros pasan a
+        // su mismo color con alfa; los fuertes (píldora, total en banda) no.
+        S.logo = PNG; S.pdfFondo = 'logo'; S.coAliasPago = 'mi.alias'; S.pdfTitulos = 'pildora'; S.pdfTotal = 'banda';
+        S.pdfTransl = false; buildDoc();
+        out.translApagado = !doc().querySelector('[style*="rgba("]');
+        S.pdfTransl = true; buildDoc();
+        const bgDe = q => (doc().querySelector(q) || {}).style ? doc().querySelector(q).style.getPropertyValue('background-color') : '';
+        out.transl = ['.pgrid', '.pplan-box', '.ppago-rows'].every(q => /rgba\(\d+, ?\d+, ?\d+, ?0\.4\)/.test(bgDe(q)));
+        // (el total ya traía su propio fondo con alfa en el style: se mira que no sea el 0.4 nuevo)
+        out.translFuertes = !/0\.4\)/.test(bgDe('.psec-t')) && !/0\.4\)/.test(bgDe('.ptotal-box'));
+        S.pdfFondo = 'auto'; buildDoc();
+        out.translSinFondo = !doc().querySelector('.pgrid').style.getPropertyValue('background-color');
+        out.translSan = sanitizeStateObj({ pdfTransl: 'si' }).pdfTransl === false && sanitizeStateObj({ pdfTransl: true }).pdfTransl === true
+          && CFG_GLOBAL_FIELDS.includes('pdfTransl') && _estiloDatosActuales().pdfTransl === true;
+        S.pdfTransl = false; S.pdfTitulos = 'auto'; S.pdfTotal = 'auto';
         let logoSinLogo = 0; S.logo = '';
         for (let i = 0; i < 300; i++) if (estiloSortear(false).pdfFondo === 'logo') logoSinLogo++;
         S.logo = PNG; let logoCon = 0;
@@ -456,6 +471,8 @@ const toastsTxt = page => page.evaluate(() =>
       check('K11 Marca con el logo: SVG con el logo semitransparente, escapado; sin logo, liso', r.logo && r.logoEscapado && r.logoSinLogo, JSON.stringify(r));
       check('K12 El botón "Marca con el logo" aparece solo con logo cargado', r.chipLogoOcultoBien && r.chipLogoVisible);
       check('K13 La máquina usa el logo solo si hay logo', r.logoSorteo);
+      check('K14 Recuadros translúcidos: los claros dejan ver el fondo; los fuertes quedan sólidos', r.translApagado && r.transl && r.translFuertes, JSON.stringify([r.translApagado, r.transl, r.translFuertes]));
+      check('K15 Sin fondo no se tocan; se valida y se guarda en Mis estilos', r.translSinFondo && r.translSan);
     }
 
     // ── L. Mis estilos (v247) ─────────────────────────────────────────────
