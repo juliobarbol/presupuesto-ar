@@ -414,7 +414,7 @@ const toastsTxt = page => page.evaluate(() =>
         // su mismo color con alfa; los fuertes (píldora, total en banda) no.
         S.logo = PNG; S.pdfFondo = 'logo'; S.coAliasPago = 'mi.alias'; S.pdfTitulos = 'pildora'; S.pdfTotal = 'banda';
         S.pdfTransl = false; buildDoc();
-        out.translApagado = !doc().querySelector('[style*="rgba("]');
+        out.translApagado = !doc().querySelector('[style*="0.4)"]');
         S.pdfTransl = true; buildDoc();
         const bgDe = q => (doc().querySelector(q) || {}).style ? doc().querySelector(q).style.getPropertyValue('background-color') : '';
         out.transl = ['.pgrid', '.pplan-box', '.ppago-rows'].every(q => /rgba\(\d+, ?\d+, ?\d+, ?0\.4\)/.test(bgDe(q)));
@@ -426,6 +426,15 @@ const toastsTxt = page => page.evaluate(() =>
         out.filo = /1px solid/.test(plan.style.getPropertyValue('border-top')) && /1px solid/.test(plan.style.getPropertyValue('border-bottom'))
           && !plan.style.getPropertyValue('border-left') && getComputedStyle(plan).borderLeftWidth !== '1px'
           && !grid.style.getPropertyValue('border-top');
+        // El total trae alfa de fábrica (color al 7 %): con la opción apagada y un
+        // fondo puesto tiene que quedar SÓLIDO (reporte v251); prendida, al 0.4.
+        S.pdfTitulos = 'auto'; S.pdfTotal = 'auto';
+        S.pdfTransl = false; buildDoc();
+        const totApag = doc().querySelector('.ptotal-box').style.getPropertyValue('background-color');
+        S.pdfTransl = true; buildDoc();
+        const totPren = doc().querySelector('.ptotal-box').style.getPropertyValue('background-color');
+        out.total = /^rgb\(\d+, ?\d+, ?\d+\)$/.test(totApag) && /0\.4\)$/.test(totPren);
+        out.totalTxt = totApag + ' / ' + totPren;
         S.pdfFondo = 'auto'; buildDoc();
         out.translSinFondo = !doc().querySelector('.pgrid').style.getPropertyValue('background-color');
         out.translSan = sanitizeStateObj({ pdfTransl: 'si' }).pdfTransl === false && sanitizeStateObj({ pdfTransl: true }).pdfTransl === true
@@ -480,6 +489,7 @@ const toastsTxt = page => page.evaluate(() =>
       check('K14 Recuadros translúcidos: los claros dejan ver el fondo; los fuertes quedan sólidos', r.translApagado && r.transl && r.translFuertes, JSON.stringify([r.translApagado, r.transl, r.translFuertes]));
       check('K15 Sin fondo no se tocan; se valida y se guarda en Mis estilos', r.translSinFondo && r.translSan);
       check('K16 Recuadros con solo raya izquierda: se completa el filo (no desaparecen); la raya queda', r.filo);
+      check('K17 El total (translúcido de fábrica): sólido con la opción apagada, 40 % con la opción prendida', r.total, r.totalTxt);
     }
 
     // ── L. Mis estilos (v247) ─────────────────────────────────────────────
