@@ -1900,6 +1900,10 @@ input[type=number]{-moz-appearance:textfield}
 .fu-config{margin-top:18px;padding:16px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-box)}
 .fu-config-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .fu-help{font-size:12.5px;color:var(--muted);line-height:1.5;margin:8px 0 14px}
+.esp-barra{height:8px;border-radius:4px;background:var(--border);overflow:hidden;margin:12px 0 0}
+.esp-barra>span{display:block;height:100%;width:0;background:var(--accent);border-radius:4px;transition:width .3s}
+#espacio-section.is-warn .esp-barra>span{background:#d97706}
+#espacio-section.is-fail .esp-barra>span{background:var(--red)}
 /* Sincronización caída (Drive / Calendar). El backup automático fallando en
    silencio es el peor escenario de una app sin backend: el usuario se cree
    respaldado durante meses. A partir del 2º fallo seguido la sección se marca
@@ -5114,6 +5118,15 @@ input[type=number]{-moz-appearance:textfield}
             </div>
           </div>
 
+          <!-- ── ESPACIO EN EL DISPOSITIVO ── (espacioRender) -->
+          <div class="fu-config" id="espacio-section">
+            <div class="fu-config-head">
+              <span class="st" style="margin:0;border:none;padding:0"><svg class="ic"><use href="#i-chart"></use></svg> Espacio en este dispositivo</span>
+            </div>
+            <div class="esp-barra" role="progressbar" aria-label="Espacio usado" aria-valuemin="0" aria-valuemax="100"><span id="esp-fill"></span></div>
+            <p class="fu-help" id="esp-txt"></p>
+          </div>
+
           <!-- ── COPIA DE SEGURIDAD EN GOOGLE DRIVE ── -->
           <!-- Oculta hasta que el dueño configure el Client ID (gdriveUpdateUI). -->
           <div class="fu-config" id="gdrive-section" style="display:none">
@@ -6008,6 +6021,7 @@ const LS = {
   VER_PCT:        'pq_ver_pct',     // último % de actualización usado al armar una versión (preferencia del dispositivo, no va al backup)
   HIST_AVISOS:    'pq_hist_avisos', // avisos del Historial desplegados ('1') o plegados (preferencia del dispositivo, no va al backup)
   MAPA_VISTA:     'pq_mapa_vista',  // última vista del mapa {lat,lng,z} (preferencia del dispositivo, no va al backup)
+  ESPACIO_AVISO:  'pq_espacio_aviso', // último día en que se avisó que el espacio se llena (del dispositivo, no va al backup)
   ESTILO_OFERTA:  'pq_estilo_oferta', // ya se ofreció armar un estilo propio a quien tenía el de fábrica (del dispositivo, no va al backup)
   ESTILOS:        'pq_estilos',     // "Mis estilos": estilos guardados con nombre (VA al backup; ver sanitizeEstilos)
 };
@@ -6306,6 +6320,16 @@ const CFG_GLOBAL_FIELDS = [
 ];
 // OJO: workPlanOverride / workPlanCustom / workPlanCustomTitle NO van acá — son
 // el override del plan de trabajo para UN presupuesto puntual (ver DEF).
+
+// Un snapshot del historial guarda el PRESUPUESTO, no la configuración: como
+// assignSnapshot nunca la restaura, copiarla en cada entrada era peso muerto
+// (~70 % de un snapshot típico: los textos del PDF, el diseño, los datos de
+// cobro) contra el tope de ~5 MB de localStorage, y viajaba en cada backup.
+// Muta y devuelve el mismo objeto.
+function snapshotSinConfig(snap) {
+  if (snap && typeof snap === 'object') CFG_GLOBAL_FIELDS.forEach(k => { delete snap[k]; });
+  return snap;
+}
 
 // Vuelca el snapshot de un presupuesto sobre `target` (normalmente S) SIN pisar
 // la configuración global. Es el único lugar donde se decide eso: antes cada
@@ -8812,8 +8836,12 @@ function sanitizeHistory(raw) {
     s.total       = sanNum(e.total);
     s.itemCount   = sanNum(e.itemCount);
     s.isEstimative = sanBool(e.isEstimative);
+    // Sin la configuración del negocio (ver snapshotSinConfig). Va acá y no
+    // solo al guardar porque sanitizeStateObj repone algunos de esos campos con
+    // su default; y así, además, la pasada del arranque (migrateSanitizeStored)
+    // aliviana una única vez lo que ya estaba guardado y lo que llegue de un backup.
     s.snapshot    = (e.snapshot && typeof e.snapshot === 'object' && !Array.isArray(e.snapshot))
-      ? sanitizeStateObj(e.snapshot) : {};
+      ? snapshotSinConfig(sanitizeStateObj(e.snapshot)) : {};
     // Fechas del ciclo comercial: se limpian las que no parsean para que no
     // envenenen los cálculos de días (daysSince y compañía).
     ['savedAt','enviadoEn','seguimientoHechoEn','vencimientoVistoEn'].forEach(k => {
@@ -12578,6 +12606,7 @@ function switchSubtab(name) {
   // Las listas se renderizan al abrir cada sección colapsable (lazy).
   if (name === 'datos') {
     updateCollapsibleCounts();
+    espacioRender();
   }
 }
 
@@ -14521,6 +14550,89 @@ function irABackup() {
   });
 }
 
+// ─── ESPACIO EN EL DISPOSITIVO ──────────────
+// localStorage tiene un tope por sitio y, cuando se llena, safeSetLS ya no
+// puede guardar: el usuario se enteraba con el toast de error, o sea tarde.
+// El tope medido en Chrome es 5 MiB contando CARACTERES de claves y valores
+// (con o sin tildes da lo mismo); Firefox y Safari andan por ahí. Las fotos
+// viven en IndexedDB y no cuentan para este tope.
+const ESPACIO_TOPE = 5 * 1024 * 1024;
+const ESPACIO_ALERTA = 0.8;   // desde acá se marca y se avisa al abrir
+const ESPACIO_CRITICO = 0.95;
+
+function espacioUso() {
+  const partes = { hist: 0, notas: 0, otros: 0 };
+  let total = 0;
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      const n = k.length + (localStorage.getItem(k) || '').length;
+      total += n;
+      if (k === LS.HISTORY || k === LS.HISTORY_LEGACY) partes.hist += n;
+      else if (k === LS.NOTES) partes.notas += n;
+      else partes.otros += n;
+    }
+  } catch (_) {}
+  let fotos = 0;
+  photoCache.forEach(v => { fotos += (v || '').length; });
+  return { total, tope: ESPACIO_TOPE, pct: total / ESPACIO_TOPE, partes, fotos, nFotos: photoCache.size };
+}
+
+function _espacioTxt(n) {
+  // \u00a0: que el número y la unidad no queden en renglones distintos
+  if (n < 1024 * 1024) return Math.max(1, Math.round(n / 1024)) + '\u00a0KB';
+  return (n / (1024 * 1024)).toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '\u00a0MB';
+}
+
+function espacioRender() {
+  const sec = document.getElementById('espacio-section');
+  if (!sec) return;
+  const u = espacioUso();
+  const pct = Math.min(100, Math.round(u.pct * 100));
+  sec.classList.toggle('is-warn', u.pct >= ESPACIO_ALERTA && u.pct < ESPACIO_CRITICO);
+  sec.classList.toggle('is-fail', u.pct >= ESPACIO_CRITICO);
+  const fill = document.getElementById('esp-fill');
+  if (fill) fill.style.width = Math.max(pct, 1) + '%';
+  const barra = sec.querySelector('.esp-barra');
+  if (barra) barra.setAttribute('aria-valuenow', String(pct));
+  const txt = document.getElementById('esp-txt');
+  if (!txt) return;
+  const partes = [['presupuestos', u.partes.hist], ['agenda', u.partes.notas], ['resto', u.partes.otros]]
+    .filter(p => p[1] > 0).map(p => p[0] + ' ' + _espacioTxt(p[1]));
+  let html = `Usado: <b>${_espacioTxt(u.total)}</b> de ${_espacioTxt(u.tope)} (${pct}\u00a0%)`
+    + (partes.length ? ' · ' + partes.join(', ') : '') + '.';
+  if (u.nFotos) html += ` Las fotos (${u.nFotos}, ${_espacioTxt(u.fotos)}) se guardan aparte y no cuentan para este límite.`;
+  if (u.pct >= ESPACIO_ALERTA) {
+    html += '<br><b>Se está llenando:</b> exportá una copia de seguridad y, si podés, borrá del Historial presupuestos viejos que ya no necesites. Lleno, la app no puede guardar cambios.';
+  }
+  txt.innerHTML = html;
+}
+
+// Al abrir: si pasó el umbral, un aviso por día (no en cada apertura: con el
+// medidor en Configuración alcanza para seguirlo).
+function espacioAvisarSiLleno() {
+  const u = espacioUso();
+  if (u.pct < ESPACIO_ALERTA) return;
+  const hoy = today();
+  try { if (localStorage.getItem(LS.ESPACIO_AVISO) === hoy) return; } catch (_) {}
+  safeSetLS(LS.ESPACIO_AVISO, hoy, { backup: false });
+  colaAviso(() => toastAccion(
+    `⚠️ El espacio de la app en este dispositivo está al ${Math.round(u.pct * 100)} %. Cuando se llena no puede guardar cambios.`,
+    [{ label: 'Ver qué hacer', fn: () => irAEspacio() }], 12000));
+}
+
+function irAEspacio() {
+  switchTab('empresa');
+  if (typeof switchSubtab === 'function') switchSubtab('datos');
+  const sec = document.getElementById('espacio-section');
+  if (!sec) return;
+  requestAnimationFrame(() => {
+    sec.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    sec.classList.add('is-destacada');
+    setTimeout(() => sec.classList.remove('is-destacada'), 2200);
+  });
+}
+
 // ===== js/history.js =====
 // ═══════════════════════════════════════
 // HISTORY.JS — Historial de presupuestos, nuevo presupuesto
@@ -14697,13 +14809,10 @@ function autoSaveToHistory() {
   // borradores ensuciaban el historial con líneas "Sin cliente · $0".
   if (isBlankQuote()) return false;
 
-  // Snapshot del estado, pero SIN el logo. El logo es config global de
-  // empresa (vive en S.logo y se exporta a nivel raíz del backup). No
-  // hace falta duplicarlo en cada presupuesto del historial: con ~67 KB
-  // por entry, 30 presupuestos = 2 MB de logo redundante que consumen
-  // cuota de localStorage y hacen los backups varias veces más pesados.
-  const snapshot = JSON.parse(JSON.stringify(S));
-  delete snapshot.logo;
+  // Snapshot del presupuesto, sin la configuración del negocio (logo, textos
+  // del PDF, diseño…): vive una sola vez en S y en la raíz del backup. Solo el
+  // logo eran ~67 KB por entrada. Ver snapshotSinConfig.
+  const snapshot = snapshotSinConfig(JSON.parse(JSON.stringify(S)));
 
   const entry = {
     _type: 'presupuesto_individual',
@@ -15510,8 +15619,7 @@ function colabGuardar() {
   // de la app da por sentado, y se le sacan las dos fechas del ciclo comercial:
   // ninguno de los dos vence, y su "emisión" es el día en que se trabaja (es
   // lo que lo pone en el mes correcto del historial y del mapa).
-  const snap = JSON.parse(JSON.stringify(DEF));
-  delete snap.logo;
+  const snap = snapshotSinConfig(JSON.parse(JSON.stringify(DEF)));
   snap.quoteNumber = prev ? prev.quoteNumber : _nextColabNum(_colabTipo);
   snap.dateIssue   = fecha;
   snap.dateExpiry  = '';
@@ -18262,7 +18370,7 @@ function expCurrent() {
     clientName: S.clientName,
     currency: S.currency,
     total,
-    snapshot: JSON.parse(JSON.stringify(S)),
+    snapshot: snapshotSinConfig(JSON.parse(JSON.stringify(S))),
     photos: buildPhotoMap(S)
   }, `presupuesto-${S.quoteNumber}.json`);
   toast('Presupuesto exportado', 'ok');
@@ -18489,7 +18597,7 @@ function impToHistory() {
     currency: d.currency,
     total: d.total,
     itemCount: (d.snapshot?.items||[]).length,
-    snapshot: d.snapshot,
+    snapshot: snapshotSinConfig(d.snapshot),
     _type: 'presupuesto_individual'
   });
   setH(h);
@@ -26282,6 +26390,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   if (checkStorageAvailable()) {
     maybeShowWelcome();
     checkBackupReminder();
+    espacioAvisarSiLleno();
     // Pedir al navegador que no borre los datos automáticamente (Brave/Safari).
     // Solo cuando hay presupuestos guardados para proteger.
     const _h = (typeof getH === 'function') ? getH() : [];
