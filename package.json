@@ -1,0 +1,17 @@
+{
+  "name": "presupuesto-ar",
+  "private": true,
+  "description": "Herramientas de desarrollo (tests y lint). La app no tiene build: se publica tal cual.",
+  "scripts": {
+    "test": "node scripts/test.cjs",
+    "lint": "eslint .",
+    "check": "npm run lint && npm test"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.13.0",
+    "eslint-plugin-html": "^8.2.1",
+    "globals": "^17.13.0",
+    "puppeteer-core": "^23.11.1"
+  }
+}

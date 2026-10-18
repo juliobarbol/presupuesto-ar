@@ -1,6 +1,6 @@
 ---
 name: deploy-presupuesto
-description: Prepara y verifica un despliegue de Presupuestos AR. Usar SIEMPRE antes de mergear a main o cuando el usuario diga "deploy", "desplegar", "publicar", "subir versión", "release", o pida dejar un cambio listo para producción. Sube CACHE_VERSION en sw.js, valida APP_SHELL, corre el chequeo de sintaxis y el test PWA, y confirma que es seguro mergear.
+description: Prepara y verifica un despliegue de Presupuestos AR. Usar SIEMPRE antes de mergear a main o cuando el usuario diga "deploy", "desplegar", "publicar", "subir versión", "release", o pida dejar un cambio listo para producción. Sube CACHE_VERSION en sw.js, valida APP_SHELL, corre el lint y la suite de tests, y confirma que es seguro mergear.
 ---
 
 # Deploy de Presupuestos AR
@@ -36,17 +36,14 @@ git status --porcelain
 ```
 Para cada archivo nuevo servido al cliente, confirmar que está en `APP_SHELL`.
 
-### 3. Chequeo de sintaxis del JS inline
-El `<script>` vive embebido en `index.html`; hay que aislarlo y validarlo con node:
+### 3. Lint (incluye el chequeo de sintaxis)
+ESLint parsea el `<script>` de `index.html` (un error de sintaxis corta acá) y
+además atrapa funciones globales duplicadas, variables inexistentes y las
+convenciones de CLAUDE.md (`fetch` sin `netFetch`, `toISOString().slice`,
+snapshot copiado a `S` sin `assignSnapshot`). Si `node_modules` no está, `npm ci`.
 
 ```bash
-python3 - <<'PY'
-import re, subprocess, sys
-html = open('index.html', encoding='utf-8').read()
-js = "\n;\n".join(re.findall(r'<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>', html, re.S))
-open('/tmp/app_check.js','w',encoding='utf-8').write(js)
-sys.exit(subprocess.run(['node','--check','/tmp/app_check.js']).returncode)
-PY
+npm run lint
 ```
 Debe salir sin errores (exit 0).
 
@@ -60,16 +57,15 @@ git diff main...HEAD -- index.html | grep -E "pq_|_KEY|LS\s*=|GDRIVE_EMAIL" || e
 ```
 Si aparecen cambios en claves, FRENAR y confirmarlo con el usuario.
 
-### 5. Test PWA real (navegador headless)
-Valida el SW real, que se crea la cache de la versión declarada en `sw.js`, y que
-el app-shell carga offline. Parsea `CACHE_VERSION` solo, así que corre después del bump.
+### 5. Tests (navegador headless real)
+La suite completa corre en paralelo en ~1,5 min e incluye `test/pwa.test.cjs`
+(SW real, cache de la versión declarada en `sw.js`, app-shell offline).
 
 ```bash
-node test/pwa.test.cjs
+npm test
 ```
-Debe terminar en `✓ TODOS LOS CHECKS OK` (exit 0). Si falla por la network policy
-(cdnjs/fuentes bloqueadas), eso es esperado y el test ya lo ignora — pero los checks
-de SW/cache/offline deben pasar igual.
+Debe terminar en `N/N ok` (exit 0). Si algo falla, el runner imprime el log
+completo de ese test. Para iterar: `npm test -- <parte del nombre>`.
 
 ### 6. Commit y push a la rama de trabajo
 Mensaje claro y descriptivo. Incluir el bump de versión en el mismo commit.
@@ -80,14 +76,14 @@ git push -u origin <rama-claude>
 ```
 
 ### 7. Reportar — listo para mergear
-Resumir al usuario: versión nueva (`vNN`), qué se verificó (sintaxis ✓, test PWA ✓,
+Resumir al usuario: versión nueva (`vNN`), qué se verificó (lint ✓, tests ✓,
 claves de storage intactas ✓), y que mergear a `main` dispara el deploy de Cloudflare.
 **No** crear PR ni mergear a `main` salvo que el usuario lo pida explícitamente.
 
 ## Checklist final
 - [ ] `CACHE_VERSION` subido en `sw.js`
 - [ ] Archivos nuevos (si hay) agregados a `APP_SHELL`
-- [ ] Chequeo de sintaxis JS sin errores
+- [ ] `npm run lint` sin errores
 - [ ] Claves de `localStorage` sin cambios accidentales
-- [ ] `node test/pwa.test.cjs` en verde
+- [ ] `npm test` en verde
 - [ ] Commit + push a la rama de trabajo

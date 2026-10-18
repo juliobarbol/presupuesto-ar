@@ -8598,6 +8598,7 @@ async function netFetch(url, opts, o) {
   try { ac = new AbortController(); } catch (_) {}
   const t = setTimeout(() => { try { if (ac) ac.abort(); } catch (_) {} }, ms);
   try {
+    // eslint-disable-next-line no-restricted-syntax -- esta ES la puerta de salida
     const res = await fetch(url, ac ? Object.assign({}, opts || {}, { signal: ac.signal }) : opts);
     _netOk();
     return res;
@@ -12403,7 +12404,6 @@ function restoreUI() {
   if(S.logo) showLogo(S.logo);
   // expiry visibility
   const _fg = document.getElementById('expiry-fg');
-  const _fi = document.getElementById('date-expiry');
   const _se = S.showExpiry !== false;
   if (_fg) _fg.style.opacity = _se ? '1' : '0.4';
   _applyExpiryStrike(!_se);
@@ -13417,7 +13417,6 @@ function onValidityChange() {
 function onShowExpiryChange() {
   S.showExpiry = gc('show-expiry');
   const fg = document.getElementById('expiry-fg');
-  const fi = document.getElementById('date-expiry');
   if (fg) fg.style.opacity = S.showExpiry ? '1' : '0.4';
   _applyExpiryStrike(!S.showExpiry);
   sched();
@@ -16361,7 +16360,6 @@ function _buildDocHTMLForEntry(e) {
     activeScenario: activeScenario,
     docHTML: docEl.innerHTML,
   };
-  const currentLogo = S.logo;
   try {
     // La imagen que se comparte lleva los datos de empresa y el diseño de HOY
     // (ver CFG_GLOBAL_FIELDS): si reenviás un presupuesto viejo, tiene que salir
@@ -19309,7 +19307,6 @@ function _fmtBackupDate(iso){
 function gdriveUpdateUI(){
   const sec = document.getElementById('gdrive-section'); if (!sec) return;
   const status = document.getElementById('gdrive-status');
-  const actions = document.getElementById('gdrive-actions');
   const cBtn = document.getElementById('gdrive-connect');
   const rBtn = document.getElementById('gdrive-restore');
   const dBtn = document.getElementById('gdrive-disconnect');
@@ -24560,7 +24557,7 @@ function calSaveNote(tipo) {
   let tel     = telEl ? (telEl.value || '').trim() : '';
   // Si escribieron el teléfono en el campo del cliente (y el de tel quedó
   // vacío), lo reubicamos para no perderlo.
-  if (!tel && cliente && /^[\d\s()+.\-]+$/.test(cliente) && cliente.replace(/\D/g, '').length >= 6) {
+  if (!tel && cliente && /^[\d\s()+.-]+$/.test(cliente) && cliente.replace(/\D/g, '').length >= 6) {
     tel = cliente; cliente = '';
   }
   // Si eligió/tipeó un cliente existente sin tocar el teléfono, lo tomamos de la DB.
@@ -24747,7 +24744,7 @@ function calSaveNoteEdit() {
   if (!fecha) { toast('Elegí una fecha válida', 'info', 2200); return; }
   let cliente = cli ? (cli.value || '').trim() : '';
   let telef   = tel ? (tel.value || '').trim() : '';
-  if (!telef && cliente && /^[\d\s()+.\-]+$/.test(cliente) && cliente.replace(/\D/g, '').length >= 6) {
+  if (!telef && cliente && /^[\d\s()+.-]+$/.test(cliente) && cliente.replace(/\D/g, '').length >= 6) {
     telef = cliente; cliente = '';
   }
   if (cliente && !telef) {

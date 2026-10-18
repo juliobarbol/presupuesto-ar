@@ -8,7 +8,6 @@
 // Corre sobre HTTP real (no file://) porque hace falta history.replaceState y
 // un origin de verdad para armar la URI de retorno.
 
-const fs = require('node:fs');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
 

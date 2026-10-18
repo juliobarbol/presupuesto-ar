@@ -16,3 +16,5 @@ wrangler.jsonc
 .env*
 package.json
 package-lock.json
+scripts/
+eslint.config.mjs

@@ -44,7 +44,16 @@ if [ ! -d "$TOOLS_DIR/node_modules/puppeteer-core" ]; then
   npm install --prefix "$TOOLS_DIR" --no-audit --no-fund puppeteer-core@23 >/dev/null 2>&1
 fi
 
-# 3) Exponer rutas a la sesión ---------------------------------------------
+# 3) Dependencias de desarrollo del repo (ESLint, puppeteer-core) ---------
+# Para `npm run lint` / `npm test`. No es fatal: sin esto los tests igual
+# corren con el puppeteer-core de TOOLS_DIR (NODE_PATH, abajo).
+if [ -f "$CLAUDE_PROJECT_DIR/package-lock.json" ] && [ ! -d "$CLAUDE_PROJECT_DIR/node_modules/eslint" ]; then
+  echo "[session-start] npm ci…"
+  (cd "$CLAUDE_PROJECT_DIR" && npm ci --no-audit --no-fund >/dev/null 2>&1) \
+    || echo "[session-start] npm ci falló: npm run lint no va a andar en esta sesión"
+fi
+
+# 4) Exponer rutas a la sesión ---------------------------------------------
 {
   echo "export PUPPETEER_EXECUTABLE_PATH=\"$CHROME_BIN\""
   echo "export CHROME_HEADLESS_SHELL=\"$CHROME_BIN\""

@@ -15,7 +15,6 @@
 
 const puppeteer = require('puppeteer-core');
 const path = require('path');
-const fs = require('fs');
 
 const CHROME = process.env.CHROME_PATH
   || '/root/.cache/cc-headless/chrome-headless-shell-linux64/chrome-headless-shell';

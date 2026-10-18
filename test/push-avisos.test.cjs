@@ -94,7 +94,6 @@ async function parteWorker() {
   const t1905 = Date.UTC(2026, 9, 9, 22, 5);
   enviados = [];
   await runDue(env, t1905);
-  const tags = enviados.map(e => e.opts.headers);
   check('A2 a las 19:05 sale "Mañana" (y no el de 7:30 ni el de hace 9 h)', enviados.length === 2, 'envíos: ' + enviados.length);
   // Segundo envío = seguimiento (franja 19 h). Ver A3.
   enviados = [];

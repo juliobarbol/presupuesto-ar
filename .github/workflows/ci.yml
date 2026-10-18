@@ -1,0 +1,58 @@
+# CI — lint + tests en cada push y PR.
+#
+# Ojo: Cloudflare publica `main` por su cuenta al recibir el push; este CI no
+# lo frena. Sirve para enterarse en minutos si algo se rompió (la marca roja en
+# el commit) y para revisar un PR antes de mergearlo.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # ESLint parsea el <script> de index.html: un error de sintaxis también corta acá.
+      - run: npm run lint
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      # El mismo Chrome que usa el SessionStart hook (una sola fuente de la versión).
+      - name: Versión de Chrome
+        id: chrome
+        run: echo "version=$(grep -oP 'CHROME_VERSION="\K[^"]+' .claude/hooks/session-start.sh)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/cc-headless/chrome-headless-shell-linux64
+          key: chrome-headless-shell-${{ steps.chrome.outputs.version }}
+      - name: Instalar chrome-headless-shell
+        run: |
+          DIR="$HOME/.cache/cc-headless"
+          if [ ! -x "$DIR/chrome-headless-shell-linux64/chrome-headless-shell" ]; then
+            mkdir -p "$DIR"
+            curl -fsSL -o "$DIR/chs.zip" "https://storage.googleapis.com/chrome-for-testing-public/${{ steps.chrome.outputs.version }}/linux64/chrome-headless-shell-linux64.zip"
+            unzip -q -o "$DIR/chs.zip" -d "$DIR"
+          fi
+
+      - run: npm test
+        env:
+          PUPPETEER_EXECUTABLE_PATH: ${{ env.HOME }}/.cache/cc-headless/chrome-headless-shell-linux64/chrome-headless-shell
