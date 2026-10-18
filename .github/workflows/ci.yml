@@ -17,8 +17,8 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -29,8 +29,8 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -53,6 +53,5 @@ jobs:
             unzip -q -o "$DIR/chs.zip" -d "$DIR"
           fi
 
+      # scripts/test.cjs encuentra solo el Chrome en ~/.cache/cc-headless.
       - run: npm test
-        env:
-          PUPPETEER_EXECUTABLE_PATH: ${{ env.HOME }}/.cache/cc-headless/chrome-headless-shell-linux64/chrome-headless-shell
