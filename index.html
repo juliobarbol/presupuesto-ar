@@ -14631,6 +14631,49 @@ function migrateFixEstTotals() {
   return cambios;
 }
 
+// ─── MIGRACIÓN: vínculos de versión perdidos ─────────────────
+// Hasta la v252 el autoguardado rehacía la entrada con un id nuevo y sin
+// versionDe/versionN/reemplazadoPor: retocar una v2 la desligaba del original,
+// y abrir y tocar el original lo devolvía al mapa y a los acumulados (contado
+// dos veces). Los vínculos se pueden rearmar porque el snapshot de cada
+// versión guarda lo que se imprimió: su número (versionN) y el del presupuesto
+// que actualiza (versionDeNum).
+//
+// Solo completa lo que falta o apunta a una entrada que ya no existe: un
+// vínculo válido no se toca. Es idempotente.
+function migrateRepararVersiones() {
+  let h;
+  try { h = getH(); } catch (_) { return 0; }
+  if (!Array.isArray(h) || !h.length) return 0;
+  const ids = new Set(h.map(e => e && e.id));
+  const porNum = new Map();
+  h.forEach(e => { if (e && e.quoteNumber && !porNum.has(e.quoteNumber)) porNum.set(e.quoteNumber, e); });
+  const ultima = new Map();   // original → su versión más alta
+  let cambios = 0;
+  h.forEach(v => {
+    const snap = v && v.snapshot;
+    const n = parseInt(snap && snap.versionN, 10) || 0;
+    if (n < 2 || !snap.versionDeNum) return;
+    const orig = porNum.get(snap.versionDeNum);
+    if (!orig || orig === v) return;
+    if (v.versionDe == null || !ids.has(v.versionDe)) { v.versionDe = orig.id; cambios++; }
+    if (v.versionN !== n) { v.versionN = n; cambios++; }
+    const u = ultima.get(orig);
+    if (!u || n > u.n) ultima.set(orig, { v, n });
+  });
+  ultima.forEach(({ v }, orig) => {
+    if (orig.reemplazadoPor == null || !ids.has(orig.reemplazadoPor)) {
+      orig.reemplazadoPor = v.id;
+      cambios++;
+    }
+  });
+  if (cambios) {
+    safeSetLS(LS.HISTORY, JSON.stringify(h));
+    console.warn('Se repararon ' + cambios + ' vínculo(s) de versión del historial');
+  }
+  return cambios;
+}
+
 // ─── AUTO-SAVE (silencioso) ───────────────────
 // Devuelve true si asentó el presupuesto en el historial, false si no
 // había nada que guardar (sin N° o borrador vacío).
@@ -14679,17 +14722,19 @@ function autoSaveToHistory() {
   const h = getH();
   const idx = h.findIndex(e=>e.quoteNumber===S.quoteNumber);
 
-  // Preservar los datos del ciclo comercial al re-guardar. Un auto-save
-  // NO debe pisar lo que el usuario ya marcó sobre el entry (estado,
-  // fecha de envío/seguimiento, fecha del trabajo, facturado…): son datos
-  // del ciclo de vida, no del contenido del presupuesto. Solo los nuevos
-  // arrancan en 'borrador'.
+  // Re-guardar reemplaza el CONTENIDO (lo de arriba) y conserva todo lo demás
+  // que la entrada ya tenía: id, estado, ciclo comercial, vínculos de versión,
+  // tipo de trabajo… Antes era al revés —se copiaba una lista fija de campos y
+  // el id se rehacía con Date.now()—, así que cada edición perdía lo que no
+  // estaba en la lista (versionDe/versionN/reemplazadoPor) y cambiaba el id al
+  // que apuntan la Agenda de Google, los push, la campanita y el "Deshacer".
+  // savedAt sí se actualiza: es la fecha de última modificación (el merge del
+  // import se queda con la más reciente). Solo los nuevos arrancan en 'borrador'.
   if (idx >= 0) {
     const prev = h[idx];
+    Object.keys(prev).forEach(k => { if (!(k in entry)) entry[k] = prev[k]; });
+    if (prev.id != null) entry.id = prev.id;
     entry.estado = prev.estado || 'borrador';
-    ['enviadoEn', 'seguimientoHechoEn', 'vencimientoVistoEn', 'fechaTrabajo',
-     'fechasTrabajo', 'diasEstimados', 'recontactoEn', 'recontactoNota', 'facturado']
-      .forEach(k => { if (prev[k] !== undefined) entry[k] = prev[k]; });
   } else {
     entry.estado = 'borrador';
   }
@@ -14754,8 +14799,6 @@ function loadFromHistory(id) {
   // otro presupuesto NO debe descartar el borrador en curso. Si se está
   // recargando el MISMO presupuesto (mismo N°) no se autoguarda, porque
   // ahí la intención es volver a la versión asentada en el historial.
-  // OJO: autoSaveToHistory reemplaza el entry con un id nuevo, por eso
-  // `e` se busca ANTES (getH() devuelve copias; `e` sigue siendo válido).
   let prevNum = '';
   if (S.quoteNumber && S.quoteNumber !== e.quoteNumber && autoSaveToHistory()) {
     prevNum = S.quoteNumber;
@@ -25989,6 +26032,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   // Corregir los totales de estimativos guardados de menos (ver C2 en la
   // auditoría). Va después de sanitizar: trabaja sobre un historial ya válido.
   try { migrateFixEstTotals(); } catch (e) { console.error('migrateFixEstTotals', e); }
+  // Rearmar los vínculos de versión que el autoguardado perdía hasta la v252.
+  try { migrateRepararVersiones(); } catch (e) { console.error('migrateRepararVersiones', e); }
   // Tema de la UI (claro/oscuro/auto). El atributo data-theme ya lo fijó el
   // script del <head> para evitar el flash; acá sincronizamos S, el selector
   // y los tonos del acento, y escuchamos cambios del sistema en modo auto.
