@@ -11351,9 +11351,7 @@ function renderItems() {
     });
 
     const qf = card.querySelector('.qty-f');
-    if(qf) qf.addEventListener('input', ()=>{
-      const v = Math.max(1, parseInt(qf.value)||1);
-      qf.value = v;
+    if(qf) wireQtyInput(qf, v=>{
       setItemField(idx,'qty',v);
       updateTotalsBar();
       _refreshQtyPreview(card, idx);
@@ -11429,6 +11427,21 @@ function renderItems() {
     list.appendChild(card);
   });
   updateNotesButton();
+}
+
+// Campo "Cantidad" de un servicio. Se guarda al tipear, pero el campo NO se
+// reescribe mientras se edita: antes, borrar el "1" lo volvía a poner al
+// instante (vacío → 1) y para pasar a 2 había que tipear "12" y borrar el 1.
+// Vacío cuenta como 1 y se completa recién al salir del campo. Al entrar se
+// selecciona el número, así se reemplaza tipeando encima.
+function wireQtyInput(qf, onVal) {
+  const leer = () => Math.max(1, parseInt(qf.value) || 1);
+  qf.addEventListener('focus', () => { try { qf.select(); } catch (_) {} });
+  qf.addEventListener('input', () => onVal(leer()));
+  qf.addEventListener('blur', () => {
+    const v = leer();
+    if (qf.value !== String(v)) { qf.value = v; onVal(v); }
+  });
 }
 
 // Actualiza el preview "3 × $X = $Y" en el card sin re-renderizar todo
@@ -11827,9 +11840,7 @@ function renderEstItems() {
     });
 
     const qf = card.querySelector('.est-qty-f');
-    if(qf) qf.addEventListener('input', ()=>{
-      const v = Math.max(1, parseInt(qf.value)||1);
-      qf.value = v;
+    if(qf) wireQtyInput(qf, v=>{
       setEstItemField(idx,'qty',v);
       updateTotalsBar();
       _refreshEstQtyPreview(card, idx);
