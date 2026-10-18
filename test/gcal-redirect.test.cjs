@@ -17,7 +17,7 @@ const BASE = `http://127.0.0.1:${PORT}/index.html`;
 
 const puppeteer = require('puppeteer-core');
 const EXEC = process.env.PUPPETEER_EXECUTABLE_PATH || process.env.CHROME_HEADLESS_SHELL
-  || '/root/.cache/cc-headless/chrome-headless-shell-linux64/chrome-headless-shell';
+  || require('os').homedir() + '/.cache/cc-headless/chrome-headless-shell-linux64/chrome-headless-shell';
 
 let fallos = 0;
 function check(ok, nombre, detalle) {
