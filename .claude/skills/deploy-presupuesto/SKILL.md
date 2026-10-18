@@ -5,7 +5,7 @@ description: Prepara y verifica un despliegue de Presupuestos AR. Usar SIEMPRE a
 
 # Deploy de Presupuestos AR
 
-App PWA offline-first en un único `index.html`, sin build, servida desde Cloudflare.
+App PWA offline-first sin build (markup en `index.html`, código en `js/` y `css/`), servida desde Cloudflare.
 El bug más caro de este proyecto es **desplegar sin subir `CACHE_VERSION`**: los
 dispositivos quedan con la versión vieja cacheada. Esta skill convierte el
 "Flujo de despliegue (SEGUIR SIEMPRE)" del `CLAUDE.md` en un procedimiento ejecutable.
@@ -28,7 +28,8 @@ Editar `sw.js` incrementando el número: `presupuesto-vNN` → `presupuesto-v(NN
 ### 2. ¿Hay archivos nuevos? → agregarlos a `APP_SHELL`
 Si este cambio agrega un archivo que la app necesita offline (otro `.js`, `.css`,
 `.png`, etc.), agregarlo al array `APP_SHELL` de `sw.js`, o se rompe el offline.
-(Hoy todo vive en `index.html`, así que normalmente NO hace falta — pero verificar.)
+Un `js/`/`css/` nuevo va además en `index.html` con el mismo `?v=` y en `APP_CODIGO`
+(no en `APP_SHELL`); el lint del paso 3 avisa si no coinciden.
 
 ```bash
 git diff --name-only main...HEAD
@@ -37,7 +38,7 @@ git status --porcelain
 Para cada archivo nuevo servido al cliente, confirmar que está en `APP_SHELL`.
 
 ### 3. Lint (incluye el chequeo de sintaxis)
-ESLint parsea el `<script>` de `index.html` (un error de sintaxis corta acá) y
+ESLint parsea todo `js/` como un programa (un error de sintaxis corta acá) y
 además atrapa funciones globales duplicadas, variables inexistentes y las
 convenciones de CLAUDE.md (`fetch` sin `netFetch`, `toISOString().slice`,
 snapshot copiado a `S` sin `assignSnapshot`). Si `node_modules` no está, `npm ci`.
@@ -53,7 +54,7 @@ Cambiar el valor de una clave de `LS` (o de `SPECIES_KEY`, `SERVICES_KEY`,
 Revisar que el diff no toque esos strings salvo que sea una migración intencional:
 
 ```bash
-git diff main...HEAD -- index.html | grep -E "pq_|_KEY|LS\s*=|GDRIVE_EMAIL" || echo "OK: sin cambios en claves de storage"
+git diff main...HEAD -- js/ | grep -E "pq_|_KEY|LS\s*=|GDRIVE_EMAIL" || echo "OK: sin cambios en claves de storage"
 ```
 Si aparecen cambios en claves, FRENAR y confirmarlo con el usuario.
 

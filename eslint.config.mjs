@@ -19,33 +19,36 @@ const reglasComunes = {
   'no-useless-assignment': 'off',
 };
 
-export default [
-  { ignores: ['node_modules/**', 'vendor/**', '.wrangler/**'] },
+// La app (js/*.js). La usa scripts/lint-app.cjs, que la pasa por ESLint como
+// UN programa (los archivos concatenados en el orden de index.html): por
+// separado, ESLint no ve que dos archivos declaran la misma función global
+// (no-redeclare; la segunda pisa a la primera sin error, así murió el swipe
+// entre pestañas) ni que `S` existe. Por eso js/ no entra en `eslint .`.
+export const globalesApp = { ...globals.browser, google: 'readonly' };   // google: Identity Services
 
-  // La app. no-redeclare (en recommended) atrapa dos funciones globales con el
-  // mismo nombre: la segunda pisa a la primera sin error (así murió el swipe
-  // entre pestañas, ver test/gestos.test.cjs).
+export const reglasApp = {
+  ...reglasComunes,
+  'no-restricted-syntax': ['error',
+    { selector: "CallExpression[callee.name='fetch']",
+      message: 'Nada sale a internet sin netFetch() (timeout + cortacircuitos). Ver js/net.js.' },
+    { selector: "CallExpression[callee.property.name='slice'][callee.object.callee.property.name='toISOString']",
+      message: 'toISOString() es UTC y corre el día en Argentina: usá today() / toLocalISODate().' },
+    { selector: "CallExpression[callee.object.name='Object'][callee.property.name='assign'][arguments.0.name='S'][arguments.1.name=/snap/i]",
+      message: 'Un snapshot no se copia a S a pelo: usá assignSnapshot() (respeta CFG_GLOBAL_FIELDS).' },
+    { selector: "CallExpression[callee.object.name='Object'][callee.property.name='assign'][arguments.0.name='S'][arguments.1.property.name='snapshot']",
+      message: 'Un snapshot no se copia a S a pelo: usá assignSnapshot() (respeta CFG_GLOBAL_FIELDS).' },
+  ],
+};
+
+export default [
+  { ignores: ['node_modules/**', 'vendor/**', '.wrangler/**', 'js/**'] },
+
+  // El <script> chico que queda en index.html (tema claro/oscuro antes de pintar).
   {
     files: ['index.html'],
     plugins: { html },
-    languageOptions: {
-      ecmaVersion: 'latest',
-      sourceType: 'script',
-      globals: { ...globals.browser, google: 'readonly' },   // Google Identity Services
-    },
-    rules: {
-      ...reglasComunes,
-      'no-restricted-syntax': ['error',
-        { selector: "CallExpression[callee.name='fetch']",
-          message: 'Nada sale a internet sin netFetch() (timeout + cortacircuitos). Ver js/net.js.' },
-        { selector: "CallExpression[callee.property.name='slice'][callee.object.callee.property.name='toISOString']",
-          message: 'toISOString() es UTC y corre el día en Argentina: usá today() / toLocalISODate().' },
-        { selector: "CallExpression[callee.object.name='Object'][callee.property.name='assign'][arguments.0.name='S'][arguments.1.name=/snap/i]",
-          message: 'Un snapshot no se copia a S a pelo: usá assignSnapshot() (respeta CFG_GLOBAL_FIELDS).' },
-        { selector: "CallExpression[callee.object.name='Object'][callee.property.name='assign'][arguments.0.name='S'][arguments.1.property.name='snapshot']",
-          message: 'Un snapshot no se copia a S a pelo: usá assignSnapshot() (respeta CFG_GLOBAL_FIELDS).' },
-      ],
-    },
+    languageOptions: { ecmaVersion: 'latest', sourceType: 'script', globals: globalesApp },
+    rules: reglasComunes,
   },
 
   {

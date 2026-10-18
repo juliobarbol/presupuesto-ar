@@ -172,7 +172,7 @@ async function parteWorker() {
 // ─────────────────────────── Service Worker ───────────────────────────
 async function parteSW() {
   const src = fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8');
-  const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+  const html = require('./_fuente.cjs').fuenteApp();
   const urlSW = (src.match(/const PUSH_WORKER_URL = '([^']+)'/) || [])[1];
   const urlApp = (html.match(/const PUSH_WORKER_URL = '([^']+)'/) || [])[1];
   check('S0 el SW apunta al mismo Worker que la app', urlSW && urlSW === urlApp, `${urlSW} / ${urlApp}`);
@@ -292,7 +292,7 @@ async function parteApp() {
     check('A3 el resumen de hoy junta seguimiento y vencido', /1 seguimiento y 1 vencido/.test(hoyAv.title || '') && /Seguimiento: Gómez/.test(hoyAv.body || '') && /Vencido: Pérez/.test(hoyAv.body || ''), hoyAv.title + ' | ' + hoyAv.body);
     const venc = (d) => /Pérez/.test((k(r.base, 'hoy:' + d) || {}).body || '');
     check('A3 el vencido avisa hoy y a la semana, no todos los días', venc(r.hoy) && !venc(r.dia1) && !venc(r.dia3) && venc(r.dia7) && !venc(r.dia8));
-    check('A3 ya no viajan seguimientos/vencidos sueltos (todo va en el resumen)', /const followups = \[\], expiries = \[\]/.test(fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8')));
+    check('A3 ya no viajan seguimientos/vencidos sueltos (todo va en el resumen)', /const followups = \[\], expiries = \[\]/.test(require('./_fuente.cjs').fuenteApp()));
     check('A3 resumen con seguimiento + vencido va al Historial con el banner', hoyAv.go === 'historial:venc', hoyAv.go);
 
     // A4 — días sin avisos

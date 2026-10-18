@@ -4,8 +4,9 @@
   "description": "Herramientas de desarrollo (tests y lint). La app no tiene build: se publica tal cual.",
   "scripts": {
     "test": "node scripts/test.cjs",
-    "lint": "eslint .",
-    "check": "npm run lint && npm test"
+    "lint": "eslint . && node scripts/lint-app.cjs",
+    "check": "npm run lint && npm test",
+    "subir-version": "node scripts/subir-version.cjs"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

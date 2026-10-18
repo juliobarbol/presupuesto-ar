@@ -1,0 +1,556 @@
+/* ═══════════════════════════════════════
+   PRINT.CSS — Estilos de impresión / PDF y tab Facturación
+═══════════════════════════════════════ */
+
+/* ── PRINT ── */
+@media print{
+  /* Reservamos un margen inferior chico para el contador "Página X de Y".
+     El margen superior se queda en 0 — el header repetido se logra ahora
+     a través del <thead> de la tabla wrapper .pdoc (ver pdf.js), que el
+     navegador repite NATIVAMENTE en cada página de manera confiable
+     cross-browser (a diferencia de position:fixed, que falla en muchos
+     navegadores móviles). */
+  @page{
+    size:A4 portrait;
+    margin:0 0 14mm 0;
+    @bottom-center{
+      content:"Página " counter(page) " de " counter(pages);
+      font-family:'DM Sans',sans-serif;
+      font-size:8.5pt;
+      color:#94a3b8;
+      padding-top:4mm;
+    }
+  }
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  /* Al imprimir, lo ÚNICO que existe es el documento (#print-zone). Antes esto
+     era una lista blanca de ids a ocultar (#app, cada overlay, …) y bastaba
+     agregar un elemento nuevo al <body> para que se colara en el PDF: así se
+     imprimió el FAB "Subir" (círculo con flechita) sobre el papel. La regla
+     por descarte no se puede desactualizar: cualquier cosa suelta en el body
+     (FAB, overlays, toasts, lo que venga) queda fuera del PDF sin tener que
+     acordarse de nada. Los <symbol> del sprite SVG siguen resolviendo desde
+     <use> aunque su contenedor esté display:none. */
+  body > *:not(#print-zone){display:none!important}
+  #print-zone{display:block!important}
+  /* Forzamos esquema claro al imprimir: en tema oscuro el <html> lleva
+     color-scheme:dark, lo que hace que el navegador pinte el "canvas" de
+     la página (incluido el margen inferior donde va el contador "Página X
+     de Y") con un fondo oscuro → aparecía una barra negra de lado a lado
+     al pie de cada hoja. El cuerpo del documento ya es blanco; esto evita
+     que el área de márgenes herede el fondo oscuro. */
+  :root,html,body{color-scheme:light}
+  body,html{margin:0;padding:0;background:#fff}
+}
+
+/* ── DOCUMENTO (.pdoc) — FUENTE ÚNICA ─────────────────────────────────
+   La misma hoja se usa en impresión y en la vista previa en pantalla.
+   Las clases .pdoc/.ph/.ptable/... sólo existen dentro de #doc-a4
+   (oculto fuera de impresión) o de .doc-a4-screen (preview), por eso
+   definirlas en ámbito global no afecta a la UI de la app. Antes esto
+   estaba duplicado: una copia en @media print y otra prefijada con
+   .doc-preview-host (que divergían con facilidad). Ahora es una sola. ── */
+  #doc-a4,.doc-a4-screen{
+    width:210mm;
+    font-family:'DM Sans',sans-serif;
+    font-size:11pt;color:#1a1a1a;background:#fff;
+    margin:0;padding:0;
+
+    /* ── DESIGN TOKENS ──────────────────────────────────────────────
+       Escala tipográfica armónica (5 niveles). Antes había 9 tamaños
+       distintos compitiendo entre sí; ahora hay una progresión clara
+       que el ojo lee sin esfuerzo:
+       - micro:  labels uppercase, número de página, footer secundario
+       - small:  cuerpo secundario (observaciones, condiciones, notas)
+       - body:   cuerpo principal de tabla y datos
+       - h3:     títulos de sección secundaria (gris)
+       - h2:     títulos de sección primaria (con color de marca)
+       - display: total y número de presupuesto (máxima jerarquía)         */
+    --fs-micro:   7.5pt;
+    --fs-small:   9.5pt;
+    --fs-body:    11pt;
+    --fs-h3:      9pt;
+    --fs-h2:      12pt;
+    --fs-display: 22pt;
+
+    /* Paleta neutra. El color de marca (accentColor) se usa solo
+       inline desde JS en 3 lugares: nombre del emisor, número de
+       presupuesto, y la caja del Costo Total. Los títulos de sección
+       usan grises neutros para no competir. */
+    --c-text:     #1a1a1a;
+    --c-text-2:   #374151;
+    --c-muted:    #64748b;
+    --c-muted-2:  #94a3b8;
+    --c-divider:  #d1d5db;
+    --c-divider-soft: #e5e7eb;
+    --c-bg-soft:  #f8faf9;
+    --c-zebra:    #fafbfc;
+
+    /* Sistema de radios consistente */
+    --r-sm: 4pt;
+    --r-md: 8pt;
+
+    /* Márgen lateral unificado de todo el documento */
+    --page-x: 18mm;
+
+    /* Letter-spacing único para labels uppercase */
+    --ls-label: .8px;
+  }
+
+  /* WRAPPER TABLE: el documento entero está envuelto en .pdoc.
+     - <thead> contiene el header del documento (logo + emisor + badge)
+       y se repite en cada página de manera nativa.
+     - <tbody> contiene el resto del presupuesto (título, datos cliente,
+       tabla de ítems, totales, observaciones, etc.).
+     - border-collapse + padding:0 en td evita espaciado extra. */
+  .pdoc{
+    width:100%;
+    border-collapse:collapse;
+    table-layout:fixed;
+  }
+  .pdoc > thead{display:table-header-group}
+  .pdoc > tbody{display:table-row-group}
+  .pdoc > thead > tr > td,
+  .pdoc > tbody > tr > td{
+    padding:0;
+    border:0;
+    vertical-align:top;
+  }
+  /* IMPORTANTE: el <tr> y <td> del tbody DEBEN poder romperse entre
+     páginas (sino todo el contenido se forzaría a una sola página).
+     Algunos navegadores tratan los tr como "no romper" por default. */
+  .pdoc > tbody > tr,
+  .pdoc > tbody > tr > td{
+    break-inside:auto;
+    page-break-inside:auto;
+  }
+
+  /* HEADER (.ph): ahora vive dentro de <thead><tr><td>. Ya no es fixed.
+     Es bloque normal, pero como está en el <thead> de la tabla wrapper,
+     se repite en cada página. Padding lateral unificado con el resto
+     del documento via --page-x. */
+  .ph{padding:16px var(--page-x) 12px;display:flex;align-items:flex-start;gap:18px;position:relative;background:#fff}
+  .ph-logo{max-height:54px;max-width:115px;object-fit:contain}
+  /* Monograma con las iniciales (v244, _monoSVG): ocupa el lugar del logo. */
+  .ph-mono{width:50px;height:50px;flex:none;display:block}
+  /* Si no hay logo, ph-co ocupa todo el espacio (sin placeholder feo) */
+  .ph-co{flex:1;min-width:0}
+  .ph-name{font-family:'DM Serif Display',serif;font-size:17pt;line-height:1.1;margin-bottom:2px}
+  .ph-sub{font-size:var(--fs-small);color:var(--c-muted);margin-bottom:5px}
+  .ph-contacts{display:flex;flex-wrap:wrap;gap:2px 14px}
+  .ph-contact{font-size:8.5pt;color:var(--c-muted)}
+  /* Badge del N° presupuesto: ahora SIN fecha duplicada (la fecha vive
+     en el bloque cliente abajo). Más limpio, más jerarquía al número. */
+  .ph-badge{position:absolute;top:16px;right:var(--page-x);text-align:right}
+  .ph-badge-lbl{font-size:var(--fs-micro);font-weight:700;text-transform:uppercase;letter-spacing:var(--ls-label);color:var(--c-muted-2);margin-bottom:2px}
+  .ph-badge-num{font-family:'DM Serif Display',serif;font-size:var(--fs-h2);line-height:1}
+
+  /* EVITAR CORTES DE BLOQUES
+     Cada sección compacta queda entera; si no entra en la página, salta
+     a la siguiente completa. La tabla principal (.psec) SÍ puede partirse
+     a lo largo de varias páginas — pero cada fila individual y el thead
+     quedan intactos (ver reglas debajo). */
+  .ptitle-bar,.ptotals,.pobs,.pcond,.pvalid,.pdur,
+  .pcrit,.pnotes,.psigs,.pfoot,.pdispo,
+  .pest-header-bar,.pest-disclaimer,.pest-factors,.pest-greeting,
+  .pest-item{
+    break-inside:avoid;
+    page-break-inside:avoid;
+  }
+  /* Filas de la tabla principal: no partir una fila a la mitad */
+  .ptable tr{break-inside:avoid;page-break-inside:avoid}
+  /* El thead de la tabla interna se repite naturalmente en cada página */
+  .ptable thead{display:table-header-group}
+
+  /* ──────────────────────────────────────────────────────────────
+     TÍTULO DEL DOCUMENTO + DATOS DEL CLIENTE
+     ────────────────────────────────────────────────────────────── */
+  .ptitle-bar{padding:0 var(--page-x);margin-bottom:14px}
+  /* Título del documento: H2 sobrio, sin uppercase, sin border grueso.
+     Usa el color de marca via style inline desde JS (uno de los 3
+     lugares permitidos para el accent). */
+  .ptitle{font-family:'DM Serif Display',serif;font-size:14pt;line-height:1.25;padding-bottom:6px;margin-bottom:12px;border-bottom:1pt solid var(--c-divider-soft);word-break:break-word;hyphens:auto;max-width:75%}
+  .pgrid{display:grid;grid-template-columns:1fr 1fr;padding:12px 14px;background:var(--c-bg-soft);border-radius:var(--r-md);gap:14px;border:1px solid var(--c-divider-soft)}
+  .pgrid-lbl{font-size:var(--fs-micro);font-weight:700;text-transform:uppercase;letter-spacing:var(--ls-label);color:var(--c-muted-2);margin-bottom:3px}
+  /* word-break para clientes largos tipo "Consorcio del Edif. San Martín..." */
+  .pgrid-val{font-size:var(--fs-body);font-weight:500;word-break:break-word;hyphens:auto}
+  .pgrid-sub{font-size:var(--fs-small);color:var(--c-muted)}
+  .pgrid-r{border-left:1pt solid var(--c-divider-soft);padding-left:14px}
+
+  /* ──────────────────────────────────────────────────────────────
+     SECCIÓN DE ÍTEMS (psec) — H2 primario
+     Antes el título era 7.5pt uppercase con border verde grueso, igual
+     que todos los demás títulos. Ahora es H2 (12pt regular case) con
+     más jerarquía y borde sutil neutro. El color de marca se aplica
+     inline desde JS solo en el título principal del documento.
+     ────────────────────────────────────────────────────────────── */
+  .psec{padding:14px var(--page-x) 0}
+  .psec-t{font-family:'DM Sans',sans-serif;font-size:var(--fs-h2);font-weight:700;letter-spacing:0;color:var(--c-text);margin-bottom:10px;padding-bottom:5px;border-bottom:1pt solid var(--c-divider)}
+
+  /* TABLA: zebra-stripes sutiles, encabezados más legibles */
+  .ptable{width:100%;border-collapse:collapse}
+  .ptable thead th{font-size:var(--fs-micro);font-weight:700;text-transform:uppercase;letter-spacing:var(--ls-label);color:var(--c-muted);padding:6px 5px;text-align:left;border-bottom:1.5pt solid var(--c-divider);background:var(--c-bg-soft)}
+  .ptable thead th.thr{text-align:right}
+  .ptable tbody tr:nth-child(even) td{background:var(--c-zebra)}
+  .ptable tbody td{padding:9px 6px;border-bottom:.75pt solid var(--c-divider-soft);vertical-align:top;font-size:var(--fs-body)}
+  .td-n{color:var(--c-muted-2);font-size:var(--fs-small);width:20pt;font-weight:600}
+  /* Especie: ancho elástico para nombres largos */
+  .td-sp{font-weight:700;font-size:var(--fs-small);min-width:80pt;max-width:130pt;word-break:break-word}
+  .td-wk{color:var(--c-text-2);line-height:1.5}
+  .td-pr{text-align:right;white-space:nowrap;font-weight:600}
+  /* Desglose de cantidad (5 × $150.000): gris claro chiquito, MUCHO
+     más débil que el subtotal — antes la diferencia era sutil y el
+     lector podía confundirse. */
+  .td-pr .qty-breakdown{display:block;font-size:7.5pt;color:var(--c-muted-2);font-weight:400;margin-bottom:2px}
+  .ptable .nrow td{font-size:var(--fs-small);color:var(--c-muted);font-style:italic;padding:5px 6px;background:#fff!important}
+
+  /* ──────────────────────────────────────────────────────────────
+     TOTALES — el bloque MÁS importante del documento
+     Caja con color de marca (uno de los 3 usos permitidos).
+     Display size más grande que el nombre del emisor (jerarquía).
+     ────────────────────────────────────────────────────────────── */
+  .ptotals{padding:12px var(--page-x);display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+  .pdisc-row{display:flex;gap:14px;font-size:var(--fs-small);color:var(--c-muted)}
+  .pdisc-row span:first-child{font-weight:500}
+  .pdisc-note{font-size:var(--fs-micro);color:var(--c-muted-2);font-style:italic;margin-top:2px;max-width:240pt;text-align:right}
+  .ptotal-box{padding:11px 16px;border-radius:var(--r-md);min-width:175pt;border:2pt solid currentColor}
+  .ptotal-lbl{font-size:var(--fs-micro);font-weight:700;text-transform:uppercase;letter-spacing:var(--ls-label);opacity:.7;margin-bottom:2px}
+  /* Total prominente y claro a propósito: la evidencia de que achicar el
+     número baja la magnitud percibida es débil y no replicada (Coulter 2005),
+     y trabajo posterior recomienda lo contrario (Yan et al. 2022). La palanca
+     real es el contexto de valor (plan de trabajo / justificación), no el
+     tamaño del número. */
+  .ptotal-amt{font-family:'DM Serif Display',serif;font-size:26pt;line-height:1}
+
+  /* ──────────────────────────────────────────────────────────────
+     ZONA ADMINISTRATIVA — H3 secundario
+     Observaciones, Condiciones, Notas. Antes competían visualmente
+     con el H2 de Detalles del Trabajo. Ahora son títulos chiquitos
+     en gris, claramente subordinados. La separación con la zona
+     principal se logra con un divisor sutil arriba.
+     ────────────────────────────────────────────────────────────── */
+  .pobs,.pcond,.pnotes{padding:0 var(--page-x) 12px}
+  .pobs-t,.pcond-t,.pnotes-t{font-size:var(--fs-h3);font-weight:700;text-transform:uppercase;letter-spacing:var(--ls-label);color:var(--c-muted);margin-bottom:7px;padding-bottom:0;border:none}
+  .pobs-txt{font-size:var(--fs-small);color:var(--c-text-2);line-height:1.65;padding:12px 14px;background:var(--c-bg-soft);border-radius:var(--r-sm);border-left:2.5pt solid var(--c-divider)}
+  .pcond-txt{font-size:var(--fs-small);color:var(--c-text-2);line-height:1.65}
+  /* CÓMO PAGAR — es zona ADMINISTRATIVA, no la cifra del presupuesto. La
+     jerarquía la manda el total; esto es un dato de referencia y tiene que
+     pesar lo mismo que Observaciones (--fs-small, borde gris neutro). Lo único
+     que lo distingue es la mono del alias, que ayuda a transcribirlo sin
+     confundir l/1 ni O/0 — no el tamaño ni el color de marca. */
+  .ppago-rows{display:flex;flex-wrap:wrap;gap:4px 26px;padding:10px 14px;
+    background:var(--c-bg-soft);border-radius:var(--r-sm);border-left:2.5pt solid var(--c-divider)}
+  .ppago-row{display:flex;flex-direction:column;gap:1px;min-width:0}
+  .ppago-lbl{font-size:var(--fs-micro);font-weight:700;text-transform:uppercase;letter-spacing:var(--ls-label);color:var(--c-muted-2)}
+  .ppago-val{font-size:var(--fs-small);color:var(--c-text-2);font-weight:500;word-break:break-all}
+  /* Mono en 600: IBM Plex Mono viene auto-hospedada en 400 y 600 (ver
+     fonts.css) y a igual peso se ve más liviana que la sans, así que 600 acá
+     empareja con el 500 del titular en vez de gritar. */
+  .ppago-alias .ppago-val{font-family:var(--font-mono);font-weight:600;color:var(--c-text);letter-spacing:.01em}
+  .pnotes ul{padding-left:16px;margin:0}
+  .pnotes li{font-size:var(--fs-small);color:var(--c-text-2);line-height:1.7}
+  /* DISPOSICIÓN DE LEÑA Y RESIDUOS — zona administrativa, mismo peso que
+     Observaciones. Las fotos van chicas (es una referencia del lugar, no el
+     registro fotográfico del trabajo) y en fila, para que la sección no se
+     coma media hoja. */
+  .pdispo{padding:0 var(--page-x) 12px}
+  .pdispo-t{font-size:var(--fs-h3);font-weight:700;text-transform:uppercase;letter-spacing:var(--ls-label);color:var(--c-muted);margin-bottom:7px}
+  .pdispo-txt{font-size:var(--fs-small);color:var(--c-text-2);line-height:1.65;
+    padding:12px 14px;background:var(--c-bg-soft);border-radius:var(--r-sm);border-left:2.5pt solid var(--c-divider)}
+  /* MISMA grilla que el registro fotográfico (2 columnas), NO un flex con
+     max-width en %: en un contenedor flex el porcentaje se resuelve contra el
+     ítem ya estirado y la foto salía a ~38% del tamaño de las de los árboles
+     ("quedó diminuta"). Lo que la mantiene secundaria es el max-height más
+     chico (55mm vs 75mm), no un ancho relativo. */
+  .pdispo-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:8px}
+  .pdispo-photo{margin:0}
+  /* Igual que .pphoto: ancho y alto auto acotados por max-*, para que la caja
+     conserve la proporción real y html2canvas no la dibuje estirada. */
+  .pdispo-photo img{width:auto;height:auto;max-width:100%;max-height:55mm;
+    object-fit:contain;display:block;border:1px solid var(--c-divider);border-radius:var(--r-sm)}
+
+  /* Divisor entre zona principal (ítems + total) y zona administrativa.
+     Es invisible pero crea una separación visual clara via margen. */
+  .pobs,.pcond,.pvalid,.pcrit,.pnotes{margin-top:0}
+  .ptotals + .pobs,
+  .ptotals + .pcond,
+  .ptotals + .pvalid,
+  .ptotals + .pcrit{margin-top:8px}
+
+  /* ──────────────────────────────────────────────────────────────
+     VIGENCIA — antes era una barra roja agresiva, ahora una caja
+     ámbar suave (típica de "info importante pero no crítica").
+     ────────────────────────────────────────────────────────────── */
+  .pvalid{margin:6px var(--page-x) 14px;background:#fef3c7!important;color:#92400e!important;padding:9px 14px;border-radius:var(--r-sm);font-size:var(--fs-small);font-weight:500;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;border-left:3pt solid #d97706}
+  .pvalid-date{font-weight:700;color:#78350f}
+  /* "Tiempo estimado de trabajo" — dato menor: una sola línea discreta, sin
+     recuadro ni color. Simplemente está; no debe competir con el resto. */
+  .pdur{margin:0 var(--page-x) 12px;color:var(--c-muted);font-size:var(--fs-small)}
+  .pdur-val{font-weight:600;color:var(--c-text-2)}
+
+  /* ──────────────────────────────────────────────────────────────
+     CÓMO TRABAJAMOS — antes 4 ítems en columna vertical ocupando
+     mucho espacio. Ahora 2x2 grid: 4 criterios en 2 columnas,
+     ~50% menos espacio vertical.
+     ────────────────────────────────────────────────────────────── */
+  .pcrit{padding:0 var(--page-x) 14px}
+  .pcrit-t{font-size:var(--fs-h3);font-weight:700;text-transform:uppercase;letter-spacing:var(--ls-label);color:var(--c-muted);margin-bottom:8px;padding-bottom:0;border:none}
+  .pcrit-box{padding:12px 14px;background:var(--c-bg-soft);border-radius:var(--r-md);border-left:3pt solid var(--c-divider)}
+  .pcrit-intro{font-size:var(--fs-small);color:var(--c-text-2);margin-bottom:9px;line-height:1.55}
+  .pcrit-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 18px}
+  .pcrit-item{margin-bottom:0}
+  .pcrit-s{font-size:var(--fs-small);font-weight:700;color:var(--c-text);display:block;margin-bottom:1px}
+  .pcrit-p{font-size:var(--fs-micro);color:var(--c-muted);line-height:1.5;display:block}
+
+  /* ──────────────────────────────────────────────────────────────
+     PLAN DE TRABAJO / LO QUE INCLUYE — sección de VALOR que se muestra
+     antes del precio. Encuadra el importe como inversión justificada por
+     el trabajo (framing de valor + anclaje): el cliente lee primero lo que
+     recibe y recién después el número. Bullets editables por presupuesto.
+     ────────────────────────────────────────────────────────────── */
+  .pplan{padding:14px var(--page-x) 0}
+  .pplan-t{font-size:var(--fs-h3);font-weight:700;text-transform:uppercase;letter-spacing:var(--ls-label);color:var(--c-muted);margin-bottom:8px}
+  .pplan-box{padding:13px 16px;background:var(--c-bg-soft);border-radius:var(--r-md);border-left:3pt solid currentColor}
+  .pplan-list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:8px 22px;counter-reset:pplan}
+  .pplan-list li{font-size:var(--fs-small);color:var(--c-text-2);line-height:1.5;padding-left:22px;position:relative;counter-increment:pplan}
+  .pplan-list li::before{content:counter(pplan)'.';position:absolute;left:0;top:0;font-weight:700;color:currentColor;opacity:.7;font-variant-numeric:tabular-nums}
+
+  /* ──────────────────────────────────────────────────────────────
+     FIRMAS — más respiración, anti-corte
+     ────────────────────────────────────────────────────────────── */
+  .psigs{padding:16px var(--page-x) 18px;display:flex;gap:40px;margin-top:8px;min-height:80px}
+  .psig-box{flex:1;border-top:1pt solid var(--c-divider);padding-top:8px}
+  .psig-lbl{font-size:var(--fs-micro);font-weight:700;text-transform:uppercase;letter-spacing:var(--ls-label);color:var(--c-muted-2)}
+  .psig-name{font-size:var(--fs-small);color:var(--c-text);margin-top:28px}
+
+  /* ──────────────────────────────────────────────────────────────
+     FOOTER — antes repetía número y fecha (ya están en el header).
+     Ahora solo el "Atte:" + nombre. Más limpio.
+     ────────────────────────────────────────────────────────────── */
+  .pfoot{border-top:1pt solid var(--c-divider-soft);padding:10px var(--page-x);display:flex;justify-content:space-between;align-items:center}
+  .pfoot-l{font-size:var(--fs-small);font-weight:600}
+  .pfoot-r{font-size:var(--fs-micro);color:var(--c-muted-2)}
+
+  /* ── RECIBO DE PAGO — leyenda "no fiscal" al pie (pestaña Facturación) ── */
+  .precibo-legal{padding:14px var(--page-x) 6px;font-size:var(--fs-micro);color:var(--c-muted-2);text-transform:uppercase;letter-spacing:var(--ls-label);text-align:center}
+
+  /* ──────────────────────────────────────────────────────────────
+     ANTI-HUÉRFANOS: títulos de sección NO pueden quedar solos al
+     final de una página. break-after:avoid los pega al contenido.
+     ────────────────────────────────────────────────────────────── */
+  .psec-t,.pobs-t,.pcond-t,.pcrit-t,.pnotes-t,.pdispo-t,.ptitle{
+    break-after:avoid-page;
+    page-break-after:avoid;
+  }
+
+  /* Las firmas no deberían empezar a 5px del borde inferior — si
+     no tienen espacio, mejor saltar de página. */
+  .psigs{break-before:auto;break-inside:avoid;page-break-inside:avoid}
+
+  /* ESTIMATIVE-SPECIFIC PRINT STYLES */
+  .pest-header-bar{margin:0 32px 14px;padding:8px 14px;border-radius:5px;background:#d1fae5!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;border-left:4pt solid currentColor;display:flex;align-items:center;gap:8px}
+  .pest-header-icon{font-size:13pt}
+  .pest-header-lbl{font-size:9.5pt;font-weight:700}
+  .pest-header-sub{font-size:8pt;color:#374151;margin-top:1px}
+
+  .pest-item{padding:10px 0;border-bottom:.5pt solid #f1f5f4}
+  .pest-item:last-child{border-bottom:none}
+  .pest-item-num{font-size:8.5pt;font-weight:700;color:currentColor;margin-bottom:3px}
+  .pest-item-title{font-size:10.5pt;font-weight:700;color:#1a1a1a;margin-bottom:3px}
+  .pest-item-desc{font-size:9.5pt;color:#374151;line-height:1.55}
+  .pest-item-price{font-size:10.5pt;font-weight:700;margin-top:5px}
+  .pest-item-fixed-badge{font-size:7pt;font-weight:700;text-transform:uppercase;letter-spacing:.5px;background:#ede9fe;color:#5b21b6;padding:1px 6px;border-radius:8px;display:inline-block;margin-bottom:3px}
+  .pest-services-section{padding:0 32px 10px}
+  .pest-services-t{font-size:7.5pt;font-weight:700;text-transform:uppercase;letter-spacing:.9px;margin-bottom:7px;padding-bottom:3px;border-bottom:2pt solid #e2e8f0;color:#64748b}
+  .pest-svc-row{display:flex;justify-content:space-between;align-items:baseline;padding:5px 0;border-bottom:.5pt solid #f1f5f4;font-size:9.5pt}
+  .pest-svc-row:last-child{border-bottom:none}
+  .pest-svc-desc{color:#374151}
+  .pest-svc-price{font-weight:700;white-space:nowrap;margin-left:12px}
+
+  .pest-disclaimer{margin:0 32px 12px;padding:10px 14px;background:#f8faf9;border-radius:6px;border-left:3pt solid #94a3b8;font-size:8.5pt;color:#475569;line-height:1.6}
+  .pest-disclaimer-title{font-size:8pt;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#64748b;margin-bottom:5px}
+
+  .pest-factors{padding:0 32px 12px}
+  .pest-factors-t{font-size:7.5pt;font-weight:700;text-transform:uppercase;letter-spacing:.9px;margin-bottom:7px;padding-bottom:3px;border-bottom:2pt solid currentColor}
+  .pest-factors-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px 16px}
+  .pest-factor{font-size:8.5pt;color:#374151;padding:3px 0;padding-left:10px;position:relative}
+  .pest-factor::before{content:'•';position:absolute;left:0;color:currentColor;font-weight:700}
+
+  .pest-greeting{padding:0 32px 16px;font-size:9.5pt;color:#374151;font-style:italic}
+  .pest-greeting-name{display:block;margin-top:4px;font-weight:600;font-style:normal;color:#1a1a1a}
+
+/* ── FACTURACIÓN ── */
+.fact-hero{background:linear-gradient(135deg,var(--accent),var(--accent-2));border-radius:12px;padding:18px 20px;margin-bottom:18px;color:#fff}
+.fact-hero-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.fact-hero-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;opacity:.7;margin-bottom:4px}
+.fact-hero-val{font-family:'DM Serif Display',serif;font-size:28px;line-height:1}
+.fact-hero-sub{font-size:11px;opacity:.65;margin-top:3px}
+.fact-hero-right{text-align:right}
+.fact-progress-wrap{margin-top:14px}
+.fact-progress-label{display:flex;justify-content:space-between;font-size:11px;opacity:.75;margin-bottom:5px}
+.fact-progress-bar{height:8px;background:rgba(255,255,255,.2);border-radius:8px;overflow:hidden}
+.fact-progress-fill{height:100%;border-radius:8px;transition:.4s;background:#6ee7b7}
+.fact-progress-fill.warn{background:#fcd34d}
+.fact-progress-fill.danger{background:#f87171}
+
+.fact-cards{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px}
+.fact-card{background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px 16px}
+.fact-card-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:6px}
+.fact-card-val{font-size:18px;font-weight:700;color:var(--text)}
+.fact-card-sub{font-size:11px;color:var(--muted);margin-top:2px}
+.fact-card.highlight{border-color:var(--accent-fg);background:#f0fdf4}
+.fact-card.highlight .fact-card-val{color:var(--accent-fg)}
+
+.fact-alert{border-radius:8px;padding:11px 14px;margin-bottom:14px;font-size:12px;font-weight:500;display:flex;align-items:center;gap:8px}
+.fact-alert.ok{background:#d1fae5;color:#065f46;border:1px solid #6ee7b7}
+.fact-alert.warn{background:#fef3c7;color:#92400e;border:1px solid #fcd34d}
+.fact-alert.danger{background:#fee2e2;color:#991b1b;border:1px solid #fca5a5}
+
+.fact-tope-row{display:flex;flex-wrap:wrap;align-items:center;gap:10px;background:#f8faf9;border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:14px}
+.fact-tope-row input{flex:1;min-width:130px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:#fff;outline:none;-webkit-appearance:none;appearance:none}
+.fact-tope-row .btn{flex-shrink:0}
+.fact-tope-row input:focus{border-color:var(--accent-fg);box-shadow:0 0 0 3px rgba(var(--accent-rgb),.1)}
+.fact-tope-row label{font-size:12px;font-weight:600;color:var(--text-2);white-space:nowrap}
+
+.fact-reg-list{margin-bottom:12px}
+.fact-reg-item{background:#f8faf9;border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:7px;display:flex;align-items:center;gap:10px}
+.fact-reg-info{flex:1;min-width:0}
+.fact-reg-date{font-size:11px;font-weight:700;color:var(--accent-fg)}
+.fact-reg-client{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fact-reg-meta{font-size:11px;color:var(--muted)}
+.fact-reg-info.is-linked{cursor:pointer}
+.fact-reg-link{color:var(--accent-fg);font-weight:600}
+.fact-reg-amt{font-size:14px;font-weight:700;color:var(--text);white-space:nowrap}
+.fact-empty{text-align:center;padding:30px;color:var(--muted);font-size:13px}
+
+.fact-form{background:#f0fdf4;border:1px solid #6ee7b7;border-radius:10px;padding:16px;margin-bottom:16px}
+.fact-form .st{color:#065f46;border-bottom-color:#6ee7b7;margin-top:0}
+
+.fact-ai-box{background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:16px}
+.fact-ai-header{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.fact-ai-icon{font-size:18px}
+.fact-ai-title{font-size:12px;font-weight:700;color:var(--text)}
+.fact-ai-sub{font-size:11px;color:var(--muted)}
+.fact-ai-result{font-size:13px;color:var(--text);line-height:1.6;padding:10px 12px;background:#f8faf9;border-radius:7px;border-left:3px solid var(--accent);margin-top:8px;display:none}
+.fact-ai-result.show{display:block}
+.fact-ai-loading{display:none;align-items:center;gap:8px;font-size:12px;color:var(--muted);margin-top:8px}
+.fact-ai-loading.show{display:flex}
+.fact-spinner{width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--accent-fg);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Configuración del tope: colapsable (se actualiza 2 veces al año, no es acción diaria) */
+.fact-config{border:1px solid var(--border);border-radius:10px;background:#fff;margin:24px 0 16px;overflow:hidden}
+.fact-config>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;padding:13px 16px;font-size:13px;font-weight:700;color:var(--text);user-select:none}
+.fact-config>summary::-webkit-details-marker{display:none}
+.fact-config>summary::marker{content:""}
+.fact-config-chev{margin-left:auto;color:var(--muted);font-size:11px;transition:transform .2s}
+.fact-config[open] .fact-config-chev{transform:rotate(180deg)}
+.fact-config-body{padding:2px 16px 14px}
+.fact-config-body .st{margin-top:8px}
+.fact-config-body>:last-child{margin-bottom:0}
+
+@media(max-width:600px){
+  .fact-cards{grid-template-columns:1fr}
+  .fact-hero-val{font-size:22px}
+}
+
+
+/* ═══════════════════════════════════════
+   VISTA PREVIA DE PRESUPUESTOS (modal)
+   Reutiliza los estilos del documento de impresión, pero en pantalla.
+   El doc se renderiza dentro de a tamaño A4 (210mm)
+   y se escala con transform para que entre en pantallas chicas.
+═══════════════════════════════════════ */
+.doc-preview-overlay{
+  position:fixed;inset:0;z-index:2000;
+  background:rgba(15,23,42,.75);
+  display:none;flex-direction:column;
+  -webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);
+}
+.doc-preview-overlay.open{display:flex}
+.doc-preview-bar{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:12px 16px;background:var(--accent);color:#fff;flex-shrink:0;
+  padding-top:max(12px, env(safe-area-inset-top));
+}
+.doc-preview-title{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.doc-preview-close{
+  background:rgba(255,255,255,.2);border:none;color:#fff;
+  font-size:20px;font-weight:700;line-height:1;
+  width:36px;height:36px;border-radius:8px;cursor:pointer;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+}
+.doc-preview-close:active{background:rgba(255,255,255,.35)}
+.doc-preview-scroll{
+  flex:1;overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;
+  padding:16px;display:flex;justify-content:center;align-items:flex-start;
+}
+/* El "papel" A4: se escala para caber en pantalla. El ancho real es
+   210mm; el wrapper lo encoge con transform y compensa la altura. */
+.doc-preview-paper{
+  background:#fff;box-shadow:0 8px 40px rgba(0,0,0,.4);
+  transform-origin:top center;
+}
+.doc-preview-host{display:block}
+.doc-preview-host .doc-a4-screen{box-sizing:border-box}
+
+/* ═══════════════════════════════════════
+   ÍCONOS SVG DEL DOCUMENTO (reemplazan emojis)
+   Aplican tanto en impresión como en la vista previa en pantalla.
+═══════════════════════════════════════ */
+.pdf-ic{
+  width:1em;height:1em;
+  vertical-align:-0.13em;
+  margin-right:3px;
+  display:inline-block;
+  flex-shrink:0;
+}
+/* Círculo de nivel de riesgo: un poco más grande para que se lea el color */
+.pdf-ic-dot{
+  width:1.15em;height:1.15em;
+  vertical-align:-0.2em;
+  display:inline-block;
+}
+/* En el header de contactos, el ícono toma el color tenue del texto */
+.ph-contact .pdf-ic{opacity:.85}
+/* El ícono de la cámara en el header de fotos hereda el color del título */
+.pest-header-icon .pdf-ic{width:1.1em;height:1.1em;vertical-align:-0.18em;margin-right:0}
+
+/* ═══════════════════════════════════════
+   REGISTRO FOTOGRÁFICO DEL DOCUMENTO
+   Aplica en impresión y en vista previa. Diseño sobrio: grilla de
+   fotos con marco fino y etiqueta, en línea con la estética del doc.
+═══════════════════════════════════════ */
+.pphotos{padding:0 18mm 12px}
+.pphotos-t{
+  font-size:9.5pt;font-weight:700;text-transform:uppercase;
+  letter-spacing:.8px;color:#64748b;margin-bottom:9px;
+}
+.pphotos-grid{
+  display:grid;grid-template-columns:repeat(2,1fr);gap:12px;
+}
+.pphoto{margin:0}
+/* La caja de la foto respeta SIEMPRE la proporción original del archivo.
+   NO volver a `width:100%` + `max-height` + `object-fit:cover`: eso arma una
+   caja con OTRA proporción (ej. una foto vertical 3:4 metida en una caja
+   apaisada) y sólo el navegador la disimula recortando. Al compartir como
+   imagen/PDF rasterizado usamos html2canvas, que IGNORA `object-fit` y dibuja
+   la foto estirada dentro de esa caja → árboles achatados en el presupuesto.
+   Con ancho y alto `auto` acotados por max-*, la caja sale con la proporción
+   real y todos los motores (pantalla, impresión y html2canvas) la dibujan
+   igual: sin deformar y sin recortar. */
+.pphoto img{
+  width:auto;height:auto;
+  max-width:100%;max-height:75mm;
+  object-fit:contain;
+  margin:0 auto;
+  border:1px solid #e2e8f0;border-radius:8px;display:block;
+}
+.pphoto figcaption{
+  font-size:8.5pt;font-weight:600;color:#374151;
+  margin-top:5px;text-align:center;
+}
+/* Evita cortar una foto entre dos páginas al imprimir */
+@media print{
+  .pphoto{break-inside:avoid;page-break-inside:avoid}
+  .pphotos-t{break-after:avoid}
+}

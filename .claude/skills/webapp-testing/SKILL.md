@@ -57,7 +57,7 @@ Repetir para Normal (`isRisk=false,isEstimative=false`) y Estimativo (`isEstimat
 
 > Tip: si no estás seguro del nombre de la función de render o del selector del
 > documento en pantalla, buscalos primero:
-> `grep -n "doc-a4-screen\|renderPreview\|function build.*Doc" index.html`
+> `grep -n "doc-a4-screen\|renderPreview\|function build.*Doc" js/*.js css/*.css`
 
 ## Logs de consola
 `--logs` imprime los `console.*` y errores de página (útil para depurar). Los errores

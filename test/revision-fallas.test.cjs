@@ -146,8 +146,10 @@ async function disparar(h, tipo, ev) {
 
   // ── 5: sin bytes NUL ──
   {
-    const buf = fs.readFileSync(path.join(ROOT, 'index.html'));
-    check('index.html no tiene bytes NUL', buf.indexOf(0) === -1);
+    const archivos = ['index.html', 'sw.js', ...require('./_fuente.cjs').archivosApp(),
+      ...fs.readdirSync(path.join(ROOT, 'css')).map(f => 'css/' + f)];
+    const conNul = archivos.filter(f => fs.readFileSync(path.join(ROOT, f)).indexOf(0) !== -1);
+    check('index.html, sw.js, js/ y css/ no tienen bytes NUL', conNul.length === 0, conNul.join(', '));
   }
 
   // ── 1 y 2 (lado página): en el navegador ──

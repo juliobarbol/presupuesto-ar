@@ -13,7 +13,26 @@
 //
 //  Para forzar actualizacion tras un deploy: subir el CACHE_VERSION.
 
-const CACHE_VERSION = 'presupuesto-v255';
+const CACHE_VERSION = 'presupuesto-v256';
+
+// El CÓDIGO de la app (v256: antes vivía entero en index.html). index.html lo
+// pide con ?v=<número de versión> y acá se lista con la misma marca, así que
+// cada versión del HTML trae SU código: sin la marca, la navegación (que va
+// primero a la red) traería el HTML nuevo y el resto (que sale primero de la
+// caché) el JS viejo. `npm run lint` verifica que esta lista y los <script>/
+// <link> de index.html coincidan; `npm run subir-version` mueve el número en
+// los dos lados. Se instala TODO O NADA (ver install).
+const APP_V = CACHE_VERSION.replace('presupuesto-v', '');
+const APP_CODIGO = [
+  'css/base.css', 'css/components.css', 'css/print.css', 'css/riesgo.css',
+  'css/documento.css', 'css/mapa.css', 'css/movil.css',
+  'js/state.js', 'js/riesgo.js', 'js/dropdown.js', 'js/datepicker.js',
+  'js/seguimiento.js', 'js/push.js', 'js/net.js', 'js/sanitize.js', 'js/photos.js',
+  'js/clients.js', 'js/phrases.js', 'js/items.js', 'js/ui.js', 'js/history.js',
+  'js/exportimport.js', 'js/gdrive.js', 'js/gcal.js', 'js/pdf.js',
+  'js/facturacion.js', 'js/mapa.js', 'js/clima.js', 'js/calendar.js',
+  'js/notifs.js', 'js/nav.js', 'js/core.js',
+].map((f) => `./${f}?v=${APP_V}`);
 // Caché APARTE, que sobrevive a las versiones, para lo pesado que se baja bajo
 // demanda: html2pdf (927 KB, "Compartir imagen"). Antes vivía en la caché de la
 // versión y cada deploy la borraba: la primera "Compartir imagen" después de
@@ -56,12 +75,17 @@ const APP_SHELL = [
   './vendor/leaflet.css',
 ];
 
-// -- Install: precachear el app shell (resiliente) ------------
-// Si un recurso puntual falla (red intermitente durante el deploy), NO
-// abortamos toda la instalacion: cacheamos lo que se pueda y seguimos.
+// -- Install: precachear el app shell ------------------------
+// El código (APP_CODIGO) va TODO O NADA: si falta un archivo, la instalación
+// falla y sigue mandando la versión anterior, completa (el navegador vuelve a
+// intentar en la próxima apertura). Instalar a medias dejaba, sin señal, una
+// app con unos archivos nuevos y otros ausentes. El resto (iconos, fuentes,
+// Leaflet) es resiliente como siempre: si un recurso puntual falla (red
+// intermitente durante el deploy), se cachea lo que se pueda y se sigue.
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE_VERSION);
+    await cache.addAll(APP_CODIGO);
     await Promise.allSettled(APP_SHELL.map((url) => cache.add(url)));
     await self.skipWaiting();
   })());

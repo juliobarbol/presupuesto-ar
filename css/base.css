@@ -1,0 +1,425 @@
+/* ═══════════════════════════════════════
+   BASE.CSS — Reset, variables, layout principal
+═══════════════════════════════════════ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+a{-webkit-tap-highlight-color:transparent}
+:root{
+  color-scheme:light;
+  --accent:#064e3b;
+  --accent-light:#d1fae5;
+  /* Tonos derivados del color de marca (los reescribe applyAccent en JS
+     cuando el usuario elige un color distinto al verde por defecto). */
+  --accent-rgb:6,78,59;
+  --accent-dark:#043f2f;
+  --accent-2:#0a7a5a;
+  /* --accent-fg: color de la marca cuando se usa como TEXTO/borde sobre una
+     superficie neutra. En claro es el acento tal cual; en oscuro lo aclara
+     applyAccent (o el bloque [data-theme=dark]) para que se lea sobre fondo
+     oscuro. Los rellenos (botones, topbar) siguen usando --accent. */
+  --accent-fg:var(--accent);
+  --accent-tint:#f0f9f4; /* verde muy suave para chips/cajas de marca */
+  --bg:#f0f4f3;
+  --panel:#ffffff;
+  --card:#ffffff;
+  /* Superficies neutras elevadas (de más clara a más oscura en modo claro). */
+  --surface:#f8faf9;      /* cards/paneles suaves (icard, msec, hitem…) */
+  --surface-2:#f1f5f4;    /* pista de switches/segmentados, botón secundario */
+  --surface-3:#f3f4f6;    /* pista de subtabs */
+  --surface-hover:#e5ebe9;/* hover de botones/superficies */
+  --surface-hover2:#f0f4f3;/* hover de cabeceras colapsables */
+  --border:#e2e8f0;
+  --text:#1a2e25;
+  --text-2:#374151;
+  --muted:#64748b;
+  --faint:#cbd5e1;        /* íconos muy tenues (manija de arrastre, estrella off) */
+  --toggle-off:#cbd5e1;   /* pista de toggle apagado */
+  --red:#dc2626;
+  --red-light:#fee2e2;
+  /* --on-accent: texto e íconos SOBRE un relleno de marca (botón primario,
+     topbar, badges llenos). No es --card: no cambia con el tema, porque el
+     relleno sigue siendo oscuro en modo oscuro. */
+  --on-accent:#ffffff;
+  /* ── TIPOGRAFÍA ──────────────────────────────────────────────────
+     Familias. --font-mono se usa en las etiquetas en versalita y en las
+     CIFRAS: los importes son el producto de la app y con el stack del
+     sistema se alinean distinto en cada Android. Ver docs/rediseno-editor.md. */
+  --font-text:'DM Sans',sans-serif;
+  --font-display:'DM Serif Display',serif;
+  --font-mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  /* Escala de tamaños. Son los que la app YA usa: se nombran, no se cambian.
+     --fs-base es el del <body>. Los tamaños sueltos (9, 15, 17, 19…) siguen
+     literales donde están: meterlos acá haría una "escala" de todos los
+     números, que no escala nada. */
+  --fs-2xs:10px;
+  --fs-xs:11px;
+  --fs-sm:12px;
+  --fs-md:13px;
+  --fs-base:14px;
+  --fs-lg:16px;
+  --fs-xl:18px;
+  --fs-2xl:22px;
+  /* Escala de espaciado (6 pasos). Los valores son los que más se repiten hoy
+     en paddings y gaps. Se usa en lo nuevo; el CSS existente se migra de a
+     poco, no de golpe. */
+  --sp-1:4px;
+  --sp-2:6px;
+  --sp-3:8px;
+  --sp-4:12px;
+  --sp-5:16px;
+  --sp-6:24px;
+  /* Escala de radios unificada (inspirada en daisyUI: field/box/pill). */
+  --radius-field:8px;     /* inputs, botones, controles chicos */
+  --radius-box:12px;      /* cards, paneles, modales, banners */
+  --radius-pill:999px;    /* chips y badges tipo píldora */
+  /* Elevación sutil para cards (look "flotante" limpio). */
+  --shadow-card:0 1px 2px rgba(16,40,32,.04),0 1px 3px rgba(16,40,32,.07);
+  --shadow-card-hover:0 4px 14px rgba(16,40,32,.12);
+  /* ── Colores por CONCEPTO de agenda (unificados entre Historial y Calendario).
+     Cada concepto tiene un color y SIEMPRE significa lo mismo en las dos vistas.
+     La urgencia NO cambia el tono (se marca con realce); lo ya hecho se atenúa a
+     gris. Trío por concepto: sólido (puntos/barras), -bg (fondo chip), -fg (texto
+     chip). Los estados del presupuesto son otro eje y viven en ESTADO_COLORS. */
+  --c-trabajo:#7c3aed;     --c-trabajo-bg:#ede9fe; --c-trabajo-fg:#5b21b6;
+  --c-recontacto:#0891b2;  --c-recontacto-bg:#cffafe; --c-recontacto-fg:#155e75;
+  --c-seguimiento:#d97706; --c-seguimiento-bg:#fef3c7; --c-seguimiento-fg:#92400e;
+  --c-vence:#dc2626;       --c-vence-bg:#fee2e2; --c-vence-fg:#991b1b;
+  --c-nota:#ec4899;        --c-nota-bg:#fce7f3; --c-nota-fg:#9d174e;
+  --c-visita:#2563eb;      --c-visita-bg:#dbeafe; --c-visita-fg:#1e40af;
+}
+
+/* ═══ MODO OSCURO ═══════════════════════════════════════════════════
+   Se activa con [data-theme="dark"] en <html> (lo setea applyTheme en JS,
+   con opción "auto" que sigue prefers-color-scheme). Solo afecta la UI de
+   pantalla: el documento/PDF (#doc-a4, .pdoc) mantiene su fondo blanco.
+   Los rellenos de marca (botones, topbar) siguen verdes; el acento como
+   TEXTO usa --accent-fg (aclarado). Las cajas semánticas tintadas (avisos
+   ámbar, badges) quedan como "notas" claras sobre el fondo oscuro. */
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0e1512;
+  --panel:#151d18;
+  --card:#1a231e;
+  --surface:#1e2823;
+  --surface-2:#243029;
+  --surface-3:#202a24;
+  --surface-hover:#2b372f;
+  --surface-hover2:#2b372f;
+  --border:#2d3a33;
+  --text:#e6ede9;
+  --text-2:#c2cdc7;
+  --muted:#8a988f;
+  --faint:#46554c;
+  --toggle-off:#3b4a42;
+  --red:#f87171;
+  --red-light:#3a1f1f;
+  --accent-tint:rgba(16,185,129,.12);
+  /* Valores para el verde por defecto. Para acentos personalizados los
+     recalcula applyAccent inline (mezclando hacia claro/oscuro). */
+  --accent-fg:#4fc99e;
+  --accent-light:#15332a;
+  --accent-dark:#0c8f68;
+  --accent-2:#0c8f68;
+  --shadow-card:0 1px 2px rgba(0,0,0,.32),0 1px 3px rgba(0,0,0,.42);
+  --shadow-card-hover:0 6px 20px rgba(0,0,0,.55);
+  /* Concepto de agenda en oscuro: el sólido (punto/barra) queda saturado; los
+     fondos de chip pasan a tintes translúcidos y el texto se aclara. */
+  --c-trabajo-bg:rgba(139,92,246,.2);  --c-trabajo-fg:#c4b5fd;
+  --c-recontacto-bg:rgba(8,145,178,.22); --c-recontacto-fg:#67e8f9;
+  --c-seguimiento-bg:#4a3a12; --c-seguimiento-fg:#fde68a;
+  --c-vence-bg:rgba(239,68,68,.18); --c-vence-fg:#fca5a5;
+  --c-nota:#f472b6; --c-nota-bg:rgba(236,72,153,.2); --c-nota-fg:#f9a8d4;
+  --c-visita:#60a5fa; --c-visita-bg:rgba(59,130,246,.2); --c-visita-fg:#93c5fd;
+}
+
+html,body{height:100%;font-family:var(--font-text);font-size:14px;background:var(--bg);color:var(--text)}
+/* Fondo plano y limpio (estilo daisyUI): un solo color de base. La
+   profundidad la dan las sombras sutiles de las cards, no un patrón. El PDF
+   (#doc-a4) tiene su propio fondo blanco y nunca hereda este. */
+body{background-color:var(--bg)}
+/* Alto del shell: 100dvh (dynamic viewport height) sigue la barra de UI del
+   navegador móvil sin los problemas de 100vh. Fallbacks en cascada: 100vh para
+   motores muy viejos, -webkit-fill-available para iOS previo a dvh, y 100dvh
+   (última → gana en navegadores modernos). El espacio de la barra de totales se
+   reserva dentro de #main (ver reserveStickySpace), no vía padding del body. */
+#app{display:flex;flex-direction:column;height:100vh;height:-webkit-fill-available;height:100dvh;overflow:hidden}
+
+/* ICONOS (Lucide inline). Tamaño = 1em → heredan el tamaño de fuente del
+   contenedor; color = currentColor → heredan el color del texto. Reemplazan
+   a los emojis. .ic-fill rellena (ej: estrella de favorito activa). */
+/* Color de iconos: NEUTRO por defecto (slate). El color se reserva para lo que
+   significa algo (acentos semánticos): verde=positivo, ámbar=plata/aviso,
+   rojo=destructivo. Las secciones se distinguen por la FORMA del icono, no por
+   un arcoíris — más limpio y fiel a la marca. Como .ic usa stroke:currentColor,
+   el trazo toma el `color`. Los iconos sobre fondos llenos se eximen (blanco). */
+:root{--ic-neutral:#5c6b7a;--ic-green:#2b8a3e;--ic-amber:#c77800;--ic-red:#c92a2a}
+:root[data-theme="dark"]{--ic-neutral:#94a3b8;--ic-green:#51cf66;--ic-amber:#ffa94d;--ic-red:#ff8787}
+.ic{width:1em;height:1em;display:inline-block;vertical-align:-0.14em;flex-shrink:0;fill:none;stroke:currentColor;color:var(--ic-neutral);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;overflow:visible}
+.ic-fill{fill:currentColor;stroke:currentColor}
+.ic-c-green{color:var(--ic-green)}
+.ic-c-amber{color:var(--ic-amber)}
+.ic-c-red{color:var(--ic-red)}
+/* Exenciones: sobre fondos llenos el icono hereda el color del texto (blanco). */
+#topbar .ic,.btn-p .ic,.stb-print .ic,#est-banner .ic,.mode-btn.active.est .ic{color:inherit}
+/* Círculo de nivel de riesgo (reemplaza 🔴🟠🟡🟢) — color semántico */
+.ic-dot{width:.85em;height:.85em;display:inline-block;vertical-align:-0.05em;border-radius:50%;flex-shrink:0}
+.ic-dot.lvl-extremo{background:var(--red)}
+.ic-dot.lvl-alto{background:#ea580c}
+.ic-dot.lvl-moderado{background:#ca8a04}
+.ic-dot.lvl-bajo{background:#16a34a}
+
+/* TOPBAR — compacto: una sola línea con logo + menú "⋯" para acciones
+   secundarias (Exportar/Importar). Antes ocupaba dos líneas en móvil
+   con botones permanentes — robaba ~12% del alto de pantalla. */
+#topbar{display:flex;align-items:center;gap:8px;padding:7px 16px;padding-left:max(16px,env(safe-area-inset-left));padding-right:max(16px,env(safe-area-inset-right));background:var(--accent);flex-shrink:0;position:relative}
+#topbar .logo{font-family:var(--font-display);font-size:16px;color:#fff;flex:1;letter-spacing:.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#save-status{font-size:11px;color:rgba(255,255,255,.7);text-align:right;white-space:nowrap}
+.save-status{transition:opacity .25s,color .25s}
+.save-status.saving{color:rgba(255,255,255,.85);font-style:italic}
+.save-status.saved{color:rgba(255,255,255,.85)}
+/* Conexión en mal estado: el mismo cartelito del topbar, en ámbar. */
+.save-status.net-mala{color:#fcd34d;font-weight:600}
+.tbtn{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22);color:#fff;padding:5px 12px;border-radius:var(--radius-field);cursor:pointer;font-size:12px;font-family:var(--font-text);font-weight:500;transition:.15s}
+.tbtn:hover{background:rgba(255,255,255,.26)}
+.tbtn-menu{padding:4px 9px;font-size:18px;line-height:1;font-weight:700}
+.tbtn-menu .ic{width:18px;height:18px;display:block}
+/* "+ Nuevo": la acción más frecuente de la app, a la vista desde cualquier
+   pestaña. Antes el único botón vivía al pie del editor, 3,8 pantallas abajo. */
+.tbtn-nuevo{display:inline-flex;align-items:center;gap:4px;padding:5px 11px;font-size:13px;font-weight:700;background:#fff;color:var(--accent);border-color:#fff;white-space:nowrap}
+.tbtn-nuevo:hover{background:rgba(255,255,255,.88)}
+/* Trabajos vacíos (itemsVacioSync): solo "+ Árbol / Trabajo", ancho y alto.
+   El !important le gana al display inline que pone renderQuickServices. */
+#section-normal-items.is-vacio #quick-services,
+#section-normal-items.is-vacio .add-svc,
+#section-normal-items.is-vacio .add-note{display:none!important}
+#section-normal-items.is-vacio .add-tree{flex:1 1 100%;justify-content:center;min-height:52px;font-size:16px}
+/* Sugerencia de precio en la tarjeta del árbol (precioSugSync). */
+.pr-sug{display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px;margin-top:6px;padding:6px 10px;border-radius:var(--radius-field);background:var(--accent-light);font-size:13px;color:var(--text)}
+.pr-sug[hidden]{display:none}
+.pr-sug-tx{flex:1;min-width:0}
+/* Rubro (v241): chips en "Cliente y lugar", con el mismo estilo que el cobro
+   del trabajo. Lo que no aplica a un rubro se esconde por clase sobre
+   #panel-editor (rubroSync). */
+.rubro-fg[hidden]{display:none}
+.cobro-b .ic{width:15px;height:15px;vertical-align:-3px;margin-right:2px}
+#panel-editor.is-jardineria .rub-arb{display:none!important}
+#panel-editor:not(.is-jardineria) .rub-jar{display:none!important}
+.add-tree .rub-arb,.add-tree .rub-jar{display:inline-flex;align-items:center;gap:4px}
+/* Cobro por unidad del trabajo (a ojo / por metro / por m² / por jornada). */
+.cobro-row{margin-top:8px}
+.cobro-seg{display:flex;flex-wrap:wrap;gap:6px}
+.cobro-b{min-height:36px;padding:0 12px;border:1px solid var(--border);border-radius:999px;background:var(--card);color:var(--muted);font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+.cobro-b.on{border-color:var(--accent-fg);background:var(--accent-light);color:var(--accent-fg)}
+.cobro-prev{margin-top:6px;font-size:12.5px;color:var(--accent-fg);font-weight:600;min-height:1em}
+.pr-sug-btn{flex:none;min-height:36px;padding:0 14px;border:1px solid var(--accent-fg);border-radius:var(--radius-field);background:var(--card);color:var(--accent-fg);font:inherit;font-weight:600;cursor:pointer}
+.tbtn-nuevo .ic{width:15px;height:15px;color:inherit}
+/* En un celular el nombre no entra junto a "+ Nuevo" y quedaba "Presupues…":
+   queda el ícono del árbol, y el lugar va para el estado y las acciones. */
+@media (max-width:420px){ #topbar .logo-txt{display:none} }
+#btn-config.is-active{background:rgba(255,255,255,.32);border-color:rgba(255,255,255,.4)}
+
+/* MENÚ DESPLEGABLE del topbar (⚙ Configuración) */
+.topbar-menu{position:relative}
+.top-menu-title{font-size:11px;font-weight:700;color:var(--muted);padding:6px 12px 4px;text-transform:uppercase;letter-spacing:.4px}
+.top-menu-item .ic{width:16px;height:16px;flex:none;color:var(--accent-fg)}
+.top-menu-pop{
+  position:absolute;top:calc(100% + 6px);right:0;
+  min-width:180px;background:var(--card);border:1px solid var(--border);
+  border-radius:var(--radius-box);box-shadow:0 4px 16px rgba(0,0,0,.12);
+  padding:4px;z-index:100;
+}
+.top-menu-item{
+  display:flex;align-items:center;gap:10px;width:100%;
+  padding:9px 12px;background:transparent;border:none;cursor:pointer;
+  font-family:var(--font-text);font-size:13px;color:var(--text);
+  text-align:left;border-radius:var(--radius-field);transition:.12s;
+}
+.top-menu-item:hover{background:var(--accent-light,var(--accent-tint))}
+.top-menu-item > span{font-weight:700;color:var(--accent-fg);width:14px;text-align:center}
+
+/* TABS */
+#tabs{display:flex;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0}
+.tab-btn{flex:1;min-width:0;display:inline-flex;align-items:center;justify-content:center;gap:3px;padding:10px 3px;border:none;background:transparent;cursor:pointer;font-size:12px;font-weight:500;color:var(--muted);font-family:var(--font-text);transition:.15s;border-bottom:2px solid transparent;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tab-btn .ic{flex:none;width:.9em;height:.9em}
+.tab-btn.active{color:var(--accent-fg);border-bottom-color:var(--accent-fg);background:var(--card)}
+.tab-btn:hover:not(.active){background:rgba(0,0,0,.03)}
+
+/* MAIN */
+#main{flex:1;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:20px 24px;padding-bottom:max(20px,env(safe-area-inset-bottom))}
+.inner{max-width:820px;margin:0 auto}
+.tab-panel{display:none}.tab-panel.active{display:block}
+/* Con un modal abierto, congelar el scroll del contenedor real (#main). Antes
+   varios modales hacían body.style.overflow='hidden', pero el body NO scrollea
+   (el único scroller es #main), así que el fondo se movía detrás del modal.
+   Un único observador (setupModalScrollLock) pone/saca esta clase. */
+body.modal-open #main{overflow:hidden}
+
+/* Animación de entrada al navegar entre pestañas con swipe (feedback del gesto).
+   Se aplica al panel entrante; la dirección indica hacia dónde se fue el dedo. */
+@keyframes tabSlideNext{from{opacity:.35;transform:translateX(26px)}to{opacity:1;transform:none}}
+@keyframes tabSlidePrev{from{opacity:.35;transform:translateX(-26px)}to{opacity:1;transform:none}}
+.tab-panel.tab-slide-next,.agc-grid.tab-slide-next{animation:tabSlideNext .22s ease}
+.tab-panel.tab-slide-prev,.agc-grid.tab-slide-prev{animation:tabSlidePrev .22s ease}
+@media (prefers-reduced-motion:reduce){
+  .tab-panel.tab-slide-next,.tab-panel.tab-slide-prev,.agc-grid.tab-slide-next,.agc-grid.tab-slide-prev{animation:none}
+}
+
+/* Pastilla de destino del swipe entre pestañas (setupTabSwipe): dice a qué
+   pestaña se va mientras se arrastra y se pinta al pasar el umbral. */
+#tab-swipe-hint{position:fixed;top:50%;z-index:1500;padding:8px 14px;border-radius:999px;background:var(--surface);color:var(--text);border:1px solid var(--border);box-shadow:0 4px 14px rgba(0,0,0,.14);font-size:13px;font-weight:600;font-family:var(--font-text);pointer-events:none;opacity:0;transform:translateY(-50%);transition:opacity .12s ease,background .12s ease,color .12s ease}
+#tab-swipe-hint.is-next{right:12px;left:auto}
+#tab-swipe-hint.is-prev{left:12px;right:auto}
+#tab-swipe-hint.is-on{opacity:1}
+#tab-swipe-hint.is-ready{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+/* Ventanas que se cierran deslizando hacia abajo (navHojasInit): la rayita de
+   arriba es la seña de que se puede agarrar. Solo en pantallas táctiles. */
+@media (pointer:coarse){
+  .hoja-desliza{position:relative}
+  .hoja-desliza::before{content:'';position:absolute;top:7px;left:50%;width:36px;height:4px;margin-left:-18px;border-radius:2px;background:var(--muted);opacity:.35;pointer-events:none;z-index:1}
+}
+
+/* PRINT ZONE */
+#print-zone{display:none}
+
+/* TOAST */
+/* Ancho completo (antes left:50% + shrink-to-fit dejaba el contenedor en la
+   mitad del viewport, así que un toast que envuelve quedaba angosto y altísimo).
+   align-items:center sigue centrando cada toast. */
+#toast-container{position:fixed;bottom:24px;left:0;right:0;z-index:9000;display:flex;flex-direction:column;gap:8px;align-items:center;padding:0 12px;pointer-events:none}
+/* Los mensajes largos (errores de Google con la instrucción para arreglarlo)
+   con white-space:nowrap se salían de la pantalla y quedaban cortados: la
+   mitad accionable del texto no se leía. Ahora envuelven. */
+.toast{background:var(--text);color:#fff;padding:10px 18px;border-radius:var(--radius-box);font-size:13px;font-weight:500;line-height:1.4;box-shadow:0 4px 16px rgba(0,0,0,.2);opacity:0;transform:translateY(8px);transition:.25s;pointer-events:none;white-space:normal;text-align:center;overflow-wrap:anywhere;max-width:min(90vw,420px)}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast.toast-ok{background:var(--accent)}
+.toast.toast-err{background:var(--red)}
+.toast.toast-info{background:#1e40af}
+
+/* CONFIRM MODAL */
+#confirm-overlay{display:none;position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(0,0,0,.45);z-index:2000;align-items:center;justify-content:center}
+#confirm-overlay.open{display:flex}
+#confirm-box{background:var(--card);border-radius:var(--radius-box);padding:24px;width:360px;max-width:92vw;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+#confirm-box h4{font-family:var(--font-display);font-size:17px;margin-bottom:10px;color:var(--text)}
+/* pre-line: el aviso de huecos sin completar lista un renglón por lugar */
+#confirm-box p{font-size:13px;color:var(--muted);margin-bottom:20px;line-height:1.5;white-space:pre-line}
+#confirm-box .cbtns{display:flex;gap:8px;justify-content:flex-end}
+
+/* Diálogo de agenda (fecha del trabajo de un presupuesto aceptado).
+   z-index MENOR que .csel-backdrop/.cal-pop (2400/2401) a propósito:
+   el calendario del datepicker se abre POR ENCIMA de este modal. Esos dos
+   popovers están por encima de TODOS los overlays (el más alto es 2300) y por
+   debajo de los toasts (9000): son transitorios y siempre los abre el usuario
+   desde un control del modal que esté arriba. */
+#agenda-overlay{display:none;position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(0,0,0,.45);z-index:1100;align-items:center;justify-content:center}
+#agenda-overlay.open{display:flex}
+#agenda-box{background:var(--card);border-radius:var(--radius-box);padding:24px;width:400px;max-width:92vw;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+#agenda-box h4{font-family:var(--font-display);font-size:17px;margin-bottom:6px;color:var(--text)}
+#agenda-box .agenda-sub{font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.5}
+.agenda-warn{font-size:12px;font-weight:600;color:#92400e;background:#fef3c7;border-radius:var(--radius-field);padding:8px 12px;margin-top:10px;line-height:1.45}
+.agenda-btns{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:18px}
+.agenda-btns .agenda-spacer{flex:1}
+/* Selector de modo del diálogo (fecha del trabajo / recontacto) */
+.agenda-modes{display:flex;gap:6px;margin-bottom:12px}
+.agenda-mode{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:8px 6px;font-family:var(--font-text);font-size:12px;font-weight:600;color:var(--muted);background:var(--card);border:1px solid var(--border);border-radius:var(--radius-field);cursor:pointer}
+.agenda-mode.active{color:var(--accent-fg);border-color:var(--accent-fg);background:var(--accent-light)}
+.agenda-help{font-size:12px;color:var(--muted);line-height:1.45;margin-bottom:12px}
+/* ── Agenda multi-día: duración, días ubicados y días por ubicar ── */
+.agenda-dur{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.agenda-step{width:32px;height:32px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;line-height:1;color:var(--accent-fg);background:var(--card);border:1px solid var(--border);border-radius:var(--radius-field);cursor:pointer}
+.agenda-step:active{background:var(--accent-light)}
+.agenda-step:disabled{opacity:.4;cursor:default}
+.agenda-dur-val{min-width:22px;text-align:center;font-size:15px;font-weight:700;color:var(--text)}
+.agenda-dur-lbl{font-size:13px;color:var(--muted)}
+.agenda-dias-list{display:flex;flex-direction:column;gap:6px;margin:10px 0}
+.agenda-dia-chip{display:flex;align-items:center;gap:8px;background:#ede9fe;color:#5b21b6;border:1px solid transparent;border-radius:var(--radius-field);padding:7px 10px;font-size:13px;font-weight:600}
+.agenda-dia-chip .ic{width:14px;height:14px;flex-shrink:0}
+.agenda-dia-chip .agenda-dia-txt{flex:1;min-width:0}
+.agenda-dia-chip.is-today{background:#fef3c7;color:#92400e}
+.agenda-dia-x{width:24px;height:24px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;line-height:1;color:inherit;background:transparent;border:none;cursor:pointer;opacity:.7}
+.agenda-dia-x:active{opacity:1}
+.agenda-pend{font-size:12.5px;font-weight:600;color:#a16207;background:#fef9c3;border-radius:var(--radius-field);padding:7px 11px;margin:2px 0 10px;line-height:1.4}
+.agenda-addrow{display:flex;gap:8px;align-items:stretch}
+.agenda-addrow input{flex:1;min-width:0}
+:root[data-theme="dark"] .agenda-dia-chip{background:rgba(139,92,246,.2);color:#c4b5fd}
+:root[data-theme="dark"] .agenda-dia-chip.is-today{background:#4a3a12;color:#fde68a}
+:root[data-theme="dark"] .agenda-pend{background:#3a3413;color:#fde68a}
+/* ── Pop-up de arranque del día (llamativo, 1 vez/día) ── */
+#day-alert-overlay{display:none;position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(6,40,30,.55);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);z-index:2100;align-items:center;justify-content:center;padding:18px}
+#day-alert-overlay.open{display:flex;animation:daFade .2s ease}
+#day-alert-box{position:relative;background:linear-gradient(160deg,#ecfdf5,var(--accent-light));border:1px solid #6ee7b7;border-radius:22px;padding:26px 22px 22px;width:440px;max-width:94vw;max-height:90vh;overflow:auto;overscroll-behavior:contain;box-shadow:0 24px 70px rgba(4,60,40,.4);text-align:center;animation:daPop .32s cubic-bezier(.2,.9,.3,1.3)}
+@keyframes daFade{from{opacity:0}to{opacity:1}}
+@keyframes daPop{from{opacity:0;transform:scale(.85) translateY(12px)}to{opacity:1;transform:none}}
+.da-close{position:absolute;top:12px;right:12px;width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#065f46;background:rgba(255,255,255,.7);border:1px solid #a7f3d0;border-radius:50%;cursor:pointer;line-height:1}
+.da-close:active{background:#fff}
+.da-badge{width:72px;height:72px;margin:0 auto 8px;display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,#34d399,#059669);border-radius:50%;box-shadow:0 8px 20px rgba(5,150,105,.35);animation:daPulse 1.8s ease-in-out infinite}
+.da-badge .ic{width:38px;height:38px;color:#fff}
+@keyframes daPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
+:root[data-theme="dark"] .da-badge{background:linear-gradient(160deg,#059669,#047857);box-shadow:0 8px 20px rgba(0,0,0,.45)}
+.da-kicker{font-family:var(--font-text);font-size:13px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:#059669}
+.da-title{font-family:var(--font-display);font-size:26px;line-height:1.15;color:var(--accent);margin:2px 0 6px}
+.da-sub{font-size:13.5px;color:#047857;line-height:1.5;margin:0 0 14px}
+#day-alert-box .mb-summary{justify-content:center;margin:0 0 14px}
+.da-list{display:flex;flex-direction:column;gap:8px;margin-bottom:16px;text-align:left}
+.da-item{display:flex;flex-direction:column;gap:2px;background:rgba(255,255,255,.85);border:1px solid #a7f3d0;border-radius:14px;padding:11px 13px;cursor:pointer;width:100%;font-family:inherit}
+.da-item:active{background:#fff}
+.da-item-top{display:flex;gap:7px;align-items:baseline;flex-wrap:wrap}
+.da-item-num{font-size:13px;font-weight:800;color:#047857}
+.da-item-client{font-size:14px;font-weight:600;color:var(--accent)}
+.da-item-meta{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:#059669}
+.da-item-meta .ic{width:13px;height:13px}
+/* Anotaciones internas enganchadas al aviso del día (privadas, memoria del
+   editor). Bloque ámbar dentro de la tarjeta del trabajo. */
+.da-item-notes{display:flex;gap:6px;align-items:flex-start;margin-top:7px;padding:7px 9px;background:rgba(245,179,1,.14);border:1px solid rgba(245,179,1,.5);border-radius:10px}
+.da-item-notes>.ic{width:14px;height:14px;color:#c77800;flex-shrink:0;margin-top:1px}
+.da-note-lines{display:flex;flex-direction:column;gap:3px;min-width:0}
+.da-note-line{font-size:12px;line-height:1.35;color:#6b4e00;white-space:normal;overflow-wrap:anywhere;text-align:left}
+.da-note-line b{font-weight:700;color:#5a4200}
+:root[data-theme="dark"] .da-item-notes{background:rgba(251,191,36,.12);border-color:rgba(251,191,36,.4)}
+:root[data-theme="dark"] .da-item-notes>.ic{color:#fbbf24}
+:root[data-theme="dark"] .da-note-line{color:#fde68a}
+:root[data-theme="dark"] .da-note-line b{color:#fef3c7}
+.da-btns{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.da-btns .da-go{flex:1;min-width:150px}
+:root[data-theme="dark"] #day-alert-box{background:linear-gradient(160deg,#0c2620,#0e2b22);border-color:#065f46;box-shadow:0 24px 70px rgba(0,0,0,.6)}
+:root[data-theme="dark"] .da-close{color:#6ee7b7;background:rgba(255,255,255,.08);border-color:#065f46}
+:root[data-theme="dark"] .da-kicker{color:#34d399}
+:root[data-theme="dark"] .da-title{color:#a7f3d0}
+:root[data-theme="dark"] .da-sub{color:#6ee7b7}
+:root[data-theme="dark"] .da-item{background:rgba(255,255,255,.05);border-color:#065f46}
+:root[data-theme="dark"] .da-item-client{color:#d1fae5}
+:root[data-theme="dark"] .da-item-num,:root[data-theme="dark"] .da-item-meta{color:#6ee7b7}
+/* ── Bandeja de fotos compartidas (Web Share Target) ── */
+#share-overlay{display:none;position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(0,0,0,.45);z-index:2000;align-items:center;justify-content:center}
+#share-overlay.open{display:flex}
+#share-box{background:var(--card);border-radius:var(--radius-box);padding:24px;width:440px;max-width:92vw;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+#share-box h4{font-family:var(--font-display);font-size:17px;margin-bottom:10px;color:var(--text)}
+#share-box p{font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.5}
+#share-tray-list{overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;gap:10px;margin-bottom:18px;-webkit-overflow-scrolling:touch}
+.share-row{display:flex;align-items:center;gap:12px}
+.share-thumb{width:56px;height:56px;flex-shrink:0;border-radius:var(--radius-box);overflow:hidden;background:var(--surface-2);display:flex;align-items:center;justify-content:center;font-size:22px}
+.share-thumb img{width:100%;height:100%;object-fit:cover}
+.share-dest{flex:1;min-width:0}
+#share-box .cbtns{display:flex;gap:8px;justify-content:flex-end}
+
+/* MODAL */
+#moverlay{display:none;position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center}
+#moverlay.open{display:flex}
+#mbox{background:var(--card);border-radius:var(--radius-box);padding:24px;width:440px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,.25);max-height:85vh;overflow-y:auto;overscroll-behavior:contain}
+#mbox h3{font-family:var(--font-display);font-size:18px;margin-bottom:16px}
+.msec{margin-bottom:12px;padding:14px;background:var(--surface);border-radius:var(--radius-box);border:1px solid var(--border)}
+.msec h4{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--accent-fg);margin-bottom:10px}
+
+/* MOBILE */
+@media (max-width:600px){
+  /* Topbar en UNA línea: logo (con elipsis si hace falta) + menú "⋯" */
+  #topbar{flex-wrap:nowrap;padding:6px 12px;padding-left:max(12px,env(safe-area-inset-left));padding-right:max(12px,env(safe-area-inset-right));gap:6px}
+  #topbar .logo{font-size:14px}
+  #save-status{font-size:10px}
+  .tbtn{padding:4px 9px;font-size:11px}
+  .tbtn-menu{padding:3px 9px;font-size:16px}
+  .tab-btn{font-size:11px;padding:11px 2px}
+  #main{padding:14px 12px;padding-bottom:max(24px,env(safe-area-inset-bottom));padding-left:max(12px,env(safe-area-inset-left));padding-right:max(12px,env(safe-area-inset-right))}
+  #moverlay{align-items:flex-end}
+  #mbox{padding:20px 16px;padding-bottom:max(20px,env(safe-area-inset-bottom));border-radius:16px 16px 0 0;position:fixed;bottom:0;left:0;right:0;width:100%;max-width:100%;max-height:80vh}
+}

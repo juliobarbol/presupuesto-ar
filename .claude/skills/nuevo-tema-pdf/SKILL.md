@@ -6,7 +6,7 @@ description: Crear un nuevo diseño/tema para el PDF de presupuestos (o un modif
 # Crear un tema nuevo para el PDF de presupuestos
 
 Receta para agregar un diseño de documento sin romper la arquitectura existente.
-Toda la app vive en `index.html` (HTML + `<style>` + `<script>`). No hay build.
+Sin build: markup en `index.html`, CSS en `css/` (los temas del PDF en `css/documento.css`), JS en `js/` (el documento en `js/pdf.js`).
 
 ## Modelo mental: 2 capas + 1 modificador
 
@@ -21,10 +21,10 @@ Temas existentes (úsalos como referencia): `clasico`, `profesional`, `calido`,
 
 Anclas rápidas:
 ```bash
-grep -n "pdoc-theme-" index.html        # bloques CSS de cada tema
-grep -n "_buildDocHeader" index.html    # builder del encabezado
+grep -n "pdoc-theme-" css/*.css         # bloques CSS de cada tema
+grep -n "_buildDocHeader" js/*.js       # builder del encabezado
 grep -n 'data-theme=' index.html        # botones de la UI
-grep -n "function applyPdfTheme" index.html
+grep -n "function applyPdfTheme" js/*.js
 ```
 
 ## Pasos para un tema NUEVO (solo cambia CSS/encabezado)
@@ -114,17 +114,8 @@ Requiere estado propio:
   (usá `currentColor` o dejá que JS lo ponga).
 
 ## Verificar (antes de desplegar)
-1. **Sintaxis JS:**
-   ```bash
-   python3 - <<'PY'
-   import re, subprocess, sys
-   html = open('index.html', encoding='utf-8').read()
-   js = "\n;\n".join(re.findall(r'<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>', html, re.S))
-   open('/tmp/app_check.js','w',encoding='utf-8').write(js)
-   sys.exit(subprocess.run(['node','--check','/tmp/app_check.js']).returncode)
-   PY
-   ```
-2. **PWA offline:** `node test/pwa.test.cjs`
+1. **Lint:** `npm run lint` (sintaxis, bugs, convenciones, orden de carga).
+2. **Tests:** `npm test` (incluye el offline del PWA y el estilo propio del PDF).
 3. **Render real (headless):** cargá `file://.../index.html`, seteá `S.pdfTheme='MITEMA'`,
    llamá `buildDoc()` y revisá `#doc-a4`. Sacá captura clonando el HTML en un
    `<div class="doc-a4-screen">` visible (el `#doc-a4` está oculto fuera de impresión).

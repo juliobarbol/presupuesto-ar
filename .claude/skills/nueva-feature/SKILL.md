@@ -5,20 +5,17 @@ description: Guía para agregar o modificar funcionalidad en Presupuestos AR res
 
 # Agregar una feature a Presupuestos AR
 
-App PWA en un **único `index.html`**: markup + `<style>` + un solo `<script>` global.
-Sin build, sin frameworks, sin módulos ES. Las funciones se llaman entre sí y desde
-`onclick="..."`. Esta skill encapsula las reglas que NO se pueden romper al sumar
+App PWA sin build: markup en `index.html`, CSS en `css/*.css`, JS en `js/*.js`
+(scripts clásicos que comparten el ámbito global, en el orden de los `<script src>`
+de `index.html`). Sin frameworks, sin módulos ES. Las funciones se llaman entre sí y
+desde `onclick="..."`. Esta skill encapsula las reglas que NO se pueden romper al sumar
 código.
 
 ## 1. Ubicar dónde va el cambio
-El JS está dividido por marcadores estables. Buscalos en vez de fiarte de líneas:
-
-```bash
-grep -na "===== js/" index.html
-```
-
-(Hasta la v228 `index.html` tenía un byte NUL suelto y hacía falta `grep -a`;
-se reemplazó por `'\u0000'`. `test/revision-fallas.test.cjs` vigila que no vuelva.)
+Cada sección es un archivo de `js/` (el mapa completo está en CLAUDE.md).
+Si el código que agregás **corre al cargar** el archivo (un inicializador, una llamada
+suelta), no puede usar algo de un archivo posterior: `npm run lint` lo verifica.
+Un archivo js/css NUEVO va en `index.html` (con el mismo `?v=`) y en `APP_CODIGO` de `sw.js`.
 
 | Sección | Para qué |
 |---|---|
@@ -28,13 +25,14 @@ se reemplazó por `'\u0000'`. `test/revision-fallas.test.cjs` vigila que no vuel
 | `js/phrases.js` | Biblioteca de frases |
 | `js/items.js` | Ítems (árbol/servicio/nota), recargo, escenarios A/B |
 | `js/ui.js` | restoreUI/syncFromUI, pestañas, modos, fechas, vista previa |
-| `js/history.js` | Historial, seguimiento, WhatsApp |
-| `js/exportimport.js` | Export/import JSON, backup, módulo GDRIVE |
+| `js/seguimiento.js` | Config del seguimiento, pendientes, plantillas de WhatsApp |
+| `js/history.js` | Historial, versiones, trabajos sin presupuesto |
+| `js/exportimport.js` | Export/import JSON, backup (`gdrive.js`/`gcal.js`: Google) |
 | `js/pdf.js` | `buildDoc`/`buildEstDoc`/`buildRiskDoc`, `printDoc` |
 | `js/facturacion.js` | Facturas + tope anual |
 | `js/core.js` | Inicialización `DOMContentLoaded` + setup PWA |
 
-CSS: en el `<style>`. Ojo con los dos bloques del documento: `@media print` (`#doc-a4`)
+CSS: en `css/` (el del documento, en `print.css` y `documento.css`). Ojo con los dos bloques del documento: `@media print` (`#doc-a4`)
 y pantalla (`.doc-preview-host .doc-a4-screen`). Si tocás el layout del presupuesto,
 revisá **ambos**.
 
@@ -75,20 +73,11 @@ Si tu cambio afecta el documento, decidí en cuál(es) de los 3 modos aplica.
 
 ## 4. Verificar antes de cerrar
 ```bash
-# Sintaxis del JS inline
-python3 - <<'PY'
-import re, subprocess, sys
-html = open('index.html', encoding='utf-8').read()
-js = "\n;\n".join(re.findall(r'<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>', html, re.S))
-open('/tmp/app_check.js','w',encoding='utf-8').write(js)
-sys.exit(subprocess.run(['node','--check','/tmp/app_check.js']).returncode)
-PY
-
-# Comportamiento PWA (SW/cache/offline)
-node test/pwa.test.cjs
+npm run lint    # sintaxis, bugs, convenciones, orden de carga y versión
+npm test        # la suite entera en un navegador real (≈1,5 min)
 ```
 Para validar visualmente la vista previa o el PDF, usá la skill `webapp-testing`.
 
 ## 5. Para desplegar
-Cuando el cambio esté listo, usá la skill `deploy-presupuesto` (sube `CACHE_VERSION`,
-corre los tests y deja todo listo para mergear).
+Cuando el cambio esté listo, usá la skill `deploy-presupuesto` (sube la versión con
+`npm run subir-version`, corre los tests y deja todo listo para mergear).

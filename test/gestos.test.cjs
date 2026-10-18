@@ -51,8 +51,7 @@ const espera = (ms) => new Promise(r => setTimeout(r, ms));
 
 // ── 1. Estático: funciones globales duplicadas ──
 {
-  const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
-  const js = (html.match(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g) || []).join('\n');
+  const js = require('./_fuente.cjs').fuenteApp();
   const nombres = [...js.matchAll(/^(?:async )?function\*?\s+([A-Za-z_$][\w$]*)\s*\(/gm)].map(m => m[1]);
   const vistos = new Set(), dup = new Set();
   nombres.forEach(n => (vistos.has(n) ? dup.add(n) : vistos.add(n)));

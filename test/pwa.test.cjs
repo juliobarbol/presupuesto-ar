@@ -85,6 +85,20 @@ const check = (name, ok, extra) => {
     check(`Cache de versión "${CACHE_VERSION}" creada`,
       !!CACHE_VERSION && info.caches.includes(CACHE_VERSION), 'caches: ' + info.caches.join(', '));
 
+    // El código de la app (js/ y css/, desde la v256) entero en la caché, con
+    // la misma marca ?v= con la que lo pide index.html.
+    const codigo = await page.evaluate(async (ver) => {
+      const pedidos = [...document.querySelectorAll('script[src^="js/"], link[href^="css/"]')]
+        .map(el => el.getAttribute('src') || el.getAttribute('href'));
+      const c = await caches.open(ver);
+      const faltan = [];
+      for (const u of pedidos) if (!(await c.match(u))) faltan.push(u);
+      return { n: pedidos.length, faltan, sinMarca: pedidos.filter(u => !/\?v=\d+$/.test(u)) };
+    }, CACHE_VERSION);
+    check('El código de la app (js/ y css/) está entero en la caché',
+      codigo.n > 20 && codigo.faltan.length === 0, `${codigo.n} archivos; faltan: ${codigo.faltan.join(', ')}`);
+    check('Cada js/css se pide con su marca de versión', codigo.sinMarca.length === 0, codigo.sinMarca.join(', '));
+
     // Funcionalidad de descarga de zona (solo ArborRisk)
     if (info.hasTileDownload) {
       const dl = await page.evaluate(() => new Promise((resolve) => {
@@ -107,15 +121,23 @@ const check = (name, ok, extra) => {
     }
 
     // OFFLINE: cortar red y recargar → el app-shell debe seguir cargando
+    const erroresOffline = [];
+    page.on('pageerror', (e) => erroresOffline.push(e.message));
     await page.setOfflineMode(true);
-    await page.reload({ waitUntil: 'domcontentloaded', timeout: 30000 });
+    await page.reload({ waitUntil: 'load', timeout: 30000 });
+    await new Promise(r => setTimeout(r, 800));
     const off = await page.evaluate(() => ({
       title: document.title,
       bodyLen: document.body ? document.body.innerHTML.length : 0,
+      // El primer archivo (state.js) y el último (core.js) corrieron
+      arranco: typeof S === 'object' && typeof DEF === 'object' && typeof irDestino === 'function'
+        && typeof renderHistory === 'function',
     }));
     await page.setOfflineMode(false);
     check('Offline: el documento carga desde cache', off.title.length > 0 && off.bodyLen > 500,
       `título="${off.title}"`);
+    check('Offline: la app arranca (todo su código salió de la caché)', off.arranco);
+    check('Offline: sin errores de JavaScript', erroresOffline.length === 0, erroresOffline.slice(0, 3).join(' | '));
 
   } finally {
     await browser.close();

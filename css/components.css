@@ -1,0 +1,2083 @@
+/* ═══════════════════════════════════════
+   COMPONENTS.CSS — Formularios, botones, ítems, UI del editor
+═══════════════════════════════════════ */
+
+/* FORM */
+.fg{margin-bottom:14px}
+.fg label{display:block;font-size:12px;font-weight:600;color:var(--text-2);letter-spacing:.1px;margin-bottom:5px}
+.fg input,.fg textarea,.fg select{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-field);font-family:var(--font-text);font-size:13px;color:var(--text);background:var(--card);outline:none;transition:.15s;-webkit-appearance:none;appearance:none}
+.fg input:focus,.fg textarea:focus,.fg select:focus{border-color:var(--accent-fg);box-shadow:0 0 0 3px rgba(var(--accent-rgb),.1)}
+.fg textarea{resize:none;min-height:60px}
+/* Cajas que crecen con el contenido (sin scroll dentro del scroll al editar
+   listas largas en el celular). field-sizing:content auto-ajusta la altura;
+   rows + resize:vertical son el fallback en navegadores sin soporte. */
+.fg textarea.ta-grow{field-sizing:content;min-height:96px;max-height:50vh;resize:vertical}
+/* Campo que arranca en una línea y crece con el contenido. Reemplaza
+   inputs de una sola línea que truncaban textos largos del PDF: ahora el
+   valor completo se ve de un vistazo (se puede escanear sin tocar). */
+.fg textarea.ta-line{min-height:0;field-sizing:content;resize:none;overflow:hidden;line-height:1.4}
+
+/* ── DROPDOWN PROPIO (reemplaza el <select> nativo de Chrome) ──
+   El <select> real queda oculto como fuente de datos; este botón + popover
+   replican la selección con el tema de la app (no más diálogo oscuro del
+   navegador). Lógica en enhanceSelects(). */
+.csel{position:relative;display:block;width:100%}
+.csel-native{position:absolute!important;width:1px;height:1px;padding:0;margin:0;opacity:0;pointer-events:none;clip:rect(0 0 0 0);overflow:hidden}
+.csel-btn{display:flex;align-items:center;gap:8px;width:100%;text-align:left;
+  padding:8px 34px 8px 10px;border:1px solid var(--border);border-radius:var(--radius-field);
+  background-color:var(--card);color:var(--text);font-family:var(--font-text);font-size:13px;
+  cursor:pointer;outline:none;-webkit-appearance:none;appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2364748b' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 12px center}
+.csel-btn:focus,.csel-btn.is-open{border-color:var(--accent-fg);box-shadow:0 0 0 3px rgba(var(--accent-rgb),.1)}
+.csel-label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Pill de estado en las tarjetas del historial: compacto y con el color del estado. */
+.hacts .csel{width:auto;flex:0 0 auto}
+.hacts .csel-btn{font-weight:700;padding:6px 30px 6px 10px;border-radius:var(--radius-box);background-position:right 10px center}
+/* Popover de opciones */
+.csel-backdrop{position:fixed;inset:0;z-index:2400;background:transparent}
+.csel-pop{position:fixed;z-index:2401;background:var(--card);border:1px solid var(--border);
+  border-radius:var(--radius-box);box-shadow:0 12px 34px rgba(0,0,0,.20);
+  padding:5px;max-height:min(320px,60vh);overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+.csel-opt{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:var(--radius-field);
+  font-size:14px;color:var(--text);cursor:pointer;white-space:nowrap}
+.csel-opt:hover,.csel-opt.is-active{background:var(--surface-2)}
+.csel-opt .csel-check{margin-left:auto;color:var(--accent-fg);opacity:0;flex:none}
+.csel-opt.is-active .csel-check{opacity:1}
+
+/* ── CALENDARIO PROPIO (reemplaza el picker nativo de <input type="date">) ── */
+.cdate{position:relative;display:block;width:100%}
+.cdate-btn{display:flex;align-items:center;gap:8px;width:100%;text-align:left;
+  padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-field);
+  background-color:var(--card);color:var(--text);font-family:var(--font-text);font-size:13px;
+  cursor:pointer;outline:none}
+.cdate-btn:focus,.cdate-btn.is-open{border-color:var(--accent-fg);box-shadow:0 0 0 3px rgba(var(--accent-rgb),.1)}
+.cdate-lbl{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cdate-lbl.is-empty{color:var(--muted)}
+.cdate-ico{flex:none;color:var(--muted);display:inline-flex}
+/* Vencimiento: display de solo lectura (se calcula solo, no abre calendario). */
+.cdate-btn.cdate-ro{cursor:default;background-color:var(--surface-2)}
+.cdate-btn.cdate-ro .cdate-ico{opacity:.5}
+.cal-pop{position:fixed;z-index:2401;background:var(--card);border:1px solid var(--border);
+  border-radius:var(--radius-box);box-shadow:0 12px 34px rgba(0,0,0,.20);
+  padding:12px;width:300px;max-width:calc(100vw - 16px);max-height:calc(100vh - 16px);overflow:auto;overscroll-behavior:contain}
+.cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.cal-title{font-weight:700;font-size:14px;color:var(--text);text-transform:capitalize}
+.cal-nav{width:34px;height:34px;border:1px solid var(--border);border-radius:8px;background:var(--card);
+  color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;line-height:1}
+.cal-nav:hover{background:var(--surface-2)}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.cal-wd{text-align:center;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;padding:4px 0}
+.cal-day{aspect-ratio:1;display:flex;align-items:center;justify-content:center;border:none;background:transparent;
+  border-radius:8px;font-size:13px;color:var(--text);cursor:pointer;font-family:var(--font-text);padding:0}
+.cal-day:hover:not(.is-empty){background:var(--surface-2)}
+.cal-day.is-empty{visibility:hidden;cursor:default}
+.cal-day.is-today{box-shadow:inset 0 0 0 1.5px var(--accent-fg);font-weight:700}
+.cal-day.is-sel{background:var(--accent-fg);color:#fff;font-weight:700}
+.cal-foot{display:flex;justify-content:flex-end;margin-top:8px}
+/* Editor de listas "uno por ítem": cada punto en su propio casillero, con
+   número y botón de borrar, para que se vea claramente la división de cada
+   ítem (en vez de un bloque de texto donde las líneas largas se mezclan). */
+.linelist{display:flex;flex-direction:column;gap:6px}
+.llrow{display:flex;align-items:flex-start;gap:8px}
+.llnum{flex:none;width:20px;height:20px;margin-top:7px;border-radius:50%;background:var(--accent-fg);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center}
+/* textarea (no input) para que los criterios/plan largos envuelvan y se
+   vean completos. El Enter sigue creando un ítem nuevo (ver onLineListKey),
+   así que nunca se inserta un salto de línea dentro del campo. */
+.llinput{flex:1;min-width:0;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-field);font-family:var(--font-text);font-size:13px;line-height:1.4;color:var(--text);background:var(--card);outline:none;-webkit-appearance:none;appearance:none;field-sizing:content;resize:none;overflow:hidden;min-height:0}
+.llinput:focus{border-color:var(--accent-fg);box-shadow:0 0 0 3px rgba(var(--accent-rgb),.1)}
+.lldel{flex:none;width:30px;height:30px;border:1px solid var(--border);border-radius:var(--radius-field);background:var(--bg);color:var(--muted);font-size:18px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;-webkit-appearance:none;appearance:none}
+.lldel:active{background:var(--red,var(--red));color:#fff;border-color:var(--red,var(--red))}
+.lladd{align-self:flex-start;margin-top:2px;padding:6px 12px;border:1px dashed var(--border);border-radius:var(--radius-field);background:transparent;color:var(--accent-fg);font-family:var(--font-text);font-size:12px;font-weight:600;cursor:pointer}
+.lladd:active{background:rgba(var(--accent-rgb),.08)}
+/* Lista reordenable de secciones del PDF (Empresa → Textos del PDF). */
+.sord-list{display:flex;flex-direction:column;gap:6px}
+.sord-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-field);background:var(--card)}
+.sord-num{flex:none;width:20px;height:20px;border-radius:50%;background:var(--accent-fg);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.sord-label{flex:1;font-size:13px;color:var(--text)}
+.sord-btns{flex:none;display:flex;gap:4px}
+.sord-btn{width:30px;height:30px;border:1px solid var(--border);border-radius:var(--radius-field);background:var(--bg);color:var(--text);font-size:12px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;-webkit-appearance:none;appearance:none}
+.sord-btn:active{background:var(--accent-fg);color:#fff;border-color:var(--accent-fg)}
+.sord-btn:disabled{opacity:.3;cursor:default}
+.fg input[readonly]{background:var(--surface);cursor:default}
+.r2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.r3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.r4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px}
+
+/* SECTION */
+/* SUBTÍTULOS DE SECCIÓN: antes en verde fuerte (compitiendo con la
+   topbar y con los datos importantes). Ahora gris oscuro neutro + un
+   pequeño detalle de marca (barra vertical) que indica que es título
+   de sección sin gritar. */
+.st{
+  font-size:11px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.8px;
+  color:var(--text-2,#334155);
+  margin:20px 0 10px;
+  padding:0 0 6px 10px;
+  border-bottom:1px solid var(--border);
+  position:relative;
+}
+.st::before{
+  content:'';position:absolute;left:0;top:1px;bottom:7px;
+  width:3px;border-radius:2px;
+  background:var(--accent);opacity:.65;
+}
+.st:first-child{margin-top:0}
+
+/* SECCIÓN COLAPSABLE: el summary se ve igual que un header .st
+   (mayúsculas + barra verde) con un chevron a la derecha. Sirve para
+   secundarios "set-and-forget" (opciones del documento) sin perder el
+   ancla visual de sección. */
+details.scol{margin:20px 0 10px}
+details.scol>summary{
+  list-style:none;cursor:pointer;user-select:none;
+  display:flex;align-items:center;
+  font-size:11px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.8px;
+  color:var(--text-2,#334155);
+  margin:0;padding:0 0 6px 10px;
+  border-bottom:1px solid var(--border);position:relative;
+}
+details.scol>summary::-webkit-details-marker{display:none}
+details.scol>summary::marker{content:""}
+details.scol>summary::before{
+  content:'';position:absolute;left:0;top:1px;bottom:7px;
+  width:3px;border-radius:2px;background:var(--accent);opacity:.65;
+}
+.scol-hint{font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);margin-left:8px;font-size:11px}
+.scol-chev{margin-left:auto;color:var(--muted);font-size:11px;transition:transform .2s}
+details.scol[open]>summary .scol-chev{transform:rotate(180deg)}
+.scol-body{padding-top:10px}
+
+/* ═══ SHELL DEL EDITOR (Fase 1 del rediseño) ══════════════════════════
+   Cada sección del editor está envuelta en un .esec con un encabezado
+   propio (.esec-head: número · título · estado). El shell es ADITIVO:
+   en la vista clásica el encabezado y el header del editor no se
+   muestran, y .esec / .esec-body quedan sin una sola declaración —
+   divs transparentes que no cortan el colapso de márgenes ni cambian
+   un píxel (invariante I2 de docs/rediseno-editor.md).
+   La única regla que aplica en las dos vistas es el margen del .st de
+   las secciones nuevas: envolverlo lo volvió :first-child y perdía los
+   20px de arriba que tenía suelto en #panel-editor. */
+.esec-body>.st:first-child{margin-top:20px}
+.esec-head{display:none}
+.esh{display:none}
+.esec[hidden]{display:none!important}
+
+/* ── Vista FICHAS ───────────────────────────────────────────────── */
+/* Encabezado del editor: N° de presupuesto, cliente y píldora del modo,
+   con la barra de progreso sobre las secciones visibles. */
+#panel-editor[data-vista="fichas"] .esh,
+#panel-editor[data-vista="consola"] .esh{
+  display:block;background:var(--card);border:1px solid var(--border);
+  border-radius:var(--radius-box);box-shadow:var(--shadow-card);
+  padding:var(--sp-4) var(--sp-5);margin-bottom:var(--sp-4);
+}
+/* En `consola` el encabezado va pegado a las tabs, que son su continuación
+   natural (el "header sólido" de la dirección 2b). */
+#panel-editor[data-vista="consola"] .esh{margin-bottom:var(--sp-2)}
+.esh-top{display:flex;align-items:flex-start;gap:var(--sp-3)}
+.esh-id{flex:1;min-width:0}
+.esh-num{font-family:var(--font-mono);font-size:20px;font-weight:600;color:var(--text);line-height:1.15}
+.esh-client{font-size:var(--fs-base);color:var(--text-2);margin-top:2px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.esh-mode{flex-shrink:0;font-family:var(--font-mono);font-size:var(--fs-sm);font-weight:600;
+  text-transform:uppercase;letter-spacing:.08em;
+  background:var(--accent);color:var(--on-accent);
+  border-radius:var(--radius-pill);padding:3px 10px}
+.esh-prog{margin-top:var(--sp-4)}
+.esh-prog-row{display:flex;align-items:baseline;justify-content:space-between;gap:var(--sp-3);
+  font-family:var(--font-mono);font-size:var(--fs-sm);font-weight:600;
+  text-transform:uppercase;letter-spacing:.05em;color:var(--text-2);margin-bottom:var(--sp-2)}
+.esh-prog-note{color:var(--muted);text-align:right}
+/* En el teléfono el "Falta: …" necesita el renglón entero; el modo ya lo dice
+   la píldora de arriba (NORMAL / ESTIMATIVO / RIESGO). */
+@media (max-width:420px){ .esh-prog-note{display:none} }
+.esh-bar{display:flex;gap:4px}
+.esh-seg{flex:1;height:6px;border-radius:3px;background:var(--border)}
+.esh-seg.is-done{background:var(--accent)}
+
+/* La ficha: barra de acento a la izquierda (gris si está pendiente), que
+   es de donde viene el carácter de "ficha técnica" del diseño 2a. La comparten
+   `fichas` y `consola` — lo que las distingue es QUÉ se muestra a la vez
+   (una ficha abierta vs. una etapa entera), no cómo se ve cada sección. */
+#panel-editor[data-vista="fichas"] .esec,
+#panel-editor[data-vista="consola"] .esec{
+  background:var(--card);border:1px solid var(--border);
+  border-left:5px solid var(--border);
+  border-radius:var(--radius-box);box-shadow:var(--shadow-card);
+  margin-bottom:var(--sp-4);
+}
+#panel-editor[data-vista="fichas"] .esec.is-done,
+#panel-editor[data-vista="consola"] .esec.is-done{border-left-color:var(--accent)}
+/* El realce de "abierta" es de `fichas`: en `consola` todas las de la etapa
+   están abiertas y realzarlas todas no distingue nada. */
+#panel-editor[data-vista="fichas"] .esec.is-open{
+  border-color:var(--text);border-left-color:var(--accent);
+  border-width:2px;border-left-width:6px;
+}
+#panel-editor[data-vista="fichas"] .esec-head,
+#panel-editor[data-vista="consola"] .esec-head{
+  display:flex;align-items:center;gap:var(--sp-4);
+  width:100%;min-height:60px;padding:var(--sp-5);
+  background:none;border:0;border-radius:inherit;
+  font-family:var(--font-text);text-align:left;color:inherit;cursor:pointer;
+}
+#panel-editor[data-vista="fichas"] .esec.is-open>.esec-head,
+#panel-editor[data-vista="consola"] .esec>.esec-head{
+  border-bottom:1px solid var(--border);border-radius:0;
+}
+/* En `consola` el encabezado es un rótulo, no un botón: no pliega nada
+   (editorToggleSection corta si la vista no es `fichas`). */
+#panel-editor[data-vista="consola"] .esec-head{cursor:default;min-height:52px}
+.esec-num{font-family:var(--font-mono);font-size:var(--fs-md);font-weight:600;color:var(--muted);flex-shrink:0}
+.esec-title{flex:1;min-width:0;font-size:17px;font-weight:600;color:var(--text)}
+.esec-status{flex-shrink:0;font-family:var(--font-mono);font-size:var(--fs-sm);font-weight:600;
+  text-transform:uppercase;letter-spacing:.04em;color:var(--accent-fg);text-align:right}
+.esec.is-pending .esec-status{color:var(--muted)}
+.esec-chev{display:none;flex-shrink:0;color:var(--muted);font-size:var(--fs-sm)}
+#panel-editor[data-vista="fichas"] .esec.is-open .esec-chev{display:inline;transform:rotate(180deg)}
+/* Cuerpo: el único hermano del encabezado. Se le da el padding acá para no
+   tocar el markup interno de la sección. */
+#panel-editor[data-vista="fichas"] .esec>.esec-head~*,
+#panel-editor[data-vista="consola"] .esec>.esec-head~*{padding:14px var(--sp-5)}
+#panel-editor[data-vista="fichas"] .esec:not(.is-open)>.esec-head~*{display:none!important}
+/* Fuera de la etapa activa (vista consola): la sección sigue en el DOM con sus
+   valores, solo no se muestra. Clase aparte de [hidden], que significa "este
+   modo no la usa" y sí afecta la numeración. */
+.esec.esec-offstage{display:none!important}
+/* El título .st de cada sección ya lo dice el encabezado de la ficha. */
+#panel-editor[data-vista="fichas"] .esec .st,
+#panel-editor[data-vista="consola"] .esec .st{display:none}
+/* Excepción: el .st de "Cliente y Lugar" lleva adentro el botón "Importar".
+   Se colapsa a una fila de acción — el texto se apaga con font-size:0, el
+   botón conserva el suyo. */
+#panel-editor[data-vista="fichas"] .esec .st.st-with-action,
+#panel-editor[data-vista="consola"] .esec .st.st-with-action{
+  display:flex;font-size:0;letter-spacing:0;
+  margin:0;padding:0;border-bottom:0;
+}
+#panel-editor[data-vista="fichas"] .esec .st.st-with-action::before,
+#panel-editor[data-vista="consola"] .esec .st.st-with-action::before{display:none}
+
+/* ── Identificación plegada (identResSync) ─────────────────────── */
+.ident-res{display:flex;align-items:center;flex-wrap:wrap;gap:4px 10px;width:100%;min-height:44px;margin:0 0 14px;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius-field);background:var(--card);color:var(--text);font:inherit;text-align:left;cursor:pointer}
+.ident-res-num{font-family:var(--font-mono);font-weight:600;font-size:15px;color:var(--accent-fg)}
+.ident-res-meta{flex:1;min-width:0;font-size:13px;color:var(--muted)}
+.ident-res-acc{flex:none;font-size:13px;font-weight:600;color:var(--accent-fg)}
+.ident-res-acc::after{content:' ▾'}
+.ident-res[aria-expanded="true"] .ident-res-acc::after{content:' ▴'}
+#ident-campos[hidden]{display:none}
+/* En fichas la ficha ya se pliega sola: adentro van los campos directo. */
+#panel-editor[data-vista="fichas"] .ident-res{display:none}
+#panel-editor[data-vista="fichas"] #ident-campos[hidden]{display:grid}
+
+/* ── Selector de modo en las vistas nuevas ───────────────────────
+   En `clasica` el selector son tres bloques apilados con título y subtítulo
+   (~370 px en el teléfono). Al lado de las fichas y del encabezado eso se lee
+   como un resto del estilo viejo, y encima es lo más alto de la pantalla antes
+   de empezar a cargar datos. Acá se compacta al mismo segmentado que usan
+   Apariencia y Vista del editor: una fila, 44 px, etiquetas cortas.
+
+   No se pierde información: el subtítulo de cada modo lo dice el encabezado del
+   editor (`.esh-prog-note`: PRECIOS CERRADOS / VALOR REFERENCIAL / INFORME ISA)
+   para el modo activo, y la explicación larga sigue en el `title` de cada botón.
+   Desde la v226 vale también en `clasica`: los tres bloques apilados ocupaban
+   ~180 px arriba de cada presupuesto (medido a 360 px), y el modo se elige una
+   vez. En clásica el modo estimativo igual lo dice su banner. */
+#panel-editor .mode-switch{
+  flex-direction:row;gap:0;padding:4px;
+  background:var(--card);
+  border-radius:var(--radius-field);margin-bottom:var(--sp-4);
+}
+#panel-editor .mode-btn{
+  flex:1;min-width:0;
+  flex-direction:row;align-items:center;justify-content:center;
+  gap:0;padding:8px 4px;min-height:44px;text-align:center;
+}
+/* El modo activo va con RELLENO de marca (no la píldora blanca sobre pista
+   gris de la vista clásica): sobre pista blanca es lo único que se lee como
+   "elegido". Deja de haber un trato especial para estimativo —era el único con
+   relleno— porque acá lo llevan los tres; en estas vistas el modo igual está
+   dicho dos veces más, en la píldora del encabezado y en el banner. */
+#panel-editor .mode-btn.active{
+  background:var(--accent);color:var(--on-accent);
+  box-shadow:0 1px 4px rgba(var(--accent-rgb),.22);
+}
+#panel-editor .mode-btn-title,
+#panel-editor .mode-btn-sub{display:none}
+/* Mono en versalita, igual que las tabs de etapa, el botón de Notas y las
+   etiquetas de la barra de totales: en estas vistas los controles hablan todos
+   el mismo idioma tipográfico. */
+#panel-editor .mode-btn-short{
+  display:inline-flex;align-items:center;gap:5px;
+  font-family:var(--font-mono);font-size:var(--fs-xs);font-weight:600;
+  text-transform:uppercase;letter-spacing:.06em;
+  white-space:nowrap;
+}
+#panel-editor .mode-btn-short .ic{width:15px;height:15px}
+/* El botón de Notas quedaba solo en su renglón, lejos de todo. Pegado al
+   selector se lee como parte del mismo bloque de encabezado. */
+#panel-editor[data-vista="fichas"] .notes-bar,
+#panel-editor[data-vista="consola"] .notes-bar{margin:calc(-1 * var(--sp-2)) 0 var(--sp-3)}
+
+/* Notas, alineado al selector: el ámbar queda RESERVADO para riesgo y alertas
+   (el chip de clima, los avisos de seguimiento, el nivel de riesgo). Un botón
+   permanente del encabezado pintado de ámbar competía con eso y prometía una
+   urgencia que no tiene. Acá usa el mismo verde y el mismo mono que el resto de
+   los controles. En `clasica` sigue ámbar, como siempre. */
+#panel-editor[data-vista="fichas"] .notes-btn,
+#panel-editor[data-vista="consola"] .notes-btn{
+  background:var(--card);
+  color:var(--accent-fg);
+  border:1.5px solid var(--accent-fg);
+  border-radius:var(--radius-field);
+  font-family:var(--font-mono);font-size:var(--fs-xs);font-weight:600;
+  text-transform:uppercase;letter-spacing:.08em;
+  gap:8px;padding:0 14px;min-height:44px;
+}
+#panel-editor[data-vista="fichas"] .notes-btn:hover,
+#panel-editor[data-vista="consola"] .notes-btn:hover{
+  background:var(--accent-light);border-color:var(--accent-fg);
+}
+/* El ícono hereda el verde del botón en vez de traerse el ámbar de .ic-c-amber. */
+#panel-editor[data-vista="fichas"] .notes-btn .ic,
+#panel-editor[data-vista="consola"] .notes-btn .ic{color:currentColor;width:16px;height:16px}
+/* Con notas cargadas no hace falta el halo ámbar: ya lo dice el contador. */
+#panel-editor[data-vista="fichas"] .notes-btn.has-notes,
+#panel-editor[data-vista="consola"] .notes-btn.has-notes{
+  border-color:var(--accent-fg);box-shadow:none;
+}
+/* El contador pasa a relleno de marca, como los badges llenos de la app. */
+#panel-editor[data-vista="fichas"] .notes-count,
+#panel-editor[data-vista="consola"] .notes-count{
+  background:var(--accent);color:var(--on-accent);
+  font-family:var(--font-mono);font-size:var(--fs-xs);font-weight:600;
+  min-width:20px;height:20px;border-radius:var(--radius-pill);
+}
+
+/* ── Tabs de etapa (vista consola, dirección 2b) ─────────────────
+   Subrayadas y en mono versalita, como el resto de las etiquetas de la app.
+   El punto marca las etapas que todavía tienen secciones sin resolver: dice
+   dónde falta sin tener que entrar a mirar. */
+.econ-tabs{display:none}
+#panel-editor[data-vista="consola"] .econ-tabs{
+  display:flex;gap:2px;margin-bottom:var(--sp-4);
+  border-bottom:2px solid var(--border);
+}
+.econ-tab{
+  flex:1;position:relative;min-width:0;
+  padding:11px 6px 10px;min-height:44px;
+  background:none;border:0;border-bottom:2px solid transparent;margin-bottom:-2px;
+  font-family:var(--font-mono);font-size:var(--fs-xs);font-weight:600;
+  text-transform:uppercase;letter-spacing:.05em;
+  color:var(--muted);cursor:pointer;
+}
+.econ-tab.is-active{color:var(--accent-fg);border-bottom-color:var(--accent)}
+.econ-tab:hover:not(.is-active){color:var(--text-2)}
+.econ-tab.is-pending::after{
+  content:'';position:absolute;top:8px;right:6px;
+  width:6px;height:6px;border-radius:50%;background:var(--c-seguimiento);
+}
+.econ-tab[hidden]{display:none}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:5px;padding:8px 14px;border-radius:var(--radius-field);border:none;cursor:pointer;font-family:var(--font-text);font-size:13px;font-weight:500;transition:.15s}
+.btn-p{background:var(--accent);color:#fff}.btn-p:hover{background:var(--accent-dark)}
+.btn-s{background:var(--surface-2);color:var(--text);border:1px solid var(--border)}.btn-s:hover{background:var(--surface-hover)}
+.btn-d{background:var(--red-light);color:var(--red);border:1px solid #fca5a5}.btn-d:hover{background:#fecaca}
+.btn-g{background:transparent;color:var(--muted);padding:5px 9px}.btn-g:hover{background:var(--surface-2);color:var(--text)}
+/* Estado "imagen lista para enviar" (flujo de dos toques de Compartir imagen):
+   relleno de marca para que se note que hay que tocar de nuevo para compartir. */
+.btn.btn-ready{background:var(--accent);color:#fff}.btn.btn-ready:hover{background:var(--accent-dark);color:#fff}
+.btn-sm{padding:5px 10px;font-size:12px}
+.btn-bl{width:100%;justify-content:center;margin-bottom:8px}
+.arow{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+
+/* ITEM CARDS */
+#items-list{margin-bottom:12px}
+.icard{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-box);padding:10px 10px 8px 34px;margin-bottom:8px;position:relative;transition:.15s}
+.icard.dragging{opacity:.4;border-style:dashed}
+.icard.drag-over{border-color:var(--accent-fg);background:var(--accent-light)}
+.drag-h{position:absolute;left:9px;top:13px;color:var(--faint);font-size:18px;cursor:grab;user-select:none;line-height:1}
+.drag-h:active{cursor:grabbing}
+.ibadge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:var(--radius-box);margin-bottom:8px;display:inline-block}
+.ib-tree{background:#dcfce7;color:#166534}
+.ib-svc{background:#dbeafe;color:#1e40af}
+.ib-note{background:#fef3c7;color:#92400e}
+.ib-fixed{background:#ede9fe;color:#5b21b6}
+.iactions{display:flex;gap:4px;margin-top:7px;justify-content:flex-end}
+.iactions .btn:disabled{opacity:.5;cursor:not-allowed}
+.ia-up,.ia-down{min-width:34px;padding-left:8px!important;padding-right:8px!important}
+.item-grid-2{display:grid;grid-template-columns:1fr 170px;gap:8px}
+@media(max-width:600px){.item-grid-2{grid-template-columns:1fr}.item-grid-2.mb8{margin-bottom:8px}}
+.isub{font-size:11px;font-weight:600;color:var(--text-2);margin-bottom:3px}
+.ii{width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius-field);font-family:var(--font-text);font-size:13px;color:var(--text);background:var(--card);outline:none;transition:.15s;-webkit-appearance:none;appearance:none}
+.ii:focus{border-color:var(--accent-fg);box-shadow:0 0 0 2px rgba(var(--accent-rgb),.08)}
+.ita{width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius-field);font-family:var(--font-text);font-size:13px;color:var(--text);background:var(--card);outline:none;resize:none;min-height:52px;transition:.15s;-webkit-appearance:none;appearance:none}
+.ita:focus{border-color:var(--accent-fg);box-shadow:0 0 0 2px rgba(var(--accent-rgb),.08)}
+
+/* ANOTACIONES INTERNAS (memoria del editor — NO salen en el PDF).
+   Un botón único "Notas" abre el panel; cada tarjeta con nota lleva un punto
+   amarillo arriba a la derecha. */
+/* Punto amarillo indicador en la esquina sup. der. de la tarjeta del ítem */
+.card-note-dot{position:absolute;top:8px;right:8px;width:12px;height:12px;padding:0;border:2px solid var(--surface);border-radius:50%;background:#f5b301;box-shadow:0 0 0 1px rgba(0,0,0,.06),0 1px 3px rgba(180,120,0,.5);cursor:pointer;z-index:2;transition:transform .12s}
+.card-note-dot:hover{transform:scale(1.25)}
+.card-note-dot:focus-visible{outline:2px solid #e0a915;outline-offset:2px}
+/* Botón "Notas" arriba del editor */
+.notes-bar{display:flex;justify-content:flex-end;margin:2px 0 10px}
+.notes-btn{display:inline-flex;align-items:center;gap:6px;font-family:var(--font-text);font-size:12px;font-weight:600;color:#92600a;background:linear-gradient(135deg,#fffbeb,#fef3c7);border:1px solid #f5c451;border-radius:999px;padding:6px 12px;cursor:pointer;transition:.15s}
+.notes-btn:hover{background:linear-gradient(135deg,#fef3c7,#fde68a);border-color:#e0a915}
+.notes-btn .ic{width:15px;height:15px}
+.notes-btn.has-notes{border-color:#e0a915;box-shadow:0 0 0 2px rgba(224,169,21,.12)}
+.notes-count{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#f5b301;color:#3d2c00;font-size:11px;font-weight:800;line-height:1}
+/* El display:inline-flex de arriba le gana a la regla [hidden] del navegador,
+   así que sin esto el contador nunca se ocultaba (quedaba pegado el número de
+   un presupuesto anterior al crear uno nuevo). */
+.notes-count[hidden]{display:none}
+/* Panel de Notas */
+#notes-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2000;align-items:center;justify-content:center;padding:16px}
+#notes-overlay.open{display:flex}
+#notes-box{background:var(--card);border-radius:var(--radius-box);width:460px;max-width:100%;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.28)}
+.notes-head{display:flex;align-items:center;gap:10px;padding:18px 20px 4px}
+#notes-box h4{font-family:var(--font-display);font-size:18px;margin:0;color:var(--text);display:flex;align-items:center;gap:8px;flex:1}
+.inote-badge{font-size:9.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#92600a;background:#fde9a9;border-radius:999px;padding:2px 8px}
+.notes-close{background:transparent;border:none;font-size:18px;color:var(--muted);cursor:pointer;line-height:1;padding:4px 6px;border-radius:6px}
+.notes-close:hover{background:var(--surface-2);color:var(--text)}
+.notes-sub{margin:0;padding:0 20px 12px;font-size:12px;color:var(--muted);line-height:1.5}
+.notes-scroll{overflow-y:auto;overscroll-behavior:contain;padding:4px 20px 8px;flex:1}
+.notes-block{margin-bottom:14px}
+.notes-block-label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:5px}
+#notes-general-text,.notes-item-ta{width:100%;padding:8px 10px;border:1px solid #f0d488;border-radius:var(--radius-field);font-family:var(--font-text);font-size:13px;color:var(--text);background:#fffdf5;outline:none;resize:vertical;min-height:48px;-webkit-appearance:none;appearance:none;transition:.15s}
+#notes-general-text:focus,.notes-item-ta:focus{border-color:#e0a915;box-shadow:0 0 0 2px rgba(224,169,21,.15)}
+.notes-items-head{font-size:11px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--muted);margin:6px 0 8px;padding-top:10px;border-top:1px solid var(--surface-2)}
+.notes-item{margin-bottom:12px;border-radius:var(--radius-field);padding:6px 8px;margin-left:-8px;margin-right:-8px;transition:background .4s,box-shadow .4s}
+/* Flash al abrir desde el punto de una tarjeta: resalta la nota unos segundos */
+.notes-item-flash{animation:noteFlash 2.6s ease-out}
+@keyframes noteFlash{
+  0%,55%{background:rgba(245,179,1,.22);box-shadow:0 0 0 2px rgba(245,179,1,.55)}
+  100%{background:transparent;box-shadow:0 0 0 2px transparent}
+}
+:root[data-theme="dark"] .notes-item-flash{animation:noteFlashDark 2.6s ease-out}
+@keyframes noteFlashDark{
+  0%,55%{background:rgba(251,191,36,.16);box-shadow:0 0 0 2px rgba(251,191,36,.5)}
+  100%{background:transparent;box-shadow:0 0 0 2px transparent}
+}
+.notes-item-hd{display:flex;align-items:center;gap:6px;margin-bottom:4px}
+.notes-item-ic .ic{width:14px;height:14px;color:var(--muted)}
+.notes-item-name{font-size:12.5px;font-weight:600;color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.notes-item-dot{width:9px;height:9px;border-radius:50%;background:transparent;flex-shrink:0}
+.notes-item-dot.on{background:#f5b301;box-shadow:0 0 0 1px rgba(180,120,0,.35)}
+.notes-empty{font-size:12.5px;color:var(--muted);text-align:center;padding:18px 8px;line-height:1.5}
+#notes-box .cbtns{display:flex;gap:8px;justify-content:flex-end;padding:8px 20px 18px}
+:root[data-theme="dark"] .card-note-dot{background:#fbbf24;border-color:var(--surface)}
+:root[data-theme="dark"] .notes-btn{color:#fcd34d;background:linear-gradient(135deg,#2a2410,#332b12);border-color:#6b5416}
+:root[data-theme="dark"] .notes-btn:hover{background:linear-gradient(135deg,#332b12,#3d3316)}
+:root[data-theme="dark"] .notes-count{background:#fbbf24;color:#241d08}
+:root[data-theme="dark"] .inote-badge{color:#fcd34d;background:#4a3a12}
+:root[data-theme="dark"] #notes-general-text,:root[data-theme="dark"] .notes-item-ta{background:#221d0c;border-color:#6b5416;color:var(--text)}
+:root[data-theme="dark"] .notes-item-dot.on{background:#fbbf24}
+
+/* TOGGLE */
+.trow{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--surface-2)}
+.trow:last-child{border-bottom:none}
+.tlabel{font-size:13px;color:var(--text)}
+.tgl{position:relative;width:38px;height:21px;flex-shrink:0}
+.tgl input{opacity:0;width:0;height:0}
+.tgl-sl{position:absolute;top:0;right:0;bottom:0;left:0;background:var(--toggle-off);border-radius:21px;cursor:pointer;transition:background .25s cubic-bezier(.4,0,.2,1);box-shadow:inset 0 1px 2px rgba(0,0,0,.10)}
+.tgl-sl::before{content:'';position:absolute;height:15px;width:15px;left:3px;top:3px;background:var(--card);border-radius:50%;box-shadow:0 1px 2px rgba(0,0,0,.28),0 1px 3px rgba(0,0,0,.10);transition:transform .28s cubic-bezier(.34,1.3,.64,1)}
+.tgl input:checked+.tgl-sl{background:var(--accent)}
+.tgl input:checked+.tgl-sl::before{transform:translateX(17px)}
+.tgl-sl:hover{filter:brightness(.96)}
+.tgl input:focus-visible+.tgl-sl{box-shadow:inset 0 1px 2px rgba(0,0,0,.10),0 0 0 3px rgba(var(--accent-rgb),.28)}
+
+/* COLOR */
+.cpresets{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.cpreset{width:32px;height:32px;border-radius:50%;border:3px solid transparent;cursor:pointer;transition:.15s}
+.cpreset:hover,.cpreset.active{border-color:#fff;box-shadow:0 0 0 2px var(--muted)}
+.cpreset-add{display:flex;align-items:center;justify-content:center;border:2px dashed var(--muted);color:var(--muted);font-size:20px;line-height:1;background:transparent;box-shadow:none}
+.cpreset-add:hover,.cpreset-add.active{border-color:var(--accent-fg);color:var(--accent-fg);box-shadow:none}
+.cprow{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+.cprow input[type=color]{width:44px;height:36px;border:1px solid var(--border);border-radius:var(--radius-field);padding:2px;cursor:pointer;background:var(--card)}
+
+/* SELECTOR DE COLOR PROPIO (reemplaza el picker nativo del navegador, que
+   en muchos Android muestra barras negras confusas). Cuadro SV + barra de
+   tono arcoíris + vista previa y campo hexa. Todo táctil y offline. */
+.cpicker{width:100%;max-width:340px;margin-bottom:16px}
+.cpk-sv{position:relative;width:100%;height:150px;border-radius:var(--radius-box);overflow:hidden;cursor:crosshair;touch-action:none;background:hsl(160,100%,50%)}
+.cpk-sv-white{position:absolute;inset:0;background:linear-gradient(to right,#fff,rgba(255,255,255,0))}
+.cpk-sv-black{position:absolute;inset:0;background:linear-gradient(to top,#000,rgba(0,0,0,0))}
+.cpk-sv-dot{position:absolute;width:18px;height:18px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.45),0 1px 3px rgba(0,0,0,.4);transform:translate(-50%,-50%);pointer-events:none;left:80%;top:70%}
+.cpk-hue{position:relative;width:100%;height:24px;border-radius:var(--radius-box);margin-top:14px;cursor:pointer;touch-action:none;background:linear-gradient(to right,#f00 0%,#ff0 17%,#0f0 33%,#0ff 50%,#00f 67%,#f0f 83%,#f00 100%)}
+.cpk-hue-thumb{position:absolute;top:50%;left:50%;width:26px;height:26px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.3),0 1px 4px rgba(0,0,0,.45);transform:translate(-50%,-50%);pointer-events:none}
+.cpk-foot{display:flex;align-items:center;gap:9px;margin-top:14px}
+.cpk-preview{width:38px;height:38px;border-radius:var(--radius-box);border:1px solid var(--border);flex:0 0 auto}
+.cpk-hex{width:130px;font-family:ui-monospace,monospace;font-size:15px;text-transform:lowercase;padding:9px 11px;border:1px solid var(--border);border-radius:var(--radius-field);background:var(--card);color:var(--text)}
+.cpk-hint{font-size:12px;color:var(--muted);margin:0 0 10px}
+
+/* THEME PICKER */
+.theme-presets{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px}
+.tpreset{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:5px;background:var(--card);border:2px solid var(--border);border-radius:var(--radius-box);padding:7px 9px;cursor:pointer;transition:border-color .15s}
+.tpreset.active{border-color:var(--accent-fg)}
+.tpreset:hover:not(.active){border-color:var(--muted)}
+.tpreset-swatch{width:56px;height:36px;border-radius:3px;overflow:hidden;position:relative;background:var(--card);border:1px solid var(--border)}
+.tpreset-label{font-size:11px;color:var(--text);font-weight:500;white-space:nowrap}
+/* Selector de tipografía del documento (mismo patrón que .tpreset). El preview
+   muestra "Ag" en la fuente de títulos del set, para verla de un vistazo. */
+.font-presets{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px}
+.fpreset{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:4px;background:var(--card);border:2px solid var(--border);border-radius:var(--radius-box);padding:6px 11px;cursor:pointer;transition:border-color .15s;min-width:60px}
+.fpreset.active{border-color:var(--accent-fg)}
+.fpreset:hover:not(.active){border-color:var(--muted)}
+.fpreset-prev{font-size:21px;line-height:1.1;color:var(--text)}
+.fpreset-label{font-size:11px;color:var(--muted);font-weight:500;white-space:nowrap}
+
+/* HISTORY */
+.hitem{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-box);padding:10px 12px;margin-bottom:8px;display:flex;flex-direction:column;align-items:stretch;gap:8px}
+/* Fila superior: datos del presupuesto + "Abrir" (la acción más usada)
+   anclada arriba a la derecha, fácil de ubicar y apretar sin perderse
+   entre el resto de los botones. */
+.htop{display:flex;align-items:flex-start;gap:10px}
+.hinfo{flex:1;min-width:0}
+.hcargar{flex:none;align-self:flex-start;white-space:nowrap}
+.hnum{font-size:12px;font-weight:700;color:var(--accent-fg)}
+.hclient{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hmeta{font-size:11px;color:var(--muted);margin-top:-4px}
+.hacts{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.hacts .btn-icon-del{margin-left:auto}
+.empty-h{text-align:center;padding:40px;color:var(--muted);font-size:13px}
+/* Resaltado temporal de una tarjeta cuando se llega a ella desde un aviso
+   (banner de vencidos/seguimiento). Parpadea/destella unas veces y se apaga. */
+@keyframes hitemFlash{
+  0%,100%{box-shadow:0 0 0 0 rgba(var(--accent-rgb),0);border-color:var(--border)}
+  8%,33%,58%{box-shadow:0 0 0 3px rgba(var(--accent-rgb),.6),0 0 18px 4px rgba(var(--accent-rgb),.5);border-color:var(--accent-fg)}
+  20%,45%,70%{box-shadow:0 0 0 1px rgba(var(--accent-rgb),.15);border-color:var(--border)}
+}
+.hitem-flash{animation:hitemFlash 2.4s ease-in-out 1;scroll-margin-top:80px;scroll-margin-bottom:80px}
+
+/* DELETE ICON BUTTON: discreto, esquina superior derecha. Anti-tap
+   accidental: chico (32×32), color gris suave que solo se vuelve rojo
+   en hover/active. Reemplaza los botones X grandes en cards de cliente
+   y filas del historial — antes era anti-patrón "big red trap". */
+.btn-icon-del{
+  background:transparent;border:none;cursor:pointer;
+  width:32px;height:32px;border-radius:var(--radius-field);
+  display:flex;align-items:center;justify-content:center;
+  color:#9ca3af;font-size:16px;line-height:1;
+  flex-shrink:0;padding:0;transition:.15s;
+}
+.btn-icon-del:hover,.btn-icon-del:active{background:var(--red-light);color:var(--red)}
+
+/* SERVICES MANAGER: lista vertical con pin + nombre + delete.
+   Antes era chips inline sin posibilidad de configurar cuáles aparecen
+   como rápidos. Ahora cada fila tiene su estrella para fijar como rápido. */
+.svc-pinned-header{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:8px;padding:6px 10px;
+  background:var(--accent-light);border-radius:var(--radius-field);
+  font-size:11px;color:var(--accent-fg);
+}
+.svc-pinned-info{display:flex;align-items:center;gap:4px}
+.svc-pinned-limit{font-size:10px;opacity:.7}
+.svc-list{display:flex;flex-direction:column;gap:4px}
+.svc-row{
+  display:flex;align-items:center;gap:8px;
+  background:var(--card);border:1px solid var(--border);
+  border-radius:var(--radius-box);padding:6px 10px;
+  transition:.15s;
+}
+.svc-row.is-pinned{
+  background:#fffbeb;
+  border-color:#fcd34d;
+}
+.svc-pin-btn{
+  background:none;border:none;cursor:pointer;
+  font-size:18px;line-height:1;padding:4px;
+  color:var(--faint);
+  width:32px;height:32px;
+  display:flex;align-items:center;justify-content:center;
+  border-radius:var(--radius-field);flex-shrink:0;transition:.15s;
+}
+.svc-pin-btn:hover{background:#fef3c7;color:#d97706}
+.svc-pin-btn.active{color:#d97706}
+.svc-pin-btn.active:hover{background:#fee2c2}
+.svc-name{
+  flex:1;min-width:0;
+  font-size:13px;color:var(--text);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.svc-row.is-pinned .svc-name{font-weight:600}
+
+/* CLIENT QUICK ACTIONS: chips tappables debajo de los datos del cliente.
+   📱 abre WhatsApp con el número detectado; 📍 abre Google Maps con la
+   dirección guardada. Convierte datos estáticos en acciones directas. */
+.client-card{align-items:flex-start}
+.client-card .hclient{font-weight:600;font-size:13px;margin-bottom:2px}
+.client-qa-row{
+  display:flex;flex-wrap:wrap;gap:6px;
+  margin-top:8px;
+}
+.client-qa{
+  display:inline-flex;align-items:center;gap:5px;
+  font-size:11px;font-weight:600;
+  text-decoration:none;color:var(--accent-fg);
+  background:var(--card);border:1px solid var(--border);
+  border-radius:14px;padding:4px 10px;
+  transition:.15s;
+}
+.client-qa:hover,.client-qa:active{
+  background:var(--accent);color:#fff;border-color:var(--accent-fg);
+}
+.client-qa span{font-size:11px}
+
+/* EXPIRY LABEL: fecha de vencimiento con toggle al lado para controlar
+   su visibilidad en el PDF. El label antes decía "(auto)" lo cual
+   confundía: parecía que el toggle activaba el cálculo automático. */
+.expiry-label{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:6px;margin-bottom:5px;
+}
+
+/* ACCIONES FINALES DEL EDITOR: jerarquía clara. Primero el hint
+   explicando el autoguardado, después el CTA principal (Imprimir)
+   grande y solo, después las secundarias en fila chica. */
+/* ALERT — caja de aviso reusable (inspirada en daisyUI). Fondo y borde con
+   alpha sobre el color semántico, así se adapta solo a claro/oscuro; solo el
+   color del texto se aclara en modo oscuro (ver bloque [data-theme=dark]).
+   Variantes: .alert-info / .alert-success / .alert-warning / .alert-error. */
+.alert{
+  display:flex;align-items:flex-start;gap:8px;
+  padding:10px 12px;border-radius:var(--radius-box);
+  border:1px solid;font-size:12px;line-height:1.45;
+}
+.alert .alert-ico{flex-shrink:0;font-size:14px;line-height:1.35}
+.alert-info{background:rgba(37,99,235,.08);border-color:rgba(37,99,235,.26);color:#1e40af}
+.alert-success{background:rgba(5,150,105,.10);border-color:rgba(5,150,105,.28);color:#065f46}
+.alert-warning{background:rgba(217,119,6,.10);border-color:rgba(217,119,6,.30);color:#92400e}
+.alert-error{background:rgba(220,38,38,.08);border-color:rgba(220,38,38,.28);color:#991b1b}
+.actions-secondary{
+  display:flex;gap:8px;
+}
+.actions-secondary .btn{flex:1;justify-content:center;padding:10px 12px;min-height:44px}
+
+/* SCENARIOS PANEL (A/B): compacto. Una sola línea cuando está apagado.
+   Cuando se activa, expande con los selectores A/B y las etiquetas. */
+.scenarios-panel{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--radius-box);
+  padding:8px 12px;
+  margin-bottom:14px;
+}
+.scenarios-toggle-row{
+  display:flex;align-items:center;gap:10px;
+  min-height:28px;
+}
+.scenarios-title{font-weight:600;font-size:13px;color:var(--text)}
+.scenarios-hint{
+  margin-left:auto;font-size:11px;color:var(--muted);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+/* Toggle más chico para el panel (no afecta los toggles principales) */
+.tgl-sm{width:36px;height:20px;flex-shrink:0}
+.tgl-sm input:checked + .tgl-sl::before{transform:translateX(18px)}
+.tgl-sm .tgl-sl::before{width:14px;height:14px;top:2px;left:2px}
+
+.scenarios-controls{
+  margin-top:12px;
+  padding-top:12px;
+  border-top:1px dashed var(--border);
+}
+.scenarios-tabs{
+  display:flex;gap:8px;margin-bottom:10px;
+}
+.scenarios-tabs .btn{flex:1;font-weight:700}
+
+@media (max-width:600px){
+  /* Si no hay espacio, esconder el hint a la derecha */
+  .scenarios-hint{display:none}
+}
+
+/* SUB-TABS (dentro de Empresa): segmenta una sección larga en 3 áreas
+   para reducir scroll. Mismo concepto que las tabs principales pero
+   inline-pill dentro del panel. */
+.subtabs{
+  display:flex;gap:4px;background:var(--surface-3);
+  border:1px solid var(--border);border-radius:var(--radius-box);
+  padding:4px;margin-bottom:18px;
+}
+.subtab-btn{
+  flex:1;padding:8px 6px;border:none;background:transparent;
+  font-family:var(--font-text);font-size:12px;font-weight:600;
+  color:var(--muted);cursor:pointer;border-radius:var(--radius-field);transition:.15s;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.subtab-btn.active{background:var(--card);color:var(--accent-fg);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.subtab-btn:hover:not(.active){background:rgba(0,0,0,.04)}
+.subpanel{display:none}
+.subpanel.active{display:block}
+@media (max-width:600px){
+  .subtab-btn{font-size:11px;padding:7px 4px}
+}
+
+/* QUICK SERVICES CHIPS: fila horizontal arriba del botón "+ Servicio".
+   Cada chip = tap rápido para crear un ítem service con la descripción
+   ya cargada (solo falta poner el precio). Usa los primeros servicios
+   de la DB. Si la DB está vacía, el contenedor se oculta. */
+.quick-services{
+  display:flex;flex-wrap:wrap;gap:6px;
+  margin:8px 0 10px;padding:8px 10px;
+  background:var(--accent-tint);
+  border:1px solid var(--border);
+  border-radius:var(--radius-box);
+}
+.quick-services-label{
+  font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;
+  color:var(--muted);width:100%;margin-bottom:2px;
+}
+.qs-chip{
+  display:inline-flex;align-items:center;gap:4px;
+  background:var(--card);border:1px solid var(--border);
+  border-radius:18px;padding:6px 12px;
+  font-size:12px;font-weight:500;color:var(--text);
+  cursor:pointer;transition:.12s;
+  white-space:nowrap;
+}
+.qs-chip:hover,.qs-chip:active{
+  background:var(--accent);color:#fff;border-color:var(--accent-fg);
+}
+.qs-chip-plus{font-size:14px;font-weight:700;line-height:1;opacity:.7}
+
+/* STICKY TOTALS BAR: fijada al borde inferior del viewport en el
+   Editor. Acompaña al usuario mientras carga ítems para que el total
+   sea siempre visible sin scrollear. Tiene 3 variantes:
+   - st-normal: subtotal + desc + total (modo presupuesto normal)
+   - st-ab: dos totales (modo escenarios A/B activo)
+   - st-est: total estimativo único (modo estimativo)
+   Solo se muestra cuando la pestaña activa es "editor" (ver switchTab). */
+/* Borde superior de 2px (spec 2a): la barra tiene que leerse como un piso, no
+   como una tarjeta más. */
+.sticky-totals{
+  position:fixed;bottom:0;left:0;right:0;
+  background:var(--card);
+  border-top:2px solid var(--border);
+  box-shadow:0 -2px 12px rgba(0,0,0,.06);
+  padding:8px 14px env(safe-area-inset-bottom,8px);
+  z-index:30;
+}
+.sticky-totals-inner{
+  max-width:900px;margin:0 auto;
+  display:flex;flex-direction:column;gap:8px;
+}
+/* Fila 1 — cifras. Una variante visible a la vez (_stickyShowVariant le pone
+   display:flex a la que corresponde). */
+.stb-row{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+.stb-main{min-width:0}
+.stb-lbl{
+  font-family:var(--font-mono);font-size:var(--fs-xs);font-weight:600;
+  text-transform:uppercase;letter-spacing:.08em;color:var(--text-2);
+  white-space:nowrap;
+}
+.stb-sep{color:var(--faint)}
+/* La cifra: 28px como pide el spec, pero peso 600 y NO 700 — IBM Plex Mono está
+   empaquetada en 400 y 600, así que un 700 lo sintetizaría el navegador
+   (engordado falso, distinto en cada Android). Mismo criterio que .tbar-val
+   tenía antes. A 28px la diferencia entre 600 y un 700 sintético se nota. */
+.stb-amt{
+  font-family:var(--font-mono);font-size:28px;font-weight:600;
+  color:var(--accent-fg);line-height:1.05;white-space:nowrap;
+  margin-top:1px;
+}
+.stb-amt-sm{font-size:20px}
+/* A/B: dos totales que comparten el ancho; el activo lo resalta updateTotalsBar
+   con opacity (ver _stickyShowVariant). */
+.stb-main-b{text-align:right}
+#st-ab{align-items:flex-end}
+#st-ab .stb-main{flex:1}
+/* Columna de apoyo a la derecha: subtotal / descuento / recargo, o la nota del
+   estimativo. Mono chico — es información secundaria, no compite con la cifra. */
+.stb-side{
+  display:flex;flex-direction:column;align-items:flex-end;gap:1px;
+  flex-shrink:0;font-family:var(--font-mono);font-size:var(--fs-sm);
+  color:var(--muted);line-height:1.3;
+}
+.stb-side-row{display:flex;gap:6px;white-space:nowrap}
+.stb-side-k{color:var(--faint)}
+.stb-side-v{color:var(--text-2);font-weight:600}
+.stb-side-v.is-red{color:var(--red)}
+.stb-side-note{
+  font-family:var(--font-text);font-size:var(--fs-xs);font-style:italic;
+  color:var(--muted);text-align:right;line-height:1.25;
+}
+/* Fila 2 — acciones. El primario se estira; los dos de ícono son cuadrados de
+   44px (área de toque mínima con una mano, a la intemperie). */
+.stb-actions{display:flex;align-items:stretch;gap:8px}
+.stb-print{
+  flex:1;justify-content:center;
+  padding:11px 14px;font-size:15px;font-weight:700;min-height:44px;
+  box-shadow:0 2px 8px rgba(var(--accent-rgb),.18);
+}
+.stb-ico{
+  flex:0 0 44px;width:44px;min-height:44px;padding:0;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--surface-2);color:var(--text);border:1px solid var(--border);
+}
+.stb-ico:hover{background:var(--surface-hover)}
+.stb-ico .ic{width:20px;height:20px}
+/* WhatsApp: mismo botón pero con etiqueta, así que crece con el texto. */
+.stb-wa{flex:0 0 auto;width:auto;gap:6px;padding:0 12px;font-size:var(--fs-md);font-weight:600}
+/* En pantallas angostas la cifra baja un punto para que la columna de apoyo no
+   la empuje fuera. */
+@media (max-width:400px){
+  .stb-amt{font-size:24px}
+  .stb-amt-sm{font-size:18px}
+  .stb-print{font-size:14px}
+}
+/* El espacio para que el contenido no quede tapado por la barra fija se reserva
+   ahora DENTRO del scroller (#main) desde JS (reserveStickySpace), midiendo el
+   alto real de la barra —incluye la safe-area del dispositivo—. Antes se hacía
+   con padding-bottom en el body, que solo funcionaba por un efecto colateral de
+   -webkit-fill-available sobre #app; con #app en 100dvh eso era frágil. La clase
+   body.has-sticky-totals se conserva como bandera de estado (posición del FAB). */
+
+/* BOTÓN "SUBIR" (scroll-to-top). Aparece al scrollear #main. */
+.scrolltop-fab{
+  position:fixed;z-index:25;
+  right:max(16px,env(safe-area-inset-right));
+  bottom:calc(16px + env(safe-area-inset-bottom));
+  width:44px;height:44px;border-radius:50%;
+  background:var(--card);color:var(--accent-fg);
+  border:1px solid var(--border);box-shadow:0 4px 16px rgba(0,0,0,.18);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;opacity:0;transform:translateY(8px);pointer-events:none;
+  transition:opacity .2s,transform .2s;
+}
+.scrolltop-fab.show{opacity:1;transform:none;pointer-events:auto}
+.scrolltop-fab:active{transform:scale(.94)}
+.scrolltop-fab .ic{width:20px;height:20px}
+/* En el Editor, elevarse por encima de la barra de totales fija. El alto lo
+   publica reserveStickySpace() en --sticky-h midiendo la barra real (ya incluye
+   la safe-area): con dos filas ya no hay una constante que sirva. El 56px del
+   fallback es solo para el caso de que el JS no haya corrido todavía. */
+body.has-sticky-totals .scrolltop-fab{bottom:calc(var(--sticky-h,56px) + 12px)}
+
+/* LOGO */
+.lu-area{border:2px dashed var(--border);border-radius:var(--radius-box);padding:20px;text-align:center;cursor:pointer;margin-bottom:10px;transition:.15s;background:var(--surface)}
+.lu-area:hover{border-color:var(--accent-fg);background:var(--accent-light)}
+.lu-img{max-height:80px;max-width:200px;border-radius:4px}
+input[type=file]{display:none}
+
+/* SURCHARGE PANEL */
+/* SURCHARGE PANEL: colapsable. Cerrado = una fila de pill compacta.
+   Abierto = panel con descripción, input %, botones Aplicar/Quitar. */
+.surcharge-panel{
+  background:linear-gradient(135deg,#fffbeb,#fef3c7);
+  border:1px solid #fcd34d;border-radius:var(--radius-box);
+  margin-bottom:16px;overflow:hidden;
+}
+.surcharge-header{
+  width:100%;background:none;border:none;cursor:pointer;
+  padding:10px 14px;display:flex;align-items:center;gap:10px;
+  font-family:var(--font-text);color:#92400e;
+}
+.surcharge-header .sp-icon{font-size:18px;flex-shrink:0}
+.surcharge-header .sp-summary{
+  flex:1;display:flex;align-items:center;gap:8px;
+  min-width:0;text-align:left;
+}
+.sp-label{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#92400e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sp-status{
+  font-size:11px;font-weight:700;color:#78350f;
+  background:#fde68a;border-radius:14px;padding:2px 8px;
+  flex-shrink:0;
+}
+.sp-status.active{background:#92400e;color:#fff}
+.sp-chevron{
+  font-size:12px;color:#92400e;opacity:.7;
+  transition:transform .2s;flex-shrink:0;
+}
+.surcharge-panel:not(.surcharge-collapsed) .sp-chevron{transform:rotate(180deg)}
+
+.surcharge-body{padding:0 14px 12px}
+.surcharge-body .sp-desc{font-size:11px;color:#78350f;line-height:1.45;margin-bottom:10px}
+.surcharge-body .sp-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.surcharge-input{width:72px;padding:7px 10px;border:1.5px solid #f59e0b;border-radius:var(--radius-field);font-family:var(--font-text);font-size:15px;font-weight:700;color:#92400e;background:var(--card);outline:none;text-align:center;-webkit-appearance:none;appearance:none}
+.surcharge-input:focus{border-color:#d97706;box-shadow:0 0 0 3px rgba(245,158,11,.18)}
+.surcharge-pct{font-size:16px;font-weight:700;color:#92400e}
+.sp-apply-btn{background:#f59e0b;color:#fff;border:none;border-radius:var(--radius-field);padding:7px 13px;font-family:var(--font-text);font-size:12px;font-weight:700;cursor:pointer;transition:.15s;white-space:nowrap}
+.sp-apply-btn:hover{background:#d97706}
+.sp-apply-btn:active{transform:scale(.97)}
+.sp-clear-btn{background:transparent;color:#92400e;border:1.5px solid #fcd34d;border-radius:var(--radius-field);padding:6px 10px;font-family:var(--font-text);font-size:12px;font-weight:600;cursor:pointer;transition:.15s}
+.sp-clear-btn:hover{background:#fef3c7}
+
+/* Adjusted price badge inside item cards */
+.adj-badge{display:inline-flex;align-items:center;gap:4px;margin-top:4px;font-size:10px;font-weight:700;color:#92400e;background:#fef3c7;border:1px solid #fcd34d;border-radius:var(--radius-field);padding:2px 7px}
+.adj-badge .adj-orig{text-decoration:line-through;opacity:.6;font-weight:400}
+
+/* El #totals-bar inline y sus .tbar-* se fueron en la Fase 2: repetían las
+   mismas cifras 15 px más arriba de la barra fija. Lo que sobrevive de ese
+   criterio está en .stb-* (arriba, junto a .sticky-totals): etiqueta y cifra en
+   mono, y peso 600 y no 700 porque IBM Plex Mono viene en 400 y 600. */
+
+/* HISTORY SEARCH */
+.hsearch{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-field);font-family:var(--font-text);font-size:13px;color:var(--text);background:var(--card);outline:none;transition:.15s;margin-bottom:12px;-webkit-appearance:none;appearance:none}
+.hsearch:focus{border-color:var(--accent-fg);box-shadow:0 0 0 3px rgba(var(--accent-rgb),.1)}
+/* Ocultar la ✕/decoración nativa del type=search (usamos icono + botón propios)
+   y los spinners del type=number, para que ningún control se vea "de navegador". */
+input[type=search]::-webkit-search-cancel-button,
+input[type=search]::-webkit-search-decoration{-webkit-appearance:none;appearance:none}
+input[type=number]::-webkit-outer-spin-button,
+input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+input[type=number]{-moz-appearance:textfield}
+.hsearch-wrap{position:relative;display:block}
+.hsearch-wrap .hsearch{padding-left:34px;padding-right:34px;margin-bottom:0}
+.hsearch-ico{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none;display:inline-flex}
+.hsearch-clear{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:26px;height:26px;border:none;background:transparent;color:var(--muted);cursor:pointer;border-radius:6px;display:none;align-items:center;justify-content:center;-webkit-appearance:none;appearance:none}
+.hsearch-clear:hover,.hsearch-clear:active{background:var(--surface-2);color:var(--text)}
+.hsearch-wrap.has-value .hsearch-clear{display:inline-flex}
+
+/* MODE SWITCH */
+.mode-switch{display:flex;align-items:stretch;gap:0;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-box);padding:3px;margin-bottom:18px}
+.mode-btn{flex:1;padding:8px 10px;border:none;border-radius:var(--radius-field);cursor:pointer;font-family:var(--font-text);background:transparent;color:var(--muted);transition:.18s;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;line-height:1.2}
+.mode-btn-title{font-size:12px;font-weight:600;display:block}
+.mode-btn-sub{font-size:10px;font-weight:400;opacity:.75;display:block}
+.mode-btn.active{background:var(--card);color:var(--accent-fg);box-shadow:0 1px 4px rgba(0,0,0,.10)}
+.mode-btn.active.est{background:var(--accent);color:#fff;box-shadow:0 1px 6px rgba(var(--accent-rgb),.25)}
+.mode-btn.active .mode-btn-sub{opacity:.85}
+/* La etiqueta corta solo existe para las vistas fichas/etapas. */
+.mode-btn-short{display:none}
+
+/* ESTIMATIVE BANNER */
+#est-banner{background:linear-gradient(135deg,var(--accent),var(--accent-2));border-radius:var(--radius-box);padding:12px 16px;margin-bottom:16px;align-items:flex-start;gap:10px;display:none}
+#est-banner.show{display:flex}
+.est-banner-icon{font-size:22px;flex-shrink:0;margin-top:1px}
+.est-banner-body{flex:1}
+.est-banner-title{font-size:13px;font-weight:700;color:#fff;margin-bottom:2px}
+.est-banner-desc{font-size:11px;color:rgba(255,255,255,.75);line-height:1.4}
+
+/* HIST badge for estimative quotes */
+.hbadge-est{display:inline-block;font-size:10px;font-weight:700;padding:1px 7px;border-radius:var(--radius-box);background:var(--accent-light);color:#065f46;margin-left:6px;vertical-align:middle}
+/* Badge de estado comercial (color inline según el estado) */
+.hbadge-estado{display:inline-block;font-size:10px;font-weight:700;padding:1px 8px;border-radius:var(--radius-box);margin-left:6px;vertical-align:middle;text-transform:uppercase;letter-spacing:.3px}
+/* Selector de estado en la tarjeta del historial */
+.hestado-sel{font-family:var(--font-text);font-size:12px;font-weight:600;color:var(--text);background:var(--card);border:1px solid var(--border);border-radius:var(--radius-field);padding:5px 8px;outline:none;-webkit-appearance:none;appearance:none;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2364748b' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;padding-right:26px}
+.hestado-sel:focus{border-color:var(--accent-fg);box-shadow:0 0 0 3px rgba(var(--accent-rgb),.1)}
+/* Botón Agenda del encabezado del historial */
+#hist-agenda-btn .agenda-count{display:inline-block;background:rgba(255,255,255,.28);color:#fff;font-size:11px;font-weight:700;border-radius:var(--radius-box);padding:1px 7px;margin-left:2px;min-width:20px;text-align:center}
+#hist-agenda-btn.is-on{background:var(--surface-2);color:var(--text);box-shadow:inset 0 0 0 1px var(--border)}
+/* "Limpiar todo" al pie del listado: discreto, zona de peligro */
+#hist-footer{text-align:center;margin-top:26px;padding-top:14px;border-top:1px dashed var(--border)}
+.hist-clear-all{color:var(--muted)}
+
+/* Chip de agenda en la tarjeta del historial: muestra la fecha del trabajo
+   y abre el diálogo para cargarla/cambiarla. Colores por proximidad. */
+/* Chip de agenda: el COLOR = concepto (no cambia por urgencia). Base = trabajo
+   (violeta). is-call = recontacto (celeste). La urgencia (hoy/mañana/atrasado)
+   se marca con .is-due (realce del mismo tono, sin cambiar el color). Lo ya
+   cumplido usa .is-done (gris atenuado) y lo sin agendar .is-none (gris borde). */
+.hagenda-chip{display:inline-flex;align-items:center;gap:5px;font-family:var(--font-text);font-size:12px;font-weight:700;border:1px solid transparent;border-radius:var(--radius-field);padding:5px 10px;cursor:pointer;background:var(--c-trabajo-bg);color:var(--c-trabajo-fg)}
+.hagenda-chip .ic{width:13px;height:13px}
+.hagenda-chip.is-call{background:var(--c-recontacto-bg);color:var(--c-recontacto-fg)}     /* recontacto */
+.hagenda-chip.is-none{background:var(--card);color:var(--muted);border-color:var(--border);font-weight:600}
+.hagenda-chip.is-done{background:var(--surface-2);color:var(--muted);border-color:var(--border)} /* registro histórico / ya hecho */
+.hagenda-chip.is-due{box-shadow:inset 0 0 0 1.5px currentColor;font-weight:800} /* realce de urgencia, mismo tono */
+/* Toast con botón de acción (ej: "¿Marcar como enviado?") */
+.toast-action{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:12px;white-space:normal;pointer-events:auto}
+.toast-action .toast-btn{font-family:var(--font-text);font-size:13px;font-weight:700;color:#fff;background:var(--accent);border:none;border-radius:var(--radius-field);padding:6px 12px;cursor:pointer;white-space:nowrap}
+.toast-action .toast-btn:active{opacity:.85}
+/* Aviso de lluvia (clima): mensaje largo → texto a la izquierda que envuelve,
+   botón "Ver" al final, toda la tarjeta tocable. Botón blanco sobre el rojo. */
+.clima-toast{width:min(92vw,430px);max-width:92vw;text-align:left;justify-content:flex-end;flex-wrap:wrap;gap:8px 10px;cursor:pointer}
+.clima-toast>span{flex:1 1 100%;min-width:0;line-height:1.4}
+.clima-toast .toast-btn{flex:0 0 auto;background:rgba(255,255,255,.22)}
+
+/* MISC */
+.divider{height:1px;background:var(--border);margin:16px 0}
+.hint{font-size:11px;color:var(--muted);margin-top:4px}
+.nbadge{display:inline-block;background:var(--accent);color:#fff;font-size:11px;font-weight:600;border-radius:var(--radius-box);padding:1px 8px;min-width:22px;text-align:center}
+
+/* MOBILE overrides */
+@media (max-width:600px){
+  .r2,.r3{grid-template-columns:1fr}
+  .r4{grid-template-columns:1fr 1fr}
+  .icard{padding:10px 10px 8px 12px}
+  .drag-h{display:none}
+  .iactions{gap:6px}
+  /* Objetivo táctil cómodo en celular: alto mínimo de ~44px para no
+     tocar el botón equivocado (subir/bajar/duplicar/eliminar). */
+  .iactions .btn{flex:1;justify-content:center;min-height:44px;padding-top:10px;padding-bottom:10px}
+  .ia-up,.ia-down{flex:.45!important;min-width:44px}
+  .arow{flex-direction:column}
+  .arow .btn{width:100%;justify-content:center;padding:11px 14px;font-size:14px}
+  .fg input,.fg textarea,.fg select{font-size:16px;padding:10px 12px}
+  #notes-general-text,.notes-item-ta{font-size:16px;padding:10px 12px}
+  #notes-box{width:100%}
+  .ii{font-size:16px;padding:9px 10px}
+  .ita{font-size:16px;padding:9px 10px;min-height:64px}
+  .hsearch{font-size:16px}
+  .mode-switch{flex-direction:column;gap:4px;padding:4px}
+  .mode-btn{padding:9px 12px;text-align:left;align-items:flex-start}
+  .mode-btn-title{font-size:13px}
+  .mode-btn-sub{font-size:11px}
+  .trow{padding:13px 0}
+  .tlabel{font-size:14px}
+  .hitem{flex-direction:column;align-items:stretch;gap:7px}
+  /* Estado (pill de color) + acciones en una sola fila compacta que envuelve
+     a lo sumo a dos líneas, en vez de apilar un select full-width + botones. */
+  .hacts{width:100%;gap:6px;flex-wrap:wrap;align-items:center}
+  .hacts .hestado-sel{flex:0 0 auto;width:auto;font-size:13px;font-weight:700;padding:6px 26px 6px 10px}
+  /* Solo estirar botones de acción reales, NO el botón-ícono de borrar
+     (que se mantiene chico en su esquina para evitar taps accidentales). */
+  .hacts .btn:not(.btn-icon-del){flex:1 1 auto;justify-content:center}
+  .hacts .btn-icon-del{margin-left:auto}
+  .cpreset{width:38px;height:38px}
+  .fg[style*="max-width"]{max-width:100%!important}
+  .r4 .fg:nth-child(2),.r4 .fg:nth-child(3){grid-column:auto}
+  select.hsearch{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2364748b' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px}
+}
+
+
+
+/* ═══ FRASES RÁPIDAS ════════════════════════════════════════════════
+   Sistema de inserción de frases reutilizables para textareas largos
+   (descripciones, observaciones, condiciones de pago). Botón pequeño
+   al lado del label que abre un modal con frases guardadas. */
+
+/* Label con acción al costado (ej: "Observaciones · 📝 Frases") */
+.label-with-action{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:8px;margin-bottom:5px;
+}
+.label-with-action > span{flex:1;min-width:0}
+
+/* Botón "📝 Frases" — discreto, no compite con el campo */
+.phrase-btn{
+  background:var(--accent-tint);border:1px solid #bbf7d0;
+  color:var(--accent-fg);cursor:pointer;
+  font-family:var(--font-text);font-size:11px;font-weight:600;
+  padding:3px 9px;border-radius:14px;
+  display:inline-flex;align-items:center;gap:3px;
+  white-space:nowrap;flex-shrink:0;transition:.15s;
+}
+.phrase-btn:hover,.phrase-btn:active{background:var(--accent-light);border-color:var(--accent-fg)}
+/* Variante mini para inputs dentro de items (más compacto) */
+.phrase-btn-mini{padding:2px 7px;font-size:10px}
+
+/* Variante en isub (label con flex inline-row) */
+.isub.mb-row{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:6px;
+}
+
+/* ─── MODAL DE FRASES ───────────────────────────────────────────── */
+#phrases-overlay{
+  display:none;position:fixed;inset:0;
+  background:rgba(0,0,0,.45);
+  align-items:center;justify-content:center;
+  z-index:200;padding:20px;
+}
+#phrases-overlay.open{display:flex}
+#phrases-box{
+  background:var(--card);border-radius:14px;
+  width:100%;max-width:520px;max-height:80vh;
+  display:flex;flex-direction:column;
+  box-shadow:0 10px 40px rgba(0,0,0,.25);
+}
+.phrases-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 18px;border-bottom:1px solid var(--border);
+  flex-shrink:0;
+}
+.phrases-header h4{margin:0;font-size:15px;color:var(--text)}
+.phrases-close{
+  background:none;border:none;cursor:pointer;
+  font-size:18px;color:var(--muted);padding:4px 8px;
+  border-radius:var(--radius-field);line-height:1;
+}
+.phrases-close:hover{background:var(--surface-3);color:var(--text)}
+/* Aviso de que [especie] se va a completar solo con la especie del ítem
+   (o de que falta cargarla). Solo aparece en la categoría "desc". */
+.phrases-hint{
+  flex-shrink:0;margin:10px 14px -2px;padding:8px 10px;
+  border-radius:var(--radius-field);
+  font-size:12px;line-height:1.4;
+}
+.phrases-hint.is-on{background:var(--surface-2);color:var(--accent-fg);border:1px solid var(--border)}
+.phrases-hint.is-off{background:var(--surface-3);color:var(--muted);border:1px solid var(--border)}
+.phrases-hint b{font-weight:700}
+.phrases-hint code{font-family:var(--font-mono);font-size:11px}
+
+/* Lista scrolleable de frases */
+.phrases-list{
+  flex:1;overflow-y:auto;padding:10px 14px;
+  display:flex;flex-direction:column;gap:6px;
+}
+.phrase-row{
+  display:flex;align-items:flex-start;gap:6px;
+  border:1px solid var(--border);border-radius:var(--radius-box);
+  background:var(--card);transition:.12s;
+}
+.phrase-row:hover{border-color:var(--accent-fg);background:var(--surface)}
+.phrase-text{
+  flex:1;background:none;border:none;cursor:pointer;
+  text-align:left;padding:10px 12px;
+  font-family:var(--font-text);font-size:13px;
+  line-height:1.45;color:var(--text);
+  border-radius:8px 0 0 8px;
+  white-space:normal;word-break:break-word;
+}
+.phrase-row .btn-icon-del{margin:6px 6px 6px 0;width:28px;height:28px;font-size:14px}
+.phrases-empty{
+  text-align:center;color:var(--muted);font-size:13px;
+  padding:30px 20px;line-height:1.5;
+}
+.phrases-empty small{color:var(--muted);opacity:.8}
+
+/* Footer del modal: agregar nueva + guardar lo escrito */
+.phrases-footer{
+  border-top:1px solid var(--border);padding:12px 14px;
+  display:flex;flex-direction:column;gap:8px;flex-shrink:0;
+  background:var(--surface);border-radius:0 0 14px 14px;
+}
+.phrases-add-row{display:flex;gap:6px}
+.phrases-add-row .ii{flex:1;min-width:0}
+.phrases-add-row .btn{flex-shrink:0}
+.phrases-save-current{width:100%}
+
+@media (max-width:600px){
+  #phrases-overlay{align-items:flex-end;padding:0}
+  #phrases-box{
+    max-width:100%;max-height:85vh;
+    border-radius:16px 16px 0 0;
+  }
+  .phrase-text{font-size:14px;padding:11px 12px}
+}
+
+/* Controles de reordenar (▲▼) en cada fila del modal de frases */
+.phrase-move{
+  display:flex;flex-direction:column;
+  border-right:1px solid var(--border);
+  flex-shrink:0;
+}
+.phrase-move-btn{
+  background:transparent;border:none;cursor:pointer;
+  width:28px;height:24px;
+  color:var(--muted);font-size:10px;line-height:1;
+  padding:0;transition:.12s;
+  display:flex;align-items:center;justify-content:center;
+}
+.phrase-move-btn:not(:disabled):hover,
+.phrase-move-btn:not(:disabled):active{
+  background:var(--accent-tint);color:var(--accent-fg);
+}
+.phrase-move-btn:disabled{opacity:.3;cursor:not-allowed}
+.phrase-move-btn.phrase-up-btn{border-bottom:1px solid var(--border)}
+
+/* En mobile las flechas un poco más grandes para tap accuracy */
+@media (max-width:600px){
+  .phrase-move-btn{width:32px;height:26px;font-size:11px}
+}
+
+/* SECCIONES COLAPSABLES en el panel de Datos guardados (Empresa) */
+.collapsible-section{margin-bottom:14px}
+.collapsible-header{
+  display:flex;align-items:center;gap:8px;
+  width:100%;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius-box);padding:11px 14px;
+  cursor:pointer;font-family:var(--font-text);
+  font-size:13px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.6px;
+  color:var(--text-2);
+  transition:.15s;text-align:left;
+}
+.collapsible-header:hover{background:var(--surface-hover2)}
+.collapsible-header .ch-chevron{
+  font-size:12px;color:var(--muted);
+  transition:transform .2s;
+  margin-left:auto;flex-shrink:0;
+}
+.collapsible-section.is-open .ch-chevron{transform:rotate(180deg)}
+.collapsible-header .ch-count{
+  font-size:11px;font-weight:600;
+  color:var(--accent-fg);background:var(--accent-light);
+  padding:2px 8px;border-radius:var(--radius-box);
+  letter-spacing:.3px;text-transform:none;
+  flex-shrink:0;
+}
+.collapsible-body{
+  display:none;
+  padding:12px 4px 4px;
+}
+.collapsible-section.is-open .collapsible-body{display:block}
+
+/* Borradores sin nombre de cliente: visualmente diferenciados */
+.hclient.is-draft{
+  font-style:italic;color:var(--muted);font-weight:500;
+}
+
+/* ═══ HISTORY: AGRUPACIÓN POR MES ════════════════════════════════
+   Cada mes es un card colapsable. Estética consistente con las
+   secciones colapsables de "Datos guardados" pero con su propia
+   identidad visual (header verde más fuerte por relevancia). */
+
+.hmonth{
+  margin-bottom:10px;border-radius:var(--radius-box);
+  border:1px solid var(--border);background:var(--card);
+  overflow:hidden;
+}
+.hmonth-header{
+  width:100%;
+  display:flex;align-items:center;gap:10px;
+  padding:11px 14px;
+  background:var(--surface);
+  border:none;cursor:pointer;
+  font-family:var(--font-text);text-align:left;
+  transition:.15s;
+}
+.hmonth-header:hover{background:var(--surface-hover2)}
+.hmonth-title{
+  flex:1;min-width:0;
+  font-size:13px;font-weight:700;
+  color:var(--text-2);letter-spacing:.4px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.hmonth-count{
+  font-size:11px;font-weight:700;
+  color:var(--accent-fg);background:var(--accent-light);
+  padding:2px 9px;border-radius:var(--radius-box);
+  flex-shrink:0;
+}
+.hmonth-total{
+  font-family:var(--font-mono);
+  font-size:12px;font-weight:600;color:var(--accent-fg);
+  flex-shrink:0;
+  font-variant-numeric:tabular-nums;
+}
+.hmonth-chevron{
+  font-size:11px;color:var(--muted);
+  transition:transform .2s;flex-shrink:0;
+}
+.hmonth.is-open .hmonth-chevron{transform:rotate(180deg)}
+
+.hmonth-body{
+  display:none;padding:8px 10px 10px;
+  border-top:1px solid var(--border);
+}
+.hmonth.is-open .hmonth-body{display:block}
+.hmonth-body .hitem{margin-bottom:8px}
+.hmonth-body .hitem:last-child{margin-bottom:0}
+
+/* En mobile: total y count un poco más chicos para no apretar el título */
+@media (max-width:600px){
+  .hmonth-header{padding:10px 12px;gap:8px}
+  .hmonth-title{font-size:12px}
+  .hmonth-total{font-size:11px}
+}
+
+/* ═══════════════════════════════════════
+   SEGUIMIENTO COMERCIAL
+═══════════════════════════════════════ */
+/* Badge 🔔 en la tarjeta del historial */
+.hbadge-followup{display:inline-block;font-size:10px;font-weight:700;padding:1px 8px;border-radius:var(--radius-box);margin-left:6px;vertical-align:middle;background:var(--c-seguimiento-bg);color:var(--c-seguimiento-fg);animation:fuPulse 2s ease-in-out infinite}
+@keyframes fuPulse{0%,100%{opacity:1}50%{opacity:.6}}
+
+/* Banner de seguimientos pendientes (arriba del historial) */
+.followup-banner{background:linear-gradient(135deg,#fffbeb,#fef3c7);border:1px solid #fcd34d;border-radius:var(--radius-box);padding:14px 16px;margin-bottom:14px}
+.fub-head{display:flex;align-items:center;gap:8px}
+.fub-icon{font-size:18px}
+.fub-title{font-size:15px;font-weight:700;color:#92400e}
+.fub-sub{font-size:12.5px;color:#a16207;margin:4px 0 10px;line-height:1.45}
+.fub-list{display:flex;flex-direction:column;gap:8px}
+/* La tarjeta se parte en dos renglones cuando los botones no entran al lado
+   del texto. Con dos botones (WhatsApp + ✓) entra todo en una línea, pero al
+   sumarse "Nueva versión" en los vencidos el bloque de acciones ya no daba y,
+   como no encoge (flex-shrink:0), le comía el ancho al texto: el número
+   quedaba partido ("2026-" / "0058"), el cliente en "F…" y "venció hace 4
+   días" bajaba una palabra por renglón. El flex-basis de 120px del texto es
+   el que dispara el wrap ANTES de llegar a eso — sin media query, así se
+   adapta solo a la pantalla y a cuántos botones tenga la tarjeta. */
+.fub-item{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;background:var(--card);border:1px solid #fde68a;border-radius:var(--radius-box);padding:9px 11px}
+.fub-item-info{display:flex;flex-direction:column;gap:1px;min-width:0;flex:1 1 120px;cursor:pointer;border-radius:6px;padding:2px 5px;margin:-2px -5px;transition:background .15s}
+.fub-item-info:active{background:rgba(0,0,0,.06)}
+.fub-item-info .fub-item-num{text-decoration:underline;text-decoration-style:dotted;text-underline-offset:2px}
+.fub-item-num{font-size:13px;font-weight:700;color:var(--accent-fg);white-space:nowrap}
+.fub-item-client{font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fub-item-days{font-size:11px;color:#a16207;font-weight:600;white-space:nowrap}
+/* margin-left:auto: cuando las acciones bajan a su propio renglón quedan
+   alineadas a la derecha, donde el pulgar ya las estaba buscando. */
+.fub-item-acts{display:flex;align-items:center;flex-wrap:wrap;justify-content:flex-end;gap:6px;flex:0 1 auto;min-width:0;margin-left:auto}
+.fub-wa{font-size:12.5px;font-weight:700;color:#fff;background:#25d366;border:none;border-radius:var(--radius-field);padding:8px 12px;text-decoration:none;white-space:nowrap}
+.fub-wa:active{background:#1da851}
+/* "Nueva versión" en el banner de vencidos: la salida real de un presupuesto
+   que se venció, al lado del WhatsApp para avisar. */
+.fub-nv{display:inline-flex;align-items:center;gap:5px;font-family:var(--font-text);font-size:12.5px;font-weight:700;color:var(--c-visita-fg);background:var(--c-visita-bg);border:1px solid transparent;border-radius:var(--radius-field);padding:8px 12px;cursor:pointer;white-space:nowrap}
+.fub-nv .ic{width:15px;height:15px}
+.fub-nv:active{filter:brightness(.95)}
+.fub-done{font-size:14px;font-weight:700;color:#16a34a;background:#dcfce7;border:1px solid #86efac;border-radius:var(--radius-field);width:36px;height:36px;cursor:pointer;flex-shrink:0}
+.fub-done:active{background:#bbf7d0}
+.fub-more{font-size:12px;color:#a16207;text-align:center;padding:4px;font-style:italic}
+
+/* Badge ⌛ de presupuesto vencido en la tarjeta del historial */
+.hbadge-expired{display:inline-block;font-size:10px;font-weight:700;padding:1px 8px;border-radius:var(--radius-box);margin-left:6px;vertical-align:middle;background:var(--c-vence-bg);color:var(--c-vence-fg)}
+/* Versiones de un presupuesto: "v2" en la tarjeta de la versión nueva y
+   "reemplazado" (apagado) en la que quedó atrás. Dos badges distintos porque
+   dicen cosas opuestas: uno es el vigente y el otro ya no cuenta. */
+.hbadge-version{display:inline-block;font-size:10px;font-weight:700;padding:1px 8px;border-radius:var(--radius-box);margin-left:6px;vertical-align:middle;background:var(--c-visita-bg);color:var(--c-visita-fg)}
+.hbadge-reemplazado{display:inline-block;font-size:10px;font-weight:700;padding:1px 8px;border-radius:var(--radius-box);margin-left:6px;vertical-align:middle;background:var(--surface-2);color:var(--muted)}
+.hitem.is-reemplazado .hnum,.hitem.is-reemplazado .hclient,.hitem.is-reemplazado .hmeta{opacity:.6}
+/* Banner de presupuestos vencidos (reusa la estructura .fub-*, en rojo) */
+/* Banner de recontactos (celeste): clientes que aceptaron y hay que volver
+   a llamar para coordinar la fecha del trabajo. Reusa las clases fub-*. */
+.recontacto-banner{background:linear-gradient(135deg,#ecfeff,#cffafe);border:1px solid #67e8f9;border-radius:var(--radius-box);padding:14px 16px;margin-bottom:14px}
+.recontacto-banner .fub-title{color:#155e75}
+.recontacto-banner .fub-sub{color:#0e7490}
+.recontacto-banner .fub-item{border-color:#a5f3fc}
+.fub-item-nota{display:block;width:100%;font-size:11.5px;color:var(--muted);font-style:italic;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* Globito de recontactos pendientes sobre la pestaña Historial: visible
+   desde cualquier parte de la app (las pestañas siempre están a la vista). */
+.tab-btn{position:relative}
+.tab-dot{position:absolute;top:3px;right:4px;min-width:15px;height:15px;line-height:15px;border-radius:8px;background:#0891b2;color:#fff;font-size:9.5px;font-weight:700;text-align:center;padding:0 4px}
+.expiry-banner{background:linear-gradient(135deg,#fef2f2,var(--red-light));border:1px solid #fca5a5;border-radius:var(--radius-box);padding:14px 16px;margin-bottom:14px}
+.expiry-banner .fub-title{color:#991b1b}
+.expiry-banner .fub-sub,.expiry-banner .fub-item-days,.expiry-banner .fub-more{color:#b91c1c}
+.expiry-banner .fub-item{border-color:#fecaca}
+/* Tarjeta de vencidos: apilada siempre (texto + ✓ arriba, las dos acciones
+   reales abajo). Ver el comentario de renderExpiryBanner: con tres botones en
+   fila no entra el texto en un celular. El max-width evita que en una pantalla
+   grande queden dos botones enormes de media pantalla. */
+.expiry-banner .fub-item{flex-direction:column;align-items:stretch;gap:9px}
+.fub-item-top{display:flex;align-items:center;gap:10px}
+.expiry-banner .fub-item-acts{max-width:420px;align-self:flex-end;width:100%}
+/* flex:1 1 auto (y NO basis 0 con min-width:0): el piso de min-content es lo
+   que impide que el botón se encoja por debajo de su propia etiqueta y la
+   recorte. Si no entran los dos al lado, se apilan a ancho completo. */
+.expiry-banner .fub-nv,.expiry-banner .fub-wa{flex:1 1 auto;justify-content:center;text-align:center}
+
+/* irABackup(): la sección de backup se marca un momento al llegar. */
+.fu-config.is-destacada{box-shadow:0 0 0 3px var(--accent);transition:box-shadow .3s}
+.push-tipos{display:flex;flex-direction:column;gap:6px;margin:8px 0}
+.push-tipos .fu-check{display:flex;gap:8px;align-items:flex-start;font-size:13px;line-height:1.35}
+/* v239: horarios y días de los avisos. */
+.push-horas{display:flex;flex-wrap:wrap;gap:8px 12px;margin-bottom:2px}
+.push-hora-f{display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:var(--muted);flex:1 1 130px}
+.push-hora-f input{min-height:40px}
+.push-fila{display:flex;flex-direction:column;gap:5px;margin:2px 0 2px 26px}
+.push-fila-lbl{font-size:12.5px;color:var(--muted)}
+.push-chips{display:flex;flex-wrap:wrap;gap:6px}
+.push-chips button{min-height:36px;padding:0 12px;border-radius:18px;border:1px solid var(--border);background:var(--card);color:var(--text);font:inherit;font-size:13px;cursor:pointer}
+.push-chips button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+.push-dias{gap:4px}
+.push-dias button{min-width:36px;padding:0}
+.push-estado{font-size:12.5px;color:var(--muted);white-space:pre-line;margin:8px 0}
+.push-estado.is-ok{color:var(--accent-fg,var(--text))}
+.push-estado.is-err{color:var(--red)}
+.push-estado:empty{display:none}
+.nt-push-cta{display:flex;flex-direction:column;gap:8px;padding:10px 12px;margin:0 0 10px;border-radius:10px;background:var(--accent-tint);border:1px solid var(--border)}
+.nt-push-cta strong{display:block;font-size:13.5px}
+.nt-push-cta span{display:block;font-size:12.5px;opacity:.85;margin-top:2px}
+.nt-push-btns{display:flex;gap:8px;justify-content:flex-end}
+
+/* Avisos del Historial plegados en UNA línea (histAvisosSync). Desplegados, los
+   tres banners ocupaban dos pantallas antes del buscador: el que entraba a
+   buscar un presupuesto tenía que pasar por encima de todos los pendientes. */
+#hist-avisos{margin-bottom:12px}
+.hav-res{display:flex;align-items:center;gap:8px;width:100%;min-height:44px;padding:7px 12px;border:1px solid var(--border);border-radius:var(--radius-box);background:var(--card);color:var(--text);font:inherit;cursor:pointer;text-align:left}
+.hav-chips{display:flex;flex-wrap:wrap;gap:6px;flex:1;min-width:0}
+.hav-chip{display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:999px;font-size:13px;font-weight:600;white-space:nowrap}
+.hav-chip .ic{width:14px;height:14px;color:inherit}
+.hav-chip.is-rec{background:var(--c-recontacto-bg);color:var(--c-recontacto-fg)}
+.hav-chip.is-seg{background:var(--c-seguimiento-bg);color:var(--c-seguimiento-fg)}
+.hav-chip.is-ven{background:var(--c-vence-bg);color:var(--c-vence-fg)}
+.hav-acc{flex:none;font-size:13px;font-weight:600;color:var(--accent-fg);display:inline-flex;align-items:center;gap:3px}
+.hav-acc::after{content:'▾';transition:transform .15s}
+.hav-res[aria-expanded="true"] .hav-acc::after{transform:rotate(180deg)}
+#hist-avisos-body{margin-top:10px}
+#hist-avisos-body[hidden]{display:none}
+
+/* Banner "Podas de hoy" (verde amanecer): salta una vez al abrir la app si
+   hay trabajos agendados para hoy. Reusa la estructura .fub-*; cada trabajo
+   apila info + una fila de accesos rápidos (llegar / WhatsApp / ver). */
+.morning-banner{background:linear-gradient(135deg,#ecfdf5,var(--accent-light));border:1px solid #6ee7b7;border-radius:var(--radius-box);padding:14px 16px;margin-bottom:14px}
+.morning-banner .fub-head{justify-content:space-between}
+.morning-banner .fub-title{color:#065f46}
+.morning-banner .fub-sub{color:#047857}
+.morning-banner .fub-item{flex-direction:column;align-items:stretch;gap:9px;border-color:#a7f3d0}
+.morning-banner .fub-item-days{color:#047857}
+/* La dirección puede ser larga ("Avenida Sarmiento esq. Río Negro,
+   Salsipuedes, Córdoba"): en una línea sin cortes ensanchaba la tarjeta más
+   allá de la pantalla y, como la tarjeta "tenía lugar", la fila de botones no
+   bajaba y "Realizado" quedaba afuera (reporte con captura, v242). Acá la
+   línea envuelve y la tarjeta no puede ser más ancha que el banner. */
+.morning-banner .fub-item{min-width:0}
+/* `.fub-item-info` trae `flex:1 1 120px` (piso de ANCHO para el texto en las
+   tarjetas en fila). Acá la tarjeta es una columna, así que ese piso se volvía
+   ALTO: un hueco vacío de ~120 px entre la dirección y los botones. */
+.morning-banner .fub-item-info{min-width:0;flex:0 0 auto}
+.morning-banner .fub-item-days{white-space:normal;overflow-wrap:anywhere}
+.mb-summary{display:flex;flex-wrap:wrap;gap:8px;margin:2px 0 12px}
+.mb-stat{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:#065f46;background:var(--card);border:1px solid #a7f3d0;border-radius:var(--radius-field);padding:6px 11px}
+.mb-stat b{font-weight:800}
+.mb-stat .ic{width:15px;height:15px}
+/* Recomendaciones del día (clima): chips ámbar arriba del banner de hoy. */
+.mb-recos{display:flex;flex-wrap:wrap;gap:8px;margin:2px 0 12px}
+.mb-reco{display:inline-flex;align-items:center;font-size:12.5px;font-weight:600;color:#b45309;background:#fef3c7;border:1px solid #fcd34d;border-radius:var(--radius-field);padding:6px 11px;line-height:1.3}
+:root[data-theme="dark"] .mb-reco{color:#fcd34d;background:rgba(251,191,36,.12);border-color:rgba(251,191,36,.4)}
+.mb-close{flex-shrink:0;width:30px;height:30px;border-radius:var(--radius-field);border:none;background:transparent;color:#047857;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
+.mb-close:active{background:rgba(4,120,87,.12)}
+.mb-close .ic{width:16px;height:16px}
+.mb-acts{display:flex;flex-wrap:wrap;gap:6px}
+.mb-act{flex:1 1 auto;min-width:92px;display:inline-flex;align-items:center;justify-content:center;gap:5px;font-size:12.5px;font-weight:700;border-radius:var(--radius-field);padding:9px 10px;text-decoration:none;white-space:nowrap;cursor:pointer;border:1px solid transparent}
+.mb-act .ic{width:15px;height:15px}
+.mb-act-map{background:#059669;color:#fff}
+.mb-act-map:active{background:#047857}
+.mb-act-wa{background:#25d366;color:#fff}
+.mb-act-wa:active{background:#1da851}
+.mb-act-view{background:var(--card);color:var(--accent-fg);border:1px solid #a7f3d0}
+.mb-act-view:active{background:var(--surface-2)}
+.mb-act-done{background:var(--card);color:#065f46;border:1px solid #6ee7b7}
+.mb-act-done:active{background:var(--surface-2)}
+/* Visitas de hoy en el banner: tarjeta tintada con el azul del concepto y
+   botón "Crear presupuesto" (pasar de la evaluación al presupuesto). */
+.morning-banner .fub-item.fub-item-visita{border-color:var(--c-visita);background:var(--c-visita-bg)}
+.fub-item-visita .fub-item-days{color:var(--c-visita-fg)}
+.mb-act-crear{background:var(--c-visita);color:#fff}
+.mb-act-crear:active{filter:brightness(.9)}
+.mb-route{width:100%;margin-top:2px;display:inline-flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:700;color:#065f46;background:var(--card);border:1px solid #6ee7b7;border-radius:var(--radius-field);padding:10px;cursor:pointer}
+.mb-route:active{background:var(--surface-2)}
+.mb-route .ic{width:16px;height:16px}
+
+/* Panel de configuración de seguimiento (pestaña Empresa) */
+.fu-config{margin-top:18px;padding:16px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-box)}
+.fu-config-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.fu-help{font-size:12.5px;color:var(--muted);line-height:1.5;margin:8px 0 14px}
+.esp-barra{height:8px;border-radius:4px;background:var(--border);overflow:hidden;margin:12px 0 0}
+.esp-barra>span{display:block;height:100%;width:0;background:var(--accent);border-radius:4px;transition:width .3s}
+#espacio-section.is-warn .esp-barra>span{background:#d97706}
+#espacio-section.is-fail .esp-barra>span{background:var(--red)}
+/* Sincronización caída (Drive / Calendar). El backup automático fallando en
+   silencio es el peor escenario de una app sin backend: el usuario se cree
+   respaldado durante meses. A partir del 2º fallo seguido la sección se marca
+   para que se vea sin tener que ir a buscarla. */
+.fu-config.is-fail{border-color:var(--red);background:linear-gradient(135deg,#fef2f2,var(--red-light))}
+.fu-config.is-fail .fu-help{color:#991b1b;font-weight:600}
+:root[data-theme="dark"] .fu-config.is-fail{background:linear-gradient(135deg,#2a1414,#331717);border-color:#b91c1c}
+:root[data-theme="dark"] .fu-config.is-fail .fu-help{color:#fca5a5}
+.fu-vars{display:block;font-size:11.5px;color:var(--muted);margin-top:5px}
+.fu-vars code{background:var(--accent-light);color:var(--accent-fg);padding:1px 5px;border-radius:4px;font-size:11px;margin-right:3px}
+.fu-estados{display:flex;gap:16px;flex-wrap:wrap;margin-top:4px}
+.fu-chk{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--text);cursor:pointer}
+.fu-chk input{-webkit-appearance:none;appearance:none;width:22px;height:22px;min-width:22px;border:2px solid var(--border);border-radius:var(--radius-field);background:var(--card);cursor:pointer;position:relative;margin:0;transition:.15s}
+.fu-chk input:checked{background:var(--accent);border-color:var(--accent-fg)}
+.fu-chk input:checked::after{content:'';position:absolute;left:6px;top:2px;width:6px;height:11px;border:solid #fff;border-width:0 2.5px 2.5px 0;transform:rotate(45deg)}
+
+/* Switch on/off */
+.fu-switch{position:relative;display:inline-block;width:48px;height:28px;flex-shrink:0}
+.fu-switch input{opacity:0;width:0;height:0}
+.fu-slider{position:absolute;inset:0;background:var(--toggle-off);border-radius:28px;transition:background .25s cubic-bezier(.4,0,.2,1);cursor:pointer;box-shadow:inset 0 1px 2px rgba(0,0,0,.10)}
+.fu-slider::before{content:'';position:absolute;height:22px;width:22px;left:3px;bottom:3px;background:var(--card);border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,.28),0 1px 4px rgba(0,0,0,.10);transition:transform .28s cubic-bezier(.34,1.3,.64,1)}
+.fu-switch input:checked + .fu-slider{background:var(--accent)}
+.fu-switch input:checked + .fu-slider::before{transform:translateX(20px)}
+.fu-slider:hover{filter:brightness(.96)}
+.fu-switch input:focus-visible + .fu-slider{box-shadow:inset 0 1px 2px rgba(0,0,0,.10),0 0 0 3px rgba(var(--accent-rgb),.28)}
+#fu-options{transition:opacity .2s}
+
+/* Subtítulo de sección con botón de acción a la derecha */
+.st-with-action{display:flex;align-items:center;gap:8px}
+.st-with-action button{margin-left:auto;flex-shrink:0;text-transform:none;letter-spacing:0}
+
+/* Vista previa de foto en el ítem del editor */
+.item-photos-gallery{display:flex;flex-wrap:wrap;gap:12px;margin-top:8px}
+.item-photos-gallery .item-photo-preview{margin-top:0}
+.item-photo-preview{position:relative;margin-top:8px;display:inline-block}
+.item-photo-preview img{max-width:140px;max-height:140px;border-radius:var(--radius-box);border:1px solid var(--border);display:block;object-fit:cover;cursor:zoom-in}
+.item-photo-remove{position:absolute;top:-8px;right:-8px;width:24px;height:24px;border-radius:50%;background:var(--red);color:#fff;border:2px solid #fff;font-size:12px;font-weight:700;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,.2)}
+/* Placeholder cuando la foto vive en otro dispositivo (ID sin caché local) */
+.item-photo-missing{width:140px;min-height:90px;padding:12px 10px;border-radius:var(--radius-box);border:1px dashed var(--border);background:var(--surface);color:var(--muted);font-size:11px;text-align:center;display:flex;flex-direction:column;justify-content:center;gap:4px}
+.item-photo-missing span{font-size:10px;opacity:.8}
+/* Visor de foto a pantalla completa (tocar la miniatura de un ítem) */
+#photo-viewer-overlay{display:none;position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(0,0,0,.92);z-index:2100;align-items:center;justify-content:center;padding:16px}
+#photo-viewer-overlay.open{display:flex}
+#photo-viewer-overlay{touch-action:none;user-select:none;-webkit-user-select:none}
+#photo-viewer-overlay img{max-width:100%;max-height:100%;border-radius:var(--radius-box);object-fit:contain;cursor:zoom-in;transform-origin:center center;will-change:transform;-webkit-user-drag:none;pointer-events:none}
+#photo-viewer-close{position:absolute;top:14px;right:16px;width:42px;height:42px;border-radius:50%;background:rgba(255,255,255,.16);color:#fff;border:none;font-size:22px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center}
+
+/* ═══ ELEVACIÓN DE CARDS ════════════════════════════════════════════
+   Sombra sutil + leve "levantada" en hover para las cards principales,
+   dándoles el look flotante y limpio de daisyUI sin recargar la UI.    */
+.icard,.hitem,.svc-row,.hmonth,.client-card{box-shadow:var(--shadow-card)}
+.icard,.hmonth{transition:box-shadow .15s,border-color .15s,background .15s,transform .15s}
+.icard:hover,.hmonth:hover{box-shadow:var(--shadow-card-hover)}
+/* La card arrastrándose no debe "flotar" (se ve raro con opacity). */
+.icard.dragging{box-shadow:none}
+
+/* ═══ AJUSTES PARA MODO OSCURO ══════════════════════════════════════
+   Solo lo que no se resuelve con variables: cajas semánticas tintadas
+   (ámbar/seguimiento), badges y bordes claros sueltos. La idea es que
+   sigan leyéndose como "notas" pero sin quemar la vista en oscuro.    */
+:root[data-theme="dark"] .alert-info{color:#93c5fd}
+:root[data-theme="dark"] .alert-success{color:#6ee7b7}
+:root[data-theme="dark"] .alert-warning{color:#fcd34d}
+:root[data-theme="dark"] .alert-error{color:#fca5a5}
+
+/* Botón "borrar" con tinte rojo adaptativo */
+:root[data-theme="dark"] .btn-d{border-color:rgba(248,113,113,.4)}
+:root[data-theme="dark"] .btn-icon-del:hover,
+:root[data-theme="dark"] .btn-icon-del:active{background:rgba(248,113,113,.18);color:#fca5a5}
+
+/* Panel de recargo (ámbar) → superficie cálida oscura */
+:root[data-theme="dark"] .surcharge-panel{background:linear-gradient(135deg,#2a2410,#332b12);border-color:#5c4a1c}
+:root[data-theme="dark"] .surcharge-header,
+:root[data-theme="dark"] .sp-label,
+:root[data-theme="dark"] .surcharge-pct,
+:root[data-theme="dark"] .surcharge-input,
+:root[data-theme="dark"] .sp-chevron{color:#fcd34d}
+:root[data-theme="dark"] .surcharge-body .sp-desc,
+:root[data-theme="dark"] .sp-clear-btn{color:#fde68a}
+:root[data-theme="dark"] .surcharge-input{background:#1f1b0c;border-color:#a16207}
+:root[data-theme="dark"] .sp-status{background:#4a3a12;color:#fde68a}
+:root[data-theme="dark"] .sp-clear-btn{border-color:#5c4a1c}
+:root[data-theme="dark"] .sp-clear-btn:hover{background:#3a3012}
+:root[data-theme="dark"] .adj-badge{background:#332b12;border-color:#5c4a1c;color:#fcd34d}
+
+/* Banner de recontactos (celeste) */
+:root[data-theme="dark"] .recontacto-banner{background:linear-gradient(135deg,#0c2226,#0e2a30);border-color:#155e75}
+:root[data-theme="dark"] .recontacto-banner .fub-title,
+:root[data-theme="dark"] .recontacto-banner .fub-sub{color:#67e8f9}
+:root[data-theme="dark"] .recontacto-banner .fub-item{background:#0a1c20;border-color:#155e75}
+
+/* Banner y filas de seguimiento (ámbar) */
+:root[data-theme="dark"] .followup-banner{background:linear-gradient(135deg,#2a2410,#332b12);border-color:#5c4a1c}
+:root[data-theme="dark"] .fub-title,
+:root[data-theme="dark"] .fub-item-days,
+:root[data-theme="dark"] .fub-sub,
+:root[data-theme="dark"] .fub-more{color:#fcd34d}
+:root[data-theme="dark"] .fub-item{background:#1f1b0c;border-color:#5c4a1c}
+
+/* Banner y filas de presupuestos vencidos (rojo) */
+:root[data-theme="dark"] .expiry-banner{background:linear-gradient(135deg,#2a1212,#331616);border-color:#5c1c1c}
+:root[data-theme="dark"] .expiry-banner .fub-title,
+:root[data-theme="dark"] .expiry-banner .fub-item-days,
+:root[data-theme="dark"] .expiry-banner .fub-sub,
+:root[data-theme="dark"] .expiry-banner .fub-more{color:#fca5a5}
+:root[data-theme="dark"] .expiry-banner .fub-item{background:#1f0c0c;border-color:#5c1c1c}
+
+/* Banner "Podas de hoy" (verde) */
+:root[data-theme="dark"] .morning-banner{background:linear-gradient(135deg,#0c2620,#0e2b22);border-color:#065f46}
+:root[data-theme="dark"] .morning-banner .fub-title,
+:root[data-theme="dark"] .morning-banner .fub-sub,
+:root[data-theme="dark"] .morning-banner .fub-item-days{color:#6ee7b7}
+:root[data-theme="dark"] .morning-banner .fub-item{background:#0a1c17;border-color:#065f46}
+:root[data-theme="dark"] .mb-stat{color:#6ee7b7;background:#0a1c17;border-color:#065f46}
+:root[data-theme="dark"] .mb-close{color:#6ee7b7}
+:root[data-theme="dark"] .mb-act-view{border-color:#065f46}
+:root[data-theme="dark"] .mb-act-done{color:#6ee7b7;border-color:#065f46}
+:root[data-theme="dark"] .mb-route{border-color:#065f46;color:#6ee7b7}
+
+/* Chip de agenda: base/is-call/is-none/is-done ya son theme-aware vía tokens y
+   variables (--c-*, --card, --surface-2), no necesitan override en oscuro. */
+:root[data-theme="dark"] .agenda-warn{background:#4a3a12;color:#fde68a}
+
+/* ══ AGENDA / CALENDARIO (pestaña Agenda) ══════════════════════════════════
+   Grilla de mes que superpone trabajos, recontactos, vencimientos, seguimientos
+   y notas manuales. Colores por tipo, alineados con los chips de agenda. */
+.agc-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.agc-nav{display:flex;align-items:center;gap:6px}
+.agc-navbtn{width:34px;height:34px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;line-height:1;color:var(--accent-fg);background:var(--card);border:1px solid var(--border);border-radius:var(--radius-field);cursor:pointer}
+.agc-navbtn:active{background:var(--accent-light)}
+.agc-title{font-family:var(--font-display);font-size:18px;color:var(--text);min-width:150px;text-align:center;text-transform:capitalize}
+.agc-legend{display:flex;flex-wrap:wrap;gap:6px 12px;margin-bottom:10px;font-size:11.5px;color:var(--muted)}
+.agc-leg{display:inline-flex;align-items:center;gap:5px}
+.agc-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.agc-c-trabajo{background:var(--c-trabajo)}
+.agc-c-recontacto{background:var(--c-recontacto)}
+.agc-c-vencimiento{background:var(--c-vence)}
+.agc-c-seguimiento{background:var(--c-seguimiento)}
+.agc-c-nota{background:var(--c-nota)}
+.agc-c-visita{background:var(--c-visita)}
+.agc-grid-head{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px}
+.agc-grid-head span{text-align:center;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
+.agc-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.agc-cell{position:relative;min-height:56px;display:flex;flex-direction:column;align-items:stretch;gap:3px;padding:5px 4px 4px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-field);cursor:pointer;overflow:hidden}
+.agc-cell.is-other{opacity:.4}
+.agc-cell.is-empty{cursor:default;background:transparent;border-color:transparent}
+/* Mapa de trabajo: los días con poda agendada se tintan de fondo (concepto = color) */
+.agc-cell-work{background:var(--c-trabajo-bg)}
+.agc-cell.is-sel{background:var(--accent-light);border-color:var(--accent-fg)}
+.agc-daynum{font-size:12px;font-weight:600;color:var(--text);line-height:1}
+/* Hoy: el número va en un círculo relleno (marca inconfundible, distinta del día elegido) */
+.agc-cell.is-today .agc-daynum{align-self:flex-start;min-width:20px;height:20px;padding:0 4px;display:inline-flex;align-items:center;justify-content:center;background:var(--accent-fg);color:#fff;font-weight:800;border-radius:999px}
+.agc-dots{display:flex;flex-wrap:wrap;gap:3px;margin-top:auto}
+.agc-dots .agc-dot{width:7px;height:7px}
+.agc-more{font-size:9px;font-weight:700;color:var(--muted);line-height:1}
+/* Semana / 3 días: columnas por día con los eventos como bloques (texto a la
+   vista, sin tener que tocar). Semana = scroll horizontal (no entran 7 columnas
+   legibles en el teléfono); 3-días = 3 columnas que llenan el ancho. */
+.agc-grid.agc-cols{display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px;scrollbar-width:thin}
+.agc-grid.agc-cols .agc-col{flex:0 0 132px;display:flex;flex-direction:column;gap:5px;min-width:0}
+.agc-grid.agc-cols-3 .agc-col{flex:1 1 0}
+.agc-col-head{position:relative;display:flex;flex-direction:column;align-items:center;gap:1px;padding:6px 2px 5px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-field);cursor:pointer}
+.agc-col.is-today .agc-col-head{border-color:var(--accent-fg);box-shadow:inset 0 0 0 1px var(--accent-fg)}
+.agc-col.is-sel .agc-col-head{background:var(--accent-light);border-color:var(--accent-fg)}
+.agc-col-wd{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--muted)}
+.agc-col.is-today .agc-col-wd{color:var(--accent-fg)}
+.agc-col-num{font-size:15px;font-weight:700;color:var(--text);line-height:1}
+.agc-col.is-today .agc-col-num{color:var(--accent-fg)}
+.agc-col-body{display:flex;flex-direction:column;gap:4px}
+.agc-col-ev{display:block;width:100%;text-align:left;background:var(--surface-2);border:1px solid var(--border);border-left:4px solid var(--border);border-radius:6px;padding:5px 7px;cursor:pointer}
+.agc-col-ev.t-trabajo{border-left-color:var(--c-trabajo)}
+.agc-col-ev.t-recontacto{border-left-color:var(--c-recontacto)}
+.agc-col-ev.t-vencimiento{border-left-color:var(--c-vence)}
+.agc-col-ev.t-seguimiento{border-left-color:var(--c-seguimiento)}
+.agc-col-ev.t-nota{border-left-color:var(--c-nota)}
+.agc-col-ev.t-visita{border-left-color:var(--c-visita);background:var(--c-visita-bg)}
+.agc-col-ev-title{font-size:12px;font-weight:600;color:var(--text);line-height:1.3;overflow-wrap:anywhere}
+.agc-col-ev-h{font-size:11px;font-weight:700;color:var(--text-2);margin-right:4px}
+.agc-col-ev-sub{font-size:10.5px;color:var(--muted);line-height:1.3;margin-top:1px;overflow-wrap:anywhere}
+.agc-col-ev.done .agc-col-ev-title{text-decoration:line-through;opacity:.6}
+.agc-col-empty{font-size:14px;color:var(--faint);text-align:center;padding:6px 0}
+/* Indicador de carga: cuántos trabajos hay agendados ese día (solo si ≥2) */
+.agc-load{position:absolute;top:3px;right:3px;min-width:15px;height:15px;padding:0 4px;display:inline-flex;align-items:center;justify-content:center;font-size:9.5px;font-weight:800;line-height:1;color:#fff;background:var(--c-trabajo);border-radius:8px}
+.agc-day-load{font-family:var(--font-text);font-size:11px;font-weight:700;color:var(--c-trabajo);background:var(--c-trabajo-bg);padding:2px 8px;border-radius:20px;margin-left:2px}
+/* Fila de acciones de la agenda (export .ics) */
+.agc-actions{display:flex;justify-content:flex-end;margin-bottom:12px}
+/* Detalle del día seleccionado */
+.agc-day{margin-top:14px}
+.agc-day-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+.agc-day-title{font-family:var(--font-display);font-size:16px;color:var(--text)}
+.agc-ev{display:flex;align-items:flex-start;gap:9px;padding:10px 12px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-field);margin-bottom:7px}
+.agc-ev-bar{width:4px;align-self:stretch;border-radius:3px;flex-shrink:0}
+.agc-ev.t-trabajo .agc-ev-bar{background:var(--c-trabajo)}
+.agc-ev.t-recontacto .agc-ev-bar{background:var(--c-recontacto)}
+.agc-ev.t-vencimiento .agc-ev-bar{background:var(--c-vence)}
+.agc-ev.t-seguimiento .agc-ev-bar{background:var(--c-seguimiento)}
+.agc-ev.t-nota .agc-ev-bar{background:var(--c-nota)}
+/* Visita (evaluación presencial / ir a presupuestar): además de la barra, la
+   tarjeta entera se tinta y la etiqueta va en color — es el compromiso que más
+   se anota a mano y tiene que saltar a la vista entre las notas comunes. */
+.agc-ev.t-visita .agc-ev-bar{background:var(--c-visita)}
+.agc-ev.t-visita{background:var(--c-visita-bg);border-color:var(--c-visita)}
+.agc-ev.t-visita .agc-ev-kind{color:var(--c-visita-fg)}
+.agc-ev-body{flex:1;min-width:0}
+.agc-ev-kind{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);display:block;margin-bottom:2px}
+/* Hora del compromiso (notas y visitas con hora). Va pegada a la etiqueta del
+   tipo, más marcada que el resto de la línea: es el dato que se busca de reojo. */
+.agc-ev-hora{font-size:11.5px;font-weight:700;color:var(--text);letter-spacing:0;text-transform:none}
+.agc-ev-title{font-size:14px;font-weight:600;color:var(--text);line-height:1.35;word-break:break-word}
+.agc-ev-sub{font-size:12px;color:var(--muted);margin-top:2px;line-height:1.4;word-break:break-word}
+.agc-ev.done .agc-ev-title{text-decoration:line-through;opacity:.6}
+/* Anotaciones internas dentro del evento de trabajo (Agenda). Privadas: solo
+   se ven acá, no salen a Google Calendar ni al .ics. */
+.agc-ev-notes{display:flex;flex-direction:column;gap:3px;margin-top:6px;padding:6px 8px;background:rgba(245,179,1,.13);border:1px solid rgba(245,179,1,.45);border-radius:8px}
+.agc-ev-note{display:flex;gap:5px;align-items:flex-start;font-size:11.5px;line-height:1.35;color:#6b4e00}
+.agc-ev-note>.ic{width:13px;height:13px;color:#c77800;flex-shrink:0;margin-top:1px}
+.agc-ev-note-tx{min-width:0;overflow-wrap:anywhere}
+.agc-ev-note b{font-weight:700;color:#5a4200}
+:root[data-theme="dark"] .agc-ev-notes{background:rgba(251,191,36,.1);border-color:rgba(251,191,36,.35)}
+:root[data-theme="dark"] .agc-ev-note{color:#fde68a}
+:root[data-theme="dark"] .agc-ev-note>.ic{color:#fbbf24}
+:root[data-theme="dark"] .agc-ev-note b{color:#fef3c7}
+/* Chip de clima (pronóstico del día del trabajo): en la tarjeta de evento de
+   la Agenda, el banner de podas de hoy y el pop-up del día. La variante -rain
+   se pinta en ámbar/rojo para que el aviso de lluvia salte a la vista. */
+.clima-chip{display:inline-flex;align-items:center;flex-wrap:wrap;gap:1px 5px;font-size:11.5px;font-weight:600;color:var(--muted);background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:3px 9px;line-height:1.35;white-space:normal;overflow-wrap:anywhere;max-width:100%}
+.clima-chip .clima-emoji{font-size:13px;line-height:1}
+.clima-chip.clima-rain{color:#b45309;background:#fef3c7;border-color:#fcd34d}
+:root[data-theme="dark"] .clima-chip.clima-rain{color:#fcd34d;background:rgba(251,191,36,.12);border-color:rgba(251,191,36,.4)}
+/* UV alto (≥6) sin lluvia: naranja "protegete del sol". Si además llueve,
+   gana el ámbar de lluvia (el UV igual queda en el texto del chip). */
+.clima-chip.clima-uv{color:#c2410c;background:#ffedd5;border-color:#fdba74}
+:root[data-theme="dark"] .clima-chip.clima-uv{color:#fdba74;background:rgba(251,146,60,.12);border-color:rgba(251,146,60,.4)}
+/* Viento fuerte (ráfaga ≥ umbral): rosa/rojo "peligro en altura". Solo pinta
+   el chip si no llueve (la lluvia gana el color; el viento queda en el texto). */
+.clima-chip.clima-wind{color:#be123c;background:#ffe4e6;border-color:#fda4af}
+:root[data-theme="dark"] .clima-chip.clima-wind{color:#fda4af;background:rgba(244,63,94,.12);border-color:rgba(244,63,94,.4)}
+/* Tira de pronóstico de 7 días en el diálogo de agendar (idea: elegir un buen
+   día). Cada celda = día tocable con emoji + temperatura; los días con lluvia
+   o viento fuerte se tiñen de ámbar. */
+.agenda-clima-strip{display:flex;gap:6px;overflow-x:auto;padding:2px 0 4px;-webkit-overflow-scrolling:touch}
+.agenda-clima-day{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:46px;padding:6px 4px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-field);cursor:pointer;font-family:var(--font-text)}
+.agenda-clima-day .acd-wd{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase}
+.agenda-clima-day .acd-em{font-size:17px;line-height:1}
+.agenda-clima-day .acd-t{font-size:11px;font-weight:600;color:var(--text)}
+.agenda-clima-day.mal{background:#fef3c7;border-color:#fcd34d}
+.agenda-clima-day.mal .acd-wd{color:#b45309}
+:root[data-theme="dark"] .agenda-clima-day.mal{background:rgba(251,191,36,.12);border-color:rgba(251,191,36,.4)}
+.agenda-clima-day.sel{outline:2px solid var(--accent);outline-offset:0}
+.agenda-clima-day.elegido{border-color:var(--accent);border-width:2px}
+.agenda-clima-sel{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;margin-top:2px;font-size:12px}
+.agenda-clima-sel .acd-warn{color:var(--muted);line-height:1.35}
+.agenda-clima-hint{font-size:11.5px;color:var(--muted);margin:0 0 4px}
+.agc-ev-body .clima-chip{margin-top:4px}
+.da-item .clima-chip{align-self:flex-start}
+/* Chip tocable: abre el panel de detalle del clima (climaOpenDetail). El ›
+   final es la pista visual de que hay más información detrás. */
+.clima-chip.clima-tap{cursor:pointer}
+.clima-chip.clima-tap:active{filter:brightness(.93)}
+.clima-chip .clima-more{font-weight:800;opacity:.55;margin-left:1px}
+/* ── Panel de detalle del clima (tocar un chip o el aviso de mal tiempo) ──
+   Pronóstico completo del día del trabajo/visita: lluvia, viento, UV y
+   térmica en tarjetas, hora por hora (si hay), recomendaciones y tira de
+   próximos días para comparar/elegir mejor fecha. */
+#clima-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2300;align-items:center;justify-content:center;padding:16px}
+#clima-overlay.open{display:flex}
+#clima-box{position:relative;background:var(--card);border-radius:var(--radius-box);padding:20px;width:460px;max-width:94vw;max-height:88vh;overflow:auto;overscroll-behavior:contain;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.cw-close{position:absolute;top:10px;right:10px;width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:var(--muted);background:var(--surface-2);border:1px solid var(--border);border-radius:50%;cursor:pointer;line-height:1}
+.cw-close:active{background:var(--accent-light)}
+.cw-kicker{font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--muted)}
+.cw-title{font-family:var(--font-display);font-size:19px;line-height:1.2;color:var(--text);margin:1px 0 2px;padding-right:36px}
+.cw-fecha{font-size:12.5px;font-weight:600;color:var(--muted);margin-bottom:8px}
+#clima-box .agenda-clima-strip{margin-bottom:4px}
+.cw-hero{display:flex;align-items:center;gap:12px;margin:8px 0 12px}
+.cw-hero-em{font-size:42px;line-height:1}
+.cw-hero-desc{font-size:15.5px;font-weight:700;color:var(--text)}
+.cw-hero-t{font-size:12.5px;font-weight:600;color:var(--muted)}
+.cw-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.cw-card{display:flex;flex-direction:column;gap:2px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-field);padding:9px 11px}
+.cw-card-l{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;color:var(--muted)}
+.cw-card-v{font-size:15px;font-weight:700;color:var(--text)}
+.cw-card-s{font-size:11.5px;color:var(--muted);line-height:1.35}
+/* warn = ámbar (lluvia / UV alto); peligro = rosa (ráfagas, trabajo en altura) */
+.cw-card.warn{background:#fef3c7;border-color:#fcd34d}
+.cw-card.warn .cw-card-l,.cw-card.warn .cw-card-s{color:#b45309}
+.cw-card.warn .cw-card-v{color:#92400e}
+:root[data-theme="dark"] .cw-card.warn{background:rgba(251,191,36,.12);border-color:rgba(251,191,36,.4)}
+:root[data-theme="dark"] .cw-card.warn .cw-card-l,:root[data-theme="dark"] .cw-card.warn .cw-card-s{color:#fcd34d}
+:root[data-theme="dark"] .cw-card.warn .cw-card-v{color:#fde68a}
+.cw-card.peligro{background:#ffe4e6;border-color:#fda4af}
+.cw-card.peligro .cw-card-l,.cw-card.peligro .cw-card-s{color:#be123c}
+.cw-card.peligro .cw-card-v{color:#9f1239}
+:root[data-theme="dark"] .cw-card.peligro{background:rgba(244,63,94,.12);border-color:rgba(244,63,94,.4)}
+:root[data-theme="dark"] .cw-card.peligro .cw-card-l,:root[data-theme="dark"] .cw-card.peligro .cw-card-s{color:#fda4af}
+:root[data-theme="dark"] .cw-card.peligro .cw-card-v{color:#fecdd3}
+.cw-sec{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);margin:14px 0 6px}
+.cw-hours{display:flex;gap:6px;overflow-x:auto;padding:2px 0 6px;-webkit-overflow-scrolling:touch}
+.cw-hour{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:46px;padding:7px 4px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-field)}
+.cw-hour.mal{background:#fef3c7;border-color:#fcd34d}
+:root[data-theme="dark"] .cw-hour.mal{background:rgba(251,191,36,.12);border-color:rgba(251,191,36,.4)}
+.cw-hour-h{font-size:10px;font-weight:700;color:var(--muted)}
+.cw-hour-em{font-size:16px;line-height:1}
+.cw-hour-t{font-size:11px;font-weight:700;color:var(--text)}
+.cw-hour-pp{font-size:10px;font-weight:600;color:#2563eb;white-space:nowrap}
+:root[data-theme="dark"] .cw-hour-pp{color:#93c5fd}
+.cw-hour-g{font-size:10px;font-weight:600;color:#be123c;white-space:nowrap}
+:root[data-theme="dark"] .cw-hour-g{color:#fda4af}
+.cw-recos{display:flex;flex-direction:column;gap:6px}
+.cw-reco{font-size:12.5px;line-height:1.4;color:var(--text);background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-field);padding:8px 11px}
+.cw-reco-ok{background:#ecfdf5;border-color:#a7f3d0;color:#065f46}
+:root[data-theme="dark"] .cw-reco-ok{background:rgba(52,211,153,.1);border-color:rgba(52,211,153,.35);color:#a7f3d0}
+.cw-empty{font-size:13px;color:var(--muted);padding:12px 0;line-height:1.5}
+.cw-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:14px;flex-wrap:wrap}
+.cw-src{font-size:10.5px;color:var(--muted)}
+/* "Actualizar": pedir el pronóstico ahora, sin esperar el TTL de 3 h. Discreto
+   (va al lado de la fuente y la edad del dato), pero con área táctil de botón. */
+.cw-refresh{display:inline-flex;align-items:center;gap:5px;padding:6px 10px;font-family:var(--font-text);font-size:11.5px;font-weight:600;color:var(--accent-fg);background:transparent;border:1px solid var(--border);border-radius:var(--radius-field);cursor:pointer;white-space:nowrap}
+.cw-refresh .ic{width:13px;height:13px;color:var(--accent-fg)}
+.cw-refresh:active{background:var(--surface-2)}
+.cw-refresh.is-busy{color:var(--muted);cursor:default}
+.cw-refresh-sp{width:12px;height:12px;flex:none;border:2px solid var(--border);border-top-color:var(--accent-fg);border-radius:50%;animation:spin .7s linear infinite}
+/* flex-wrap: con "Compartir" + "Reprogramar" + "Listo" los tres botones no
+   entran en una línea de teléfono angosto; sin esto se desbordaban del panel. */
+.cw-btns{display:flex;gap:8px;justify-content:flex-end;flex:1;flex-wrap:wrap}
+/* ── Centro de notificaciones (campanita) ──
+   Badge rojo sobre la campanita del topbar + panel con Pendientes y Recientes.
+   Reusa la caja/overlay del panel de clima (#clima-box). */
+.tbtn-bell{position:relative}
+.notif-badge{position:absolute;top:-5px;right:-5px;min-width:16px;height:16px;line-height:16px;border-radius:9px;background:#e11d48;color:#fff;font-size:10px;font-weight:700;text-align:center;padding:0 4px;box-shadow:0 0 0 2px var(--accent)}
+#notif-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2300;align-items:center;justify-content:center;padding:16px}
+#notif-overlay.open{display:flex}
+#notif-box{position:relative;background:var(--card);border-radius:var(--radius-box);padding:20px;width:460px;max-width:94vw;max-height:88vh;overflow:auto;overscroll-behavior:contain;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.nt-sec{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);margin:16px 0 8px}
+/* Switch de orden del panel (Fecha / Tipo). Mismo segmentado que la Agenda,
+   más chico: acá es un ajuste de lectura, no la navegación de la pantalla. */
+.nt-ord{display:flex;align-items:center;gap:4px;background:var(--surface-2);border-radius:var(--radius-field);padding:3px;margin-top:4px}
+.nt-ord-lbl{flex:1 1 auto;min-width:0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);padding-left:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nt-ord-b{flex:0 0 auto;padding:6px 14px;font-family:var(--font-text);font-size:13px;font-weight:600;color:var(--muted);background:transparent;border:none;border-radius:6px;cursor:pointer}
+.nt-ord-b.active{background:var(--card);color:var(--accent-fg);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.nt-ord-b:hover:not(.active){color:var(--text)}
+.nt-list{display:flex;flex-direction:column;gap:8px}
+.nt-item{display:flex;gap:10px;align-items:flex-start;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-field);padding:10px 11px}
+.nt-item.nt-tap{cursor:pointer}
+.nt-item.nt-tap:active{background:var(--accent-light)}
+.nt-item.nt-done{opacity:.55}
+.nt-ico{font-size:18px;line-height:1.2;flex-shrink:0}
+.nt-body{flex:1;min-width:0}
+.nt-txt{font-size:13.5px;line-height:1.4;color:var(--text)}
+.nt-sub{font-size:11.5px;color:var(--muted);margin-top:1px}
+.nt-when{font-size:10.5px;color:var(--muted);margin-top:2px}
+.nt-undo{flex-shrink:0;align-self:center;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-field);color:var(--accent);font-size:12px;font-weight:600;padding:6px 10px;cursor:pointer;white-space:nowrap}
+.nt-undo:active{background:var(--accent-light)}
+.nt-undo:disabled{color:var(--muted);cursor:default;opacity:.7}
+.nt-empty{font-size:13px;color:var(--muted);padding:10px 0;line-height:1.5}
+.nt-clear{margin-top:14px;width:100%;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-field);color:var(--muted);font-size:12px;font-weight:600;padding:8px;cursor:pointer}
+.nt-clear:active{background:var(--accent-light)}
+/* Botones con TEXTO, en una fila debajo del evento. Solo-ícono, el libro
+   ("ver en el historial") no se entendía, y la columna de botones a la derecha
+   le comía el ancho al título ("Vence Lucía / Fernández" partido). */
+.agc-ev-acts{display:flex;flex-flow:row wrap;gap:7px;margin-top:8px}
+.agc-ev-btn{min-width:44px;height:40px;display:inline-flex;align-items:center;justify-content:center;gap:5px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-field);cursor:pointer;color:var(--muted);padding:0 10px;font-family:var(--font-text);font-size:13px;font-weight:600;white-space:nowrap}
+.agc-ev-btn .ic{width:17px;height:17px;flex:none}
+.agc-ev-btn:active{background:var(--accent-light)}
+.agc-day-empty{font-size:13px;color:var(--muted);padding:6px 2px;line-height:1.5}
+.agc-note-form{display:flex;gap:7px;align-items:stretch;margin-top:8px}
+.agc-note-form input{flex:1;min-width:0}
+/* Segunda fila del alta: hora opcional + los dos botones de alta. El texto se
+   queda solo en su fila (es lo que más se escribe) y la hora no lo comprime. */
+.agc-note-acts{display:flex;gap:7px;align-items:stretch;margin-top:7px;flex-wrap:wrap}
+.agc-note-acts>.btn{flex:1 1 auto}
+.agc-note-hora{display:inline-flex;align-items:center;gap:6px;flex:0 0 auto;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius-field);background:var(--card);color:var(--muted);cursor:pointer}
+.agc-note-hora .ic{width:15px;height:15px;flex:0 0 auto}
+#agc-note-hora{border:none;background:transparent;padding:8px 0;font-family:var(--font-text);font-size:13px;color:var(--text);outline:none;min-width:72px;-webkit-appearance:none;appearance:none}
+/* El reloj del control es el del icono (toda la cajita abre el selector), no el
+   indicador nativo: dos relojes pegados en un campo de 100 px son ruido. */
+#agc-note-hora::-webkit-calendar-picker-indicator{display:none}
+/* Botón "+ Visita" (alta de nota tipo visita) — azul del concepto visita */
+.btn-visita{background:var(--c-visita);border-color:var(--c-visita);color:#fff}
+.btn-visita:active{filter:brightness(.9)}
+/* Contacto opcional de la nota (chat directo por WhatsApp) */
+.agc-note-contact{margin-top:8px}
+.agc-note-contact>summary{list-style:none;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--muted);padding:4px 2px;user-select:none}
+.agc-note-contact>summary::-webkit-details-marker{display:none}
+.agc-note-contact>summary .ic{width:15px;height:15px}
+.agc-note-crow{display:flex;flex-wrap:wrap;gap:7px;margin-top:7px;align-items:flex-start}
+.agc-note-crow>input{flex:1 1 140px;min-width:0}
+.agc-note-crow>.btn{flex:0 0 auto}
+.agc-cli-wrap{position:relative;flex:1 1 150px;min-width:0}
+.agc-cli-wrap>input{width:100%}
+/* Inputs de las notas (alta, contacto, ubicación) y del modal de edición: look
+   consistente con la app (el default del navegador variaba entre Android y
+   escritorio). */
+.agc-note-form>input,.agc-note-crow>input,.agc-cli-wrap>input,#agc-note-ubic,#agc-edit-ubic,#agc-edit-text,#agc-edit-hora{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-field);font-family:var(--font-text);font-size:13px;color:var(--text);background:var(--card);outline:none;-webkit-appearance:none;appearance:none}
+.agc-note-form>input:focus,.agc-note-crow>input:focus,.agc-cli-wrap>input:focus,#agc-note-ubic:focus,#agc-edit-ubic:focus,#agc-edit-text:focus,#agc-edit-hora:focus{border-color:var(--accent-fg)}
+.agc-ubic-btns{display:flex;gap:7px;flex-wrap:wrap;margin-top:7px}
+.ne-hint{font-weight:400;font-size:11px;color:var(--muted)}
+/* Dropdown NATIVO de clientes (panel propio, no la barra de sugerencias del teclado) */
+.agc-cli-dd{position:absolute;z-index:9999;top:100%;left:0;right:0;margin-top:3px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-field);box-shadow:0 12px 32px rgba(0,0,0,.18);max-height:216px;overflow-y:auto;overscroll-behavior:contain}
+.agc-cli-opt{display:flex;flex-direction:column;gap:1px;padding:9px 12px;cursor:pointer;border-bottom:1px solid var(--surface-2)}
+.agc-cli-opt:last-child{border-bottom:none}
+.agc-cli-opt:active{background:var(--accent-light)}
+.agc-cli-opt-n{font-size:13px;font-weight:500;color:var(--text)}
+.agc-cli-opt-t{font-size:11px;color:var(--muted)}
+/* Botón de chat de la tarjeta de evento: verde WhatsApp para diferenciarlo */
+.agc-ev-btn.agc-ev-wa{color:var(--wa,#16a34a);border-color:color-mix(in srgb,var(--wa,#16a34a) 35%,var(--border))}
+.agc-ev-btn.agc-ev-wa .ic{color:var(--wa,#16a34a)}
+/* Botón de compartir: tinte con la marca para diferenciarlo del resto */
+.agc-ev-btn.agc-ev-share{color:var(--accent-fg);border-color:color-mix(in srgb,var(--accent-fg) 32%,var(--border))}
+.agc-ev-btn.agc-ev-share .ic{color:var(--accent-fg)}
+/* Deslizar notas (estilo Gmail): la tarjeta se corre y deja ver la acción.
+   Derecha → "Hecho" (verde); izquierda → "Eliminar" (rojo). Los fondos van
+   detrás; la tarjeta (.agc-swipe-fg) es la que se traslada con el dedo. */
+.agc-swipe{position:relative;margin-bottom:7px;overflow:hidden;border-radius:var(--radius-field)}
+.agc-swipe .agc-ev{margin-bottom:0}
+.agc-swipe-fg{position:relative;z-index:1;touch-action:pan-y;will-change:transform}
+.agc-swipe-bg{position:absolute;inset:0;display:flex;align-items:center;gap:9px;padding:0 22px;font-size:14.5px;font-weight:700;color:#fff;opacity:0;pointer-events:none;border-radius:var(--radius-field)}
+.agc-swipe-bg .ic{width:22px;height:22px;color:#fff}
+.agc-swipe-done{justify-content:flex-start;background:#16a34a}
+.agc-swipe-del{justify-content:flex-end;background:var(--red)}
+.agc-swipe.agc-swipe-ready .agc-swipe-bg .ic{transform:scale(1.18);transition:transform .12s ease}
+/* Modal de edición de nota */
+#note-edit-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2000;align-items:center;justify-content:center}
+#note-edit-overlay.open{display:flex}
+/* max-height + scroll: con el campo de fecha el modal creció y en pantallas
+   chicas (o con el teclado abierto) los botones Cancelar/Guardar quedaban
+   fuera de la vista. */
+#note-edit-box{background:var(--card);border-radius:var(--radius-box);padding:22px;width:400px;max-width:92vw;max-height:92vh;overflow-y:auto;overscroll-behavior:contain;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+#note-edit-box h4{font-family:var(--font-display);font-size:17px;margin-bottom:14px;color:var(--text)}
+.ne-field{margin-bottom:14px}
+.ne-field>label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:5px}
+#note-edit-box .cbtns{display:flex;gap:8px;justify-content:flex-end;margin-top:4px}
+/* Fecha del recordatorio: el input usa el calendario propio (.cdate). Mover el
+   compromiso de día se hace ahí (tocar el calendario y elegir), sin atajos. */
+#agc-edit-fecha{width:100%}
+#note-edit-box .cdate{display:block}
+.ne-datemsg{margin-top:6px;font-size:12px;color:var(--muted);line-height:1.4}
+.ne-datemsg.is-moved{color:var(--accent-fg);font-weight:600}
+/* Hora (opcional): sin hora el evento es de día completo. El botón la borra —
+   el <input type=time> de Android no ofrece forma de volver a "sin hora". */
+.ne-hora-row{display:flex;gap:8px;align-items:center}
+.ne-hora-row>input{flex:1 1 auto;min-width:0}
+.ne-hora-clear{flex:0 0 auto;padding:9px 12px;font-family:var(--font-text);font-size:12.5px;font-weight:600;color:var(--text-2);background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-field);cursor:pointer;white-space:nowrap}
+.ne-hora-clear:active{background:var(--accent-light)}
+/* Selector de tipo (Nota / Visita): segmentado de dos botones en vez de un
+   <select> nativo, que dentro del modal abría su lista detrás del overlay. Cada
+   opción se tiñe con el color de su concepto cuando está activa. */
+.ne-segment{display:flex;gap:8px}
+.ne-seg-btn{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 12px;font-family:var(--font-text);font-size:13px;font-weight:600;color:var(--text-2);background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-field);cursor:pointer}
+.ne-seg-btn .ic{width:16px;height:16px}
+.ne-seg-btn[data-tipo=""].is-active{border-color:var(--c-nota);background:var(--c-nota-bg);color:var(--c-nota-fg)}
+.ne-seg-btn[data-tipo="visita"].is-active{border-color:var(--c-visita);background:var(--c-visita-bg);color:var(--c-visita-fg)}
+/* ── Modal "Nueva versión" (presupuesto vencido que se vuelve a pasar) ──
+   Reusa la caja del modal de nota. Lo propio es el bloque de precios: el
+   porcentaje con atajos y la cuenta hecha (total viejo → total nuevo), que es
+   lo único que el usuario mira antes de decidir. */
+#nv-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2000;align-items:center;justify-content:center}
+#nv-overlay.open{display:flex}
+/* Máquina de estilo (v244). Misma caja que "Nueva versión". */
+#estilo-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2000;align-items:center;justify-content:center}
+#estilo-overlay.open{display:flex}
+#estilo-box{background:var(--card);border-radius:var(--radius-box);padding:22px;width:420px;max-width:92vw;max-height:92vh;overflow-y:auto;overscroll-behavior:contain;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+#estilo-box h4{font-family:var(--font-display);font-size:17px;margin-bottom:4px;color:var(--text)}
+.estilo-reels{display:grid;gap:4px}
+.estilo-reel{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:6px 11px;border:1px solid var(--border);border-radius:var(--radius-field);background:var(--surface-2);font-size:13px;min-width:0}
+.estilo-reel-l{color:var(--muted);flex:none}
+.estilo-reel-v{font-weight:700;color:var(--muted);display:flex;align-items:center;gap:6px;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.estilo-reel.listo .estilo-reel-v{color:var(--accent-fg)}
+.estilo-dot{width:14px;height:14px;border-radius:50%;flex:none;border:1px solid rgba(0,0,0,.15)}
+.estilo-acc{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.estilo-deshacer{margin-top:12px;background:none;border:none;padding:6px 0;color:var(--muted);font-family:var(--font-text);font-size:12.5px;text-decoration:underline;cursor:pointer}
+.eg{margin-top:16px;display:grid;gap:8px}
+.eg-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.eg-tit{font-weight:700;font-size:14px;color:var(--text)}
+.eg-form{display:flex;gap:6px;flex-wrap:wrap}
+.eg-form[hidden]{display:none}
+.eg-form input{flex:1 1 160px;min-width:0;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-field);font-family:var(--font-text);font-size:13px;color:var(--text);background:var(--card);outline:none;-webkit-appearance:none;appearance:none}
+.eg-form input:focus{border-color:var(--accent-fg);box-shadow:0 0 0 3px rgba(var(--accent-rgb),.1)}
+.eg-lista{display:grid;gap:6px}
+.eg-item{display:flex;align-items:center;gap:10px;padding:8px 6px 8px 10px;border:1px solid var(--border);border-radius:var(--radius-field);background:var(--card);min-width:0}
+.eg-item.is-uso{border-color:var(--accent-fg);box-shadow:inset 3px 0 0 var(--accent-fg)}
+.eg-item.is-auto{border-style:dashed}
+.eg-sw{width:30px;height:30px;border-radius:50%;flex:none;position:relative;overflow:hidden;border:1px solid rgba(0,0,0,.15)}
+.eg-sw span{position:absolute;right:0;bottom:0;width:50%;height:50%}
+.eg-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.eg-txt b{font-size:13.5px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.eg-txt span{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.eg-uso{font-size:12px;font-weight:700;color:var(--accent-fg);flex:none;padding:0 4px}
+.eg-del{background:none;border:none;color:var(--muted);font-size:15px;cursor:pointer;flex:none;min-width:38px;min-height:38px;border-radius:var(--radius-field)}
+.eg-del:hover{color:var(--text);background:var(--surface-2)}
+.eg-vacio{font-size:12.5px;color:var(--muted);padding:4px 0}
+.estilo-fabrica{font-size:12.5px;line-height:1.5;color:var(--text-2);background:var(--surface-2);border-left:3px solid #d97706;border-radius:var(--radius-field);padding:8px 11px;margin-bottom:8px}
+.cpreset-igual{background:conic-gradient(var(--cp-main,#064e3b) 0 50%,#fff 0 100%)}
+.mpreset svg{width:30px;height:30px;display:block}
+.mpreset .mpreset-none{width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--muted)}
+#nv-box{background:var(--card);border-radius:var(--radius-box);padding:22px;width:420px;max-width:92vw;max-height:92vh;overflow-y:auto;overscroll-behavior:contain;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+#nv-box h4{font-family:var(--font-display);font-size:17px;margin-bottom:4px;color:var(--text)}
+.nv-sub{font-size:12.5px;color:var(--muted);line-height:1.5;margin-bottom:16px}
+.nv-pct-row{display:flex;gap:8px;align-items:center}
+.nv-pct-row>input{flex:0 0 96px;width:96px}
+.nv-pct-sign{font-size:14px;font-weight:700;color:var(--muted)}
+.nv-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.nv-chip{padding:6px 12px;font-family:var(--font-text);font-size:12.5px;font-weight:600;color:var(--text-2);background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-field);cursor:pointer}
+.nv-chip.is-active{border-color:var(--accent-fg);background:var(--accent-light);color:var(--accent-fg)}
+.nv-prev{margin-top:14px;padding:12px 14px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-field)}
+.nv-prev-lbl{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.nv-prev-nums{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;font-family:var(--font-mono)}
+.nv-prev-old{font-size:14px;color:var(--muted);text-decoration:line-through}
+.nv-prev-arrow{font-size:13px;color:var(--muted)}
+.nv-prev-new{font-size:19px;font-weight:600;color:var(--accent-fg)}
+.nv-prev-note{margin-top:6px;font-size:11.5px;color:var(--muted);line-height:1.45}
+#nv-box .cbtns{display:flex;gap:8px;justify-content:flex-end;margin-top:18px}
+/* ─── Colaboraciones (trabajo propio para un colega) ─────────────────────
+   El diálogo reusa la caja y la vista previa de "Nueva versión": mismo peso
+   visual, y lo que cambia es solo el formulario. */
+#colab-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2000;align-items:center;justify-content:center}
+#colab-overlay.open{display:flex}
+#colab-box{background:var(--card);border-radius:var(--radius-box);padding:22px;width:440px;max-width:92vw;max-height:92vh;overflow-y:auto;overscroll-behavior:contain;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+#colab-box h4{font-family:var(--font-display);font-size:17px;margin-bottom:4px;color:var(--text)}
+#colab-box .cbtns{display:flex;gap:8px;justify-content:flex-end;margin-top:18px}
+/* Encabezado del Historial: título + las dos acciones (Agenda y Colaboración).
+   Los botones van un poco más altos que un .btn normal para que el dedo no
+   toque uno queriendo el otro, y el grupo baja entero de línea si no entra al
+   lado del título (con 58 presupuestos el contador lo hace largo). */
+.hist-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.hist-headacts{display:flex;gap:7px;align-items:center;margin-left:auto}
+/* El padding horizontal está medido: con 14px el par de botones no entraba al
+   lado del título en un celular de 360 y el grupo caía a la línea de abajo.
+   El alto (11px) es lo que hace falta para el dedo y no se toca. */
+.hist-headbtn{padding:11px 10px;font-size:13px}
+/* El "+" en vez de un ícono SVG: dice lo mismo, ocupa la mitad, y esos px son
+   los que deciden si los dos botones entran al lado del título. */
+.hist-headbtn-plus{font-size:15px;font-weight:700;line-height:1}
+/* Menos aire entre letras que el resto de los títulos de sección: acá compite
+   por el ancho con los dos botones. */
+.hist-head .st{letter-spacing:.4px}
+#colab-box .ne-field>input{width:100%}
+/* Segmentado Trabajo / Colaboración, arriba del diálogo. Mismo patrón que el
+   de vistas de la Agenda: un select acá abriría por detrás del overlay. */
+.colab-tseg-wrap{display:flex;gap:3px;padding:3px;margin-bottom:12px;background:var(--surface-2);border-radius:var(--radius-field)}
+.colab-tseg-wrap[hidden]{display:none}
+.colab-tseg{flex:1;padding:8px 10px;font-family:var(--font-text);font-size:13px;font-weight:600;color:var(--muted);background:transparent;border:none;border-radius:6px;cursor:pointer}
+.colab-tseg.is-active{background:var(--card);color:var(--accent-fg);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.colab-tarifas{display:flex;flex-wrap:wrap;gap:6px}
+.colab-tarifas-empty{font-size:11.5px;color:var(--muted);line-height:1.45}
+.colab-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;font-family:var(--font-text);font-size:12.5px;font-weight:600;color:var(--text-2);background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-field);cursor:pointer;text-align:left}
+.colab-chip.is-active{border-color:var(--accent-fg);background:var(--accent-light);color:var(--accent-fg)}
+.colab-chip-precio{font-family:var(--font-mono);font-size:11.5px;opacity:.8}
+.colab-precio-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.colab-precio-row>input{flex:1 1 90px;min-width:0}
+.colab-precio-row>select{flex:1 1 120px;min-width:0}
+.colab-x{font-size:14px;font-weight:700;color:var(--muted)}
+/* Badge de la tarjeta y del popup del mapa */
+.hbadge-colab{display:inline-block;margin-left:6px;padding:1px 7px;font-size:10px;font-weight:700;color:#115e59;background:#ccfbf1;border-radius:20px;vertical-align:middle}
+.hitem.is-colab{border-left:3px solid #0d9488}
+/* Trabajo directo: es venta del negocio, así que lleva el verde de la app y
+   no el teal de las colaboraciones (que las paga un colega). */
+.hbadge-colab.is-directo{color:var(--accent-fg);background:var(--accent-light)}
+.hitem.is-colab.is-directo{border-left-color:var(--accent)}
+.mapa-zona-colab.is-directo{color:var(--accent-fg)}
+/* Renglón del mes: las colaboraciones se ven sin desplegar, y sin tocar el
+   número de presupuestos del encabezado. */
+.hmonth-colab{display:flex;align-items:center;gap:6px;padding:5px 12px;font-size:11.5px;font-weight:600;color:#115e59;background:#f0fdfa;border-top:1px solid var(--border)}
+.hmonth-colab .ic{width:13px;height:13px}
+.hmonth-colab-tot{margin-left:auto;font-family:var(--font-mono);font-size:12px}
+/* Subtotal propio al filtrar por colaboraciones */
+.hcolab-resumen{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#f0fdfa;border:1px solid #99f6e4;border-radius:8px;padding:10px 14px;margin-bottom:10px}
+.hcolab-resumen-n{font-size:13px;font-weight:700;color:#115e59}
+.hcolab-resumen-tot{font-family:var(--font-mono);font-size:15px;font-weight:600;color:#115e59}
+.hcolab-resumen-nota{flex:1 1 100%;font-size:11px;color:var(--muted)}
+/* Panel aparte en las estadísticas de zona del mapa */
+.mapa-zona-colab{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:5px;padding-top:5px;border-top:1px dashed var(--border);font-size:12px;color:#115e59}
+.mapa-zona-colab .ic{width:13px;height:13px}
+/* Tarifas propias en Empresa */
+.missvc-form{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+.missvc-form-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.missvc-form-row>input{flex:1 1 90px;min-width:0}
+.missvc-form-row>select{flex:1 1 110px;min-width:0}
+.missvc-row .svc-name{display:flex;flex-direction:column;gap:2px}
+.missvc-unidad{font-size:11px;color:var(--muted);font-weight:500}
+.missvc-precio{flex:0 0 108px;width:108px;font-family:var(--font-mono);font-size:13px;margin:0}
+/* Segmentado Mes / Semana / 3 días / Agenda */
+.agc-viewtoggle{display:flex;max-width:100%;overflow-x:auto;background:var(--surface-2);border-radius:var(--radius-field);padding:3px;gap:3px;margin-bottom:12px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.agc-viewtoggle::-webkit-scrollbar{display:none}
+.agc-vtab{flex:1 0 auto;white-space:nowrap;padding:7px 14px;font-family:var(--font-text);font-size:13px;font-weight:600;color:var(--muted);background:transparent;border:none;border-radius:6px;cursor:pointer}
+.agc-vtab.active{background:var(--card);color:var(--accent-fg);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.agc-vtab:hover:not(.active){color:var(--text)}
+/* Vista Agenda (lista cronológica) */
+.agc-list-group{margin-bottom:18px}
+.agc-list-dayhead{font-family:var(--font-display);font-size:15px;color:var(--text);margin:0 0 8px;display:flex;align-items:center;gap:7px}
+.agc-list-dayhead.is-today{color:var(--accent-fg)}
+.agc-list-dayhead .ic{width:15px;height:15px}
+/* Barra plegable de "Atrasado" (colapsada por defecto) */
+.agc-overdue-toggle{display:flex;align-items:center;gap:8px;width:100%;padding:9px 12px;margin:0 0 8px;font-family:var(--font-text);font-size:13.5px;font-weight:700;color:var(--c-vence);background:var(--c-vence-bg);border:1px solid transparent;border-radius:var(--radius-field);cursor:pointer;text-align:left}
+.agc-overdue-toggle .ic{width:16px;height:16px;flex-shrink:0}
+.agc-overdue-lbl{flex:1;min-width:0}
+.agc-overdue-caret{font-size:12px;opacity:.8}
+.agc-list-empty{font-size:14px;color:var(--muted);text-align:center;padding:40px 16px;line-height:1.6}
+.agc-list-empty .ic{width:32px;height:32px;display:block;margin:0 auto 10px;color:var(--faint)}
+.agc-list-empty-sub{font-size:12.5px;color:var(--muted);opacity:.85}
+@media (max-width:420px){
+  .agc-cell{min-height:50px;padding:4px 3px 3px}
+  .agc-title{font-size:16px;min-width:120px}
+  .agc-legend{font-size:11px;gap:5px 9px}
+  .agc-vtab{padding:6px 10px;font-size:12px}
+}
+:root[data-theme="dark"] .agc-cell.is-sel{background:var(--accent-light)}
+
+/* Badges y chips claros → tintes oscuros translúcidos */
+:root[data-theme="dark"] .ib-tree{background:rgba(34,197,94,.18);color:#86efac}
+:root[data-theme="dark"] .ib-svc{background:rgba(59,130,246,.18);color:#93c5fd}
+:root[data-theme="dark"] .ib-note{background:rgba(217,119,6,.20);color:#fcd34d}
+:root[data-theme="dark"] .ib-fixed{background:rgba(139,92,246,.20);color:#c4b5fd}
+:root[data-theme="dark"] .hbadge-est{background:rgba(16,185,129,.18);color:#6ee7b7}
+:root[data-theme="dark"] .svc-row.is-pinned{background:rgba(217,119,6,.10);border-color:#5c4a1c}
+:root[data-theme="dark"] .svc-row.is-pinned .svc-name{color:#fde68a}
+
+/* Detalles que quedan demasiado claros con literales */
+:root[data-theme="dark"] .phrase-btn{background:var(--accent-tint);border-color:rgba(79,201,158,.35)}
+:root[data-theme="dark"] .lu-area{background:var(--surface)}
+
+/* ═══ SELECTOR DE TEMA (claro/oscuro/auto) en Empresa ═══ */
+.theme-mode{display:flex;gap:0;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-field);padding:3px;margin-bottom:6px;max-width:320px}
+.theme-mode-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:8px 6px;border:none;background:transparent;color:var(--muted);cursor:pointer;font-family:var(--font-text);font-size:12px;font-weight:600;border-radius:6px;transition:.15s}
+.theme-mode-btn.active{background:var(--card);color:var(--accent-fg);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.theme-mode-btn:hover:not(.active){background:rgba(0,0,0,.04)}
+:root[data-theme="dark"] .theme-mode-btn:hover:not(.active){background:rgba(255,255,255,.05)}

@@ -1,0 +1,114 @@
+/* ─── MAPA (pestaña Mapa) ───────────────────────────── */
+/* Vista del mapa: ocupa el alto de #main (el mapa se queda con todo lo que
+   sobra). Lo de abajo ("Sin ubicar") se alcanza bajando. */
+#main:has(#panel-mapa.active) > .inner,
+#panel-mapa.active { height:100%; }
+.mapa-vista { display:flex; flex-direction:column; height:100%; min-height:420px; }
+.mapa-toolbar { display:flex; flex-wrap:wrap; gap:6px 8px; align-items:center; margin-bottom:6px; flex:none; }
+/* Resumen de lo filtrado: en su propia línea (al lado del botón quedaba
+   aplastado a 360 px) y solo si hay algo filtrado. */
+.mapa-filtros-res { order:3; flex:1 1 100%; min-width:0; font-size:12.5px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.mapa-filtros-res:empty { display:none; }
+.mapa-filtros-btn[aria-expanded="true"] { border-color:var(--accent); color:var(--accent-fg); background:var(--accent-light); }
+.mapa-filtros { flex:none; display:flex; flex-direction:column; gap:8px; margin-bottom:6px; padding:8px 10px; border:1px solid var(--border); border-radius:10px; background:var(--card); max-height:45%; overflow:auto; overscroll-behavior:contain; }
+.mapa-filtros[hidden] { display:none; }
+.mapa-periodos { display:flex; flex-wrap:wrap; gap:6px; }
+.mapa-periodo { font-size:12.5px; padding:4px 10px; border:1px solid var(--border); border-radius:999px; background:var(--card); color:var(--muted); cursor:pointer; }
+.mapa-periodo.is-on { color:var(--accent-fg); border-color:var(--accent); background:var(--accent-light); font-weight:600; }
+.mapa-fechas { display:flex; flex-wrap:wrap; gap:6px 12px; }
+.mapa-filters { display:flex; flex-wrap:wrap; gap:6px; }
+.mapa-filter { display:inline-flex; align-items:center; gap:5px; font-size:12px; padding:3px 9px 3px 6px; border:1px solid var(--border); border-radius:999px; background:var(--card); cursor:pointer; user-select:none; color:var(--muted); }
+.mapa-filter.is-on { color:var(--fg,#111); border-color:var(--accent); }
+.mapa-filter input { margin:0; width:13px; height:13px; accent-color:var(--accent); }
+.mapa-filter-dot { width:11px; height:11px; border-radius:50%; border:1px solid rgba(0,0,0,.15); }
+.mapa-tools { display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-left:auto; }
+.mapa-tools [hidden] { display:none; }
+.mapa-daterange { font-size:12px; color:var(--muted); display:inline-flex; align-items:center; gap:4px; }
+.mapa-daterange input { font-size:12px; padding:3px 6px; border:1px solid var(--border); border-radius:8px; background:var(--card); color:inherit; }
+#map-canvas { flex:1 1 auto; height:auto; min-height:260px; width:100%; border-radius:12px; border:1px solid var(--border); overflow:hidden; background:var(--surface,#e5e7eb); z-index:0; }
+#map-canvas.mapa-placing { cursor:crosshair; }
+#map-canvas.mapa-placing .leaflet-grab { cursor:crosshair; }
+.mapa-pin { background:transparent; border:none; }
+/* Borde blanco de 3 px y sombra doble: el pin se despega del verde del mapa
+   y del brillo del sol. El símbolo (✓ / ojo) va en blanco adentro. */
+.mapa-pin span { display:flex; align-items:center; justify-content:center; width:24px; height:24px; box-sizing:border-box; border-radius:50%; border:3px solid #fff; box-shadow:0 0 0 1px rgba(0,0,0,.35), 0 1px 5px rgba(0,0,0,.45); }
+.mapa-pin svg { width:13px; height:13px; fill:none; stroke:#fff; stroke-width:3.2; stroke-linecap:round; stroke-linejoin:round; }
+/* Enviado vencido: hueco. Relleno blanco y anillo grueso del color. */
+.mapa-pin.is-venc span { background:#fff; border-width:6px; box-shadow:0 0 0 2px #fff, 0 0 0 3px rgba(0,0,0,.35), 0 1px 5px rgba(0,0,0,.45); }
+.mapa-pin.is-venc.is-hl span { box-shadow:0 0 0 2px #fff, 0 0 0 6px rgba(14,165,233,.55), 0 1px 5px rgba(0,0,0,.45); }
+.mapa-pin.is-hl span { box-shadow:0 0 0 4px rgba(14,165,233,.55), 0 1px 4px rgba(0,0,0,.45); }
+.mapa-popup { min-width:170px; }
+.mapa-popup-cli { font-weight:700; font-size:14px; margin-bottom:2px; }
+.mapa-popup-meta { font-size:12px; color:var(--muted); margin-bottom:6px; }
+.mapa-popup-estado { width:100%; font-size:12px; font-weight:600; padding:4px 6px; border:none; border-radius:8px; margin-bottom:6px; }
+.mapa-popup-acts { display:flex; gap:6px; }
+.mapa-popup-acts .btn { flex:1; }
+.mapa-popup-edit { display:block; width:100%; margin-top:6px; padding:2px; border:none; background:transparent; color:var(--muted); font-size:11px; text-align:center; cursor:pointer; opacity:.65; }
+.mapa-popup-edit:hover { opacity:1; text-decoration:underline; }
+/* Popup de un grupo apilado: lista de todos los trabajos del mismo lugar. */
+.mapa-popup-group { min-width:210px; }
+.mapa-popup-group-title { font-weight:700; font-size:13px; margin-bottom:6px; }
+.mapa-popup-list { max-height:244px; overflow:auto; overscroll-behavior:contain; display:flex; flex-direction:column; gap:8px; }
+.mapa-grow { padding:7px 6px; margin:0 -6px; border-top:1px solid var(--border); border-radius:8px; cursor:pointer; }
+.mapa-grow:first-child { border-top:none; }
+.mapa-grow:hover { background:var(--surface,rgba(0,0,0,.03)); }
+.mapa-grow-top { display:flex; align-items:center; gap:6px; margin-bottom:3px; }
+.mapa-grow-estado { flex:0 0 auto; font-size:11px; font-weight:600; padding:3px 5px; border:none; border-radius:8px; max-width:44%; }
+.mapa-grow-cli { flex:1; min-width:0; font-weight:700; font-size:13px; color:inherit; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.mapa-grow-meta { font-size:11px; color:var(--muted); margin-bottom:5px; }
+.mapa-cluster { background:transparent; border:none; }
+.mapa-cluster-ring { display:flex; align-items:center; justify-content:center; width:30px; height:30px; box-sizing:border-box; border-radius:50%; border:2px solid #fff; box-shadow:0 1px 4px rgba(0,0,0,.45); }
+.mapa-cluster-count { display:flex; align-items:center; justify-content:center; width:20px; height:20px; box-sizing:border-box; border-radius:50%; background:var(--card,#fff); color:var(--fg,#0f172a); font-size:11px; font-weight:700; font-variant-numeric:tabular-nums; }
+.mapa-cluster.is-hl .mapa-cluster-ring { box-shadow:0 0 0 4px rgba(14,165,233,.55), 0 1px 4px rgba(0,0,0,.45); }
+/* Grupo de pins CERCANOS (no del mismo punto): más grande y con un halo, para
+   distinguirlo del grupo de un solo lugar. Tocarlo acerca el mapa. */
+.mapa-zgrupo { background:transparent; border:none; }
+.mapa-zgrupo .mapa-cluster-ring { width:100%; height:100%; border-width:3px; box-shadow:0 0 0 5px rgba(255,255,255,.55), 0 1px 6px rgba(0,0,0,.5); }
+.mapa-zgrupo .mapa-cluster-count { width:66%; height:66%; font-size:13px; }
+.mapa-zgrupo.is-hl .mapa-cluster-ring { box-shadow:0 0 0 5px rgba(14,165,233,.6), 0 1px 6px rgba(0,0,0,.5); }
+.mapa-zonastats { flex:none; margin-bottom:6px; padding:5px 10px; border:1px solid var(--border); border-radius:10px; background:var(--card); }
+.mapa-zonastats .mapa-hint { padding:2px 0; }
+.mapa-zona-title { font-size:12.5px; font-weight:700; margin-bottom:4px; line-height:1.35; }
+.mapa-zona-title b { font-weight:700; }
+.mapa-zona-title .mapa-zona-sep { color:var(--muted); font-weight:400; }
+.mapa-zona-frac { color:var(--muted); font-weight:400; font-variant-numeric:tabular-nums; }
+.mapa-zona-chips { display:flex; flex-wrap:nowrap; gap:4px; overflow-x:auto; scrollbar-width:none; }
+.mapa-zona-chips::-webkit-scrollbar { display:none; }
+.mapa-zona-chip { flex:none; display:inline-flex; align-items:center; gap:4px; }
+.mapa-zona-dot { display:inline-block; width:9px; height:9px; border-radius:50%; box-shadow:0 0 0 1px rgba(255,255,255,.8); }
+.mapa-zona-dot.is-venc { box-sizing:border-box; background:#fff; border:2.5px solid; }
+.mapa-zona-chip { font-size:11px; font-weight:600; padding:2px 8px; border-radius:999px; }
+.mapa-hint-inline { font-size:11px; opacity:.8; }
+.mapa-cerca-panel { flex:0 1 auto; max-height:40%; overflow:auto; overscroll-behavior:contain; margin-top:6px; padding:10px; border:1px solid var(--accent); border-radius:10px; background:var(--accent-tint,var(--card)); }
+.mapa-cerca-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; font-size:13px; }
+.mapa-cerca-close { border:none; background:transparent; cursor:pointer; font-size:15px; color:var(--muted); line-height:1; padding:2px 6px; }
+.mapa-cerca-list { display:flex; flex-direction:column; gap:5px; }
+.mapa-cerca-item { display:flex; align-items:center; gap:8px; font-size:13px; }
+.mapa-cerca-cli { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.mapa-cerca-dist { font-size:12px; color:var(--muted); font-variant-numeric:tabular-nums; }
+.mapa-ruta-btn { width:100%; margin-top:8px; }
+.mapa-tramos { display:flex; flex-direction:column; gap:6px; margin-top:8px; }
+.mapa-tramos[hidden] { display:none; }
+.mapa-tramo-btn { flex-wrap:wrap; justify-content:flex-start; text-align:left; height:auto; padding-top:6px; padding-bottom:6px; }
+.mapa-tramo-nombres { flex:1 1 100%; font-size:11.5px; font-weight:400; opacity:.85; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.mapa-sinubicar { margin-top:10px; border:1px solid var(--border); border-radius:10px; background:var(--card); padding:2px 10px; }
+.mapa-sinubicar > summary { cursor:pointer; font-size:13px; font-weight:600; padding:8px 0; }
+.mapa-count { display:inline-block; min-width:18px; text-align:center; font-size:11px; padding:1px 6px; border-radius:999px; background:var(--accent); color:#fff; }
+.mapa-count[hidden] { display:none; }
+.mapa-su-item { display:flex; align-items:center; gap:8px; padding:7px 0; border-top:1px solid var(--border); }
+.mapa-su-info { flex:1; min-width:0; font-size:13px; cursor:pointer; border-radius:8px; padding:2px 4px; margin:-2px -4px; }
+.mapa-su-info:hover { background:var(--surface,rgba(0,0,0,.03)); }
+.mapa-su-addr { font-size:12px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.mapa-su-acts { display:flex; flex-direction:column; gap:4px; flex:0 0 auto; }
+.mapa-hint { font-size:12px; color:var(--muted); padding:6px 0; }
+.mapa-neti{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;line-height:1.4;color:#92400e;background:#fef3c7;border:1px solid #fcd34d;border-radius:var(--radius-field);padding:8px 11px;margin-bottom:8px}
+:root[data-theme="dark"] .mapa-neti{color:#fde68a;background:rgba(251,191,36,.12);border-color:rgba(251,191,36,.4)}
+.mapa-neti .btn{flex:none}
+/* El display:flex de arriba le gana a la regla [hidden] del navegador, así que
+   sin esto `aviso.hidden = true` no apaga nada: el cartel de "fondo sin cargar"
+   quedaba clavado aun después de tocar "Cargar el fondo igual" (y con el mapa
+   ya cargado atrás). Mismo caso que .notes-count[hidden]. */
+.mapa-neti[hidden]{display:none!important}
+.mapa-error { display:flex; align-items:center; justify-content:center; height:100%; padding:20px; text-align:center; color:var(--muted); font-size:14px; }
+:root[data-theme="dark"] .leaflet-popup-content-wrapper,
+:root[data-theme="dark"] .leaflet-popup-tip { background:var(--card); color:var(--fg,#e5e7eb); }

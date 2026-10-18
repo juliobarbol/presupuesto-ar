@@ -1,0 +1,409 @@
+/* ══ TEMAS DE DISEÑO PDF ══════════════════════════════════════════════════
+   Cada tema sobreescribe tokens y reglas estructurales del documento.
+   Las clases se aplican sobre <table class="pdoc pdoc-theme-X">.         */
+
+/* Tema: Profesional — badge con fondo sólido, sin rayas, tono frío        */
+.pdoc.pdoc-theme-profesional {
+  --c-bg-soft:      #edf2f7;
+  --c-zebra:        transparent;
+  --c-divider-soft: #c8d4e0;
+}
+.pdoc.pdoc-theme-profesional .ph-badge {
+  position: static;
+  margin-left: auto;
+  align-self: flex-start;
+  text-align: right;
+  border-radius: var(--r-sm);
+}
+
+/* Tema: Cálido — paleta tierra, tipografía serif, tonos cálidos            */
+.pdoc.pdoc-theme-calido {
+  --c-bg-soft:      #fdf8ee;
+  --c-zebra:        #fef9f3;
+  --c-divider:      #c8a87a;
+  --c-divider-soft: #e8d5b0;
+  --c-muted:        #7d6241;
+  --c-muted-2:      #a08060;
+  font-family: Georgia,'Times New Roman',serif;
+}
+.pdoc.pdoc-theme-calido .ph { background: #fdfaf4; }
+.pdoc.pdoc-theme-calido .ph-name,
+.pdoc.pdoc-theme-calido .ph-badge-num { font-family: 'DM Serif Display',Georgia,serif; }
+.pdoc.pdoc-theme-calido .ph-sub,
+.pdoc.pdoc-theme-calido .ph-contact { font-family: Georgia,'Times New Roman',serif; }
+
+/* Tema: Minimalista — sin fondos rellenos, solo líneas, tipografía sistema  */
+.pdoc.pdoc-theme-minimalista {
+  --c-bg-soft:      transparent;
+  --c-zebra:        transparent;
+  --r-sm:           0pt;
+  --r-md:           0pt;
+  font-family: system-ui,-apple-system,Arial,sans-serif;
+}
+.pdoc.pdoc-theme-minimalista .ph-badge {
+  position: static;
+  margin-left: auto;
+  align-self: flex-start;
+  text-align: left;
+}
+.pdoc.pdoc-theme-minimalista .ph-name,
+.pdoc.pdoc-theme-minimalista .ph-badge-num { font-family: system-ui,-apple-system,Arial,sans-serif; }
+
+/* Tema: Lateral — banda de color VERTICAL full-height a la izquierda (look de  */
+/* estudio/consultora).                                                         */
+/* CLAVE: la banda se pinta como FONDO de la <table class="pdoc">, no como un   */
+/* elemento del header. El navegador repinta el fondo de la tabla en cada       */
+/* página impresa (igual que repite el <thead>), así que la banda llega de      */
+/* arriba a abajo en TODAS las hojas — algo que position:fixed no logra de      */
+/* forma confiable en móvil. Los contenedores de sección no tienen fondo        */
+/* propio (su inset izquierdo es transparente), así que la banda se ve a        */
+/* través del margen; sólo hay que correr el contenido para despejarla.         */
+/* El color sale de --pdoc-accent (inyectado inline desde JS en la <table>).    */
+.pdoc.pdoc-theme-lateral {
+  --c-bg-soft:      #f5f7fa;
+  --c-zebra:        #fafbfc;
+  --c-divider-soft: #dde3ea;
+  --band-w:   56px;          /* ancho de la banda */
+  --lat-inset: 76px;         /* inicio del contenido = banda + aire */
+  background: linear-gradient(
+    to right,
+    var(--pdoc-accent, #1f6feb) 0,
+    var(--pdoc-accent, #1f6feb) var(--band-w),
+    transparent var(--band-w)
+  ) no-repeat;
+}
+/* Header transparente: deja ver la banda de fondo detrás del logo/inicial.
+   El logo/inicial vive en .ph-band (centrado sobre la banda) y el resto
+   del header arranca a la derecha de la banda. */
+.pdoc.pdoc-theme-lateral .ph {
+  background: transparent;
+  align-items: stretch;
+  gap: 0;
+  padding: 0 var(--page-x) 0 0;
+}
+.pdoc.pdoc-theme-lateral .ph-band {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--band-w);
+  min-width: var(--band-w);
+  padding: 16px 8px;
+  margin-right: 20px;
+}
+.pdoc.pdoc-theme-lateral .ph-band-initial {
+  font-family: 'DM Serif Display', serif;
+  font-size: 24pt;
+  line-height: 1;
+  color: #fff;
+}
+.pdoc.pdoc-theme-lateral .ph-band-logo {
+  max-height: 46px;
+  max-width: 46px;
+  object-fit: contain;
+  background: #fff;
+  padding: 4px;
+  border-radius: 4px;
+}
+.pdoc.pdoc-theme-lateral .ph-band-mono { width: 52px; height: 52px; display: block; }
+.pdoc.pdoc-theme-lateral .ph-co { padding: 16px 0; }
+/* Correr el inicio izquierdo de cada sección del cuerpo para que el texto
+   no quede encima de la banda full-height. Sólo se toca el padding/margin
+   IZQUIERDO; el derecho y el resto los conserva la regla base (mayor
+   especificidad: .pdoc.pdoc-theme-lateral .x vence a .x). */
+.pdoc.pdoc-theme-lateral .ptitle-bar,
+.pdoc.pdoc-theme-lateral .psec,
+.pdoc.pdoc-theme-lateral .ptotals,
+.pdoc.pdoc-theme-lateral .pobs,
+.pdoc.pdoc-theme-lateral .pcond,
+.pdoc.pdoc-theme-lateral .pnotes,
+.pdoc.pdoc-theme-lateral .pdispo,
+.pdoc.pdoc-theme-lateral .pcrit,
+.pdoc.pdoc-theme-lateral .pplan,
+.pdoc.pdoc-theme-lateral .psigs,
+.pdoc.pdoc-theme-lateral .pfoot,
+.pdoc.pdoc-theme-lateral .pphotos,
+.pdoc.pdoc-theme-lateral .pest-services-section,
+.pdoc.pdoc-theme-lateral .pest-factors,
+.pdoc.pdoc-theme-lateral .pest-greeting {
+  padding-left: var(--lat-inset);
+}
+.pdoc.pdoc-theme-lateral .pvalid,
+.pdoc.pdoc-theme-lateral .pdur,
+.pdoc.pdoc-theme-lateral .pest-header-bar,
+.pdoc.pdoc-theme-lateral .pest-disclaimer {
+  margin-left: var(--lat-inset);
+}
+
+/* Tema: Técnico — austero tipo informe de ingeniería. Sin serif, números      */
+/* tabulares, reglas marcadas, esquinas rectas, títulos en versalitas.         */
+.pdoc.pdoc-theme-tecnico {
+  --c-bg-soft:      #eef1f4;
+  --c-zebra:        #f6f8fa;
+  --c-divider:      #9aa3ad;
+  --c-divider-soft: #cdd3da;
+  --r-sm:           0pt;
+  --r-md:           0pt;
+  font-family: 'DM Sans', system-ui, Arial, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+.pdoc.pdoc-theme-tecnico .ph { border-bottom: 2pt solid var(--c-divider); }
+.pdoc.pdoc-theme-tecnico .ph-name,
+.pdoc.pdoc-theme-tecnico .ph-badge-num,
+.pdoc.pdoc-theme-tecnico .ptotal-amt {
+  font-family: 'DM Sans', system-ui, Arial, sans-serif;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.pdoc.pdoc-theme-tecnico .psec-t {
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+.pdoc.pdoc-theme-tecnico .ptitle { font-family: 'DM Sans', system-ui, Arial, sans-serif; font-weight: 700; }
+
+/* Tema: Elegante — refinado, serif, líneas finas doradas, mucho aire. Para     */
+/* clientes premium. Paleta neutra (a diferencia del Cálido, que es tierra).    */
+.pdoc.pdoc-theme-elegante {
+  --c-bg-soft:      #faf9f7;
+  --c-zebra:        #fcfbfa;
+  --c-divider:      #c9b99a;
+  --c-divider-soft: #e7e0d2;
+  --c-muted:        #6b6358;
+  --c-muted-2:      #9a9081;
+  font-family: Georgia, 'Times New Roman', serif;
+}
+.pdoc.pdoc-theme-elegante .ph { border-top-width: 1pt; border-bottom: 1pt solid var(--c-divider); }
+.pdoc.pdoc-theme-elegante .ph-name,
+.pdoc.pdoc-theme-elegante .ph-badge-num,
+.pdoc.pdoc-theme-elegante .ptotal-amt,
+.pdoc.pdoc-theme-elegante .ptitle,
+.pdoc.pdoc-theme-elegante .psec-t { font-family: 'DM Serif Display', Georgia, serif; }
+.pdoc.pdoc-theme-elegante .psec-t { font-weight: 400; letter-spacing: .01em; }
+.pdoc.pdoc-theme-elegante .ph-sub,
+.pdoc.pdoc-theme-elegante .ph-contact { font-family: Georgia, 'Times New Roman', serif; font-style: italic; }
+.pdoc.pdoc-theme-elegante .ph-badge-num { font-size: calc(var(--fs-h2) + 4pt); }
+
+/* ══ COLOR DE DETALLE (S.accentColor2, v244) ════════════════════════════════
+   Segundo color para las LÍNEAS del documento (filete del encabezado, bordes
+   de títulos y del total, numeración del plan, pie). Ortogonal al tema, como
+   la tipografía. La clase .pdoc-det solo se pone cuando hay un detalle
+   distinto del principal (_pdocAttrs), así que sin él nada cambia. Lleva
+   !important porque los temas pintan esos bordes con style inline. */
+.pdoc.pdoc-det .ph { border-top-color: var(--pdoc-det) !important; border-bottom-color: var(--pdoc-det) !important; }
+.pdoc.pdoc-det .ptitle,
+.pdoc.pdoc-det .psec-t,
+.pdoc.pdoc-det .pobs-t,
+.pdoc.pdoc-det .pcond-t,
+.pdoc.pdoc-det .pnotes-t,
+.pdoc.pdoc-det .pest-factors-t,
+.pdoc.pdoc-det .ptotal-box,
+.pdoc.pdoc-det .pfoot,
+.pdoc.pdoc-det .prisk-section-divider { border-color: var(--pdoc-det) !important; }
+.pdoc.pdoc-det .pobs-txt { border-color: var(--pdoc-det-soft) !important; }
+.pdoc.pdoc-det .pplan-box,
+.pdoc.pdoc-det .pest-header-bar { border-left-color: var(--pdoc-det) !important; }
+.pdoc.pdoc-det .pplan-list li::before { color: var(--pdoc-det); opacity: 1; }
+.pdoc.pdoc-det.pdoc-theme-minimalista .ph-badge { border-left-color: var(--pdoc-det) !important; }
+
+/* ══ ELEMENTOS DEL DOCUMENTO (v245) ══════════════════════════════════════════
+   Encabezado, títulos de sección, tabla, total y pie: cada uno es una clase
+   pdoc-<eje>-<valor> sobre la tabla (_pdocAttrs), ortogonal al tema, y solo
+   existe si el usuario eligió algo distinto de "Según diseño". Los temas pintan
+   colores y bordes con style inline, por eso los !important. Los tonos claros
+   (--pdoc-tint1/2, --pdoc-line) vienen calculados de _pdocAttrs. */
+
+/* Encabezado centrado */
+.pdoc.pdoc-hd-centrado .ph { flex-direction: column; align-items: center; text-align: center; gap: 8px; }
+.pdoc.pdoc-hd-centrado .ph-contacts { justify-content: center; }
+.pdoc.pdoc-hd-centrado .ph-badge { position: static !important; align-self: center !important; text-align: center !important; margin: 0 !important; border-left: none !important; padding-left: 0 !important; }
+/* Encabezado en banda de color */
+.pdoc.pdoc-hd-banda .ph { background: var(--pdoc-accent) !important; border: none !important; }
+.pdoc.pdoc-det.pdoc-hd-banda .ph { box-shadow: inset 0 -3pt 0 var(--pdoc-det); }
+.pdoc.pdoc-hd-banda .ph-name,
+.pdoc.pdoc-hd-banda .ph-sub,
+.pdoc.pdoc-hd-banda .ph-contact,
+.pdoc.pdoc-hd-banda .ph-badge-lbl,
+.pdoc.pdoc-hd-banda .ph-badge-num,
+.pdoc.pdoc-hd-banda .ph-badge-date { color: #fff !important; }
+.pdoc.pdoc-hd-banda .ph-sub,
+.pdoc.pdoc-hd-banda .ph-contact,
+.pdoc.pdoc-hd-banda .ph-badge-lbl,
+.pdoc.pdoc-hd-banda .ph-badge-date { opacity: .85; }
+.pdoc.pdoc-hd-banda .ph-badge { background: rgba(255,255,255,.14) !important; border: none !important; padding: 6pt 9pt !important; border-radius: var(--r-sm); }
+.pdoc.pdoc-hd-banda .ph-logo { background: #fff; padding: 4px; border-radius: 4px; }
+
+/* Títulos de sección */
+.pdoc.pdoc-tit-subrayado .psec-t,
+.pdoc.pdoc-tit-subrayado .pobs-t,
+.pdoc.pdoc-tit-subrayado .pcond-t,
+.pdoc.pdoc-tit-subrayado .pcrit-t,
+.pdoc.pdoc-tit-subrayado .pnotes-t,
+.pdoc.pdoc-tit-subrayado .pplan-t,
+.pdoc.pdoc-tit-subrayado .pdispo-t,
+.pdoc.pdoc-tit-subrayado .pest-factors-t,
+.pdoc.pdoc-tit-subrayado .pest-services-t,
+.pdoc.pdoc-tit-subrayado .pphotos-t { color: var(--pdoc-accent) !important; border: none !important; border-bottom: 1.25pt solid var(--pdoc-det, var(--pdoc-accent)) !important; padding-bottom: 4px !important; }
+.pdoc.pdoc-tit-pildora .psec-t,
+.pdoc.pdoc-tit-pildora .pobs-t,
+.pdoc.pdoc-tit-pildora .pcond-t,
+.pdoc.pdoc-tit-pildora .pcrit-t,
+.pdoc.pdoc-tit-pildora .pnotes-t,
+.pdoc.pdoc-tit-pildora .pplan-t,
+.pdoc.pdoc-tit-pildora .pdispo-t,
+.pdoc.pdoc-tit-pildora .pest-factors-t,
+.pdoc.pdoc-tit-pildora .pest-services-t,
+.pdoc.pdoc-tit-pildora .pphotos-t { display: inline-block; background: var(--pdoc-accent) !important; color: #fff !important; border: none !important; padding: 3pt 11pt !important; border-radius: 999px; }
+.pdoc.pdoc-tit-pildora .psec-t span,
+.pdoc.pdoc-tit-pildora .pobs-t span,
+.pdoc.pdoc-tit-pildora .pcond-t span,
+.pdoc.pdoc-tit-pildora .pcrit-t span,
+.pdoc.pdoc-tit-pildora .pnotes-t span,
+.pdoc.pdoc-tit-pildora .pplan-t span,
+.pdoc.pdoc-tit-pildora .pdispo-t span,
+.pdoc.pdoc-tit-pildora .pest-factors-t span,
+.pdoc.pdoc-tit-pildora .pest-services-t span,
+.pdoc.pdoc-tit-pildora .pphotos-t span { color: #fff !important; }
+.pdoc.pdoc-tit-numerado { counter-reset: pqsec; }
+.pdoc.pdoc-tit-numerado .psec-t::before,
+.pdoc.pdoc-tit-numerado .pobs-t::before,
+.pdoc.pdoc-tit-numerado .pcond-t::before,
+.pdoc.pdoc-tit-numerado .pcrit-t::before,
+.pdoc.pdoc-tit-numerado .pnotes-t::before,
+.pdoc.pdoc-tit-numerado .pplan-t::before,
+.pdoc.pdoc-tit-numerado .pdispo-t::before,
+.pdoc.pdoc-tit-numerado .pest-factors-t::before,
+.pdoc.pdoc-tit-numerado .pest-services-t::before,
+.pdoc.pdoc-tit-numerado .pphotos-t::before { counter-increment: pqsec; content: counter(pqsec, decimal-leading-zero); color: var(--pdoc-det, var(--pdoc-accent)); font-weight: 700; margin-right: 7pt; }
+.pdoc.pdoc-tit-costado .psec-t,
+.pdoc.pdoc-tit-costado .pobs-t,
+.pdoc.pdoc-tit-costado .pcond-t,
+.pdoc.pdoc-tit-costado .pcrit-t,
+.pdoc.pdoc-tit-costado .pnotes-t,
+.pdoc.pdoc-tit-costado .pplan-t,
+.pdoc.pdoc-tit-costado .pdispo-t,
+.pdoc.pdoc-tit-costado .pest-factors-t,
+.pdoc.pdoc-tit-costado .pest-services-t,
+.pdoc.pdoc-tit-costado .pphotos-t { color: var(--pdoc-accent) !important; border: none !important; border-left: 3pt solid var(--pdoc-det, var(--pdoc-accent)) !important; padding: 1pt 0 1pt 7pt !important; }
+.pdoc.pdoc-tit-versalitas .psec-t,
+.pdoc.pdoc-tit-versalitas .pobs-t,
+.pdoc.pdoc-tit-versalitas .pcond-t,
+.pdoc.pdoc-tit-versalitas .pcrit-t,
+.pdoc.pdoc-tit-versalitas .pnotes-t,
+.pdoc.pdoc-tit-versalitas .pplan-t,
+.pdoc.pdoc-tit-versalitas .pdispo-t,
+.pdoc.pdoc-tit-versalitas .pest-factors-t,
+.pdoc.pdoc-tit-versalitas .pest-services-t,
+.pdoc.pdoc-tit-versalitas .pphotos-t { text-transform: uppercase; letter-spacing: .16em !important; font-size: 8pt !important; font-weight: 700; color: var(--pdoc-accent) !important; border: none !important; border-bottom: .75pt solid var(--pdoc-det, var(--pdoc-accent)) !important; padding-bottom: 3pt !important; }
+
+/* Tabla de trabajos */
+.pdoc.pdoc-tb-lineas .ptable thead th { background: transparent !important; border-bottom: 1.5pt solid var(--pdoc-accent) !important; }
+.pdoc.pdoc-tb-lineas .ptable tbody tr td { background: transparent !important; }
+.pdoc.pdoc-tb-cebra .ptable thead th { background: var(--pdoc-accent) !important; color: #fff !important; border-bottom: none !important; }
+.pdoc.pdoc-tb-cebra .ptable tbody td { border-bottom: none !important; background: #fff !important; }
+.pdoc.pdoc-tb-cebra .ptable tbody tr:nth-child(even) td { background: var(--pdoc-tint1) !important; }
+.pdoc.pdoc-tb-grilla .ptable th,
+.pdoc.pdoc-tb-grilla .ptable td { border: .75pt solid var(--pdoc-line) !important; }
+.pdoc.pdoc-tb-grilla .ptable thead th { background: var(--pdoc-tint2) !important; color: var(--pdoc-accent) !important; }
+.pdoc.pdoc-tb-grilla .ptable tbody tr td { background: #fff !important; }
+
+/* Total */
+.pdoc.pdoc-to-banda .ptotals { align-items: stretch; }
+.pdoc.pdoc-to-banda .ptotal-box { background: var(--pdoc-accent) !important; border: none !important; border-radius: var(--r-sm); display: flex; justify-content: space-between; align-items: baseline; gap: 16px; }
+.pdoc.pdoc-to-banda .ptotal-lbl,
+.pdoc.pdoc-to-banda .ptotal-amt { color: #fff !important; opacity: 1; }
+.pdoc.pdoc-to-grande .ptotal-box { background: transparent !important; border: none !important; border-top: 2pt solid var(--pdoc-det, var(--pdoc-accent)) !important; border-radius: 0; text-align: right; padding: 8px 0 0 !important; }
+.pdoc.pdoc-to-grande .ptotal-amt { font-size: 34pt; }
+
+/* Fondo (v246, _fondoURL): el dibujo viene en --pdoc-fondo. Los mosaicos
+   cubren todas las hojas; la marca de agua sale una vez, detrás del cuerpo de
+   la primera. El tema Lateral pinta su banda con un background propio: ahí se
+   apilan las dos capas (la banda arriba) para que el fondo no la tape. */
+.pdoc.pdoc-fondo-hojas,
+.pdoc.pdoc-fondo-curvas,
+.pdoc.pdoc-fondo-veta { background-image: var(--pdoc-fondo); background-repeat: repeat; }
+.pdoc.pdoc-fondo-marca,
+.pdoc.pdoc-fondo-logo { background-image: var(--pdoc-fondo); background-repeat: no-repeat; background-position: center 170px; background-size: 62% auto; }
+.pdoc.pdoc-theme-lateral.pdoc-fondo-hojas,
+.pdoc.pdoc-theme-lateral.pdoc-fondo-curvas,
+.pdoc.pdoc-theme-lateral.pdoc-fondo-veta {
+  background: linear-gradient(to right, var(--pdoc-accent, #1f6feb) 0, var(--pdoc-accent, #1f6feb) var(--band-w), transparent var(--band-w)) no-repeat, var(--pdoc-fondo) repeat;
+}
+.pdoc.pdoc-theme-lateral.pdoc-fondo-marca,
+.pdoc.pdoc-theme-lateral.pdoc-fondo-logo {
+  background: linear-gradient(to right, var(--pdoc-accent, #1f6feb) 0, var(--pdoc-accent, #1f6feb) var(--band-w), transparent var(--band-w)) no-repeat, var(--pdoc-fondo) no-repeat center 170px / 55% auto;
+}
+
+/* Pie (_pieDoc) */
+.pdoc .pfoot.pfoot-franja { background: var(--pdoc-accent); border: none !important; gap: 12px; }
+.pdoc .pfoot.pfoot-franja .pfoot-l,
+.pdoc .pfoot.pfoot-franja .pfoot-r { color: #fff !important; }
+.pdoc .pfoot.pfoot-franja .pfoot-r { opacity: .9; text-align: right; }
+.pdoc .pfoot.pfoot-eslogan { flex-direction: column; align-items: center; text-align: center; gap: 3px; }
+.pdoc .pfoot-esl { font-family: 'DM Serif Display', Georgia, serif; font-style: italic; font-size: 12pt; line-height: 1.25; }
+
+/* ──────────────────────────────────────────────────────────────────────────
+   SELECTOR DE TIPOGRAFÍA (S.pdfFont) — ORTOGONAL al tema.
+   Se aplica como clase extra pdoc-font-X sobre <table class="pdoc">. Define la
+   familia del cuerpo (base) y la de los títulos. Va DESPUÉS de los temas a
+   propósito: misma especificidad (.pdoc.X .sel) → gana por orden de fuente, así
+   la tipografía elegida pisa la que algunos temas fijan (Georgia, etc).
+   'auto' = sin clase = la tipografía la decide el diseño (comportamiento previo).
+   Las @font-face viven en fonts.css (auto-hospedadas, offline).
+   ────────────────────────────────────────────────────────────────────────── */
+
+/* Clásico — DM Sans (cuerpo) + DM Serif Display (títulos) */
+.pdoc.pdoc-font-dm { font-family: 'DM Sans', sans-serif; }
+.pdoc.pdoc-font-dm .ph-name,
+.pdoc.pdoc-font-dm .ph-badge-num,
+.pdoc.pdoc-font-dm .ptitle,
+.pdoc.pdoc-font-dm .ptotal-amt { font-family: 'DM Serif Display', Georgia, serif; }
+.pdoc.pdoc-font-dm .psec-t,
+.pdoc.pdoc-font-dm .ph-sub,
+.pdoc.pdoc-font-dm .ph-contact { font-family: 'DM Sans', sans-serif; }
+
+/* IBM Plex — IBM Plex Sans (cuerpo) + IBM Plex Serif (títulos). Look técnico. */
+.pdoc.pdoc-font-plex { font-family: 'IBM Plex Sans', system-ui, Arial, sans-serif; }
+.pdoc.pdoc-font-plex .ph-name,
+.pdoc.pdoc-font-plex .ph-badge-num,
+.pdoc.pdoc-font-plex .ptitle,
+.pdoc.pdoc-font-plex .ptotal-amt { font-family: 'IBM Plex Serif', Georgia, serif; font-weight: 600; }
+.pdoc.pdoc-font-plex .psec-t,
+.pdoc.pdoc-font-plex .ph-sub,
+.pdoc.pdoc-font-plex .ph-contact { font-family: 'IBM Plex Sans', system-ui, Arial, sans-serif; }
+
+/* Lora + Inter — Inter (cuerpo) + Lora (títulos). Cálido pero serio. */
+.pdoc.pdoc-font-lora-inter { font-family: 'Inter', system-ui, Arial, sans-serif; }
+.pdoc.pdoc-font-lora-inter .ph-name,
+.pdoc.pdoc-font-lora-inter .ph-badge-num,
+.pdoc.pdoc-font-lora-inter .ptitle,
+.pdoc.pdoc-font-lora-inter .ptotal-amt { font-family: 'Lora', Georgia, serif; font-weight: 600; }
+.pdoc.pdoc-font-lora-inter .psec-t,
+.pdoc.pdoc-font-lora-inter .ph-sub,
+.pdoc.pdoc-font-lora-inter .ph-contact { font-family: 'Inter', system-ui, Arial, sans-serif; }
+
+/* Inter — todo Inter (sans). Moderno y minimalista. */
+.pdoc.pdoc-font-inter { font-family: 'Inter', system-ui, Arial, sans-serif; }
+.pdoc.pdoc-font-inter .ph-name,
+.pdoc.pdoc-font-inter .ph-badge-num,
+.pdoc.pdoc-font-inter .ptitle,
+.pdoc.pdoc-font-inter .ptotal-amt { font-family: 'Inter', system-ui, Arial, sans-serif; font-weight: 700; }
+.pdoc.pdoc-font-inter .psec-t,
+.pdoc.pdoc-font-inter .ph-sub,
+.pdoc.pdoc-font-inter .ph-contact { font-family: 'Inter', system-ui, Arial, sans-serif; }
+
+/* Modificador: Compacto — ORTOGONAL al tema. Densifica fuentes y paddings para */
+/* que los presupuestos con muchos ítems entren en menos páginas. Se combina    */
+/* con cualquier diseño (clase extra pdoc-compact sobre la misma tabla).        */
+.pdoc.pdoc-compact {
+  --fs-micro:  7pt;
+  --fs-small:  9pt;
+  --fs-body:   10pt;
+  --fs-h3:     8.5pt;
+  --fs-h2:     11pt;
+  --page-x:    14mm;
+}
+.pdoc.pdoc-compact .ph { padding-top: 10px; padding-bottom: 8px; }
+.pdoc.pdoc-compact .psec { padding-top: 9px; }
+.pdoc.pdoc-compact .ptable tbody td { padding-top: 5px; padding-bottom: 5px; }
+.pdoc.pdoc-compact .ptotals { padding-top: 8px; padding-bottom: 8px; }
+.pdoc.pdoc-compact .ptotal-amt { font-size: 20pt; }
+.pdoc.pdoc-compact .ptitle { font-size: 12pt; margin-bottom: 8px; }

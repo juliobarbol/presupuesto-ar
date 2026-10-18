@@ -1,0 +1,73 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   CELULAR: PESTAÑAS ABAJO + TOQUES Y LETRA PARA TRABAJAR AFUERA (v227)
+   ───────────────────────────────────────────────────────────────────────
+   Va al final del <style> a propósito: pisa por orden, con la misma
+   especificidad, las reglas de celular de más arriba. Solo pantalla de
+   hasta 600 px; en la compu nada cambia. El PDF no se toca (sus estilos
+   viven bajo .pdoc / @media print).
+
+   1. Pestañas abajo, en la zona del pulgar. Con el celular en una mano, la
+      barra de arriba no se alcanza. #tabs sigue en el flujo de #app (orden
+      flex), así que nunca tapa contenido. --tabbar-h es su alto sin la
+      safe-area; lo usan la barra de totales, el FAB de "subir" y los avisos
+      para apoyarse ENCIMA de las pestañas. Mientras se escribe
+      (body.is-typing, ver navTecladoInit) las pestañas se esconden: con el
+      teclado abierto cada píxel cuenta.
+   2. Áreas de toque de 44 px y letra de 12,5–13 px como piso en lo que se lee
+      con sol y guantes: medido a 360 px había botones de 38×26 y textos de
+      9–11 px. */
+@media screen and (max-width:600px){
+  :root{--tabbar-h:60px}
+  #tabs{order:3;border-bottom:none;border-top:1px solid var(--border);
+    padding-bottom:env(safe-area-inset-bottom);background:var(--card);
+    box-shadow:0 -2px 10px rgba(0,0,0,.05)}
+  #main{order:2}
+  .tab-btn{flex-direction:column;gap:3px;height:var(--tabbar-h);padding:6px 2px 5px;
+    font-size:12.5px;font-weight:600;border-bottom:none;border-top:3px solid transparent}
+  .tab-btn .ic{width:22px;height:22px}
+  .tab-btn.active{border-top-color:var(--accent-fg);border-bottom-color:transparent;background:var(--accent-light)}
+  .tab-dot{top:4px;right:calc(50% - 22px)}
+  body.is-typing #tabs{display:none}
+
+  /* Lo que flota abajo se apoya encima de las pestañas. */
+  .sticky-totals{bottom:calc(var(--tabbar-h) + 1px + env(safe-area-inset-bottom));padding-bottom:8px}
+  body.is-typing .sticky-totals{bottom:0;padding-bottom:max(8px,env(safe-area-inset-bottom))}
+  .scrolltop-fab{bottom:calc(var(--tabbar-h) + 16px + env(safe-area-inset-bottom))}
+  body.has-sticky-totals .scrolltop-fab{bottom:calc(var(--tabbar-h) + var(--sticky-h,110px) + 12px + env(safe-area-inset-bottom))}
+  #toast-container{bottom:calc(var(--tabbar-h) + 14px + env(safe-area-inset-bottom))}
+  body.has-sticky-totals #toast-container{bottom:calc(var(--tabbar-h) + var(--sticky-h,110px) + 10px + env(safe-area-inset-bottom))}
+
+  /* Barra superior: campanita, engranaje y "+ Nuevo" con alto de dedo. */
+  #topbar{padding-top:6px;padding-bottom:6px}
+  .tbtn-menu{min-width:44px;min-height:42px;display:inline-flex;align-items:center;justify-content:center}
+  .tbtn-menu .ic{width:20px;height:20px}
+  .tbtn-nuevo{min-height:42px;padding:0 14px;font-size:14px}
+  #save-status{font-size:12px}
+
+  /* Botones chicos: 40 px de alto como piso (las tarjetas del historial
+     tenían Ver/Compartir/Chat de 32 px). */
+  .btn-sm{min-height:40px;font-size:13px}
+  .subtab-btn{min-height:44px;font-size:13px}
+  .hestado-sel{min-height:40px;font-size:13px}
+
+  /* Textos que se leen: piso de 12,5–13 px. */
+  .hint,.scol-hint{font-size:12.5px}
+  .isub{font-size:13px}
+  .fg label{font-size:13px}
+  .hmeta{font-size:13px}
+  .est-banner-desc{font-size:13px}
+  .fub-item-days,.fub-item-nota{font-size:12.5px}
+  .hbadge-estado,.hbadge-est,.hbadge-followup,.hbadge-expired,.hbadge-version,
+  .hbadge-reemplazado,.hbadge-colab{font-size:11.5px}
+  .agc-ev-kind{font-size:12px}
+  .agc-ev-note,.agc-ev-hora{font-size:12.5px}
+  .clima-chip{font-size:12.5px}
+  .nt-sub{font-size:13px}
+  .nt-when{font-size:12px}
+  .fu-vars{font-size:12.5px}
+  .fact-hero-label,.fact-card-label{font-size:12px}
+  .fact-hero-sub,.fact-card-sub,.fact-reg-meta,.fact-reg-date{font-size:12.5px}
+  .hmonth-count{font-size:12px}
+  .notif-badge{font-size:11px}
+  .tab-dot{font-size:11px}
+}
