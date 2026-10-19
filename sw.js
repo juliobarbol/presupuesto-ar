@@ -13,7 +13,7 @@
 //
 //  Para forzar actualizacion tras un deploy: subir el CACHE_VERSION.
 
-const CACHE_VERSION = 'presupuesto-v257';
+const CACHE_VERSION = 'presupuesto-v258';
 
 // El CÓDIGO de la app (v256: antes vivía entero en index.html). index.html lo
 // pide con ?v=<número de versión> y acá se lista con la misma marca, así que

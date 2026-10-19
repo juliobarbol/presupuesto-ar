@@ -1,0 +1,8 @@
+# js/net.js
+
+> Detalle del módulo con el porqué de cada decisión, movido textual desde
+> CLAUDE.md (que quedó como mapa corto). Leelo antes de tocar este código.
+
+## `js/net.js`
+
+**Salud de la conexión.** El caso que lo pidió: el celular se queda sin datos pero sigue "conectado" (`navigator.onLine` en `true`), los pedidos salen, nunca vuelven y la app se siente trabada. Tres piezas: (1) `netEsLenta()` lee la **Network Information API** (`navigator.connection`: `effectiveType`, `rtt`, `downlink`, `saveData`); (2) **`netFetch()` es la única puerta de salida a internet** — `AbortController` con timeout (12 s, 25 s en red lenta), porque un fetch sin timeout dejaba trabado el candado del módulo que lo llamó (`CLIMA._fetching` en `true` mataba el clima por el resto de la sesión); (3) **cortacircuitos**: 2 fallos de red seguidos marcan la conexión CAÍDA por 3 min (`netEstado()` → `offline`/`cortada`/`lenta`/`ok`). Regla: **automático ≠ manual** — `netPuedeAuto()` frena lo prescindible que el usuario no pidió (clima, tiles del mapa, `preloadGIS`), pero cualquier botón que él toque sale igual y un éxito cierra el corte. `netPuedeAutoImportante()` es el gate de Drive/Calendar: **`saveData` NO los frena** (es una preferencia de consumo, no una red rota; el Ahorro de datos prendido no puede dejarte sin copia). Un HTTP 4xx/5xx no cuenta como fallo de red: el server contestó. El estado se ve en el topbar junto al "✓ Guardado" y se toca para explicarlo/reintentar (`netExplicar`/`netReintentar`). **`o.sinCorte`** (v229): el fallo no alimenta el cortacircuitos — lo usa la subida del backup, porque que 20 MB no terminen de subir no prueba que la red esté caída. Ver `docs/red-lenta.md`, `test/net-salud.test.cjs` y `test/revision-fallas.test.cjs`

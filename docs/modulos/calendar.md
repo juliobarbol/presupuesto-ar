@@ -1,0 +1,14 @@
+# js/calendar.js
+
+> Detalle del módulo con el porqué de cada decisión, movido textual desde
+> CLAUDE.md (que quedó como mapa corto). Leelo antes de tocar este código.
+
+## `js/calendar.js`
+
+Pestaña **Agenda**: cuatro vistas (`_calView` `mes`/`semana`/`3dias`/`agenda`) que superponen trabajos, recontactos, vencimientos y seguimientos (derivados del historial) + notas/recordatorios manuales (`getNotes`/`setNotes`, `LS.NOTES`, incluidas en el backup). Las notas pueden ser **visitas** (`tipo:'visita'`: evaluación presencial / ir a presupuestar): concepto propio azul (`--c-visita`), prioridad junto al trabajo, chip de clima (`climaDeNota`), aparecen en el banner de hoy (`getVisitasDeHoy`) y tienen botón **"Crear presupuesto"** (`calCrearPresupuestoDesdeVisita`: pasa cliente/tel/ubicación/texto al editor y marca la visita hecha). Colores por concepto vía tokens `--c-*` (unificados con los chips/badges del historial); `renderCal` (dispatcher) → `renderCalGrid` (grilla del mes) / `renderCalCols` (Semana/3-días: columnas por día con los eventos como bloques `_calColEv` a la vista; Semana con scroll horizontal que abre en hoy, 3-días en 3 columnas; `_calAnchor` + navegación unificada `calPrev`/`calNext`) / `renderCalList` (lista cronológica con sección "Atrasado") / `_calEvHTML` (tarjeta de evento compartida).
+
+**Editar nota** (`calEditNote`/`calSaveNoteEdit`, modal `#note-edit-overlay`): texto, tipo, contacto, ubicación, **fecha** y **hora**. La fecha permite mover el compromiso de día sin borrarlo y rehacerlo (el caso que lo pidió fue una alerta de viento el día del trabajo): usa el datepicker propio y `_neFechaSync` avisa debajo de dónde a dónde se mueve. Por eso `.cal-pop`/`.csel-backdrop` pasaron a z-index 2400/2401: **arriba de todos los overlays** (el más alto es 2300), si no el calendario abría detrás del modal — el mismo problema que convirtió el `<select>` de Tipo en un segmentado. Ver `test/nota-fecha.test.cjs`.
+
+**Hora opcional** (`hora:'HH:MM'`, validada con `sanHoraHM`; sin hora el evento es de día completo, como fue siempre): se carga en el alta y en el modal, se ve en la tarjeta / columnas / banner / campanita, ordena dentro del día, y sale como evento **con horario** a Google Calendar (`start.dateTime` + `timeZone`, dura `CAL_EV_MINS`) y al `.ics` (hora local flotante). La hora va en la **clave** `pqKey`, no solo en el hash: un PATCH de día-completo → con-horario deja `start.date` y `start.dateTime` juntos y Google lo rechaza, así que cambiar la hora se resuelve como borrar + insertar; los eventos sin hora conservan clave y hash de siempre. Ver `test/nota-hora.test.cjs`. Export masivo a `.ics` (`calExportIcs`).
+
+**El texto de cada evento** (título, descripción, lugar) sale de `calEvTexto(ev, entrada)` para Google Calendar y para el `.ics` (v257; estaba escrito dos veces y ya decía cosas distintas). Ver `test/agenda-ics.test.cjs`. Estado y pendientes en `docs/agenda-roadmap.md`

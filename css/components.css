@@ -413,6 +413,10 @@ details.scol[open]>summary .scol-chev{transform:rotate(180deg)}
 .item-grid-2{display:grid;grid-template-columns:1fr 170px;gap:8px}
 @media(max-width:600px){.item-grid-2{grid-template-columns:1fr}.item-grid-2.mb8{margin-bottom:8px}}
 .isub{font-size:11px;font-weight:600;color:var(--text-2);margin-bottom:3px}
+/* "12 × $ 100.000 = $ 1.200.000" de un servicio: renglón propio y entero
+   (al lado del campo se partía en un celular); vacío no ocupa lugar. */
+.qty-preview{flex-basis:100%;font-size:12.5px;color:var(--accent-fg);font-weight:600;white-space:nowrap}
+.qty-preview:empty{display:none}
 .ii{width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius-field);font-family:var(--font-text);font-size:13px;color:var(--text);background:var(--card);outline:none;transition:.15s;-webkit-appearance:none;appearance:none}
 .ii:focus{border-color:var(--accent-fg);box-shadow:0 0 0 2px rgba(var(--accent-rgb),.08)}
 .ita{width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius-field);font-family:var(--font-text);font-size:13px;color:var(--text);background:var(--card);outline:none;resize:none;min-height:52px;transition:.15s;-webkit-appearance:none;appearance:none}

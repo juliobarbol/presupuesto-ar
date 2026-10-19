@@ -511,6 +511,8 @@ function _servicioQtyTxt(item) {
   return `${qty} × ${fmtM(item.price, S.currency||'ARS')} = ${fmtM(itemTotal(item), S.currency||'ARS')}`;
 }
 
+// El cálculo va en un renglón propio (.qty-preview, css/components.css): al
+// lado del campo, en un celular de 360 px se partía en "= $" / "1.200.000".
 function _servicioQtyRowHTML(item, pre) {
   const qty = parseInt(item.qty) || 1;
   return `
@@ -519,7 +521,6 @@ function _servicioQtyRowHTML(item, pre) {
             <div class="isub" style="margin:0;white-space:nowrap">Cantidad</div>
             <input class="ii ${pre}qty-f" type="number" min="1" step="1" inputmode="numeric" value="${qty}"
               style="width:64px;text-align:center;font-weight:700;font-size:14px">
-            <span class="qty-preview" style="font-size:12.5px;color:var(--accent-fg);font-weight:600">${_servicioQtyTxt(item)}</span>
           </div>
           <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12.5px;color:var(--muted);white-space:nowrap;flex-shrink:0">
             <span class="tgl" style="width:32px;height:18px">
@@ -528,6 +529,7 @@ function _servicioQtyRowHTML(item, pre) {
             </span>
             Desglosar en PDF
           </label>
+          <span class="qty-preview">${_servicioQtyTxt(item)}</span>
         </div>`;
 }
 
