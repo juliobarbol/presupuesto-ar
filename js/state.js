@@ -345,6 +345,27 @@ const CFG_GLOBAL_FIELDS = [
 // OJO: workPlanOverride / workPlanCustom / workPlanCustomTitle NO van acá — son
 // el override del plan de trabajo para UN presupuesto puntual (ver DEF).
 
+// Y estos son DATOS DEL PRESUPUESTO: viajan en el snapshot de cada entrada y se
+// restauran al abrirla. Todo campo de DEF va en UNA de las dos listas (lo exige
+// test/config-global.test.cjs): antes, un campo nuevo que nadie clasificaba caía
+// del lado del presupuesto por omisión, y así se colaron en cada snapshot los
+// textos del PDF y el diseño. No se usa para nada más: es la decisión escrita.
+const DATOS_PRESUPUESTO = [
+  // Identificación y cliente
+  '_schemaVersion','quoteNumber','dateIssue','dateExpiry','validityDays','showExpiry',
+  'clientName','clientContact','workAddress','workMapLink','workDuration','rubro',
+  // Trabajos y plata
+  'currency','discount','surcharge','items','itemsB','scenariosEnabled','scenarioLabelA','scenarioLabelB',
+  'isEstimative','estItems','estObservations','isRisk','riskData',
+  // Textos de ESTE presupuesto
+  'paymentConditions','observations','intNote','dispoNota','dispoPhotos','dispoEnDoc',
+  'workPlanOverride','workPlanCustom','workPlanCustomTitle',
+  // Versión (la referencia que se imprime; los vínculos son de la entrada)
+  'versionN','versionDeNum','versionDeFecha','versionEnDoc',
+  // Qué secciones salen en ESTE documento
+  'showCriteria','showSigOwner','showSigClient','showWorkPlan','showTechNotes','showFooter',
+];
+
 // Un snapshot del historial guarda el PRESUPUESTO, no la configuración: como
 // assignSnapshot nunca la restaura, copiarla en cada entrada era peso muerto
 // (~70 % de un snapshot típico: los textos del PDF, el diseño, los datos de

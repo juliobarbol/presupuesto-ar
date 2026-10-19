@@ -655,24 +655,58 @@ function parseCriteria(text){
   });
 }
 
-function buildDoc() {
-  if (S.isRisk)       { buildRiskDoc(); _docTranslucido(); return; }
-  if (S.isEstimative) { buildEstDoc(); _docTranslucido(); return; }
-  if (S.clientName) saveClientToDB(S.clientName, S.clientContact, S.workAddress, S.workMapLink);
-  // Guardar especies vistas en ambos escenarios
-  (S.items||[]).forEach(it=>{ if(it.type==='tree'&&it.species) saveSpeciesToDB(it.species); });
-  if (S.scenariosEnabled) {
-    (S.itemsB||[]).forEach(it=>{ if(it.type==='tree'&&it.species) saveSpeciesToDB(it.species); });
-  }
+// ─── Piezas comunes de los documentos ───
+// Presupuesto, informe de riesgo, estimativo y recibo las tenían copiadas.
 
-  const color = safeColor(S.accentColor);
-  const cur   = S.currency;
-
+// Contactos del encabezado (teléfono, email, ciudad, CUIT).
+function _docContactos() {
   const contacts = [];
   if(S.coWhatsapp) contacts.push(`${pdfIcon('phone')} ${esc(S.coWhatsapp)}`);
   if(S.coEmail)    contacts.push(`${pdfIcon('email')} ${esc(S.coEmail)}`);
   if(S.coCity)     contacts.push(`${pdfIcon('location')} ${esc(S.coCity)}`);
   if(S.coCuit)     contacts.push(`CUIT: ${esc(S.coCuit)}`);
+  return contacts;
+}
+
+// Todo documento va dentro de una <table class="pdoc">: el <thead> lleva el
+// encabezado (logo + emisor + número) y el navegador lo REPITE en cada hoja
+// impresa —la técnica más confiable entre navegadores; position:fixed no se
+// dibuja bien en muchos móviles—. El <tbody> lleva el resto.
+function _docEnvoltura(theme, color, cabecera, cuerpo) {
+  return `
+    <table ${_pdocAttrs(theme, color)}>
+      <thead>
+        <tr><td>
+          ${cabecera}
+        </td></tr>
+      </thead>
+      <tbody>
+        <tr><td>${cuerpo}</td></tr>
+      </tbody>
+    </table>`;
+}
+
+// Al armar el documento se recuerdan el cliente y las especies para el
+// autocompletar, como hacía cada modo por su cuenta (el estimativo no lleva
+// especies; el riesgo, solo las de sus ítems).
+function _docRecordarAutocompletar() {
+  if (S.clientName) saveClientToDB(S.clientName, S.clientContact, S.workAddress, S.workMapLink);
+  if (S.isEstimative && !S.isRisk) return;
+  (S.items||[]).forEach(it=>{ if(it.type==='tree'&&it.species) saveSpeciesToDB(it.species); });
+  if (!S.isRisk && S.scenariosEnabled) {
+    (S.itemsB||[]).forEach(it=>{ if(it.type==='tree'&&it.species) saveSpeciesToDB(it.species); });
+  }
+}
+
+function buildDoc() {
+  _docRecordarAutocompletar();
+  if (S.isRisk)       { buildRiskDoc(); _docTranslucido(); return; }
+  if (S.isEstimative) { buildEstDoc(); _docTranslucido(); return; }
+
+  const color = safeColor(S.accentColor);
+  const cur   = S.currency;
+
+  const contacts = _docContactos();
 
   // Detalles (tabla) y Total son secciones separadas y reordenables. En modo
   // escenarios A/B cada opción lleva su total pegado a su tabla, así que el
@@ -770,22 +804,7 @@ function buildDoc() {
 
   const theme = S.pdfTheme || 'clasico';
   const doc = document.getElementById('doc-a4'); if(!doc) return;
-  // ── Estructura wrapper-table ───────────────────────────────────────────────
-  // Todo el documento va dentro de una <table class="pdoc">. El <thead>
-  // contiene el header (logo + datos del emisor + badge con número de
-  // presupuesto) y el navegador lo repite NATIVAMENTE en cada página
-  // impresa — esta es la técnica más confiable cross-browser (vs.
-  // position:fixed, que no se renderiza correctamente en muchos navegadores
-  // móviles). El <tbody> tiene el resto del contenido del presupuesto.
-  doc.innerHTML = `
-    <table ${_pdocAttrs(theme, color)}>
-      <thead>
-        <tr><td>
-          ${_buildDocHeader(theme, S, color, contacts, (_docTrabajo && _docTrabajo.badge) || 'Presupuesto N°', null, false)}
-        </td></tr>
-      </thead>
-      <tbody>
-        <tr><td>
+  doc.innerHTML = _docEnvoltura(theme, color, _buildDocHeader(theme, S, color, contacts, (_docTrabajo && _docTrabajo.badge) || 'Presupuesto N°', null, false), `
 
     <div class="ptitle-bar">
       <div class="ptitle" style="color:${color};border-color:${color}">${_docTituloHTML(false)}</div>
@@ -816,16 +835,12 @@ function buildDoc() {
       <span class="pfoot-l">${esc(S.coFooter)}</span>
     </div>`)}
 
-        </td></tr>
-      </tbody>
-    </table>`;
+        `);
   _docTranslucido();
 }
 
 // ─── BUILD RISK DOC ──────────────────────────────────────────────────────────
 function buildRiskDoc() {
-  if (S.clientName) saveClientToDB(S.clientName, S.clientContact, S.workAddress, S.workMapLink);
-  S.items.forEach(it=>{ if(it.type==='tree'&&it.species) saveSpeciesToDB(it.species); });
 
   const color  = safeColor(S.accentColor);
   const cur    = S.currency;
@@ -833,11 +848,7 @@ function buildRiskDoc() {
   const {subtotal, discAmt, total} = calcTotals();
 
   // ── Encabezado de contacto ──
-  const contacts = [];
-  if(S.coWhatsapp) contacts.push(`${pdfIcon('phone')} ${esc(S.coWhatsapp)}`);
-  if(S.coEmail)    contacts.push(`${pdfIcon('email')} ${esc(S.coEmail)}`);
-  if(S.coCity)     contacts.push(`${pdfIcon('location')} ${esc(S.coCity)}`);
-  if(S.coCuit)     contacts.push(`CUIT: ${esc(S.coCuit)}`);
+  const contacts = _docContactos();
 
   // ── Nivel de riesgo calculado ──
   // riskEval decide la matriz: un informe anterior a la v243 ('v1') sale con
@@ -1034,18 +1045,7 @@ function buildRiskDoc() {
 
   const theme = S.pdfTheme || 'clasico';
   const doc = document.getElementById('doc-a4'); if (!doc) return;
-  // Wrapper-table pattern (ver buildDoc): el <thead> con el header se repite
-  // nativamente en cada página impresa. <tbody> tiene el resto del informe.
-  doc.innerHTML = _numerar(`
-    <table ${_pdocAttrs(theme, color)}>
-      <thead>
-        <tr><td>
-          <!-- ══ ENCABEZADO ══ -->
-          ${_buildDocHeader(theme, S, color, contacts, 'Informe / Presupuesto N°', `Fecha: ${fmtD(S.dateIssue)}`, true)}
-        </td></tr>
-      </thead>
-      <tbody>
-        <tr><td>
+  doc.innerHTML = _numerar(_docEnvoltura(theme, color, _buildDocHeader(theme, S, color, contacts, 'Informe / Presupuesto N°', `Fecha: ${fmtD(S.dateIssue)}`, true), `
 
     <!-- ══ TÍTULO Y CLIENTE ══ -->
     <div class="ptitle-bar">
@@ -1172,14 +1172,11 @@ function buildRiskDoc() {
       <span class="pfoot-r">${esc(S.quoteNumber||'')} · ${fmtD(S.dateIssue)} · Informe de Riesgo</span>
     </div>`, `${S.quoteNumber||''} · ${fmtD(S.dateIssue)} · Informe de Riesgo`)}
 
-        </td></tr>
-      </tbody>
-    </table>`);
+        `));
 }
 
 // ─── BUILD EST DOC ────────────────────────────────────────────────────────────
 function buildEstDoc() {
-  if (S.clientName) saveClientToDB(S.clientName, S.clientContact, S.workAddress, S.workMapLink);
 
   const color = safeColor(S.accentColor);
   const cur   = S.currency;
@@ -1194,11 +1191,7 @@ function buildEstDoc() {
   const svcSubtotal = _estT.svc;
   const grandTotal  = _estT.total;
 
-  const contacts = [];
-  if(S.coWhatsapp) contacts.push(`${pdfIcon('phone')} ${esc(S.coWhatsapp)}`);
-  if(S.coEmail)    contacts.push(`${pdfIcon('email')} ${esc(S.coEmail)}`);
-  if(S.coCity)     contacts.push(`${pdfIcon('location')} ${esc(S.coCity)}`);
-  if(S.coCuit)     contacts.push(`CUIT: ${esc(S.coCuit)}`);
+  const contacts = _docContactos();
 
   let workRows = ''; let workN = 0;
   allItems.forEach(item => {
@@ -1265,17 +1258,7 @@ function buildEstDoc() {
 
   const theme = S.pdfTheme || 'clasico';
   const doc = document.getElementById('doc-a4'); if (!doc) return;
-  // Wrapper-table pattern (ver buildDoc): el <thead> con el header se repite
-  // nativamente en cada página impresa. <tbody> tiene el resto del documento.
-  doc.innerHTML = `
-    <table ${_pdocAttrs(theme, color)}>
-      <thead>
-        <tr><td>
-          ${_buildDocHeader(theme, S, color, contacts, 'Presupuesto Estimativo N°', `Fecha: ${fmtD(S.dateIssue)}`, true)}
-        </td></tr>
-      </thead>
-      <tbody>
-        <tr><td>
+  doc.innerHTML = _docEnvoltura(theme, color, _buildDocHeader(theme, S, color, contacts, 'Presupuesto Estimativo N°', `Fecha: ${fmtD(S.dateIssue)}`, true), `
 
     <div class="pest-header-bar" style="color:${color};border-color:${color}">
       <span class="pest-header-icon">${pdfIcon('camera')}</span>
@@ -1366,9 +1349,7 @@ function buildEstDoc() {
       <span class="pfoot-r">${esc(S.quoteNumber||'')} · ${fmtD(S.dateIssue)} · Estimativo</span>
     </div>`, `${S.quoteNumber||''} · ${fmtD(S.dateIssue)} · Estimativo`)}
 
-        </td></tr>
-      </tbody>
-    </table>`;
+        `);
 }
 
 // ─── RECIBO DE PAGO (desde la pestaña Facturación) ───────────────────────────
@@ -1381,11 +1362,7 @@ function buildEstDoc() {
 // temporalmente antes de llamar, con backup/restore de S — ver factRecibo).
 function buildReciboDoc(r) {
   const color = safeColor(S.accentColor);
-  const contacts = [];
-  if(S.coWhatsapp) contacts.push(`${pdfIcon('phone')} ${esc(S.coWhatsapp)}`);
-  if(S.coEmail)    contacts.push(`${pdfIcon('email')} ${esc(S.coEmail)}`);
-  if(S.coCity)     contacts.push(`${pdfIcon('location')} ${esc(S.coCity)}`);
-  if(S.coCuit)     contacts.push(`CUIT: ${esc(S.coCuit)}`);
+  const contacts = _docContactos();
 
   // Monto: con centavos solo si los hay (los recibos suelen ser redondos)
   const tieneCentavos = moneyToCents(r.monto) % 100 !== 0;
@@ -1400,15 +1377,7 @@ function buildReciboDoc(r) {
 
   const theme = S.pdfTheme || 'clasico';
   const doc = document.getElementById('doc-a4'); if(!doc) return;
-  doc.innerHTML = `
-    <table ${_pdocAttrs(theme, color)}>
-      <thead>
-        <tr><td>
-          ${_buildDocHeader(theme, S, color, contacts, 'Recibo N°', null, false)}
-        </td></tr>
-      </thead>
-      <tbody>
-        <tr><td>
+  doc.innerHTML = _docEnvoltura(theme, color, _buildDocHeader(theme, S, color, contacts, 'Recibo N°', null, false), `
 
     <div class="ptitle-bar">
       <div class="ptitle" style="color:${color};border-color:${color}">Recibo de Pago</div>
@@ -1449,8 +1418,6 @@ function buildReciboDoc(r) {
       <span class="pfoot-l">${esc(S.coFooter)}</span>
     </div>`)}
 
-        </td></tr>
-      </tbody>
-    </table>`;
+        `);
   _docTranslucido();
 }

@@ -179,6 +179,28 @@ const ACTUAL = `({
       await page.close();
     }
 
+    // ── Cada campo de DEF está clasificado ──
+    // Configuración del negocio (CFG_GLOBAL_FIELDS) o dato del presupuesto
+    // (DATOS_PRESUPUESTO), nunca ninguna ni las dos: un campo sin clasificar caía
+    // del lado del presupuesto por omisión y viajaba en cada snapshot.
+    {
+      const page = await nuevaPagina(browser);
+      const r = await page.evaluate(() => {
+        const cfg = new Set(CFG_GLOBAL_FIELDS), dat = new Set(DATOS_PRESUPUESTO);
+        return {
+          sinClasificar: Object.keys(DEF).filter(k => !cfg.has(k) && !dat.has(k)),
+          enLasDos: Object.keys(DEF).filter(k => cfg.has(k) && dat.has(k)),
+          datoQueNoExiste: DATOS_PRESUPUESTO.filter(k => !(k in DEF)),
+        };
+      });
+      check('Todo campo de DEF es configuración o dato del presupuesto', r.sinClasificar.length === 0,
+        'sin clasificar: ' + r.sinClasificar.join(', '));
+      check('Ningún campo está en las dos listas', r.enLasDos.length === 0, r.enLasDos.join(', '));
+      check('DATOS_PRESUPUESTO no nombra campos que no existen', r.datoQueNoExiste.length === 0,
+        r.datoQueNoExiste.join(', '));
+      await page.close();
+    }
+
     // ── La etiqueta del campo ──
     {
       const page = await nuevaPagina(browser);

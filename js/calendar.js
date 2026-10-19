@@ -1195,6 +1195,31 @@ function _icsStamp() {
   return d.getUTCFullYear() + p(d.getUTCMonth() + 1) + p(d.getUTCDate())
     + 'T' + p(d.getUTCHours()) + p(d.getUTCMinutes()) + p(d.getUTCSeconds()) + 'Z';
 }
+// Título, descripción y lugar de un evento de la Agenda, para Google Calendar
+// (gcalSync) y para el .ics (calExportIcs). Era una sola idea escrita dos
+// veces, y las dos copias ya habían empezado a decir cosas distintas.
+function calEvTexto(ev, e){
+  let summary = '', loc = '';
+  const desc = [];
+  if (ev.tipo === 'trabajo')      summary = 'Trabajo: ' + ev.title + (ev.sub ? ' — ' + ev.sub : '');
+  else if (ev.tipo === 'visita')  summary = 'Visita: ' + ev.title;
+  else if (ev.tipo === 'nota')    summary = 'Nota: ' + ev.title;
+  else                            summary = ev.title;   // "Llamar a X" / "Vence X" / "Seguimiento X"
+  if (e) {
+    const snap = e.snapshot || {};
+    if (ev.tipo === 'recontacto' && e.recontactoNota) desc.push('Nota: ' + e.recontactoNota);
+    if (e.total > 0) desc.push('Presupuesto ' + (e.quoteNumber || '') + ': ' + fmtM(e.total, e.currency || 'ARS'));
+    if (snap.clientContact) desc.push('Contacto: ' + snap.clientContact);
+    if (ev.tipo === 'trabajo') { const a = (snap.workAddress || snap.workMapLink || '').trim(); if (a) loc = a; }
+  } else if (ev.sub) {
+    desc.push(ev.sub);   // nota: nombre del contacto vinculado
+  }
+  // El teléfono del cliente ya va como "Contacto": no repetirlo.
+  if (ev.tel && !desc.includes('Contacto: ' + ev.tel)) desc.push('Tel: ' + ev.tel);
+  if (ev.mapUrl) { desc.push('Ubicación: ' + ev.mapUrl); if (!loc) loc = ev.mapUrl; }
+  return { summary, desc: desc.join('\n'), loc };
+}
+
 function calExportIcs() {
   const idx = calBuildIndex();
   const hoy = today();
@@ -1219,32 +1244,7 @@ function calExportIcs() {
       const dend = _calAddDays(iso, 1).replace(/-/g, '');
       const e = (ev.entryId != null) ? byId[ev.entryId] : null;
 
-      let summary = '', loc = '';
-      const desc = [];
-      if (ev.tipo === 'trabajo') {
-        summary = 'Trabajo: ' + ev.title + (ev.sub ? ' — ' + ev.sub : '');
-        if (e) {
-          const snap = e.snapshot || {};
-          if (e.total > 0) desc.push('Presupuesto ' + (e.quoteNumber || '') + ': ' + fmtM(e.total, e.currency || 'ARS'));
-          if (snap.clientContact) desc.push('Contacto: ' + snap.clientContact);
-          if (snap.workMapLink) desc.push('Ubicación: ' + snap.workMapLink);
-          loc = (snap.workAddress || snap.workMapLink || '').trim();
-        }
-      } else if (ev.tipo === 'recontacto') {
-        summary = ev.title;                        // "Llamar a <cliente>"
-        if (e) {
-          const snap = e.snapshot || {};
-          if (e.recontactoNota) desc.push('Nota: ' + e.recontactoNota);
-          if (e.total > 0) desc.push('Presupuesto ' + (e.quoteNumber || '') + ': ' + fmtM(e.total, e.currency || 'ARS'));
-          if (snap.clientContact) desc.push('Contacto: ' + snap.clientContact);
-        }
-      } else if (ev.tipo === 'visita') {           // evaluación presencial
-        summary = 'Visita: ' + ev.title + (ev.sub ? ' — ' + ev.sub : '');
-        if (ev.tel) desc.push('Contacto: ' + ev.tel);
-        if (ev.mapUrl) { desc.push('Ubicación: ' + ev.mapUrl); loc = ev.mapUrl; }
-      } else {                                     // nota
-        summary = 'Nota: ' + ev.title;
-      }
+      const { summary, desc, loc } = calEvTexto(ev, e);
 
       let uidBase = (ev.entryId != null ? 'e' + ev.entryId + '-' + ev.tipo : 'n' + (ev.noteId || count))
         + '-' + dstart;
@@ -1265,7 +1265,7 @@ function calExportIcs() {
         body.push('DTEND;VALUE=DATE:' + dend);
       }
       body.push('SUMMARY:' + _icsEsc(summary));
-      if (desc.length) body.push('DESCRIPTION:' + _icsEsc(desc.join('\n')));
+      if (desc) body.push('DESCRIPTION:' + _icsEsc(desc));
       if (loc) body.push('LOCATION:' + _icsEsc(loc));
       body.push('END:VEVENT');
       count++;

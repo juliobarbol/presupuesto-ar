@@ -213,28 +213,6 @@ async function gcalListEvents(token, calId){
   return map;
 }
 
-// Arma summary / description / location de un evento de la agenda según el tipo,
-// reusando la misma info que el .ics y el botón de Google Calendar per-evento.
-function _gcalEvInfo(ev, e){
-  let summary = '', loc = '';
-  const desc = [];
-  if (ev.tipo === 'trabajo')      summary = 'Trabajo: ' + ev.title + (ev.sub ? ' — ' + ev.sub : '');
-  else if (ev.tipo === 'visita')  summary = 'Visita: ' + ev.title;
-  else if (ev.tipo === 'nota')    summary = 'Nota: ' + ev.title;
-  else                            summary = ev.title;   // "Llamar a X" / "Vence X" / "Seguimiento X"
-  if (e) {
-    const snap = e.snapshot || {};
-    if (ev.tipo === 'recontacto' && e.recontactoNota) desc.push('Nota: ' + e.recontactoNota);
-    if (e.total > 0) desc.push('Presupuesto ' + (e.quoteNumber || '') + ': ' + fmtM(e.total, e.currency || 'ARS'));
-    if (snap.clientContact) desc.push('Contacto: ' + snap.clientContact);
-    if (ev.tipo === 'trabajo') { const a = (snap.workAddress || snap.workMapLink || '').trim(); if (a) loc = a; }
-  } else if (ev.sub) {
-    desc.push(ev.sub);   // nota: nombre del contacto vinculado
-  }
-  if (ev.tel) desc.push('Tel: ' + ev.tel);
-  if (ev.mapUrl) { desc.push('Ubicación: ' + ev.mapUrl); if (!loc) loc = ev.mapUrl; }
-  return { summary, desc: desc.join('\n'), loc };
-}
 // Construye el conjunto DESEADO desde calBuildIndex(): { pqKey: {body, hash} }.
 // Incluye todos los tipos, solo de hoy en adelante; notas/visitas hechas no van.
 function _gcalBuildDesired(){
@@ -250,7 +228,7 @@ function _gcalBuildDesired(){
       if ((ev.tipo === 'nota' || ev.tipo === 'visita') && ev.done) return;
       const dstart = iso.replace(/-/g, '');
       const dendISO = _calAddDays(iso, 1);
-      const info = _gcalEvInfo(ev, ev.entryId != null ? byId[ev.entryId] : null);
+      const info = calEvTexto(ev, ev.entryId != null ? byId[ev.entryId] : null);
       // Con hora → evento con horario (1 h); sin hora → día completo.
       const hora = ev.hora || '';
       const tz = _gcalTz();

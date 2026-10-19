@@ -354,29 +354,7 @@ function renderItems() {
         ${adjBadge}`;
 
     } else if(item.type==='service'){
-      const qty      = parseInt(item.qty) || 1;
-      const showQty  = !!item.showQty;
-      const total    = itemTotal(item);
-      const hasPrice = item.price !== '' && item.price !== null && moneyToCents(item.price) > 0;
-
-      const qtyRow = `
-        <div style="display:flex;align-items:center;gap:10px;margin-top:8px;padding:7px 10px;background:#f1f5f4;border-radius:6px;flex-wrap:wrap">
-          <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:140px">
-            <div class="isub" style="margin:0;white-space:nowrap">Cantidad</div>
-            <input class="ii qty-f" type="number" min="1" step="1" inputmode="numeric" value="${qty}"
-              style="width:64px;text-align:center;font-weight:700;font-size:14px">
-            ${qty > 1 && hasPrice
-              ? `<span class="qty-preview" style="font-size:12.5px;color:var(--accent-fg);font-weight:600">${qty} × ${fmtM(item.price, S.currency||'ARS')} = ${fmtM(total, S.currency||'ARS')}</span>`
-              : `<span class="qty-preview" style="font-size:12.5px;color:var(--accent-fg);font-weight:600"></span>`}
-          </div>
-          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12.5px;color:var(--muted);white-space:nowrap;flex-shrink:0">
-            <span class="tgl" style="width:32px;height:18px">
-              <input type="checkbox" class="showqty-f" ${showQty?'checked':''}>
-              <span class="tgl-sl"></span>
-            </span>
-            Desglosar en PDF
-          </label>
-        </div>`;
+      const qtyRow = _servicioQtyRowHTML(item, '');
 
       inner += `
         <div class="item-grid-2">
@@ -434,12 +412,7 @@ function renderItems() {
       _refreshQtyPreview(card, idx);
     });
 
-    const qf = card.querySelector('.qty-f');
-    if(qf) wireQtyInput(qf, v=>{
-      setItemField(idx,'qty',v);
-      updateTotalsBar();
-      _refreshQtyPreview(card, idx);
-    });
+    _wireServicioQty(card, '', (k, v) => setItemField(idx, k, v), () => _refreshQtyPreview(card, idx));
 
     // Cobro por unidad: elegir la unidad re-dibuja la tarjeta (cambian los
     // campos); la cantidad se guarda tal cual se tipea y se lee con itemCant.
@@ -451,9 +424,6 @@ function renderItems() {
       _refreshQtyPreview(card, idx);
     });
     if(item.type==='tree' && itemUnidad(item)) _refreshQtyPreview(card, idx);
-
-    const sqf = card.querySelector('.showqty-f');
-    if(sqf) sqf.addEventListener('change', ()=>setItemField(idx,'showQty', sqf.checked));
 
     const sf = card.querySelector('.sp-f');
     if(sf && item.type==='tree'){
@@ -528,6 +498,48 @@ function wireQtyInput(qf, onVal) {
   });
 }
 
+// ─── Cantidad de un servicio (presupuesto normal y estimativo) ───
+// La tarjeta del servicio estaba copiada en los dos editores, y el bug de la
+// cantidad que no se podía borrar estaba dos veces. Ahora la fila, su texto y
+// su cableado salen de acá. `pre` es el prefijo de clases de cada editor
+// ('' o 'est-'): los tests y el resto del código buscan `.qty-f`/`.est-qty-f`.
+
+// "3 × $ 100.000 = $ 300.000", o '' con 1 unidad o sin precio.
+function _servicioQtyTxt(item) {
+  const qty = parseInt(item.qty) || 1;
+  if (qty <= 1 || !(moneyToCents(item.price) > 0)) return '';
+  return `${qty} × ${fmtM(item.price, S.currency||'ARS')} = ${fmtM(itemTotal(item), S.currency||'ARS')}`;
+}
+
+function _servicioQtyRowHTML(item, pre) {
+  const qty = parseInt(item.qty) || 1;
+  return `
+        <div style="display:flex;align-items:center;gap:10px;margin-top:8px;padding:7px 10px;background:#f1f5f4;border-radius:6px;flex-wrap:wrap">
+          <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:140px">
+            <div class="isub" style="margin:0;white-space:nowrap">Cantidad</div>
+            <input class="ii ${pre}qty-f" type="number" min="1" step="1" inputmode="numeric" value="${qty}"
+              style="width:64px;text-align:center;font-weight:700;font-size:14px">
+            <span class="qty-preview" style="font-size:12.5px;color:var(--accent-fg);font-weight:600">${_servicioQtyTxt(item)}</span>
+          </div>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12.5px;color:var(--muted);white-space:nowrap;flex-shrink:0">
+            <span class="tgl" style="width:32px;height:18px">
+              <input type="checkbox" class="${pre}showqty-f" ${item.showQty?'checked':''}>
+              <span class="tgl-sl"></span>
+            </span>
+            Desglosar en PDF
+          </label>
+        </div>`;
+}
+
+// `set(campo, valor)` guarda en el ítem de ese editor; `refrescar()` repinta
+// el texto de la fila.
+function _wireServicioQty(card, pre, set, refrescar) {
+  const qf = card.querySelector('.' + pre + 'qty-f');
+  if (qf) wireQtyInput(qf, v => { set('qty', v); updateTotalsBar(); refrescar(); });
+  const sqf = card.querySelector('.' + pre + 'showqty-f');
+  if (sqf) sqf.addEventListener('change', () => set('showQty', sqf.checked));
+}
+
 // Actualiza el preview "3 × $X = $Y" en el card sin re-renderizar todo
 function _refreshQtyPreview(card, idx) {
   const item = activeItemsArr()[idx]; if(!item) return;
@@ -539,13 +551,8 @@ function _refreshQtyPreview(card, idx) {
     return;
   }
   if(item.type!=='service') return;
-  const qty      = parseInt(item.qty) || 1;
-  const hasPrice = item.price !== '' && moneyToCents(item.price) > 0;
-  const total    = itemTotal(item);
   const span = card.querySelector('.qty-preview');
-  if(span) span.textContent = (qty > 1 && hasPrice)
-    ? `${qty} × ${fmtM(item.price, S.currency||'ARS')} = ${fmtM(total, S.currency||'ARS')}`
-    : '';
+  if(span) span.textContent = _servicioQtyTxt(item);
 }
 
 // ─── PANEL DE NOTAS (memoria interna del editor) ──────────────────────────
@@ -832,29 +839,7 @@ function renderEstItems() {
         ${photoGalleryHTML(photoRefs)}`;
 
     } else if (item.type === 'service') {
-      const qty      = parseInt(item.qty) || 1;
-      const showQty  = !!item.showQty;
-      const total    = itemTotal(item);
-      const hasPrice = item.price !== '' && item.price !== null && moneyToCents(item.price) > 0;
-
-      const qtyRow = `
-        <div style="display:flex;align-items:center;gap:10px;margin-top:8px;padding:7px 10px;background:#f1f5f4;border-radius:6px;flex-wrap:wrap">
-          <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:140px">
-            <div class="isub" style="margin:0;white-space:nowrap">Cantidad</div>
-            <input class="ii est-qty-f" type="number" min="1" step="1" inputmode="numeric" value="${qty}"
-              style="width:64px;text-align:center;font-weight:700;font-size:14px">
-            ${qty > 1 && hasPrice
-              ? `<span class="qty-preview" style="font-size:12.5px;color:var(--accent-fg);font-weight:600">${qty} × ${fmtM(item.price, S.currency||'ARS')} = ${fmtM(total, S.currency||'ARS')}</span>`
-              : `<span class="qty-preview" style="font-size:12.5px;color:var(--accent-fg);font-weight:600"></span>`}
-          </div>
-          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12.5px;color:var(--muted);white-space:nowrap;flex-shrink:0">
-            <span class="tgl" style="width:32px;height:18px">
-              <input type="checkbox" class="est-showqty-f" ${showQty?'checked':''}>
-              <span class="tgl-sl"></span>
-            </span>
-            Desglosar en PDF
-          </label>
-        </div>`;
+      const qtyRow = _servicioQtyRowHTML(item, 'est-');
 
       card.innerHTML = `
         <span class="drag-h" title="Arrastrar">⠿</span>
@@ -923,15 +908,7 @@ function renderEstItems() {
       _refreshEstQtyPreview(card, idx);
     });
 
-    const qf = card.querySelector('.est-qty-f');
-    if(qf) wireQtyInput(qf, v=>{
-      setEstItemField(idx,'qty',v);
-      updateTotalsBar();
-      _refreshEstQtyPreview(card, idx);
-    });
-
-    const sqf = card.querySelector('.est-showqty-f');
-    if(sqf) sqf.addEventListener('change', ()=>setEstItemField(idx,'showQty', sqf.checked));
+    _wireServicioQty(card, 'est-', (k, v) => setEstItemField(idx, k, v), () => _refreshEstQtyPreview(card, idx));
 
     const dupBtn = card.querySelector('.ia-dup');
     const delBtn = card.querySelector('.ia-del');
@@ -967,13 +944,8 @@ function renderEstItems() {
 
 function _refreshEstQtyPreview(card, idx) {
   const item = S.estItems[idx]; if(!item||item.type!=='service') return;
-  const qty      = parseInt(item.qty) || 1;
-  const hasPrice = item.price !== '' && moneyToCents(item.price) > 0;
-  const total    = itemTotal(item);
   const span = card.querySelector('.qty-preview');
-  if(span) span.textContent = (qty > 1 && hasPrice)
-    ? `${qty} × ${fmtM(item.price, S.currency||'ARS')} = ${fmtM(total, S.currency||'ARS')}`
-    : '';
+  if(span) span.textContent = _servicioQtyTxt(item);
 }
 
 
