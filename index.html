@@ -20,13 +20,13 @@
 <script>try{var _tm=localStorage.getItem('pq_theme')||'auto';var _td=_tm==='dark'||(_tm==='auto'&&window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches);document.documentElement.setAttribute('data-theme',_td?'dark':'light');}catch(e){}</script>
 <!-- El CSS de la app, en este orden (la cascada depende de él). El ?v= es la
      versión de sw.js: cada versión del HTML pide SU código (npm run subir-version). -->
-<link rel="stylesheet" href="css/base.css?v=260">
-<link rel="stylesheet" href="css/components.css?v=260">
-<link rel="stylesheet" href="css/print.css?v=260">
-<link rel="stylesheet" href="css/riesgo.css?v=260">
-<link rel="stylesheet" href="css/documento.css?v=260">
-<link rel="stylesheet" href="css/mapa.css?v=260">
-<link rel="stylesheet" href="css/movil.css?v=260">
+<link rel="stylesheet" href="css/base.css?v=261">
+<link rel="stylesheet" href="css/components.css?v=261">
+<link rel="stylesheet" href="css/print.css?v=261">
+<link rel="stylesheet" href="css/riesgo.css?v=261">
+<link rel="stylesheet" href="css/documento.css?v=261">
+<link rel="stylesheet" href="css/mapa.css?v=261">
+<link rel="stylesheet" href="css/movil.css?v=261">
 </head>
 <body>
 
@@ -756,6 +756,7 @@
           <button class="subtab-btn" onclick="switchSubtab('textos')"><svg class="ic"><use href="#i-pencil"></use></svg> Textos</button>
           <button class="subtab-btn" onclick="switchSubtab('estilo')"><svg class="ic"><use href="#i-palette"></use></svg> Estilo</button>
           <button class="subtab-btn" onclick="switchSubtab('datos')"><svg class="ic"><use href="#i-idcard"></use></svg> Datos</button>
+          <button class="subtab-btn" onclick="switchSubtab('ayuda')"><svg class="ic"><use href="#i-book"></use></svg> Ayuda</button>
         </div>
 
         <!-- ── SUB-TAB MI NEGOCIO ── -->
@@ -809,7 +810,7 @@
                empresa, cobro, mensajes y backup. -->
           <div class="st">Mensajes de WhatsApp y avisos</div>
           <!-- ── SEGUIMIENTO COMERCIAL ── -->
-          <div class="fu-config">
+          <div class="fu-config" id="fu-section">
             <div class="fu-config-head">
               <span class="st" style="margin:0;border:none;padding:0"><svg class="ic ic-c-amber"><use href="#i-bell"></use></svg> Seguimiento de presupuestos</span>
               <label class="fu-switch">
@@ -1365,6 +1366,18 @@
               <div id="missvc-manager-list"></div>
             </div>
           </div>
+        </div>
+
+        <!-- ── SUB-TAB AYUDA (v261, js/ayuda.js) ── -->
+        <div id="subpanel-ayuda" class="subpanel">
+          <div class="st">Ayuda</div>
+          <p class="fu-help">Buscá con tus palabras qué hace cada pestaña o botón. "Llevame ahí" te lleva al lugar de la pantalla.</p>
+          <div class="ayuda-buscar">
+            <svg class="ic" aria-hidden="true"><use href="#i-search"></use></svg>
+            <input type="search" id="ayuda-q" placeholder="Ej.: enviados, PDF, backup, clima…" autocomplete="off" aria-label="Buscar en la ayuda" oninput="ayudaBuscarDebounced()">
+          </div>
+          <div class="ayuda-chips" id="ayuda-chips"></div>
+          <div id="ayuda-res"></div>
         </div>
       </div><!-- /panel-empresa -->
 
@@ -2123,30 +2136,31 @@
 <!-- El código de la app: scripts clásicos (no módulos) que comparten el ámbito
      global, en este orden. Lo que corre al cargar un archivo no puede usar algo
      de uno posterior (npm run lint lo verifica). -->
-<script src="js/state.js?v=260"></script>
-<script src="js/riesgo.js?v=260"></script>
-<script src="js/dropdown.js?v=260"></script>
-<script src="js/datepicker.js?v=260"></script>
-<script src="js/seguimiento.js?v=260"></script>
-<script src="js/push.js?v=260"></script>
-<script src="js/net.js?v=260"></script>
-<script src="js/sanitize.js?v=260"></script>
-<script src="js/photos.js?v=260"></script>
-<script src="js/clients.js?v=260"></script>
-<script src="js/phrases.js?v=260"></script>
-<script src="js/items.js?v=260"></script>
-<script src="js/ui.js?v=260"></script>
-<script src="js/history.js?v=260"></script>
-<script src="js/exportimport.js?v=260"></script>
-<script src="js/gdrive.js?v=260"></script>
-<script src="js/gcal.js?v=260"></script>
-<script src="js/pdf.js?v=260"></script>
-<script src="js/facturacion.js?v=260"></script>
-<script src="js/mapa.js?v=260"></script>
-<script src="js/clima.js?v=260"></script>
-<script src="js/calendar.js?v=260"></script>
-<script src="js/notifs.js?v=260"></script>
-<script src="js/nav.js?v=260"></script>
-<script src="js/core.js?v=260"></script>
+<script src="js/state.js?v=261"></script>
+<script src="js/riesgo.js?v=261"></script>
+<script src="js/dropdown.js?v=261"></script>
+<script src="js/datepicker.js?v=261"></script>
+<script src="js/seguimiento.js?v=261"></script>
+<script src="js/push.js?v=261"></script>
+<script src="js/net.js?v=261"></script>
+<script src="js/sanitize.js?v=261"></script>
+<script src="js/photos.js?v=261"></script>
+<script src="js/clients.js?v=261"></script>
+<script src="js/phrases.js?v=261"></script>
+<script src="js/items.js?v=261"></script>
+<script src="js/ui.js?v=261"></script>
+<script src="js/history.js?v=261"></script>
+<script src="js/exportimport.js?v=261"></script>
+<script src="js/gdrive.js?v=261"></script>
+<script src="js/gcal.js?v=261"></script>
+<script src="js/pdf.js?v=261"></script>
+<script src="js/facturacion.js?v=261"></script>
+<script src="js/mapa.js?v=261"></script>
+<script src="js/clima.js?v=261"></script>
+<script src="js/calendar.js?v=261"></script>
+<script src="js/notifs.js?v=261"></script>
+<script src="js/ayuda.js?v=261"></script>
+<script src="js/nav.js?v=261"></script>
+<script src="js/core.js?v=261"></script>
 </body>
 </html>

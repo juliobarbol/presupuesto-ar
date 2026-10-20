@@ -262,13 +262,14 @@ document.addEventListener('change', e => { if(!noSync && e.target.closest('#app'
 // Las sub-pestañas reducen el scroll vertical de la pestaña Empresa.
 // Renderiza solo lo necesario al entrar en cada sub-tab.
 function switchSubtab(name) {
-  const names = ['negocio','textos','estilo','datos'];
+  const names = ['negocio','textos','estilo','datos','ayuda'];
   document.querySelectorAll('.subtab-btn').forEach((b,i)=>b.classList.toggle('active', names[i]===name));
   document.querySelectorAll('.subpanel').forEach(p=>p.classList.remove('active'));
   const p = document.getElementById('subpanel-'+name); if(p) p.classList.add('active');
   // Los monogramas de muestra usan el nombre y el logo actuales, que pudieron
   // cambiar en "Mi negocio".
   if (name === 'estilo') estiloUISync(false);
+  if (name === 'ayuda') ayudaRender();
   // Al entrar a "datos", solo actualizamos los CONTADORES de los headers.
   // Las listas se renderizan al abrir cada sección colapsable (lazy).
   if (name === 'datos') {

@@ -71,13 +71,21 @@ Si tu cambio afecta el documento, decidí en cuál(es) de los 3 modos aplica.
 4. Verificar que entra al backup/export (`buildBackupObject`/`applyBackupObject` en
    `js/exportimport.js`) si debe sobrevivir un cambio de dispositivo.
 
-## 4. Verificar antes de cerrar
+## 4. Actualizar la Ayuda
+La app tiene una Ayuda (Configuración → Ayuda, `js/ayuda.js`) que explica cada función
+y lleva al lugar de la pantalla. Si la feature es nueva o cambia lo que ve el usuario:
+1. Sumá o corregí el artículo en `AYUDA` (título, palabras con que se buscaría, texto
+   corto en voseo y, si tiene lugar en pantalla, el destino `ir`).
+2. Si cambiaste o borraste un id o una clase del HTML, revisá los `ir.sel` que lo usen.
+3. `npm test -- ayuda` verifica que todos los destinos y relacionados sigan existiendo.
+
+## 5. Verificar antes de cerrar
 ```bash
 npm run lint    # sintaxis, bugs, convenciones, orden de carga y versión
 npm test        # la suite entera en un navegador real (≈1,5 min)
 ```
 Para validar visualmente la vista previa o el PDF, usá la skill `webapp-testing`.
 
-## 5. Para desplegar
+## 6. Para desplegar
 Cuando el cambio esté listo, usá la skill `deploy-presupuesto` (sube la versión con
 `npm run subir-version`, corre los tests y deja todo listo para mergear).

@@ -13,7 +13,7 @@
 //
 //  Para forzar actualizacion tras un deploy: subir el CACHE_VERSION.
 
-const CACHE_VERSION = 'presupuesto-v260';
+const CACHE_VERSION = 'presupuesto-v261';
 
 // El CÓDIGO de la app (v256: antes vivía entero en index.html). index.html lo
 // pide con ?v=<número de versión> y acá se lista con la misma marca, así que
@@ -31,7 +31,7 @@ const APP_CODIGO = [
   'js/clients.js', 'js/phrases.js', 'js/items.js', 'js/ui.js', 'js/history.js',
   'js/exportimport.js', 'js/gdrive.js', 'js/gcal.js', 'js/pdf.js',
   'js/facturacion.js', 'js/mapa.js', 'js/clima.js', 'js/calendar.js',
-  'js/notifs.js', 'js/nav.js', 'js/core.js',
+  'js/notifs.js', 'js/ayuda.js', 'js/nav.js', 'js/core.js',
 ].map((f) => `./${f}?v=${APP_V}`);
 // Caché APARTE, que sobrevive a las versiones, para lo pesado que se baja bajo
 // demanda: html2pdf (927 KB, "Compartir imagen"). Antes vivía en la caché de la
