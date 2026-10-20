@@ -34,6 +34,7 @@ const NAV_OVERLAYS = {
   'note-edit-overlay':    () => calCloseNoteEdit(),
   'clima-overlay':        () => closeClimaDetail(),
   'nv-overlay':           () => nvClose(),
+  'vsr-overlay':          () => vsrClose(),
   'estilo-overlay':       () => estiloCerrar(),
   'colab-overlay':        () => colabClose(),
   'agenda-overlay':       () => closeAgendaDlg(),
@@ -157,7 +158,7 @@ function navSalirInit() {
 // con la misma función que la ✕ (NAV_OVERLAYS), así "Atrás" queda en orden.
 const NAV_HOJAS = ['clima-overlay', 'notif-overlay', 'notes-overlay', 'day-alert-overlay',
   'phrases-overlay', 'moverlay', 'agenda-overlay', 'note-edit-overlay', 'nv-overlay', 'colab-overlay',
-  'estilo-overlay'];
+  'estilo-overlay', 'vsr-overlay'];
 const NAV_HOJA_BLOCK = 'input,textarea,select,[contenteditable="true"],.agenda-clima-strip,' +
   '.csel-pop,.cal-pop,.cpk-sv,.cpk-hue,.agc-swipe,[draggable="true"]';
 const NAV_HOJA_UMBRAL = 110;

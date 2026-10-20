@@ -134,6 +134,33 @@ function historial() {
   check(cUndo.exp === isoEnDias(-30) && cUndo.sExp === isoEnDias(-30) && /Cliente lo piensa/.test(b4.texto),
     'Deshacer la prórroga repone la fecha (también en S) y vuelve al banner', JSON.stringify(cUndo));
 
+  // ── F) Lista de vencidos sin respuesta ────────────────────────────────
+  // El ✓ saca al 702 del banner, pero sigue vencido: la lista lo muestra.
+  const f = await page.evaluate(() => {
+    marcarVencimientoVisto(702);
+    const enBanner = /Cliente perdido/.test(document.getElementById('expiry-banner').textContent);
+    document.querySelector('#expiry-banner .fub-vsr').click();
+    const ov = document.getElementById('vsr-overlay');
+    const box = document.getElementById('vsr-box');
+    const items = () => [...document.querySelectorAll('#vsr-list .vsr-item')].map(x => x.querySelector('.vsr-cli').textContent);
+    const antes = items();
+    const ancho = { box: box.getBoundingClientRect().width, scroll: box.scrollWidth, client: box.clientWidth };
+    document.querySelector('#vsr-list .fub-qp.is-perdido[onclick*="702"]').click();
+    const tras1 = items();
+    document.querySelector('#vsr-list .fub-qp[onclick*="703"][onclick*="sigue"]').click();
+    const vacio = document.getElementById('vsr-list').textContent.trim();
+    vsrClose();
+    return { enBanner, abierto: true, antes, tras1, vacio, ancho, cerrado: !ov.classList.contains('open'),
+      est702: getH().find(x => x.id === 702).estado };
+  });
+  check(!f.enBanner && f.antes.length === 2 && f.antes.includes('Cliente perdido'),
+    'La lista muestra también el vencido descartado con el ✓', JSON.stringify(f.antes));
+  check(f.ancho.box <= 360 && f.ancho.scroll <= f.ancho.client, 'La lista entra a 360 px sin scroll horizontal', JSON.stringify(f.ancho));
+  check(f.est702 === 'perdido' && f.tras1.length === 1 && !f.tras1.includes('Cliente perdido'),
+    'Responder desde la lista lo saca de la lista', JSON.stringify(f.tras1));
+  check(/no quedan vencidos sin respuesta/.test(f.vacio), 'Sin vencidos, la lista lo dice', f.vacio);
+  check(f.cerrado, 'Cerrar la lista la cierra');
+
   check(!errores.length, 'Sin errores de JS', errores.join(' | '));
   await browser.close();
   console.log(fallos ? `\n${fallos} FALLO(S)` : '\nTODO OK');

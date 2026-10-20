@@ -1926,6 +1926,21 @@ input[type=number]{-moz-appearance:textfield}
    Reusa la caja del modal de nota. Lo propio es el bloque de precios: el
    porcentaje con atajos y la cuenta hecha (total viejo → total nuevo), que es
    lo único que el usuario mira antes de decidir. */
+/* Vencidos sin respuesta (v259). Debajo de #agenda-overlay (1100): "Aceptó"
+   abre el diálogo de agendar encima de la lista. */
+#vsr-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1050;align-items:center;justify-content:center}
+#vsr-overlay.open{display:flex}
+#vsr-box{background:var(--card);border-radius:var(--radius-box);padding:20px;width:460px;max-width:94vw;max-height:88vh;overflow-y:auto;overscroll-behavior:contain;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+#vsr-box h4{font-family:var(--font-display);font-size:17px;margin-bottom:4px;color:var(--text)}
+#vsr-box .cbtns{display:flex;justify-content:flex-end;margin-top:14px}
+.vsr-item{display:flex;flex-direction:column;gap:8px;padding:10px 0;border-top:1px solid var(--border)}
+.vsr-item:first-child{border-top:none;padding-top:0}
+.vsr-info{display:flex;flex-direction:column;gap:1px;cursor:pointer;min-width:0}
+.vsr-cli{font-size:13.5px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vsr-det{font-size:12px;color:var(--muted)}
+.vsr-vacio{font-size:13.5px;color:var(--muted);padding:12px 0;text-align:center}
+.fub-vsr{display:block;width:100%;margin-top:10px;font-family:var(--font-text);font-size:12.5px;font-weight:700;color:#991b1b;background:transparent;border:1px dashed #fca5a5;border-radius:var(--radius-field);padding:8px 10px;cursor:pointer}
+:root[data-theme="dark"] .fub-vsr{color:#fca5a5;border-color:#5c1c1c}
 #nv-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2000;align-items:center;justify-content:center}
 #nv-overlay.open{display:flex}
 /* Máquina de estilo (v244). Misma caja que "Nueva versión". */

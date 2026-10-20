@@ -2398,7 +2398,78 @@ function renderExpiryBanner() {
         </div>`;
       }).join('')}
       ${n>5 ? `<div class="fub-more">y ${n-5} más…</div>` : ''}
+    </div>
+    <button type="button" class="fub-vsr" onclick="vsrAbrir()">Ver todos los vencidos sin respuesta</button>`;
+}
+
+// ─── VENCIDOS SIN RESPUESTA (v259) ───────────────────────────
+// Todos los enviados con la vigencia pasada, para cerrarlos con lo que pasó.
+// El banner muestra 5 y no muestra los que se descartaron con el ✓, pero esos
+// siguen contando como vencidos en la conversión del Mapa: esta lista es el
+// único lugar donde se ven todos. Mismo criterio que el pin hueco y la cifra
+// de "respondidos" (mapaEsVencido), así el número de la lista es el del Mapa.
+let _vsrIds = null;   // null = todo el historial; lista = solo esos (la zona del Mapa)
+function getVencidosSinRespuesta(ids) {
+  const set = Array.isArray(ids) ? new Set(ids) : null;
+  return getH()
+    .filter(e => cuentaEnConversion(e) && mapaEsVencido(e) && (!set || set.has(e.id)))
+    .map(e => ({ entry: e, dias: daysSinceDate(e.snapshot.dateExpiry) }))
+    // Los recién vencidos primero: son los que todavía se pueden salvar.
+    .sort((a, b) => a.dias - b.dias);
+}
+
+// origen 'zona': los vencidos que ve la franja del Mapa (mapaUpdateZonaStats
+// deja sus ids en _mapaZonaVencIds); sin origen, todos.
+function vsrAbrir(origen) {
+  const ov = document.getElementById('vsr-overlay');
+  if (!ov) return;
+  _vsrIds = (origen === 'zona' && Array.isArray(_mapaZonaVencIds)) ? _mapaZonaVencIds.slice() : null;
+  vsrRender();
+  ov.classList.add('open');
+}
+
+function vsrRender() {
+  const list = document.getElementById('vsr-list');
+  const sub = document.getElementById('vsr-sub');
+  if (!list) return;
+  const venc = getVencidosSinRespuesta(_vsrIds);
+  const n = venc.length;
+  if (sub) sub.textContent = n
+    ? `${n} presupuesto${n > 1 ? 's' : ''} ${_vsrIds ? 'de esta zona ' : ''}${n > 1 ? 'pasaron' : 'pasó'} la vigencia sin respuesta. Contá qué pasó con cada uno: así la conversión del Mapa deja de suponer.`
+    : '';
+  if (!n) {
+    list.innerHTML = '<div class="vsr-vacio">Listo: no quedan vencidos sin respuesta.</div>';
+    return;
+  }
+  list.innerHTML = venc.map(p => {
+    const e = p.entry;
+    return `<div class="vsr-item">
+      <div class="vsr-info" onclick="vsrIrA(${e.id})" role="button" tabindex="0" title="Ver este presupuesto en el historial">
+        <span class="fub-item-num">${esc(e.quoteNumber || '—')}</span>
+        <span class="vsr-cli">${esc((e.clientName || '').trim() || '(sin nombre)')}</span>
+        <span class="vsr-det">venció hace ${p.dias} día${p.dias > 1 ? 's' : ''}${e.total ? ' · ' + fmtM(e.total, e.currency || 'ARS') : ''}${esReemplazado(e) ? ' · tiene una versión más nueva' : ''}</span>
+      </div>
+      <div class="fub-quepaso" role="group" aria-label="¿Qué pasó con este presupuesto?">
+        <button type="button" class="fub-qp is-acepto" onclick="vencResponder(${e.id},'aceptado')">Aceptó</button>
+        <button type="button" class="fub-qp is-perdido" onclick="vencResponder(${e.id},'perdido')">Lo perdí</button>
+        <button type="button" class="fub-qp" onclick="vencResponder(${e.id},'sigue')" title="Extender la vigencia: el cliente todavía lo está pensando">Sigue en pie</button>
+      </div>
     </div>`;
+  }).join('');
+}
+
+function vsrIrA(id) {
+  vsrClose();
+  goToHistoryEntry(id);
+}
+
+function vsrClose() {
+  const ov = document.getElementById('vsr-overlay');
+  if (!ov || !ov.classList.contains('open')) return;
+  ov.classList.remove('open');
+  _vsrIds = null;
+  // Lo respondido cambia los pins huecos y las cifras de la franja.
+  if (document.querySelector('#panel-mapa.active') && typeof mapaRefresh === 'function') mapaRefresh();
 }
 
 // ─── RECONTACTOS: banner + aviso global ──────────────────────

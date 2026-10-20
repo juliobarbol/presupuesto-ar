@@ -19,6 +19,7 @@ let _mapaFitDone = false;    // el primer render encuadra a los marcadores
 let _mapaCercaList = [];     // pendientes cercanos (para armar la ruta)
 let _mapaUserLatLng = null;  // [lat,lng] de la última "cerca mío"
 let _mapaHighlight = new Set(); // ids resaltados (cerca mío)
+let _mapaZonaVencIds = [];   // enviados vencidos de la zona visible (vsrAbrir('zona'))
 let _mapaGeoRef = null;      // [lat,lng] de referencia para reconstruir Plus Codes cortos
 // Las colaboraciones (trabajo propio para un colega) arrancan OCULTAS. El mapa
 // es la foto de dónde se presupuestó; los trabajos propios son otra cosa y se
@@ -809,6 +810,7 @@ function mapaUpdateZonaStats() {
   // y por el embudo no pasó. Ver test/trabajo-propio.test.cjs.
   let colabN = 0, colabTotal = 0, dirN = 0, dirTotal = 0, vencidos = 0;
   const visibles = [];
+  _mapaZonaVencIds = [];
   _mapaLayer.eachLayer(m => {
     // Grupo de pins cercanos: cada punto cuenta por su ubicación REAL, no por
     // el centro del círculo (que puede caer adentro con pins afuera).
@@ -827,7 +829,7 @@ function mapaUpdateZonaStats() {
       if (esTrabajoDirecto(e)) { dirN++;   dirTotal   += e.total || 0; return; }
       const est = e.estado || 'borrador';
       counts[est] = (counts[est] || 0) + 1;
-      if (mapaEsVencido(e)) vencidos++;
+      if (mapaEsVencido(e)) { vencidos++; _mapaZonaVencIds.push(e.id); }
       total += e.total || 0;
       totalMarks++;
   });
@@ -880,6 +882,9 @@ function mapaUpdateZonaStats() {
     ? `Aceptados: <b>${ganados} de ${enviados} enviado${enviados === 1 ? '' : 's'}${pct(ganados, enviados)}</b>`
       + `<span class="mapa-zona-frac">${decididos && decididos !== enviados ? `${sep}de los respondidos: ${ganados} de ${decididos}${pct(ganados, decididos)}` : ''}`
       + `${abiertos ? `${sep}${abiertos} esperando respuesta` : ''}</span>`
+      // Los vencidos son la suposición de la cifra de respondidos: el atajo
+      // para contar qué pasó con cada uno va pegado al número.
+      + (vencidos ? `${sep}<button type="button" class="mapa-zona-vsr" onclick="vsrAbrir('zona')">${vencidos} vencido${vencidos === 1 ? '' : 's'} sin respuesta ›</button>` : '')
     : 'Aceptados: <span class="mapa-zona-frac">todavía no hay presupuestos enviados</span>';
   box.innerHTML = `
     <div class="mapa-zona-title">En esta zona: ${totalMarks} presupuesto(s)${total ? `${sep}Presupuestado: <b>${fmtM(total, cur || 'ARS')}</b>` : ''}</div>

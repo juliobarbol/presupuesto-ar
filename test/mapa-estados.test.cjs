@@ -126,6 +126,16 @@ function historial() {
   check(/2 esperando respuesta/.test(c), 'Los enviados vigentes se muestran como esperando respuesta', c.slice(0, 160));
   check(!/Conversión/.test(c), 'Ya no hay una "Conversión" sola que se lea como lo que no es', c.slice(0, 160));
   check(/Enviado 3 · 1 vencido/.test(c), 'La franja dice cuántos enviados están vencidos', c);
+  const cz = await page.evaluate(() => {
+    const btn = document.querySelector('#mapa-zonastats .mapa-zona-vsr');
+    if (!btn) return null;
+    btn.click();
+    const clis = [...document.querySelectorAll('#vsr-list .vsr-cli')].map(x => x.textContent);
+    vsrClose();
+    return { txt: btn.textContent, clis };
+  });
+  check(cz && /1 vencido sin respuesta/.test(cz.txt) && cz.clis.length === 1 && cz.clis[0] === 'Felipe vencido',
+    'El atajo de la franja abre la lista con los vencidos de la zona', JSON.stringify(cz));
 
   // El caso del reporte: 0 perdidos, muchos vencidos. Daba "Conversión: 100%".
   const c2 = await page.evaluate(async () => {

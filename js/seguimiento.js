@@ -218,6 +218,9 @@ function vencResponder(id, resp) {
   if (!VENC_RESPUESTAS.includes(resp)) return;
   if (resp === 'sigue') prorrogarVigencia(id);
   else setEstadoHistory(id, resp);
+  // Desde la lista de vencidos sin respuesta: el respondido sale de la lista.
+  const vsr = document.getElementById('vsr-overlay');
+  if (vsr && vsr.classList.contains('open')) vsrRender();
 }
 
 // Vigencia nueva desde HOY con los mismos días del presupuesto. Cambia

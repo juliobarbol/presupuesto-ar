@@ -20,13 +20,13 @@
 <script>try{var _tm=localStorage.getItem('pq_theme')||'auto';var _td=_tm==='dark'||(_tm==='auto'&&window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches);document.documentElement.setAttribute('data-theme',_td?'dark':'light');}catch(e){}</script>
 <!-- El CSS de la app, en este orden (la cascada depende de él). El ?v= es la
      versión de sw.js: cada versión del HTML pide SU código (npm run subir-version). -->
-<link rel="stylesheet" href="css/base.css?v=259">
-<link rel="stylesheet" href="css/components.css?v=259">
-<link rel="stylesheet" href="css/print.css?v=259">
-<link rel="stylesheet" href="css/riesgo.css?v=259">
-<link rel="stylesheet" href="css/documento.css?v=259">
-<link rel="stylesheet" href="css/mapa.css?v=259">
-<link rel="stylesheet" href="css/movil.css?v=259">
+<link rel="stylesheet" href="css/base.css?v=260">
+<link rel="stylesheet" href="css/components.css?v=260">
+<link rel="stylesheet" href="css/print.css?v=260">
+<link rel="stylesheet" href="css/riesgo.css?v=260">
+<link rel="stylesheet" href="css/documento.css?v=260">
+<link rel="stylesheet" href="css/mapa.css?v=260">
+<link rel="stylesheet" href="css/movil.css?v=260">
 </head>
 <body>
 
@@ -1671,6 +1671,17 @@
   </div>
 </div>
 
+<div id="vsr-overlay" role="presentation" onclick="if(event.target===this)vsrClose()">
+  <div id="vsr-box" role="dialog" aria-modal="true" aria-labelledby="vsr-title">
+    <h4 id="vsr-title">Vencidos sin respuesta</h4>
+    <p class="nv-sub" id="vsr-sub"></p>
+    <div id="vsr-list"></div>
+    <div class="cbtns">
+      <button class="btn btn-s" onclick="vsrClose()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
 <div id="nv-overlay" role="presentation" onclick="if(event.target===this)nvClose()">
   <div id="nv-box" role="dialog" aria-modal="true" aria-labelledby="nv-title">
     <h4 id="nv-title">Nueva versión</h4>
@@ -2112,30 +2123,30 @@
 <!-- El código de la app: scripts clásicos (no módulos) que comparten el ámbito
      global, en este orden. Lo que corre al cargar un archivo no puede usar algo
      de uno posterior (npm run lint lo verifica). -->
-<script src="js/state.js?v=259"></script>
-<script src="js/riesgo.js?v=259"></script>
-<script src="js/dropdown.js?v=259"></script>
-<script src="js/datepicker.js?v=259"></script>
-<script src="js/seguimiento.js?v=259"></script>
-<script src="js/push.js?v=259"></script>
-<script src="js/net.js?v=259"></script>
-<script src="js/sanitize.js?v=259"></script>
-<script src="js/photos.js?v=259"></script>
-<script src="js/clients.js?v=259"></script>
-<script src="js/phrases.js?v=259"></script>
-<script src="js/items.js?v=259"></script>
-<script src="js/ui.js?v=259"></script>
-<script src="js/history.js?v=259"></script>
-<script src="js/exportimport.js?v=259"></script>
-<script src="js/gdrive.js?v=259"></script>
-<script src="js/gcal.js?v=259"></script>
-<script src="js/pdf.js?v=259"></script>
-<script src="js/facturacion.js?v=259"></script>
-<script src="js/mapa.js?v=259"></script>
-<script src="js/clima.js?v=259"></script>
-<script src="js/calendar.js?v=259"></script>
-<script src="js/notifs.js?v=259"></script>
-<script src="js/nav.js?v=259"></script>
-<script src="js/core.js?v=259"></script>
+<script src="js/state.js?v=260"></script>
+<script src="js/riesgo.js?v=260"></script>
+<script src="js/dropdown.js?v=260"></script>
+<script src="js/datepicker.js?v=260"></script>
+<script src="js/seguimiento.js?v=260"></script>
+<script src="js/push.js?v=260"></script>
+<script src="js/net.js?v=260"></script>
+<script src="js/sanitize.js?v=260"></script>
+<script src="js/photos.js?v=260"></script>
+<script src="js/clients.js?v=260"></script>
+<script src="js/phrases.js?v=260"></script>
+<script src="js/items.js?v=260"></script>
+<script src="js/ui.js?v=260"></script>
+<script src="js/history.js?v=260"></script>
+<script src="js/exportimport.js?v=260"></script>
+<script src="js/gdrive.js?v=260"></script>
+<script src="js/gcal.js?v=260"></script>
+<script src="js/pdf.js?v=260"></script>
+<script src="js/facturacion.js?v=260"></script>
+<script src="js/mapa.js?v=260"></script>
+<script src="js/clima.js?v=260"></script>
+<script src="js/calendar.js?v=260"></script>
+<script src="js/notifs.js?v=260"></script>
+<script src="js/nav.js?v=260"></script>
+<script src="js/core.js?v=260"></script>
 </body>
 </html>

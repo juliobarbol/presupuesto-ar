@@ -219,7 +219,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     const ids = ['confirm-overlay','agenda-overlay','day-alert-overlay',
       'share-overlay','moverlay','notes-overlay','phrases-overlay',
       'photo-viewer-overlay','note-edit-overlay','doc-preview-overlay',
-      'clima-overlay','notif-overlay','nv-overlay','colab-overlay'];
+      'clima-overlay','notif-overlay','nv-overlay','colab-overlay','vsr-overlay'];
     const els = ids.map(id => document.getElementById(id)).filter(Boolean);
     if (!els.length) return;
     const sync = () => document.body.classList.toggle(
