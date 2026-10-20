@@ -230,7 +230,7 @@ const RESET = `
       check('…ni la cantidad del mes', r.cantMes === '1', r.cantMes);
       check('La conversión y el presupuestado de la zona no se mueven',
         r.zonaAntes.replace(/\s+/g,' ') === r.zonaDespues.split('colaboracion')[0].replace(/\s+/g,' ')
-          || r.zonaDespues.indexOf('Conversión: 100%') === r.zonaAntes.indexOf('Conversión: 100%'),
+          || r.zonaDespues.indexOf('Aceptados: 1 de 1 enviado') === r.zonaAntes.indexOf('Aceptados: 1 de 1 enviado'),
         `antes: "${r.zonaAntes}" · después: "${r.zonaDespues}"`);
       check('El presupuestado de la zona sigue siendo el del presupuesto solo',
         /Presupuestado: \$ 400\.000/.test(r.zonaDespues) && !/940\.000/.test(r.zonaDespues),
@@ -387,7 +387,7 @@ const RESET = `
         /Sin presupuesto 2 · \$ 160\.000/.test(r.acum) && /Presupuestos 1 /.test(r.acum),
         r.acum.slice(0, 180));
       check('NO entra en la conversión de la zona',
-        /Conversión: 100%/.test(r.zonaAntes) && /Conversión: 100%/.test(r.zonaDespues)
+        /Aceptados: 1 de 1 enviado/.test(r.zonaAntes) && /Aceptados: 1 de 1 enviado/.test(r.zonaDespues)
         && /En esta zona: 1 presupuesto/.test(r.zonaDespues), r.zonaDespues);
       check('…ni en el presupuestado de la zona, que lo cuenta aparte',
         /Presupuestado: \$ 400\.000/.test(r.zonaDespues)

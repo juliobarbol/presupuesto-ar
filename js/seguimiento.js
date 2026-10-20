@@ -207,6 +207,54 @@ function marcarVencimientoVisto(id) {
   if (typeof updateNotifBadge === 'function') updateNotifBadge();
 }
 
+// "¿Qué pasó?" del banner de vencidos (v259): cerrar el vencido con lo que de
+// verdad pasó. El ✓ solo apaga el aviso y el presupuesto sigue contando como
+// vencido para siempre; en el uso real había 20 vencidos y 0 perdidos, así
+// que la conversión del Mapa se apoyaba en una suposición. Aceptó y Perdido
+// pasan por setEstadoHistory (que deja el "Deshacer"); Sigue en pie extiende
+// la vigencia y lo vuelve a "esperando respuesta".
+const VENC_RESPUESTAS = ['aceptado', 'perdido', 'sigue'];
+function vencResponder(id, resp) {
+  if (!VENC_RESPUESTAS.includes(resp)) return;
+  if (resp === 'sigue') prorrogarVigencia(id);
+  else setEstadoHistory(id, resp);
+}
+
+// Vigencia nueva desde HOY con los mismos días del presupuesto. Cambia
+// snapshot.dateExpiry, que es lo que leen el banner, el pin del Mapa, la
+// Agenda y el push; borra el "visto" para que avise de nuevo al vencer otra
+// vez. Si el editor tiene abierto este mismo presupuesto, S también: el
+// autoguardado pisaría la fecha nueva con la vieja.
+function prorrogarVigencia(id) {
+  const h = getH();
+  const e = h.find(x => x.id === id);
+  if (!e || !e.snapshot) return;
+  const prev = e.snapshot.dateExpiry || '';
+  const dias = parseInt(e.snapshot.validityDays, 10) > 0 ? parseInt(e.snapshot.validityDays, 10) : 30;
+  const d = new Date(); d.setDate(d.getDate() + dias);
+  const nueva = toLocalISODate(d);
+  e.snapshot.dateExpiry = nueva;
+  delete e.vencimientoVistoEn;
+  setH(h);
+  if (S.quoteNumber && S.quoteNumber === e.quoteNumber) {
+    S.dateExpiry = nueva;
+    sv('date-expiry', nueva);
+    const el = document.getElementById('date-expiry');
+    if (el && el._cdateBtn) syncCdate(el);
+    saveLS();
+  }
+  renderHistory();
+  toast(`Vigencia extendida hasta el ${fmtD(nueva)}`, 'ok');
+  if (typeof logNotif === 'function') logNotif({
+    icon: '⏳', kind: 'vencimiento',
+    text: `Sigue en pie, vigencia hasta el ${fmtD(nueva)}: ${(e.clientName || '').trim() || '(sin nombre)'}${e.quoteNumber ? ` (N° ${e.quoteNumber})` : ''}`,
+    action: { type: 'entry', id: e.id },
+    undo: { type: 'prorroga', id: e.id, dateExpiry: prev },
+  });
+  if (S.pushEnabled && typeof syncPushFollowups === 'function') syncPushFollowups().catch(() => {});
+  if (typeof updateNotifBadge === 'function') updateNotifBadge();
+}
+
 // Reemplaza las variables de una plantilla de WhatsApp. Único lugar donde se
 // define qué variables existen: antes cada vía (el botón del editor y los
 // avisos del historial) hacía su propio .replace() y era fácil que una

@@ -342,7 +342,7 @@ function sanitizeNotifUndo(u) {
   // que no esté acá se descarta al sanitizar (y migrateSanitizeStored sanea al
   // arrancar), así que el botón "Deshacer" desaparecería de la bitácora sin
   // aviso. Al agregar un undo nuevo, agregarlo también acá.
-  const type = sanEnum(u.type, ['estado','recontacto','note','vencVisto','segHecho'], '');
+  const type = sanEnum(u.type, ['estado','recontacto','note','vencVisto','segHecho','prorroga'], '');
   if (!type) return null;
   const out = { type: type };
   if (type === 'note') out.id = sanTextId(u.id, 'n_');
@@ -359,6 +359,7 @@ function sanitizeNotifUndo(u) {
     else return null;
   }
   if (type === 'estado')     out.prev = sanEnum(u.prev, ESTADOS, 'borrador');
+  if (type === 'prorroga')   out.dateExpiry = sanISODate(u.dateExpiry);
   if (type === 'recontacto') {
     const f = sanISODate(u.recontactoEn); if (f) out.recontactoEn = f;
     if (u.recontactoNota != null) out.recontactoNota = sanStr(u.recontactoNota, 500);

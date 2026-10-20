@@ -72,6 +72,9 @@
 .mapa-zona-title b { font-weight:700; }
 .mapa-zona-title .mapa-zona-sep { color:var(--muted); font-weight:400; }
 .mapa-zona-frac { color:var(--muted); font-weight:400; font-variant-numeric:tabular-nums; }
+.mapa-zona-conv { font-size:12.5px; margin-bottom:4px; line-height:1.35; }
+.mapa-zona-conv b { font-weight:700; }
+.mapa-zona-conv .mapa-zona-sep { color:var(--muted); font-weight:400; }
 .mapa-zona-chips { display:flex; flex-wrap:nowrap; gap:4px; overflow-x:auto; scrollbar-width:none; }
 .mapa-zona-chips::-webkit-scrollbar { display:none; }
 .mapa-zona-chip { flex:none; display:inline-flex; align-items:center; gap:4px; }

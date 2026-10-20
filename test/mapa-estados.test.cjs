@@ -4,8 +4,8 @@
 //   A) Enviado VENCIDO: pin hueco. Vigente o "vence hoy": pin lleno.
 //   B) Paleta propia del mapa + símbolo (✓ realizado, ojo en "Ir a ver").
 //      Los colores oscuros de ESTADO_COLORS se confundían sobre el verde.
-//   C) Conversión de zona: solo lo decidido (aceptado + realizado + perdido).
-//      Antes los enviados contaban como decididos y la bajaban.
+//   C) Conversión de zona: aceptados sobre enviados, y aparte sobre los
+//      respondidos (con el enviado vencido) y los que esperan respuesta.
 //   D) Ruta: Google Maps acepta 3 paradas intermedias en el navegador del
 //      celular. Con más, se parte en tramos de hasta 4 paradas.
 //   E) La barra de totales no aparece en otra pestaña si el usuario se movió
@@ -116,10 +116,15 @@ function historial() {
     await new Promise((r) => setTimeout(r, 200));
     return document.getElementById('mapa-zonastats').textContent.replace(/\s+/g, ' ').trim();
   });
-  // Decididos: aceptado 1 + realizado 1 + perdido 1 + 1 enviado vencido = 4;
-  // ganados 2 → 50%. Los 2 enviados vigentes (uno vence hoy) quedan afuera.
-  // v231 contaba los 3 enviados (2/6 = 33%); v232 no contaba ninguno (2/3).
-  check(/Conversión: 50% \(2\/4\)/.test(c), 'Conversión: el enviado vencido cuenta como decidido; el vigente no', c.slice(0, 120));
+  // Enviados: aceptado 1 + realizado 1 + perdido 1 + 3 enviados = 6 ("Ir a
+  // ver" no es un presupuesto mandado); ganados 2 → 33%. Respondidos: los 3
+  // cerrados + 1 enviado vencido = 4; los 2 vigentes (uno vence hoy) esperan.
+  // Con 4 respondidos (< MAPA_CONV_MIN) esa cifra va sin porcentaje.
+  check(/Aceptados: 2 de 6 enviados \(33%\)/.test(c), 'Aceptados sobre todo lo enviado, con porcentaje', c.slice(0, 160));
+  check(/de los respondidos: 2 de 4 ·/.test(c) && !/2 de 4 \(/.test(c),
+    'Sobre respondidos: el vencido cuenta, el vigente no; sin % con pocos casos', c.slice(0, 160));
+  check(/2 esperando respuesta/.test(c), 'Los enviados vigentes se muestran como esperando respuesta', c.slice(0, 160));
+  check(!/Conversión/.test(c), 'Ya no hay una "Conversión" sola que se lea como lo que no es', c.slice(0, 160));
   check(/Enviado 3 · 1 vencido/.test(c), 'La franja dice cuántos enviados están vencidos', c);
 
   // El caso del reporte: 0 perdidos, muchos vencidos. Daba "Conversión: 100%".
@@ -139,8 +144,26 @@ function historial() {
     mapaRefresh();
     return txt;
   });
-  // Ganados 2 (aceptado + realizado); decididos 2 + 6 vencidos = 8 → 25%.
-  check(/Conversión: 25% \(2\/8\)/.test(c2), 'Sin perdidos y con vencidos la conversión no da 100%', c2.slice(0, 120));
+  // Ganados 2 (aceptado + realizado); enviados 2 + 8 = 10 → 20%; respondidos
+  // 2 + 6 vencidos = 8 → 25%. Antes de v233 esto daba 100%.
+  check(/Aceptados: 2 de 10 enviados \(20%\)/.test(c2) && /de los respondidos: 2 de 8 \(25%\)/.test(c2),
+    'Sin perdidos y con vencidos ninguna cifra da 100%', c2.slice(0, 160));
+
+  // El caso de la primera captura: 1 realizado y 2 enviados vigentes. Daba
+  // "Conversión: 100% (1/1)", que se leía como "aceptaron todos".
+  const c3 = await page.evaluate(async () => {
+    const h = getH();
+    const prev = JSON.stringify(h);
+    setH(h.filter(e => ['Realizado', 'Enviado vigente', 'Vence hoy'].includes(e.clientName)));
+    mapaRefresh();
+    await new Promise((r) => setTimeout(r, 200));
+    const txt = document.getElementById('mapa-zonastats').textContent.replace(/\s+/g, ' ').trim();
+    setH(JSON.parse(prev));
+    mapaRefresh();
+    return txt;
+  });
+  check(/Aceptados: 1 de 3 enviados/.test(c3) && !/%/.test(c3) && /2 esperando respuesta/.test(c3),
+    'Con pocos casos no hay 100%: "1 de 3 enviados · 2 esperando respuesta"', c3.slice(0, 160));
 
   // ── D) Tramos de ruta ─────────────────────────────────────────────────
   const d = await page.evaluate(() => {

@@ -1357,6 +1357,14 @@ input[type=number]{-moz-appearance:textfield}
    que impide que el botón se encoja por debajo de su propia etiqueta y la
    recorte. Si no entran los dos al lado, se apilan a ancho completo. */
 .expiry-banner .fub-nv,.expiry-banner .fub-wa{flex:1 1 auto;justify-content:center;text-align:center}
+/* "¿Qué pasó?" (v259): tres respuestas cortas en una fila que se parte si no
+   entra; la etiqueta ocupa su renglón en el celular angosto. */
+.fub-quepaso{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.fub-quepaso-lbl{font-size:12px;font-weight:700;color:#991b1b;flex:1 0 100%}
+.fub-qp{flex:1 1 auto;font-family:var(--font-text);font-size:12.5px;font-weight:700;color:var(--text);background:var(--card);border:1px solid #fecaca;border-radius:var(--radius-field);padding:7px 10px;cursor:pointer;white-space:nowrap}
+.fub-qp.is-acepto{color:#065f46;background:#d1fae5;border-color:#86efac}
+.fub-qp.is-perdido{color:#991b1b;background:#fee2e2}
+.fub-qp:active{filter:brightness(.95)}
 
 /* irABackup(): la sección de backup se marca un momento al llegar. */
 .fu-config.is-destacada{box-shadow:0 0 0 3px var(--accent);transition:box-shadow .3s}
@@ -1565,6 +1573,10 @@ input[type=number]{-moz-appearance:textfield}
 :root[data-theme="dark"] .expiry-banner .fub-sub,
 :root[data-theme="dark"] .expiry-banner .fub-more{color:#fca5a5}
 :root[data-theme="dark"] .expiry-banner .fub-item{background:#1f0c0c;border-color:#5c1c1c}
+:root[data-theme="dark"] .fub-quepaso-lbl{color:#fca5a5}
+:root[data-theme="dark"] .fub-qp{border-color:#5c1c1c}
+:root[data-theme="dark"] .fub-qp.is-acepto{color:#6ee7b7;background:#0a1c17;border-color:#065f46}
+:root[data-theme="dark"] .fub-qp.is-perdido{color:#fca5a5;background:#2a1212}
 
 /* Banner "Podas de hoy" (verde) */
 :root[data-theme="dark"] .morning-banner{background:linear-gradient(135deg,#0c2620,#0e2b22);border-color:#065f46}

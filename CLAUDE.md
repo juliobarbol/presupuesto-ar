@@ -18,7 +18,7 @@
 ## Archivos
 - `index.html` — markup, los `<link>`/`<script src>` y un `<script>` chico que pone el tema antes de pintar.
 - `js/*.js`, `css/*.css` — el código (mapa abajo). CSS en este orden, la cascada depende de él: `base`, `components`, `print`, `riesgo`, `documento` (temas y elementos del PDF), `mapa`, `movil` (bloque CELULAR, último a propósito). El documento tiene estilos de impresión (`@media print`, `#doc-a4`) y de vista previa (`.doc-preview-host .doc-a4-screen`): si tocás el layout del PDF, revisá los dos.
-- `sw.js` — Service Worker. **`CACHE_VERSION` actual: `presupuesto-v258`**.
+- `sw.js` — Service Worker. **`CACHE_VERSION` actual: `presupuesto-v259`**.
 - `manifest.webmanifest`, `*.png` — PWA.
 - `push-worker/` — Worker de las notificaciones con la app cerrada. **No se publica al mergear**: `npx wrangler deploy --config ./wrangler.toml` desde `push-worker/` (sin `--config` publica la APP). Ver `docs/push-setup.md` y `docs/modulos/push.md`.
 - `package.json`, `eslint.config.mjs`, `scripts/` (`test.cjs`, `lint-app.cjs`, `subir-version.cjs`), `.github/workflows/ci.yml` — solo herramientas de desarrollo; `.assetsignore` las deja fuera de lo publicado (igual que `docs/` y los `.md`).
@@ -72,7 +72,7 @@ El porqué de cada una (casos reales, auditorías, tests) está en `docs/modulos
 > celulares reciben la versión nueva la próxima vez que abren la app con señal.
 
 1. Desarrollar en la rama de trabajo (`claude/...`), no en `main`.
-2. **Subir la versión en cada cambio que se despliegue: `npm run subir-version`** (mueve `CACHE_VERSION` de `sw.js`, la marca `?v=` de `index.html` y esta guía). **Versión actual: v258**.
+2. **Subir la versión en cada cambio que se despliegue: `npm run subir-version`** (mueve `CACHE_VERSION` de `sw.js`, la marca `?v=` de `index.html` y esta guía). **Versión actual: v259**.
 3. Archivo nuevo: `js/`/`css/` en `index.html` (con `?v=`) **y** en `APP_CODIGO`; ícono o fuente, en `APP_SHELL`. Lo pesado bajo demanda (html2pdf), en `VENDOR_LAZY`.
 4. Verificar (abajo) y **mergear a `main`**.
 

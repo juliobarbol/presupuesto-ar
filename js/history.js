@@ -1085,11 +1085,13 @@ function setEstadoHistory(id, nuevoEstado) {
   if (nuevoEstado === 'realizado') _ofrecerCierreTrabajo(e);
   // Marcar "realizado" es la acción que más se toca sin querer (banner del día,
   // dropdown del historial). Dejamos el aviso en el centro de notificaciones con
-  // botón "Deshacer" para volver al estado previo con un toque.
-  if (nuevoEstado === 'realizado' && prevEstado !== 'realizado' && typeof logNotif === 'function') {
+  // botón "Deshacer" para volver al estado previo con un toque. "Perdido"
+  // también (v259): se marca desde el "¿Qué pasó?" del banner de vencidos, y
+  // el presupuesto se va del banner con el toque.
+  if ((nuevoEstado === 'realizado' || nuevoEstado === 'perdido') && prevEstado !== nuevoEstado && typeof logNotif === 'function') {
     logNotif({
-      icon: '✅', kind: 'estado',
-      text: `Marcaste como realizado: ${(e.clientName || '').trim() || '(sin nombre)'}${e.quoteNumber ? ` (N° ${e.quoteNumber})` : ''}`,
+      icon: nuevoEstado === 'realizado' ? '✅' : '✖️', kind: 'estado',
+      text: `Marcaste como ${estadoLabel(nuevoEstado).toLowerCase()}: ${(e.clientName || '').trim() || '(sin nombre)'}${e.quoteNumber ? ` (N° ${e.quoteNumber})` : ''}`,
       action: { type: 'entry', id: e.id },
       undo: { type: 'estado', id: e.id, prev: prevEstado },
     });
@@ -2362,7 +2364,7 @@ function renderExpiryBanner() {
       <span class="fub-icon">${icon('hourglass','ic-c-red')}</span>
       <span class="fub-title">${n} presupuesto${n>1?'s':''} vencido${n>1?'s':''}</span>
     </div>
-    <div class="fub-sub">Pasó su fecha de vigencia sin cerrarse. Conviene avisarle al cliente o pasarle un presupuesto actualizado.</div>
+    <div class="fub-sub">Pasó su fecha de vigencia sin cerrarse. Contá qué pasó (así la conversión del Mapa es real), avisale al cliente o pasale un presupuesto actualizado.</div>
     <div class="fub-list">
       ${venc.slice(0,5).map(p => {
         const e = p.entry;
@@ -2382,6 +2384,12 @@ function renderExpiryBanner() {
               <span class="fub-item-days">venció hace ${p.dias} día${p.dias>1?'s':''}</span>
             </div>
             <button class="fub-done" onclick="marcarVencimientoVisto(${e.id})" title="No avisarme más de este">✓</button>
+          </div>
+          <div class="fub-quepaso" role="group" aria-label="¿Qué pasó con este presupuesto?">
+            <span class="fub-quepaso-lbl">¿Qué pasó?</span>
+            <button type="button" class="fub-qp is-acepto" onclick="vencResponder(${e.id},'aceptado')">Aceptó</button>
+            <button type="button" class="fub-qp is-perdido" onclick="vencResponder(${e.id},'perdido')">Lo perdí</button>
+            <button type="button" class="fub-qp" onclick="vencResponder(${e.id},'sigue')" title="Extender la vigencia: el cliente todavía lo está pensando">Sigue en pie</button>
           </div>
           <div class="fub-item-acts">
             <button class="fub-nv" onclick="nuevaVersionQuote(${e.id})" title="Armar la segunda versión con los precios al día">${icon('refresh')} Nueva versión</button>

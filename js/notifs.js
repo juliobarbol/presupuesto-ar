@@ -226,6 +226,15 @@ function notifUndo(recId){
     } else if (u.type === 'vencVisto') {
       const h = getH(); const e = h.find(x => x.id === u.id);
       if (e) { delete e.vencimientoVistoEn; setH(h); ok = true; }
+    } else if (u.type === 'prorroga') {
+      const h = getH(); const e = h.find(x => x.id === u.id);
+      if (e && e.snapshot) {
+        e.snapshot.dateExpiry = u.dateExpiry || '';
+        setH(h); ok = true;
+        // Mismo cuidado que prorrogarVigencia: el editor abierto en este
+        // presupuesto volvería a guardar la fecha extendida.
+        if (S.quoteNumber && S.quoteNumber === e.quoteNumber) { S.dateExpiry = e.snapshot.dateExpiry; sv('date-expiry', S.dateExpiry); saveLS(); }
+      }
     } else if (u.type === 'segHecho') {
       const h = getH(); const e = h.find(x => x.id === u.id);
       if (e) { delete e.seguimientoHechoEn; setH(h); ok = true; }

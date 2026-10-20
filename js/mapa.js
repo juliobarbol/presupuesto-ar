@@ -64,6 +64,10 @@ function mapaEsVencido(e) {
   return d !== null && d >= 1;
 }
 
+// Casos mínimos para mostrar un porcentaje de conversión en la zona. Debajo
+// de esto queda solo la fracción ("1 de 1"): ver mapaUpdateZonaStats.
+const MAPA_CONV_MIN = 5;
+
 // ─── PINS CERCANOS AGRUPADOS ─────────────────────────────────
 // A zoom de provincia los pins de una misma zona se encimaban en una mancha
 // (y un grupo "3" quedaba tapado por otros pins). Ahora los pins a menos de
@@ -843,15 +847,24 @@ function mapaUpdateZonaStats() {
     return;
   }
   const c = k => counts[k] || 0;
-  // Conversión: ganados sobre DECIDIDOS. Decidido = aceptado, realizado,
-  // perdido… y el enviado VENCIDO: la vigencia pasó sin respuesta, y en el uso
-  // real casi nadie lo marca "perdido" (zona con 20 vencidos y 0 perdidos).
-  // Sacarlo de la cuenta daba 100% (v232, el reporte con captura); contarlo
-  // como abierto también. El enviado VIGENTE sí queda afuera: el cliente
-  // todavía puede aceptarlo, y contarlo bajaba la conversión (v231).
+  // Dos cifras, cada una con su nombre, porque responden preguntas distintas
+  // (v259). Con una sola, "Conversión: 57%" se leía como "me aceptan 57 de
+  // cada 100" y no lo era: el reporte hacía 26 de 58 = 45% de cabeza.
+  //   · Aceptados sobre ENVIADOS (la principal): la cuenta que hace el
+  //     usuario. Enviado = todo lo que le llegó al cliente: enviado (vigente o
+  //     vencido), aceptado, realizado y perdido. Borrador, "Ir a ver" y
+  //     control en sitio no son presupuestos mandados.
+  //   · Sobre RESPONDIDOS (tasa de cierre): ganados sobre decididos. Decidido
+  //     = aceptado, realizado, perdido… y el enviado VENCIDO, porque casi nadie
+  //     lo marca "perdido" (zona con 20 vencidos y 0 perdidos daba 100%, v232).
+  //     El VIGENTE queda afuera: el cliente todavía puede aceptarlo (v231).
+  // Con menos de MAPA_CONV_MIN casos el porcentaje no se muestra, solo "1 de
+  // 1": un 100% de un solo presupuesto se lee como "aceptan todos".
   const ganados = c('aceptado') + c('realizado');
   const decididos = ganados + c('perdido') + vencidos;
-  const conv = decididos ? Math.round(ganados / decididos * 100) : null;
+  const enviados = ganados + c('perdido') + c('enviado');
+  const abiertos = c('enviado') - vencidos;
+  const pct = (n, d) => d >= MAPA_CONV_MIN ? ` (${Math.round(n / d * 100)}%)` : '';
   // Cada chip lleva el punto con el color del PIN: con los filtros plegados,
   // la franja es la leyenda del mapa.
   const chips = ESTADOS.filter(s => counts[s]).map(s => {
@@ -863,8 +876,14 @@ function mapaUpdateZonaStats() {
   // Franja ENCIMA del mapa: una línea de números y los chips (que hacen de
   // leyenda de colores, ahora que los filtros quedan plegados).
   const sep = '<span class="mapa-zona-sep"> · </span>';
+  const conv = enviados
+    ? `Aceptados: <b>${ganados} de ${enviados} enviado${enviados === 1 ? '' : 's'}${pct(ganados, enviados)}</b>`
+      + `<span class="mapa-zona-frac">${decididos && decididos !== enviados ? `${sep}de los respondidos: ${ganados} de ${decididos}${pct(ganados, decididos)}` : ''}`
+      + `${abiertos ? `${sep}${abiertos} esperando respuesta` : ''}</span>`
+    : 'Aceptados: <span class="mapa-zona-frac">todavía no hay presupuestos enviados</span>';
   box.innerHTML = `
-    <div class="mapa-zona-title" title="Conversión: aceptado + realizado sobre decididos (aceptado + realizado + perdido + enviados vencidos). Los enviados vigentes no cuentan: siguen abiertos.">En esta zona: ${totalMarks} presupuesto(s)${sep}${conv != null ? `Conversión: <b>${conv}%</b> <span class="mapa-zona-frac">(${ganados}/${decididos})</span>` : 'Conversión: —'}${total ? `${sep}Presupuestado: <b>${fmtM(total, cur || 'ARS')}</b>` : ''}</div>
+    <div class="mapa-zona-title">En esta zona: ${totalMarks} presupuesto(s)${total ? `${sep}Presupuestado: <b>${fmtM(total, cur || 'ARS')}</b>` : ''}</div>
+    <div class="mapa-zona-conv" title="Aceptados: aceptado + realizado sobre todo lo enviado al cliente. De los respondidos: sobre los que ya tienen respuesta (aceptado, realizado, perdido o enviado vencido). Esperando respuesta: enviados todavía vigentes.">${conv}</div>
     <div class="mapa-zona-chips">${chips}</div>
     ${colabBox}`;
 }
