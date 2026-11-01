@@ -300,42 +300,71 @@ function _mapaDateOf(e) { return (((e.snapshot && e.snapshot.dateIssue) || e.sav
 // el usuario prefiere esperar.
 let _mapaTiles = null;
 
+// Tiles sin subdominios ({s}): OSM los dejó de recomendar (con HTTP/2 no
+// suman) y así cada tile tiene UNA sola URL, que es la clave de la caché del
+// SW. `crossOrigin` pide el tile con CORS: sin eso la respuesta es "opaca" y
+// el SW no puede verificarla ni guardarla sin que Chrome le cobre ~7 MB de
+// cuota por tile.
+const MAPA_TILES_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+const MAPA_TILES_OPC = { maxZoom: 19, crossOrigin: true, attribution: '&copy; OpenStreetMap' };
+
+// ¿El fondo está puesto y completo (no el "solo lo guardado")?
+function _mapaFondoCompleto() { return !!_mapaTiles && !_mapaTiles._pqSoloCache; }
+
+// Pone la capa de tiles. `soloCache`: la misma capa pero con `?pq=cache`, que
+// el SW contesta SOLO con lo guardado (nunca va a la red). Así, sin datos o con
+// la red mala, se ve el fondo de las zonas que el usuario ya miró, sin gastar
+// un pedido. Si ya había una capa del otro tipo, se reemplaza.
+function _mapaPonerTiles(L, soloCache) {
+  if (!_mapa) return;
+  if (_mapaTiles && !!_mapaTiles._pqSoloCache === !!soloCache) return;
+  if (_mapaTiles) { try { _mapa.removeLayer(_mapaTiles); } catch (_) {} }
+  _mapaTiles = L.tileLayer(MAPA_TILES_URL + (soloCache ? '?pq=cache' : ''), MAPA_TILES_OPC).addTo(_mapa);
+  _mapaTiles._pqSoloCache = !!soloCache;
+  if (soloCache) _mapaTiles.bringToBack();
+}
+
+// El modo "solo lo guardado" necesita al SW controlando la página (él guarda
+// y sirve los tiles). Sin SW (file://, primera apertura) se pedirían a la red:
+// ahí se mantiene lo de antes, sin fondo hasta que el usuario lo pida.
+function _mapaHaySW() {
+  try { return !!(navigator.serviceWorker && navigator.serviceWorker.controller); } catch (_) { return false; }
+}
+
 function _mapaAddTiles(L) {
   const aviso = document.getElementById('mapa-neti');
   if (!_mapa) return;
   // Con el fondo ya puesto el aviso no tiene nada que decir. Se apaga acá por
   // si quedó colgado de una entrada anterior con la red mala: el cartel decía
   // "fondo sin cargar" con el mapa cargado atrás.
-  if (_mapaTiles) { if (aviso) aviso.hidden = true; return; }
+  if (_mapaFondoCompleto()) { if (aviso) aviso.hidden = true; return; }
   if (typeof netPuedeAuto === 'function' && !netPuedeAuto()) {
+    const guardado = _mapaHaySW();
+    if (guardado) _mapaPonerTiles(L, true);
     if (aviso) {
       const est = (typeof netEtiqueta === 'function') ? netEtiqueta().toLowerCase() : 'conexión lenta';
-      aviso.innerHTML = `<span>Fondo del mapa sin cargar (${esc(est)}): los pins y las zonas se ven igual.</span>`
+      const txt = guardado
+        ? `Fondo del mapa con lo guardado (${esc(est)}): se ven las zonas que ya miraste con señal. Los pins y las zonas, todos.`
+        : `Fondo del mapa sin cargar (${esc(est)}): los pins y las zonas se ven igual.`;
+      aviso.innerHTML = `<span>${txt}</span>`
         + `<button type="button" class="btn btn-g btn-sm" onclick="mapaCargarFondo()">Cargar el fondo igual</button>`;
       aviso.hidden = false;
     }
     return;
   }
-  _mapaTiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '&copy; OpenStreetMap',
-  }).addTo(_mapa);
+  _mapaPonerTiles(L, false);
   if (aviso) aviso.hidden = true;
 }
 
 // Botón del aviso: el usuario PIDE el fondo, así que se carga aunque la red
-// esté mal (y de paso se levanta el corte, por si ya se recuperó).
+// esté mal (y de paso se levanta el corte, por si ya se recuperó). Lo que no
+// llegue de la red, el SW lo completa con lo guardado.
 function mapaCargarFondo() {
   if (typeof netReintentar === 'function') netReintentar();
   ensureLeaflet().then((L) => {
     const aviso = document.getElementById('mapa-neti');
     if (aviso) aviso.hidden = true;
-    if (_mapa && !_mapaTiles) {
-      _mapaTiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '&copy; OpenStreetMap',
-      }).addTo(_mapa);
-    }
+    _mapaPonerTiles(L, false);
   }).catch(() => {});
 }
 

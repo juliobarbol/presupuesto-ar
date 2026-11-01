@@ -188,7 +188,8 @@ function netRenderEstado() {
   // de "fondo sin cargar" para siempre (solo se reevaluaba al volver a entrar).
   try {
     if (typeof _mapaAddTiles === 'function' && typeof _mapa !== 'undefined' &&
-        _mapa && !_mapaTiles && netPuedeAuto() && window.L &&
+        _mapa && typeof _mapaFondoCompleto === 'function' && !_mapaFondoCompleto() &&
+        netPuedeAuto() && window.L &&
         document.getElementById('panel-mapa') &&
         document.getElementById('panel-mapa').classList.contains('active')) {
       _mapaAddTiles(window.L);

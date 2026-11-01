@@ -9,11 +9,12 @@
 //     segundo plano.
 //   - Nunca cacheamos respuestas redirigidas ni != 200 (evita corromper
 //     la cache).
-//   - Recursos externos (fuentes de Google, CDNs): pasan directo a la red.
+//   - Recursos externos (fuentes de Google, CDNs): pasan directo a la red,
+//     salvo los tiles del mapa, que se guardan aparte (TILES_CACHE).
 //
 //  Para forzar actualizacion tras un deploy: subir el CACHE_VERSION.
 
-const CACHE_VERSION = 'presupuesto-v261';
+const CACHE_VERSION = 'presupuesto-v262';
 
 // El CÓDIGO de la app (v256: antes vivía entero en index.html). index.html lo
 // pide con ?v=<número de versión> y acá se lista con la misma marca, así que
@@ -39,6 +40,15 @@ const APP_CODIGO = [
 // cada actualización necesitaba señal. Se revalida en segundo plano (como el
 // resto), así que un archivo nuevo en /vendor llega solo.
 const VENDOR_CACHE = 'pq-vendor';
+
+// Caché APARTE, que también sobrevive a las versiones, para el FONDO del mapa
+// (tiles de OpenStreetMap). Sin esto, sin datos el mapa abría todo gris aunque
+// la zona se hubiera mirado mil veces. Se guarda SOLO lo que el usuario ya vio
+// (nada de bajar zonas por adelantado: lo prohíbe la política de uso de OSM) y
+// con tope de cantidad: al pasarlo se borran los más viejos.
+const TILES_CACHE = 'pq-tiles';
+const TILES_MAX = 3000;          // ≈ 40-60 MB con tiles de ciudad
+const TILES_FRESCO_MS = 7 * 24 * 3600 * 1000; // lo que OSM pide cachear
 const VENDOR_LAZY = ['/vendor/html2pdf.bundle.min.js'];
 const APP_SHELL = [
   './',
@@ -95,7 +105,7 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
-    await Promise.all(keys.filter((k) => k !== CACHE_VERSION && k !== VENDOR_CACHE).map((k) => caches.delete(k)));
+    await Promise.all(keys.filter((k) => k !== CACHE_VERSION && k !== VENDOR_CACHE && k !== TILES_CACHE).map((k) => caches.delete(k)));
     await self.clients.claim();
   })());
 });
@@ -148,6 +158,45 @@ function fetchWithTimeout(req, ms) {
   });
 }
 
+// -- Fondo del mapa (tiles de OSM) ----------------------------
+// Clave: la URL sin query (el `?pq=cache` es solo una orden para este SW).
+// `?pq=cache` = la página sabe que la red no da: se contesta SOLO con lo
+// guardado y lo que no está falla al toque, sin gastar un pedido. Sin la
+// marca: lo guardado si está fresco (o si la red anda mal), si no la red, y si
+// la red falla, lo guardado aunque sea viejo. Solo se guarda una respuesta
+// CORS sana (status 200): una opaca no se puede verificar.
+let _tilesPuestos = 0;
+async function tileResponder(req, url) {
+  const key = url.origin + url.pathname;
+  let tc = null, cached;
+  try { tc = await caches.open(TILES_CACHE); cached = await tc.match(key); } catch (e) {}
+  if (url.searchParams.get('pq') === 'cache') return cached || Response.error();
+  if (cached) {
+    const fecha = Date.parse(cached.headers.get('date') || '');
+    if (swNetLenta() || (isFinite(fecha) && Date.now() - fecha < TILES_FRESCO_MS)) return cached;
+  }
+  try {
+    const res = await fetch(req);
+    if (tc && res && res.status === 200 && res.type !== 'opaque') {
+      const copy = res.clone();
+      tc.put(key, copy).then(() => { if (++_tilesPuestos % 50 === 0) recortarTiles(tc); }).catch(() => {});
+    }
+    return res;
+  } catch (e) {
+    return cached || Response.error();
+  }
+}
+
+// Deja los TILES_MAX más nuevos. keys() viene en orden de inserción y un put
+// sobre una clave existente la manda al final: se borran los más viejos.
+async function recortarTiles(tc) {
+  try {
+    const keys = await tc.keys();
+    const sobran = keys.length - TILES_MAX;
+    for (let i = 0; i < sobran; i++) await tc.delete(keys[i]);
+  } catch (e) {}
+}
+
 // -- Helper: buscar el documento en cache (varios fallbacks) --
 function matchAppShell(req) {
   return caches.match(req)
@@ -175,9 +224,14 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Solo GET del mismo origen. Lo externo (fuentes Google, etc.) va directo.
+  // Solo GET del mismo origen. Lo externo (fuentes Google, etc.) va directo,
+  // salvo el fondo del mapa (ver tileResponder).
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
+  if (url.hostname === 'tile.openstreetmap.org') {
+    event.respondWith(tileResponder(req, url));
+    return;
+  }
   if (url.origin !== self.location.origin) return;
 
   // Navegaciones: NETWORK-FIRST con timeout, fallback a cache.
